@@ -10,23 +10,30 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Production: https://ogame-xi.vercel.app
 - GitHub: https://github.com/anpages/feudum
 
-## Commands
+## Local development
+
+`npm run dev` (Vite only) does NOT run the API. Always use `npm start` for full-stack local work:
 
 ```bash
-npm run dev          # Vite dev server (localhost:5173)
-npm run build        # tsc -b && vite build
-npm run lint         # ESLint
-
-# Database (requires DATABASE_URL in .env.local)
-npm run db:generate  # Generate migration SQL from schema changes
-npm run db:migrate   # Apply pending migrations to Neon
-npm run db:studio    # Open Drizzle Studio (DB browser)
-
-# Deploy
-vercel --prod        # Deploy to production
+npm start            # vercel dev → frontend + API on http://localhost:3000
 ```
 
-To load env vars for DB commands in the shell: `set -a && source .env.local && set +a`
+How it works: `vercel dev` reads `devCommand: "vite --port 3000"` from `vercel.json`, starts Vite for the frontend, and serves `api/index.ts` as a local serverless function at `/api/*`. Environment variables are loaded automatically from `.env.local`.
+
+```bash
+# Other commands
+npm run dev          # Vite only (localhost:5173) — use only for pure frontend work without API
+npm run build        # tsc -b && vite build (used by Vercel CI)
+npm run lint         # ESLint
+
+# Database — load env first: set -a && source .env.local && set +a
+npm run db:generate  # Generate migration SQL from schema changes in db/schema/
+npm run db:migrate   # Apply pending migrations to Neon
+npm run db:studio    # Open Drizzle Studio browser UI
+
+# Deploy
+vercel --prod        # Deploy to production manually (push to main also auto-deploys)
+```
 
 ## OGame reference repo
 
