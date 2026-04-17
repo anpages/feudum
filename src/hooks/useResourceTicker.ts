@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import type { Kingdom } from '@db/schema'
+import type { Kingdom } from '../../db/schema'
 
 // Interpolates resources locally each second based on server-provided production rates.
 // Keeps the UI feeling live without hammering the API.

@@ -23,10 +23,8 @@
     "ignoreDeprecations": "6.0",
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"],
-      "@db/*": ["db/*"],
-      "@api/*": ["api/*"]
+      "@/*": ["src/*"]
     }
   },
-  "include": ["src", "db", "api"]
+  "include": ["src"]
 }
