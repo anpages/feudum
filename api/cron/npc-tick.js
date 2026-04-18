@@ -8,6 +8,7 @@ import { db, users, kingdoms, armyMissions, messages, debrisFields } from '../_d
 import { applyResourceTick } from '../lib/tick.js'
 import { BUILDINGS, buildCost, buildTime, applyBuildingEffect } from '../lib/buildings.js'
 import { ECONOMY_SPEED, NPC_AGGRESSION, NPC_ATTACK_INTERVAL_HOURS } from '../lib/config.js'
+import { buildTime } from '../lib/buildings.js'
 import { calcDistance, calcDuration } from '../lib/speed.js'
 import {
   buildBattleUnits, runBattle, calculateLoot,
@@ -129,49 +130,58 @@ function totalArmy(k) {
 
 // ── Growth AI ─────────────────────────────────────────────────────────────────
 
-async function growNpc(kingdom, cfg) {
+async function growNpc(kingdom, cfg, now) {
   const npcLevel    = kingdom.npcLevel || 1
   const personality = npcPersonality(kingdom)
   const cls         = npcClass(kingdom)
   const targets     = BUILDING_TARGETS[personality][npcLevel]
   const priority    = BUILD_PRIORITY[personality]
+  const speed       = parseFloat(cfg.economy_speed ?? ECONOMY_SPEED)
 
-  // Builds per tick: base = npcLevel; discoverer gets +1 extra
-  const maxBuilds = npcLevel + (cls === 'discoverer' ? 1 : 0)
+  // Respect build cooldown — same timing as real players
+  const buildAvailable = kingdom.npcBuildAvailableAt ?? 0
+  const canBuild = now >= buildAvailable
 
   let { wood, stone, grain } = kingdom
   let patch = {}
-  let buildsThisTick = 0
 
-  for (const b of priority) {
-    if (buildsThisTick >= maxBuilds) break
+  if (canBuild) {
+    for (const b of priority) {
+      const currentLv = (patch[b] !== undefined ? patch[b] : kingdom[b]) ?? 0
+      const targetLv  = targets?.[b] ?? 0
+      if (currentLv >= targetLv) continue
 
-    const currentLv = (patch[b] !== undefined ? patch[b] : kingdom[b]) ?? 0
-    const targetLv  = targets?.[b] ?? 0
-    if (currentLv >= targetLv) continue
+      const def = BUILDINGS.find(x => x.id === b)
+      if (!def) continue
 
-    const def = BUILDINGS.find(x => x.id === b)
-    if (!def) continue
+      const nextLv = currentLv + 1
+      const cost = buildCost(def.woodBase, def.stoneBase, def.factor, nextLv - 1, def.grainBase ?? 0)
 
-    const nextLv = currentLv + 1
-    const cost = buildCost(def.woodBase, def.stoneBase, def.factor, nextLv - 1, def.grainBase ?? 0)
+      if (wood >= cost.wood && stone >= cost.stone && grain >= (cost.grain ?? 0)) {
+        wood  -= cost.wood
+        stone -= cost.stone
+        grain -= (cost.grain ?? 0)
+        const effect = applyBuildingEffect(b, nextLv, { ...kingdom, ...patch })
+        Object.assign(patch, effect)
 
-    if (wood >= cost.wood && stone >= cost.stone && grain >= (cost.grain ?? 0)) {
-      wood  -= cost.wood
-      stone -= cost.stone
-      grain -= (cost.grain ?? 0)
-      const effect = applyBuildingEffect(b, nextLv, { ...kingdom, ...patch })
-      Object.assign(patch, effect)
-      buildsThisTick++
+        // Set cooldown using real build time formula (same as player queue)
+        // discoverer class: −25% build time (research-themed advantage)
+        const workshopLv      = (patch.workshop ?? kingdom.workshop) ?? 0
+        const engineersGuildLv = (patch.engineersGuild ?? kingdom.engineersGuild) ?? 0
+        const rawTime  = buildTime(cost.wood, cost.stone, nextLv, workshopLv, engineersGuildLv, speed)
+        const timeBonus = cls === 'discoverer' ? 0.75 : 1.0
+        patch.npcBuildAvailableAt = now + Math.max(30, Math.floor(rawTime * timeBonus))
+        break  // one building per cooldown cycle, just like player queue
+      }
     }
   }
 
-  // Unit training: general trains 2 extra types, L3 gets 2, others 1
+  // Unit training: can happen in parallel with building cooldown
+  // general trains faster (cost −10%, 2 types/tick); others 1 type/tick
   const unitTargets  = UNIT_TARGETS[personality][npcLevel] ?? {}
   const barracksLv   = (patch.barracks ?? kingdom.barracks) ?? 0
-  const maxUnitTypes = (npcLevel >= 3 ? 2 : 1) + (cls === 'general' ? 1 : 0)
-  // general reduces effective unit cost by 10%
-  const costMult = cls === 'general' ? 0.9 : 1.0
+  const maxUnitTypes = 1 + (cls === 'general' ? 1 : 0)
+  const costMult     = cls === 'general' ? 0.9 : 1.0
   let unitTypesThisTick = 0
 
   for (const [unitId, targetCount] of Object.entries(unitTargets)) {
@@ -184,10 +194,10 @@ async function growNpc(kingdom, cfg) {
 
     const cost = UNIT_COSTS[unitId]
     if (!cost) continue
-    const need    = targetCount - current
+    const need     = targetCount - current
     const effWood  = Math.ceil(cost.wood  * costMult)
     const effStone = Math.ceil(cost.stone * costMult)
-    const canAff  = Math.min(
+    const canAff   = Math.min(
       need,
       Math.floor(wood / effWood),
       effStone > 0 ? Math.floor(stone / effStone) : need,
@@ -205,7 +215,7 @@ async function growNpc(kingdom, cfg) {
   await db.update(kingdoms).set({
     ...patch,
     wood, stone, grain,
-    lastResourceUpdate: Math.floor(Date.now() / 1000),
+    lastResourceUpdate: now,
     updatedAt: new Date(),
   }).where(eq(kingdoms.id, kingdom.id))
 }
@@ -253,15 +263,22 @@ async function attackAI(npcKingdom, playerKingdoms, now, cfg) {
 
   if (candidates.length === 0) return false
 
+  // Only attack players with comparable development — prevents L3 NPCs farming fresh players.
+  // Gate: player must have accumulated at least 30% of NPC's total resources (proxy for kingdom age).
+  const npcTotal = (npcKingdom.wood ?? 0) + (npcKingdom.stone ?? 0) + (npcKingdom.grain ?? 0)
+  const minPlayerResources = Math.max(2000, npcTotal * 0.3)
+  const eligible = candidates.filter(p => (p.wood + p.stone + p.grain) >= minPlayerResources)
+  if (eligible.length === 0) return false
+
   // Target selection per personality + class:
-  // military → weakest (easy win); economy+collector → richest (max loot); others → richest
+  // military → weakest eligible (easy win); others → richest (max loot)
   let target
   if (personality === 'military') {
-    target = candidates.reduce((best, p) =>
+    target = eligible.reduce((best, p) =>
       (p.wood + p.stone + p.grain) < (best.wood + best.stone + best.grain) ? p : best
     )
   } else {
-    target = candidates.reduce((best, p) =>
+    target = eligible.reduce((best, p) =>
       (p.wood + p.stone + p.grain) > (best.wood + best.stone + best.grain) ? p : best
     )
   }
@@ -417,7 +434,7 @@ export default async function handler(req, res) {
     }
 
     // Growth AI
-    await growNpc(kingdom, cfg)
+    await growNpc(kingdom, cfg, now)
     grew++
 
     // Attack AI

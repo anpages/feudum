@@ -87,6 +87,7 @@ export const kingdoms = pgTable('kingdoms', {
   // ── NPC flags ────────────────────────────────────────────────
   isNpc: boolean('is_npc').default(false).notNull(),
   npcLevel: integer('npc_level').default(0).notNull(), // 0=human, 1=weak, 2=medium, 3=strong
+  npcBuildAvailableAt: integer('npc_build_available_at').default(0), // unix ts: when NPC can build next
 
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
