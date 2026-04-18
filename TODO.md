@@ -14,9 +14,9 @@
 
 ## 🟠 Mecánicas incompletas (afectan gameplay)
 
-- [ ] **Sistema de puntos** — `kingdoms.points` nunca se actualiza; hay que incrementarlo al mejorar edificios, investigar y entrenar unidades. Fórmula: suma de recursos gastados. Actualizar en `buildings/upgrade.js`, `research/upgrade.js` y `barracks/train.js`
-- [ ] **Bonificaciones de investigación en combate** — `api/lib/battle.js` recibe `research` pero no aplica `weapons`/`shielding`/`armor`. Fórmula OGame: ataque × (1 + weapons×0.1), escudo × (1 + shielding×0.1), casco × (1 + armor×0.1). Consultar `/home/anpages/ogame-ref/app/BattleEngine/`
-- [ ] **Investigación afectando producción** — ninguna investigación afecta producción actualmente. Ver si alguna debe hacerlo según el diseño del juego
+- [x] **Sistema de puntos** — `calcPoints` ya lo calcula dinámicamente en rankings. Corregido: `points.js` ahora incluye los 15 edificios (faltaban 7) y suma el coste de grano; mapa ahora muestra puntos reales (antes hardcodeado a 0)
+- [x] **Bonificaciones de investigación en combate** — ya estaban aplicadas: `swordsmanship`→ataque, `armoury`→escudo, `fortification`→casco en `battle.js`
+- [ ] **Investigación afectando producción** — diseño pendiente: decidir si alguna investigación debe afectar tasas de producción
 - [ ] **Gestión de colonias** — si un jugador coloniza, `kingdoms/me` siempre devuelve el primer reino. Necesita: selector de reino activo en ResourceBar, o soporte multi-reino en la API
 
 ---

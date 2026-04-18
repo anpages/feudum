@@ -1,14 +1,21 @@
 // Cumulative resources spent → points (÷1000, OGame convention)
 
 const BUILDING_DEFS = {
-  sawmill:        { wood: 60,       stone: 15,      factor: 1.5 },
-  quarry:         { wood: 48,       stone: 24,      factor: 1.6 },
-  grainFarm:      { wood: 225,      stone: 75,      factor: 1.5 },
-  windmill:       { wood: 75,       stone: 30,      factor: 1.5 },
-  workshop:       { wood: 400,      stone: 120,     factor: 2.0 },
-  engineersGuild: { wood: 1000000,  stone: 500000,  factor: 2.0 },
-  barracks:       { wood: 400,      stone: 200,     factor: 2.0 },
-  academy:        { wood: 200,      stone: 400,     factor: 2.0 },
+  sawmill:        { wood: 60,       stone: 15,      grain: 0,      factor: 1.5  },
+  quarry:         { wood: 48,       stone: 24,      grain: 0,      factor: 1.6  },
+  grainFarm:      { wood: 225,      stone: 75,      grain: 0,      factor: 1.5  },
+  windmill:       { wood: 75,       stone: 30,      grain: 0,      factor: 1.5  },
+  cathedral:      { wood: 900,      stone: 360,     grain: 180,    factor: 1.8  },
+  granary:        { wood: 1000,     stone: 0,       grain: 0,      factor: 2.0  },
+  stonehouse:     { wood: 1000,     stone: 500,     grain: 0,      factor: 2.0  },
+  silo:           { wood: 1000,     stone: 1000,    grain: 0,      factor: 2.0  },
+  workshop:       { wood: 400,      stone: 120,     grain: 0,      factor: 2.0  },
+  engineersGuild: { wood: 1000000,  stone: 500000,  grain: 0,      factor: 2.0  },
+  barracks:       { wood: 400,      stone: 200,     grain: 0,      factor: 2.0  },
+  academy:        { wood: 200,      stone: 400,     grain: 0,      factor: 2.0  },
+  alchemistTower: { wood: 500,      stone: 1000,    grain: 200,    factor: 1.75 },
+  ambassadorHall: { wood: 200,      stone: 600,     grain: 200,    factor: 2.0  },
+  armoury:        { wood: 200,      stone: 400,     grain: 0,      factor: 2.0  },
 }
 
 const RESEARCH_DEFS = {
@@ -57,8 +64,10 @@ const UNIT_COSTS = {
 function buildingPoints(def, level) {
   let total = 0
   for (let i = 0; i < level; i++) {
-    total += Math.floor(def.wood * Math.pow(def.factor, i))
-           + Math.floor(def.stone * Math.pow(def.factor, i))
+    const f = Math.pow(def.factor, i)
+    total += Math.floor(def.wood  * f)
+           + Math.floor(def.stone * f)
+           + Math.floor((def.grain ?? 0) * f)
   }
   return total
 }
