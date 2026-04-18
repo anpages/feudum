@@ -139,7 +139,7 @@ export function ArmiesPage() {
           {/* Mission type selector */}
           <Card className="p-4 space-y-3">
             <p className="font-ui text-xs text-ink-muted uppercase tracking-wider">Tipo de misión</p>
-            <div className="grid grid-cols-5 gap-1.5">
+            <div className="grid grid-cols-3 sm:grid-cols-5 gap-1.5">
               {(Object.entries(MISSION_META) as [MissionType, typeof MISSION_META[MissionType]][]).map(([type, meta]) => {
                 const { Icon } = meta
                 return (

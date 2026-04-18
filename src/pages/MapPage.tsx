@@ -106,25 +106,9 @@ export function MapPage() {
       {/* Main content: grid + detail panel */}
       <div className={`grid gap-4 anim-fade-up-2 ${selected ? 'lg:grid-cols-[1fr_280px]' : ''}`}>
 
-        {/* Slots grid */}
-        {isLoading ? (
-          <MapSkeleton />
-        ) : (
-          <div className="space-y-2">
-            {(data?.slots ?? []).map(slot => (
-              <SlotRow
-                key={slot.slot}
-                slot={slot}
-                isSelected={selected?.slot === slot.slot}
-                onClick={() => handleSelectSlot(slot)}
-              />
-            ))}
-          </div>
-        )}
-
-        {/* Detail panel */}
+        {/* Detail panel — rendered first in DOM so it appears above slot list on mobile */}
         {selected && (
-          <Card className="p-4 space-y-4 h-fit sticky top-20">
+          <Card className="p-4 space-y-4 h-fit lg:sticky lg:top-20 lg:order-last">
             <div className="flex items-start justify-between gap-2">
               <div>
                 <p className="font-ui text-[0.6rem] text-ink-muted/60 uppercase tracking-widest">
@@ -234,6 +218,24 @@ export function MapPage() {
           </Card>
         )}
 
+        {/* Slots list — lg:order-first so it stays left column on desktop */}
+        <div className="lg:order-first">
+          {isLoading ? (
+            <MapSkeleton />
+          ) : (
+            <div className="space-y-2">
+              {(data?.slots ?? []).map(slot => (
+                <SlotRow
+                  key={slot.slot}
+                  slot={slot}
+                  isSelected={selected?.slot === slot.slot}
+                  onClick={() => handleSelectSlot(slot)}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+
       </div>
     </div>
   )
@@ -248,7 +250,7 @@ function SlotRow({ slot, isSelected, onClick }: { slot: MapSlot; isSelected: boo
   return (
     <div
       onClick={isHighlighted ? undefined : onClick}
-      className={`flex items-center gap-4 px-4 py-3 rounded border transition-colors ${
+      className={`flex items-center gap-2 sm:gap-4 px-3 sm:px-4 py-2.5 rounded border transition-colors ${
         isHighlighted
           ? 'bg-gold-soft border-gold/30 shadow-sm'
           : isSelected
@@ -309,7 +311,7 @@ function SlotRow({ slot, isSelected, onClick }: { slot: MapSlot; isSelected: boo
       )}
 
       {!slot.isEmpty && (
-        <div className="shrink-0 text-right">
+        <div className="hidden sm:block shrink-0 text-right">
           <span className="font-ui text-xs text-ink-muted tabular-nums">
             {slot.points.toLocaleString()} pts
           </span>
