@@ -1,145 +1,20 @@
-import { useState, useEffect, useCallback, useMemo } from 'react'
-import { ArrowUp, Clock, Loader2, Zap } from 'lucide-react'
-import {
-  GiCauldron,
-  GiCrossedSwords,
-  GiCompass,
-  GiScrollQuill,
-  GiWoodPile,
-  GiStoneBlock,
-  GiWheat,
-} from 'react-icons/gi'
-import { type ReactNode } from 'react'
+import { useCallback, useMemo } from 'react'
+import { GiCauldron, GiCrossedSwords, GiCompass, GiScrollQuill } from 'react-icons/gi'
 import { useQueryClient } from '@tanstack/react-query'
 import { Card } from '@/components/ui/Card'
-import { Button } from '@/components/ui/Button'
-import { Badge } from '@/components/ui/Badge'
-import { useResearch, useUpgradeResearch, type ResearchInfo } from '@/features/research/useResearch'
+import { useResearch, useUpgradeResearch } from '@/features/research/useResearch'
 import { useAccelerate } from '@/features/queues/useAccelerate'
 import { useKingdom } from '@/features/kingdom/useKingdom'
 import { useResourceTicker } from '@/features/kingdom/useResourceTicker'
-import { formatResource, formatDuration } from '@/lib/format'
-import { RequirementsList } from '@/components/ui/RequirementsList'
-
-// ── Static metadata ───────────────────────────────────────────────────────────
-
-const RESEARCH_META: Record<string, { name: string; description: string; category: string }> = {
-  alchemy: {
-    category: 'Ciencia',
-    name: 'Alquimia',
-    description: 'Dominio de las energías primordiales. Desbloquea toda la rama mística.',
-  },
-  pyromancy: {
-    category: 'Ciencia',
-    name: 'Piromagia',
-    description: 'Control del fuego para armas y defensas. Requiere Alquimia 2.',
-  },
-  runemastery: {
-    category: 'Ciencia',
-    name: 'Maestría Rúnica',
-    description: 'Inscripciones de poder en armaduras y muros. Requiere Piromagia 5.',
-  },
-  mysticism: {
-    category: 'Ciencia',
-    name: 'Misticismo',
-    description: 'Conocimiento del espacio entre mundos. Requiere Alquimia 5.',
-  },
-  dragonlore: {
-    category: 'Ciencia',
-    name: 'Lore de Dragones',
-    description: 'Los secretos más oscuros de las criaturas antiguas.',
-  },
-  swordsmanship: {
-    category: 'Combate',
-    name: 'Espadachín',
-    description: 'Técnicas de combate que aumentan el ataque de todas las unidades.',
-  },
-  armoury: {
-    category: 'Combate',
-    name: 'Armería',
-    description: 'Escudos y blindajes que reducen el daño recibido en batalla.',
-  },
-  fortification: {
-    category: 'Combate',
-    name: 'Fortificación',
-    description: 'Integridad estructural mejorada para todas las defensas.',
-  },
-  horsemanship: {
-    category: 'Logística',
-    name: 'Equitación',
-    description: 'Caballos más rápidos y resistentes para tus ejércitos.',
-  },
-  cartography: {
-    category: 'Logística',
-    name: 'Cartografía',
-    description: 'Mapas más precisos que aumentan la velocidad de desplazamiento.',
-  },
-  tradeRoutes: {
-    category: 'Logística',
-    name: 'Rutas Comerciales',
-    description: 'Redes de comercio que permiten el hiperdesplazamiento de flotas.',
-  },
-  spycraft: {
-    category: 'Inteligencia',
-    name: 'Espionaje',
-    description: 'Arte de infiltrarse en reinos enemigos sin ser detectado.',
-  },
-  logistics: {
-    category: 'Inteligencia',
-    name: 'Logística',
-    description: 'Gestión de flotas que aumenta el número máximo de misiones.',
-  },
-  exploration: {
-    category: 'Inteligencia',
-    name: 'Exploración',
-    description: 'Permite colonizar nuevos territorios y fundar reinos adicionales.',
-  },
-  diplomaticNetwork: {
-    category: 'Inteligencia',
-    name: 'Red Diplomática',
-    description: 'Conecta Academias de todo el reino para acelerar investigaciones.',
-  },
-  divineBlessing: {
-    category: 'Inteligencia',
-    name: 'Bendición Divina',
-    description: 'Favor de los dioses. La investigación definitiva.',
-  },
-}
+import { RESEARCH_META, CATEGORIES } from './researchMeta'
+import { ResearchCard } from './components/ResearchCard'
 
 const CATEGORY_ICONS: Record<string, React.ReactNode> = {
-  Ciencia: <GiCauldron size={14} />,
-  Combate: <GiCrossedSwords size={14} />,
-  Logística: <GiCompass size={14} />,
-  Inteligencia: <GiScrollQuill size={14} />,
+  Ciencia:      <GiCauldron      size={14} />,
+  Combate:      <GiCrossedSwords size={14} />,
+  Logística:    <GiCompass       size={14} />,
+  Inteligencia: <GiScrollQuill   size={14} />,
 }
-
-const CATEGORIES = ['Ciencia', 'Combate', 'Logística', 'Inteligencia']
-
-// ── Countdown hook ────────────────────────────────────────────────────────────
-
-function useCountdown(finishesAt: number | null, onEnd: () => void) {
-  const [secs, setSecs] = useState(() =>
-    finishesAt ? Math.max(0, finishesAt - Math.floor(Date.now() / 1000)) : 0
-  )
-  useEffect(() => {
-    if (!finishesAt) return
-    let fired = false
-    const tick = () => {
-      const rem = Math.max(0, finishesAt - Math.floor(Date.now() / 1000))
-      setSecs(rem)
-      if (rem === 0 && !fired) {
-        fired = true
-        onEnd()
-      }
-    }
-    tick()
-    const id = setInterval(tick, 1000)
-    return () => clearInterval(id)
-  }, [finishesAt, onEnd])
-  return secs
-}
-
-// ── Page ──────────────────────────────────────────────────────────────────────
 
 export function ResearchPage() {
   const qc = useQueryClient()
@@ -156,6 +31,7 @@ export function ResearchPage() {
 
   const items = useMemo(() => data?.research ?? [], [data])
   const hasInQueue = useMemo(() => items.some(r => !!r.inQueue), [items])
+  const researchLevels = useMemo(() => Object.fromEntries(items.map(x => [x.id, x.level])), [items])
 
   if (isLoading) return <ResearchSkeleton />
 
@@ -187,10 +63,9 @@ export function ResearchPage() {
               {catItems.map((r, i) => {
                 const meta = RESEARCH_META[r.id]
                 const canAfford =
-                  resources.wood >= r.costWood &&
+                  resources.wood  >= r.costWood &&
                   resources.stone >= r.costStone &&
                   resources.grain >= r.costGrain
-                const researchLevels = Object.fromEntries(items.map(x => [x.id, x.level]))
                 return (
                   <ResearchCard
                     key={r.id}
@@ -216,146 +91,6 @@ export function ResearchPage() {
     </div>
   )
 }
-
-// ── Research card ─────────────────────────────────────────────────────────────
-
-interface CardProps {
-  item: ResearchInfo
-  meta: { name: string; description: string; category: string }
-  kingdom?: Record<string, unknown> | null
-  researchLevels?: Record<string, number>
-  canAfford: boolean
-  globalQueueFull: boolean
-  isUpgrading: boolean
-  onUpgrade: () => void
-  onCountdownEnd: () => void
-  onAccelerate?: () => void
-  isAccelerating?: boolean
-  animClass: string
-}
-
-function ResearchCard({
-  item,
-  meta,
-  kingdom,
-  researchLevels,
-  canAfford,
-  globalQueueFull,
-  isUpgrading,
-  onUpgrade,
-  onCountdownEnd,
-  onAccelerate,
-  isAccelerating,
-  animClass,
-}: CardProps) {
-  const countdown = useCountdown(item.inQueue?.finishesAt ?? null, onCountdownEnd)
-  const inQueue = !!item.inQueue && countdown > 0
-
-  return (
-    <Card className={`p-5 flex flex-col gap-4 ${animClass}`}>
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex-1 min-w-0">
-          <h3 className="font-ui text-sm font-semibold text-ink">{meta.name}</h3>
-          <p className="font-body text-xs text-ink-muted mt-1 leading-relaxed">
-            {meta.description}
-          </p>
-        </div>
-        <Badge variant={item.level > 0 ? 'gold' : 'stone'} className="shrink-0">
-          Nv {inQueue ? `${item.level}→${item.inQueue!.level}` : item.level}
-        </Badge>
-      </div>
-
-      <div className="divider">◆</div>
-
-      <div className="flex items-center gap-3 text-xs flex-wrap">
-        {item.costWood > 0 && (
-          <CostItem
-            icon={<GiWoodPile size={13} />}
-            value={item.costWood}
-            affordable={inQueue || canAfford}
-          />
-        )}
-        {item.costStone > 0 && (
-          <CostItem
-            icon={<GiStoneBlock size={13} />}
-            value={item.costStone}
-            affordable={inQueue || canAfford}
-          />
-        )}
-        {item.costGrain > 0 && (
-          <CostItem
-            icon={<GiWheat size={13} />}
-            value={item.costGrain}
-            affordable={inQueue || canAfford}
-          />
-        )}
-        <div className="flex items-center gap-1 ml-auto text-ink-muted/60">
-          <Clock size={10} />
-          <span className="font-body">{formatDuration(item.timeSeconds)}</span>
-        </div>
-      </div>
-
-      {inQueue ? (
-        <div className="mt-auto space-y-2">
-          <div className="flex items-center justify-center gap-2 py-2 rounded border border-gold/15 bg-gold-soft text-gold-dim font-ui text-xs font-semibold uppercase tracking-wide">
-            <Loader2 size={12} className="animate-spin" />
-            {countdown > 0 ? formatDuration(countdown) : 'Finalizando…'}
-          </div>
-          {onAccelerate && (
-            <button
-              onClick={onAccelerate}
-              disabled={isAccelerating}
-              className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded border border-gold/20 font-ui text-xs text-gold-dim hover:bg-gold-soft transition-colors disabled:opacity-40"
-            >
-              {isAccelerating ? <Loader2 size={10} className="animate-spin" /> : <Zap size={10} />}
-              Acelerar · {Math.max(1, Math.ceil(countdown / 600))} Éter
-            </button>
-          )}
-        </div>
-      ) : !item.requiresMet ? (
-        <div className="mt-auto">
-          <RequirementsList requires={item.requires} kingdom={kingdom} research={researchLevels} />
-        </div>
-      ) : globalQueueFull ? (
-        <Button variant="ghost" className="w-full mt-auto" disabled>
-          <Clock size={11} />
-          Cola ocupada
-        </Button>
-      ) : (
-        <Button
-          variant="primary"
-          className="w-full mt-auto"
-          disabled={!canAfford || isUpgrading}
-          onClick={onUpgrade}
-        >
-          {isUpgrading ? <Loader2 size={11} className="animate-spin" /> : <ArrowUp size={11} />}
-          {canAfford ? `Investigar Nv ${item.level + 1}` : 'Recursos insuficientes'}
-        </Button>
-      )}
-    </Card>
-  )
-}
-
-function CostItem({
-  icon,
-  value,
-  affordable,
-}: {
-  icon: ReactNode
-  value: number
-  affordable: boolean
-}) {
-  return (
-    <div className="flex items-center gap-1.5">
-      <span className="text-ink-muted/70">{icon}</span>
-      <span className={`font-ui tabular-nums ${affordable ? 'text-ink-mid' : 'text-crimson'}`}>
-        {formatResource(value)}
-      </span>
-    </div>
-  )
-}
-
-// ── Skeleton ──────────────────────────────────────────────────────────────────
 
 function ResearchSkeleton() {
   return (

@@ -1,29 +1,11 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import {
-  ChevronLeft,
-  ChevronRight,
-  Home,
-  Castle,
-  User,
-  Bot,
-  MapPin,
-  Swords,
-  Eye,
-  Tent,
-  Pickaxe,
-  Package,
-  Skull,
-  Flag,
-  Compass,
-  Rocket,
-} from 'lucide-react'
-import { GiWoodPile, GiStoneBlock } from 'react-icons/gi'
+import { ChevronLeft, ChevronRight, Home, MapPin, Compass } from 'lucide-react'
 import { useMap, type MapSlot } from '@/features/map/useMap'
 import { Badge } from '@/components/ui/Badge'
-import { Button } from '@/components/ui/Button'
 import { Sheet } from '@/components/ui/Sheet'
-import { formatResource } from '@/lib/format'
+import { SlotRow } from './components/SlotRow'
+import { SlotDetail } from './components/SlotDetail'
 
 export function MapPage() {
   const navigate = useNavigate()
@@ -34,7 +16,7 @@ export function MapPage() {
 
   const { data, isLoading } = useMap(realm, region)
 
-  const maxRealm = data?.maxRealm ?? 3
+  const maxRealm  = data?.maxRealm  ?? 3
   const maxRegion = data?.maxRegion ?? 10
 
   useEffect(() => {
@@ -65,7 +47,6 @@ export function MapPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="anim-fade-up">
         <span className="section-heading">Exploración</span>
         <h1 className="page-title mt-0.5">Mapa</h1>
@@ -74,71 +55,16 @@ export function MapPage() {
         </p>
       </div>
 
-      {/* Navigation bar */}
       <div className="flex items-center gap-3 flex-wrap anim-fade-up-1">
-        <div className="flex items-center gap-1.5">
-          <span className="section-heading mb-0 mr-1">Reino</span>
-          <button
-            onClick={() => {
-              setRealm(r => Math.max(1, r - 1))
-              setSelected(null)
-            }}
-            disabled={realm <= 1}
-            className="p-1 rounded border border-gold/20 text-ink-muted hover:bg-parchment-warm disabled:opacity-30 transition-colors"
-          >
-            <ChevronLeft size={14} />
-          </button>
-          <span className="font-ui font-semibold text-ink w-6 text-center tabular-nums">
-            {realm}
-          </span>
-          <button
-            onClick={() => {
-              setRealm(r => Math.min(maxRealm, r + 1))
-              setSelected(null)
-            }}
-            disabled={realm >= maxRealm}
-            className="p-1 rounded border border-gold/20 text-ink-muted hover:bg-parchment-warm disabled:opacity-30 transition-colors"
-          >
-            <ChevronRight size={14} />
-          </button>
-        </div>
-
+        <NavStepper label="Reino"  value={realm}  min={1} max={maxRealm}  onChange={v => { setRealm(v); setSelected(null) }} />
         <span className="text-ink-muted/30 font-ui">·</span>
-
-        <div className="flex items-center gap-1.5">
-          <span className="section-heading mb-0 mr-1">Región</span>
-          <button
-            onClick={() => {
-              setRegion(r => Math.max(1, r - 1))
-              setSelected(null)
-            }}
-            disabled={region <= 1}
-            className="p-1 rounded border border-gold/20 text-ink-muted hover:bg-parchment-warm disabled:opacity-30 transition-colors"
-          >
-            <ChevronLeft size={14} />
-          </button>
-          <span className="font-ui font-semibold text-ink w-6 text-center tabular-nums">
-            {region}
-          </span>
-          <button
-            onClick={() => {
-              setRegion(r => Math.min(maxRegion, r + 1))
-              setSelected(null)
-            }}
-            disabled={region >= maxRegion}
-            className="p-1 rounded border border-gold/20 text-ink-muted hover:bg-parchment-warm disabled:opacity-30 transition-colors"
-          >
-            <ChevronRight size={14} />
-          </button>
-        </div>
-
+        <NavStepper label="Región" value={region} min={1} max={maxRegion} onChange={v => { setRegion(v); setSelected(null) }} />
         {data?.myPosition && (
           <button
             onClick={goToMyKingdom}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded border border-gold/20 text-gold font-ui text-xs font-semibold hover:bg-gold-soft transition-colors ml-auto"
           >
-            <Home size={12} />
-            Mi posición
+            <Home size={12} /> Mi posición
           </button>
         )}
       </div>
@@ -149,12 +75,11 @@ export function MapPage() {
           Reino <strong className="text-ink">{realm}</strong> · Región{' '}
           <strong className="text-ink">{region}</strong>
         </span>
-        {data?.myPosition &&
-          data.myPosition.realm === realm &&
-          data.myPosition.region === region && <Badge variant="gold">Tu región</Badge>}
+        {data?.myPosition && data.myPosition.realm === realm && data.myPosition.region === region && (
+          <Badge variant="gold">Tu región</Badge>
+        )}
       </div>
 
-      {/* Slots list */}
       <div className="anim-fade-up-2">
         {isLoading ? (
           <MapSkeleton />
@@ -168,7 +93,6 @@ export function MapPage() {
                 onClick={() => handleSelectSlot(slot)}
               />
             ))}
-            {/* Slot 16 — Tierras Ignotas (expedition target) */}
             <button
               onClick={() => navigate(`/armies?realm=${realm}&region=${region}&slot=16&type=expedition`)}
               className="w-full flex items-center gap-2 sm:gap-4 px-3 sm:px-4 py-2.5 rounded border border-gold/20 bg-gold-soft/40 hover:bg-gold-soft transition-colors cursor-pointer"
@@ -187,223 +111,48 @@ export function MapPage() {
         )}
       </div>
 
-      {/* Slot detail — Sheet modal */}
       <Sheet
         open={!!selected}
         onClose={() => setSelected(null)}
         title={selected ? `Pos. ${selected.slot} — ${selected.isEmpty ? 'Posición vacía' : selected.name}` : ''}
         maxWidth="max-w-md"
       >
-        {selected && (
-          <div className="p-5 space-y-4">
-            {!selected.isEmpty && (
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="font-body text-xs text-ink-muted">
-                  {selected.isNpc ? 'NPC' : `@${selected.username}`}
-                </span>
-                <span className="font-ui text-xs text-ink-muted tabular-nums ml-auto">
-                  {selected.points.toLocaleString()} pts
-                </span>
-              </div>
-            )}
-
-            {/* Debris */}
-            {selected.debris && (selected.debris.wood > 0 || selected.debris.stone > 0) && (
-              <div className="rounded border border-gold/15 bg-parchment-warm p-3 space-y-1.5">
-                <p className="font-ui text-[0.6rem] text-ink-muted/70 uppercase tracking-widest flex items-center gap-1">
-                  <Pickaxe size={10} /> Escombros
-                </p>
-                <div className="flex items-center gap-3 text-xs">
-                  {selected.debris.wood > 0 && (
-                    <span className="flex items-center gap-1 font-ui text-ink-mid">
-                      <GiWoodPile size={12} className="text-gold-dim" />
-                      {formatResource(selected.debris.wood)}
-                    </span>
-                  )}
-                  {selected.debris.stone > 0 && (
-                    <span className="flex items-center gap-1 font-ui text-ink-mid">
-                      <GiStoneBlock size={12} className="text-gold-dim" />
-                      {formatResource(selected.debris.stone)}
-                    </span>
-                  )}
-                </div>
-              </div>
-            )}
-
-            <div className="divider">◆</div>
-
-            {/* Action buttons */}
-            <div className="space-y-2">
-              {selected.isEmpty ? (
-                <Button variant="primary" className="w-full" onClick={() => sendMission('colonize')}>
-                  <Tent size={12} />
-                  Colonizar
-                </Button>
-              ) : (
-                <>
-                  {selected.isNpc && (
-                    <Button variant="primary" className="w-full" onClick={() => sendMission('pillage')}>
-                      <Skull size={12} />
-                      Saquear
-                    </Button>
-                  )}
-                  <Button
-                    variant={selected.isNpc ? 'ghost' : 'primary'}
-                    className="w-full"
-                    onClick={() => sendMission('attack')}
-                  >
-                    <Swords size={12} />
-                    Atacar
-                  </Button>
-                  <Button variant="ghost" className="w-full" onClick={() => sendMission('spy')}>
-                    <Eye size={12} />
-                    Espiar
-                  </Button>
-                  <Button variant="ghost" className="w-full" onClick={() => sendMission('missile')}>
-                    <Rocket size={12} />
-                    Bombardear
-                  </Button>
-                  {!selected.isNpc && !selected.isPlayer && (
-                    <Button variant="ghost" className="w-full" onClick={() => sendMission('transport')}>
-                      <Package size={12} />
-                      Transportar
-                    </Button>
-                  )}
-                  {selected.isPlayer && (
-                    <Button variant="primary" className="w-full" onClick={() => sendMission('deploy')}>
-                      <Flag size={12} />
-                      Desplegar
-                    </Button>
-                  )}
-                </>
-              )}
-              {selected.debris && (selected.debris.wood > 0 || selected.debris.stone > 0) && (
-                <Button variant="ghost" className="w-full" onClick={() => sendMission('scavenge')}>
-                  <Pickaxe size={12} />
-                  Recolectar escombros
-                </Button>
-              )}
-            </div>
-          </div>
-        )}
+        {selected && <SlotDetail slot={selected} onMission={sendMission} />}
       </Sheet>
     </div>
   )
 }
 
-// ── Slot row ──────────────────────────────────────────────────────────────────
-
-function SlotRow({
-  slot,
-  isSelected,
-  onClick,
-}: {
-  slot: MapSlot
-  isSelected: boolean
-  onClick: () => void
+function NavStepper({ label, value, min, max, onChange }: {
+  label: string; value: number; min: number; max: number; onChange: (v: number) => void
 }) {
-  const isHighlighted = slot.isPlayer
-  const hasDebris = slot.debris && (slot.debris.wood > 0 || slot.debris.stone > 0)
-
   return (
-    <div
-      onClick={isHighlighted ? undefined : onClick}
-      className={`flex items-center gap-2 sm:gap-4 px-3 sm:px-4 py-2.5 rounded border transition-colors ${
-        isHighlighted
-          ? 'bg-gold-soft border-gold/30 shadow-sm'
-          : isSelected
-            ? 'bg-parchment border-gold/40 shadow-sm'
-            : slot.isEmpty
-              ? 'bg-parchment border-gold/5 opacity-50 cursor-pointer hover:opacity-70'
-              : 'bg-white border-gold/10 cursor-pointer hover:border-gold/20 hover:bg-parchment'
-      }`}
-    >
-      <span
-        className={`font-ui text-xs tabular-nums w-5 text-center shrink-0 ${
-          isHighlighted ? 'text-gold font-bold' : 'text-ink-muted/50'
-        }`}
+    <div className="flex items-center gap-1.5">
+      <span className="section-heading mb-0 mr-1">{label}</span>
+      <button
+        onClick={() => onChange(Math.max(min, value - 1))}
+        disabled={value <= min}
+        className="p-1 rounded border border-gold/20 text-ink-muted hover:bg-parchment-warm disabled:opacity-30 transition-colors"
       >
-        {slot.slot}
-      </span>
-
-      <div
-        className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
-          slot.isEmpty
-            ? 'bg-parchment-warm border border-gold/10'
-            : isHighlighted
-              ? 'bg-gold/15 border border-gold/30'
-              : slot.isNpc
-                ? 'bg-parchment-warm border border-gold/15'
-                : 'bg-parchment-deep border border-gold/20'
-        }`}
+        <ChevronLeft size={14} />
+      </button>
+      <span className="font-ui font-semibold text-ink w-6 text-center tabular-nums">{value}</span>
+      <button
+        onClick={() => onChange(Math.min(max, value + 1))}
+        disabled={value >= max}
+        className="p-1 rounded border border-gold/20 text-ink-muted hover:bg-parchment-warm disabled:opacity-30 transition-colors"
       >
-        {slot.isEmpty ? (
-          <span className="text-ink-muted/20 text-xs">·</span>
-        ) : isHighlighted ? (
-          <Castle size={14} className="text-gold" />
-        ) : slot.isNpc ? (
-          <Bot size={13} className="text-ink-muted/50" />
-        ) : (
-          <User size={13} className="text-ink-mid" />
-        )}
-      </div>
-
-      <div className="flex-1 min-w-0">
-        {slot.isEmpty ? (
-          <span className="font-ui text-xs text-ink-muted/35 italic">Posición vacía</span>
-        ) : (
-          <>
-            <p
-              className={`font-ui text-sm font-medium leading-tight truncate ${
-                isHighlighted ? 'text-gold-dim' : 'text-ink'
-              }`}
-            >
-              {slot.name}
-            </p>
-            <p className="font-body text-xs text-ink-muted truncate">
-              {slot.isPlayer ? 'Tu reino' : slot.isNpc ? 'NPC' : `@${slot.username}`}
-            </p>
-          </>
-        )}
-      </div>
-
-      {/* Debris indicator */}
-      {hasDebris && (
-        <div
-          className="shrink-0 flex items-center gap-1 text-ink-muted/50 text-xs"
-          title="Escombros de batalla"
-        >
-          <Pickaxe size={11} />
-        </div>
-      )}
-
-      {!slot.isEmpty && (
-        <div className="hidden sm:block shrink-0 text-right">
-          <span className="font-ui text-xs text-ink-muted tabular-nums">
-            {slot.points.toLocaleString()} pts
-          </span>
-        </div>
-      )}
-
-      <div className="shrink-0 flex items-center gap-1.5">
-        {isHighlighted && <Badge variant="gold">Tú</Badge>}
-        {slot.isNpc && !slot.isEmpty && <Badge variant="stone">NPC</Badge>}
-        {isSelected && !isHighlighted && <Badge variant="gold">▶</Badge>}
-      </div>
+        <ChevronRight size={14} />
+      </button>
     </div>
   )
 }
-
-// ── Skeleton ──────────────────────────────────────────────────────────────────
 
 function MapSkeleton() {
   return (
     <div className="space-y-2">
       {[...Array(15)].map((_, i) => (
-        <div
-          key={i}
-          className="flex items-center gap-4 px-4 py-3 rounded border border-gold/10 bg-white"
-        >
+        <div key={i} className="flex items-center gap-4 px-4 py-3 rounded border border-gold/10 bg-white">
           <div className="skeleton w-5 h-3 rounded" />
           <div className="skeleton w-8 h-8 rounded-full" />
           <div className="flex-1 space-y-1.5">
