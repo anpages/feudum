@@ -65,6 +65,7 @@ export function useFastForward() {
 
 export function useSeedNpcs() {
   return useMutation({
-    mutationFn: () => adminService.seedNpcs(),
+    mutationFn: (params: { level1: number; level2: number; level3: number }) =>
+      adminService.seedNpcs(params),
   })
 }

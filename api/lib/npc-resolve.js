@@ -102,9 +102,11 @@ export async function resolveIncomingNpcAttacks(playerKingdoms, now) {
         }
       }
 
+      // outcome is from attacker (NPC) perspective; flip for player (defender)
+      const playerOutcome = outcome === 'victory' ? 'defeat' : outcome === 'defeat' ? 'victory' : 'draw'
       const battleResult = {
         type: 'attack',
-        outcome: outcome === 'victory' ? 'defeat' : outcome,
+        outcome: playerOutcome,
         rounds, loot, debris, lostAtk, lostDef,
         attackerName: npcKingdom.name,
         npcLevel: npcKingdom.npcLevel,

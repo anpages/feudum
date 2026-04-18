@@ -493,18 +493,19 @@ async function processArrival(mission, myKingdom, now) {
 
   // ── Pillage (NPC-only quick raid) ─────────────────────────────────────────────
   if (mType === 'pillage') {
-    let npcRes
+    let npcRes, npcStrength
     if (targetKingdom?.isNpc) {
-      // Use real NPC resources from DB
+      // Use real NPC resources from DB; strength based on npcLevel
       npcRes = { wood: targetKingdom.wood, stone: targetKingdom.stone, grain: targetKingdom.grain }
+      npcStrength = (targetKingdom.npcLevel ?? 1) * 15000  // 15k / 30k / 45k
     } else {
       // Fallback: Wang hash estimate (pre-seeding)
-      const seed   = mission.targetRealm * 374761397 + mission.targetRegion * 1234567 + mission.targetSlot * 7654321
-      const npcPts = ((seed ^ (seed >>> 16)) >>> 0) % 50000
+      const seed = mission.targetRealm * 374761397 + mission.targetRegion * 1234567 + mission.targetSlot * 7654321
+      npcStrength = ((seed ^ (seed >>> 16)) >>> 0) % 50000
       npcRes = {
-        wood:  Math.floor(1000 + npcPts * 0.5),
-        stone: Math.floor(800  + npcPts * 0.4),
-        grain: Math.floor(600  + npcPts * 0.1),
+        wood:  Math.floor(1000 + npcStrength * 0.5),
+        stone: Math.floor(800  + npcStrength * 0.4),
+        grain: Math.floor(600  + npcStrength * 0.1),
       }
     }
 
@@ -512,7 +513,7 @@ async function processArrival(mission, myKingdom, now) {
     const loot  = calculateLoot(npcRes, cargo)
 
     // Small casualty chance based on NPC strength
-    const casualtyRate = Math.min(0.15, npcPts / 300000)
+    const casualtyRate = Math.min(0.15, npcStrength / 300000)
     const survivorPatch = {}
     for (const k of UNIT_KEYS) {
       const n = missionUnits[k] ?? 0

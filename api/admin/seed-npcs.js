@@ -1,7 +1,6 @@
-import { eq, and, inArray } from 'drizzle-orm'
+import { eq } from 'drizzle-orm'
 import { db, users, kingdoms } from '../_db.js'
 import { getAdminUserId } from '../lib/admin.js'
-import { applyBuildingEffect } from '../lib/buildings.js'
 import { UNIVERSE } from '../lib/config.js'
 
 const NPC_FIRST = [
@@ -29,15 +28,22 @@ function seededRand(seed) {
   return () => { s = wangHash(s + 1); return s / 0x100000000 }
 }
 
-function slotNpcData(realm, region, slot) {
+function npcName(realm, region, slot) {
   const seed = realm * 374761397 + region * 1234567 + slot * 7654321
   const rand = seededRand(seed)
-  if (rand() > 0.70) return null  // ~30% occupancy
-
+  rand() // consume first value (was used for occupancy check — skip)
   const firstName = NPC_FIRST[Math.floor(rand() * NPC_FIRST.length)]
   const epithet   = rand() > 0.5 ? ` ${NPC_EPITHET[Math.floor(rand() * NPC_EPITHET.length)]}` : ''
-  const npcLevel  = 1 + Math.floor(rand() * 3)  // 1, 2 or 3
-  return { name: `Reino de ${firstName}${epithet}`, npcLevel }
+  return `Reino de ${firstName}${epithet}`
+}
+
+// Fisher-Yates shuffle in-place
+function shuffle(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]]
+  }
+  return arr
 }
 
 export default async function handler(req, res) {
@@ -48,18 +54,25 @@ export default async function handler(req, res) {
   const { action } = req.body
   if (action !== 'seed_npcs') return res.status(400).json({ error: 'unknown_action' })
 
+  const level1 = Math.max(0, parseInt(req.body.level1 ?? 0, 10) || 0)
+  const level2 = Math.max(0, parseInt(req.body.level2 ?? 0, 10) || 0)
+  const level3 = Math.max(0, parseInt(req.body.level3 ?? 0, 10) || 0)
+  const total  = level1 + level2 + level3
+
+  if (total === 0)   return res.status(400).json({ error: 'total_must_be_positive' })
+  if (total > 300)   return res.status(400).json({ error: 'max_300_npcs' })
+
   // ── Get or create NPC system user ─────────────────────────────────────────
   let [npcUser] = await db.select({ id: users.id })
     .from(users).where(eq(users.isNpc, true)).limit(1)
 
   if (!npcUser) {
     ;[npcUser] = await db.insert(users).values({
-      email:  'npc@feudum.internal',
-      isNpc:  true,
+      email:   'npc@feudum.internal',
+      isNpc:   true,
       isAdmin: false,
     }).returning({ id: users.id })
   }
-
   const npcUserId = npcUser.id
 
   // ── Delete all existing NPC kingdoms ──────────────────────────────────────
@@ -67,48 +80,61 @@ export default async function handler(req, res) {
     .where(eq(kingdoms.isNpc, true))
     .returning({ id: kingdoms.id })
 
-  // ── Seed universe ─────────────────────────────────────────────────────────
+  // ── Build list of available slots (not taken by real players) ─────────────
   const { maxRealm, maxRegion, maxSlot } = UNIVERSE
-  const now = Math.floor(Date.now() / 1000)
-  let created = 0
+  const realRows = await db.select({ realm: kingdoms.realm, region: kingdoms.region, slot: kingdoms.slot })
+    .from(kingdoms).where(eq(kingdoms.isNpc, false))
+  const takenSet = new Set(realRows.map(k => `${k.realm}:${k.region}:${k.slot}`))
 
-  for (let realm = 1; realm <= maxRealm; realm++) {
-    for (let region = 1; region <= maxRegion; region++) {
-      // Skip slots already taken by real players in this region
-      const realSlots = await db.select({ slot: kingdoms.slot })
-        .from(kingdoms)
-        .where(and(
-          eq(kingdoms.realm, realm),
-          eq(kingdoms.region, region),
-          eq(kingdoms.isNpc, false),
-        ))
-      const takenSlots = new Set(realSlots.map(r => r.slot))
+  const available = []
+  for (let realm = 1; realm <= maxRealm; realm++)
+    for (let region = 1; region <= maxRegion; region++)
+      for (let slot = 1; slot <= maxSlot; slot++)
+        if (!takenSet.has(`${realm}:${region}:${slot}`))
+          available.push({ realm, region, slot })
 
-      const batch = []
-      for (let slot = 1; slot <= maxSlot; slot++) {
-        if (takenSlots.has(slot)) continue
-        const npc = slotNpcData(realm, region, slot)
-        if (!npc) continue
-        batch.push({
-          userId:   npcUserId,
-          name:     npc.name,
-          realm, region, slot,
-          isNpc:    true,
-          npcLevel: npc.npcLevel,
-          wood: 0, stone: 0, grain: 0,
-          woodCapacity: 10000, stoneCapacity: 10000, grainCapacity: 10000,
-          woodProduction: 0, stoneProduction: 0, grainProduction: 0,
-          populationMax: 0, populationUsed: 0,
-          lastResourceUpdate: now,
-        })
-      }
-
-      if (batch.length > 0) {
-        await db.insert(kingdoms).values(batch)
-        created += batch.length
-      }
-    }
+  if (available.length < total) {
+    return res.status(400).json({ error: 'not_enough_slots', available: available.length, requested: total })
   }
 
-  return res.json({ ok: true, deleted: deleted.length, created, npcUserId })
+  // ── Pick random slots and assign levels ───────────────────────────────────
+  shuffle(available)
+  const chosen = available.slice(0, total)
+
+  // Build level assignment: [1,1,...,2,2,...,3,3,...] then shuffle
+  const levels = [
+    ...Array(level1).fill(1),
+    ...Array(level2).fill(2),
+    ...Array(level3).fill(3),
+  ]
+  shuffle(levels)
+
+  const now = Math.floor(Date.now() / 1000)
+  const batch = chosen.map(({ realm, region, slot }, i) => ({
+    userId:             npcUserId,
+    name:               npcName(realm, region, slot),
+    realm, region, slot,
+    isNpc:              true,
+    npcLevel:           levels[i],
+    wood:               0,
+    stone:              0,
+    grain:              0,
+    woodCapacity:       10000,
+    stoneCapacity:      10000,
+    grainCapacity:      10000,
+    woodProduction:     0,
+    stoneProduction:    0,
+    grainProduction:    0,
+    populationMax:      0,
+    populationUsed:     0,
+    lastResourceUpdate: now,
+  }))
+
+  // Insert in chunks of 50 to avoid query size limits
+  for (let i = 0; i < batch.length; i += 50) {
+    await db.insert(kingdoms).values(batch.slice(i, i + 50))
+  }
+
+  const byLevel = { 1: level1, 2: level2, 3: level3 }
+  return res.json({ ok: true, deleted: deleted.length, created: total, byLevel, npcUserId })
 }

@@ -180,9 +180,9 @@ async function attackAI(npcKingdom, playerKingdoms, now, cfg) {
   }
   if (totalSent === 0) return
 
-  const speed = parseFloat(cfg.fleet_speed_war ?? 1) * ECONOMY_SPEED
+  const universeSpeed = parseFloat(cfg.fleet_speed_war ?? 1)
   const dist  = calcDistance(npcKingdom, target)
-  const travelSecs = calcDuration(dist, force, 100, speed)
+  const travelSecs = calcDuration(dist, force, 100, universeSpeed)
   const arrivalTime = now + travelSecs
 
   await db.insert(armyMissions).values({
@@ -286,7 +286,11 @@ export default async function handler(req, res) {
   for (const kingdom of npcKingdoms) {
     // Resource tick
     const tickResult = applyResourceTick(kingdom, cfg)
-    if (tickResult.now !== Math.floor(Date.now() / 1000) || tickResult.wood !== kingdom.wood) {
+    if (
+      tickResult.wood !== kingdom.wood ||
+      tickResult.stone !== kingdom.stone ||
+      tickResult.grain !== kingdom.grain
+    ) {
       await db.update(kingdoms).set({
         wood:               tickResult.wood,
         stone:              tickResult.stone,
@@ -294,9 +298,9 @@ export default async function handler(req, res) {
         lastResourceUpdate: now,
         updatedAt:          new Date(),
       }).where(eq(kingdoms.id, kingdom.id))
-      kingdom.wood  = tickResult.wood
-      kingdom.stone = tickResult.stone
-      kingdom.grain = tickResult.grain
+      kingdom.wood               = tickResult.wood
+      kingdom.stone              = tickResult.stone
+      kingdom.grain              = tickResult.grain
       kingdom.lastResourceUpdate = now
       ticked++
     }

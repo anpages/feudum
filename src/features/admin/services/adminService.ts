@@ -12,6 +12,9 @@ export const adminService = {
   devAction: (body: Record<string, unknown>) => http.post<{ ok: boolean }>('/admin/dev', body),
   fastForward: (body: { missionId?: number; all?: boolean }) =>
     http.post<{ ok: boolean }>('/admin/fleet', body),
-  seedNpcs: () =>
-    http.post<{ ok: boolean; created: number; deleted: number; npcUserId: number }>('/admin/seed-npcs', { action: 'seed_npcs' }),
+  seedNpcs: (params: { level1: number; level2: number; level3: number }) =>
+    http.post<{ ok: boolean; created: number; deleted: number; byLevel: Record<string, number> }>(
+      '/admin/seed-npcs',
+      { action: 'seed_npcs', ...params },
+    ),
 }
