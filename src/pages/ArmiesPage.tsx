@@ -155,10 +155,10 @@ export function ArmiesPage() {
           {/* Target coordinates */}
           <Card className="p-4 space-y-3">
             <p className="font-ui text-xs text-ink-muted uppercase tracking-wider">Destino</p>
-            <div className="flex items-center gap-4 flex-wrap">
-              <CoordPicker label="Reino"  value={tRealm}  min={1} max={3}  onChange={setTRealm}  />
-              <CoordPicker label="Región" value={tRegion} min={1} max={10} onChange={setTRegion} />
-              <CoordPicker label="Posición" value={tSlot} min={1} max={15} onChange={setTSlot}   />
+            <div className="grid grid-cols-3 gap-2">
+              <CoordPicker label="Reino"    value={tRealm}  min={1} max={3}  onChange={setTRealm}  />
+              <CoordPicker label="Región"   value={tRegion} min={1} max={10} onChange={setTRegion} />
+              <CoordPicker label="Posición" value={tSlot}   min={1} max={15} onChange={setTSlot}   />
             </div>
           </Card>
 
@@ -175,17 +175,17 @@ export function ArmiesPage() {
                 const available = (kingdom as any)?.[u.id] ?? 0
                 if (available === 0) return null
                 return (
-                  <div key={u.id} className="flex items-center gap-3">
-                    <u.Icon size={16} className="text-gold-dim shrink-0" />
-                    <span className="font-ui text-xs text-ink flex-1">{u.name}</span>
-                    <span className="font-ui text-xs text-ink-muted tabular-nums w-12 text-right">{available.toLocaleString()}</span>
+                  <div key={u.id} className="flex items-center gap-2">
+                    <u.Icon size={14} className="text-gold-dim shrink-0" />
+                    <span className="font-ui text-xs text-ink flex-1 min-w-0 truncate">{u.name}</span>
+                    <span className="font-ui text-xs text-ink-muted tabular-nums shrink-0">{available.toLocaleString()}</span>
                     <input
                       type="number"
                       min={0}
                       max={available}
                       value={units[u.id] ?? 0}
                       onChange={e => setUnit(u.id, e.target.value)}
-                      className="game-input w-20 py-1 text-sm text-center tabular-nums"
+                      className="game-input w-16 py-1 text-sm text-center tabular-nums shrink-0"
                     />
                   </div>
                 )
@@ -277,19 +277,21 @@ function CoordPicker({ label, value, min, max, onChange }: {
   onChange: (n: number) => void
 }) {
   return (
-    <div className="flex items-center gap-1.5">
-      <span className="section-heading mb-0 mr-0.5 text-[0.6rem]">{label}</span>
-      <button
-        onClick={() => onChange(Math.max(min, value - 1))}
-        disabled={value <= min}
-        className="p-1 rounded border border-gold/20 text-ink-muted hover:bg-parchment-warm disabled:opacity-30 transition-colors"
-      ><ChevronLeft size={12} /></button>
-      <span className="font-ui font-semibold text-ink w-5 text-center tabular-nums text-sm">{value}</span>
-      <button
-        onClick={() => onChange(Math.min(max, value + 1))}
-        disabled={value >= max}
-        className="p-1 rounded border border-gold/20 text-ink-muted hover:bg-parchment-warm disabled:opacity-30 transition-colors"
-      ><ChevronRight size={12} /></button>
+    <div className="flex flex-col items-center gap-1">
+      <span className="section-heading mb-0 text-[0.58rem]">{label}</span>
+      <div className="flex items-center gap-1">
+        <button
+          onClick={() => onChange(Math.max(min, value - 1))}
+          disabled={value <= min}
+          className="p-1 rounded border border-gold/20 text-ink-muted hover:bg-parchment-warm disabled:opacity-30 transition-colors"
+        ><ChevronLeft size={11} /></button>
+        <span className="font-ui font-semibold text-ink w-6 text-center tabular-nums text-sm">{value}</span>
+        <button
+          onClick={() => onChange(Math.min(max, value + 1))}
+          disabled={value >= max}
+          className="p-1 rounded border border-gold/20 text-ink-muted hover:bg-parchment-warm disabled:opacity-30 transition-colors"
+        ><ChevronRight size={11} /></button>
+      </div>
     </div>
   )
 }

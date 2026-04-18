@@ -253,30 +253,30 @@ function UnitCard({
       ) : (
         <div className="mt-auto space-y-2">
           {/* Amount stepper */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             <button
               onClick={() => changeAmount(-10)}
-              className="px-2 py-1 rounded border border-gold/20 text-ink-muted hover:bg-parchment-warm text-xs font-ui transition-colors"
+              className="hidden sm:block px-1.5 py-1 rounded border border-gold/20 text-ink-muted hover:bg-parchment-warm text-xs font-ui transition-colors shrink-0"
             >-10</button>
             <button
               onClick={() => changeAmount(-1)}
-              className="p-1 rounded border border-gold/20 text-ink-muted hover:bg-parchment-warm transition-colors"
-            ><Minus size={12} /></button>
+              className="p-1.5 rounded border border-gold/20 text-ink-muted hover:bg-parchment-warm transition-colors shrink-0"
+            ><Minus size={11} /></button>
             <input
               type="number"
               min={1}
               max={9999}
               value={amount}
               onChange={e => setAmount(Math.max(1, Math.min(parseInt(e.target.value) || 1, 9999)))}
-              className="flex-1 text-center game-input py-1 text-sm tabular-nums"
+              className="flex-1 min-w-0 text-center game-input py-1 text-sm tabular-nums"
             />
             <button
               onClick={() => changeAmount(1)}
-              className="p-1 rounded border border-gold/20 text-ink-muted hover:bg-parchment-warm transition-colors"
-            ><Plus size={12} /></button>
+              className="p-1.5 rounded border border-gold/20 text-ink-muted hover:bg-parchment-warm transition-colors shrink-0"
+            ><Plus size={11} /></button>
             <button
               onClick={() => changeAmount(10)}
-              className="px-2 py-1 rounded border border-gold/20 text-ink-muted hover:bg-parchment-warm text-xs font-ui transition-colors"
+              className="hidden sm:block px-1.5 py-1 rounded border border-gold/20 text-ink-muted hover:bg-parchment-warm text-xs font-ui transition-colors shrink-0"
             >+10</button>
           </div>
           <Button
