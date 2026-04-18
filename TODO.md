@@ -113,9 +113,9 @@ _(ninguno conocido actualmente)_
 
 ## Fase 19 — Dark Matter y Aceleradores
 
-46. [ ] **Backend** — sistema Dark Matter completo: obtención via expediciones, historial de transacciones
-47. [ ] **Backend** — aceleradores (halvings): gastar Dark Matter para reducir a la mitad tiempos de cola
-48. [ ] **Frontend** — saldo de Dark Matter en ResourceBar; botón de acelerar en colas activas
+46. [x] **Backend** — sistema Dark Matter completo: obtención via expediciones, historial de transacciones
+47. [x] **Backend** — aceleradores (halvings): gastar Dark Matter para reducir a la mitad tiempos de cola
+48. [x] **Frontend** — saldo de Dark Matter en ResourceBar; botón de acelerar en colas activas
 
 ---
 
