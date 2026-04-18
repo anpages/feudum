@@ -78,6 +78,9 @@ export const kingdoms = pgTable('kingdoms', {
   moat: integer('moat').default(0).notNull(),                   // anti_ballistic_missile
   catapult: integer('catapult').default(0).notNull(),           // interplanetary_missile
 
+  // ── Terrain ──────────────────────────────────────────────────
+  terrain: varchar('terrain', { length: 20 }).default('balanced').notNull(), // forest|mountain|plains|balanced
+
   // ── NPC flags ────────────────────────────────────────────────
   isNpc: boolean('is_npc').default(false).notNull(),
   npcLevel: integer('npc_level').default(0).notNull(), // 0=human, 1=weak, 2=medium, 3=strong

@@ -16,6 +16,7 @@ import { useBarracks } from '@/features/barracks/useBarracks'
 import { useRankings } from '@/features/rankings/useRankings'
 import { formatResource, formatDuration } from '@/lib/format'
 import { label } from '@/lib/labels'
+import { terrainInfo } from '@/lib/terrain'
 import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { ProgressBar } from '@/components/ui/ProgressBar'
@@ -110,7 +111,17 @@ export function OverviewPage() {
             R{kingdom?.realm ?? '—'} · Región {kingdom?.region ?? '—'} · Pos. {kingdom?.slot ?? '—'}
           </p>
         </div>
-        <div className="flex items-center gap-2 mt-1">
+        <div className="flex items-center gap-2 mt-1 flex-wrap">
+          {kingdom?.terrain && (() => {
+            const t = terrainInfo(kingdom.terrain)
+            return (
+              <span className={`font-ui text-xs ${t.color} flex items-center gap-1 border border-current/20 rounded px-2 py-0.5`}>
+                <span>{t.emoji}</span>
+                <span>{t.label}</span>
+                <span className="text-ink-muted/50">· {t.bonus}</span>
+              </span>
+            )
+          })()}
           <Badge variant="stone">Puntos: {myRanking?.points.toLocaleString() ?? '—'}</Badge>
           <Badge variant="gold">Rango: {myRanking ? `#${myRanking.rank}` : '—'}</Badge>
         </div>

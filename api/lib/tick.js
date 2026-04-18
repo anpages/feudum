@@ -1,5 +1,6 @@
 import { eq } from 'drizzle-orm'
 import { db, kingdoms } from '../_db.js'
+import { terrainModifiers } from './terrain.js'
 
 /**
  * Compute ticked resources without writing to DB.
@@ -14,10 +15,12 @@ export function applyResourceTick(kingdom, cfg) {
     return { wood: kingdom.wood, stone: kingdom.stone, grain: kingdom.grain, now }
   }
 
+  const t = terrainModifiers(kingdom.terrain)
+
   return {
-    wood:  Math.min(kingdom.wood  + kingdom.woodProduction  * elapsed * speed, kingdom.woodCapacity),
-    stone: Math.min(kingdom.stone + kingdom.stoneProduction * elapsed * speed, kingdom.stoneCapacity),
-    grain: Math.min(kingdom.grain + kingdom.grainProduction * elapsed * speed, kingdom.grainCapacity),
+    wood:  Math.min(kingdom.wood  + kingdom.woodProduction  * t.wood  * elapsed * speed, kingdom.woodCapacity),
+    stone: Math.min(kingdom.stone + kingdom.stoneProduction * t.stone * elapsed * speed, kingdom.stoneCapacity),
+    grain: Math.min(kingdom.grain + kingdom.grainProduction * t.grain * elapsed * speed, kingdom.grainCapacity),
     now,
   }
 }

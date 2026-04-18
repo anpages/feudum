@@ -8,6 +8,7 @@ import { db, users, kingdoms, armyMissions, messages, debrisFields } from '../_d
 import { applyResourceTick } from '../lib/tick.js'
 import { BUILDINGS, buildCost, buildTime, applyBuildingEffect } from '../lib/buildings.js'
 import { ECONOMY_SPEED, NPC_AGGRESSION, NPC_ATTACK_INTERVAL_HOURS } from '../lib/config.js'
+import { NPC_BUILD_PRIORITY } from '../lib/terrain.js'
 import { calcDistance, calcDuration } from '../lib/speed.js'
 import {
   buildBattleUnits, runBattle, calculateLoot,
@@ -72,7 +73,8 @@ async function growNpc(kingdom, cfg) {
   const npcLevel = kingdom.npcLevel || 1
   const targets  = BUILDING_TARGETS[npcLevel]
   const speed    = parseFloat(cfg.economy_speed ?? ECONOMY_SPEED)
-  const buildingPriority = ['sawmill','quarry','grainFarm','windmill','barracks','workshop']
+  const terrainPriority = NPC_BUILD_PRIORITY[kingdom.terrain] ?? NPC_BUILD_PRIORITY.balanced
+  const buildingPriority = [...terrainPriority, 'windmill', 'barracks', 'workshop']
 
   let { wood, stone, grain } = kingdom
   let patch = {}

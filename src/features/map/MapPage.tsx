@@ -23,6 +23,7 @@ import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { Sheet } from '@/components/ui/Sheet'
 import { formatResource } from '@/lib/format'
+import { terrainInfo } from '@/lib/terrain'
 
 export function MapPage() {
   const navigate = useNavigate()
@@ -196,15 +197,23 @@ export function MapPage() {
         {selected && (
           <div className="p-5 space-y-4">
             {!selected.isEmpty && (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <span className="font-body text-xs text-ink-muted">
                   {selected.isNpc ? 'NPC' : `@${selected.username}`}
                 </span>
-                {!selected.isEmpty && (
-                  <span className="font-ui text-xs text-ink-muted tabular-nums ml-auto">
-                    {selected.points.toLocaleString()} pts
-                  </span>
-                )}
+                {selected.terrain && (() => {
+                  const t = terrainInfo(selected.terrain)
+                  return (
+                    <span className={`font-ui text-xs ${t.color} flex items-center gap-1`}>
+                      <span>{t.emoji}</span>
+                      <span>{t.label}</span>
+                      <span className="text-ink-muted/50">· {t.bonus}</span>
+                    </span>
+                  )
+                })()}
+                <span className="font-ui text-xs text-ink-muted tabular-nums ml-auto">
+                  {selected.points.toLocaleString()} pts
+                </span>
               </div>
             )}
 
@@ -359,6 +368,9 @@ function SlotRow({
             </p>
             <p className="font-body text-xs text-ink-muted truncate">
               {slot.isPlayer ? 'Tu reino' : slot.isNpc ? 'NPC' : `@${slot.username}`}
+              {slot.terrain && (
+                <span className="ml-1.5 opacity-60">{terrainInfo(slot.terrain).emoji}</span>
+              )}
             </p>
           </>
         )}

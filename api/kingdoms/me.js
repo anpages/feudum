@@ -2,6 +2,7 @@ import { eq, and } from 'drizzle-orm'
 import { db, kingdoms, research } from '../_db.js'
 import { getSessionUserId } from '../lib/handler.js'
 import { getSettings } from '../lib/settings.js'
+import { terrainModifiers } from '../lib/terrain.js'
 
 const MOBILE_UNIT_KEYS = [
   'squire','knight','paladin','warlord','grandKnight',
@@ -9,14 +10,16 @@ const MOBILE_UNIT_KEYS = [
   'merchant','caravan','colonist','scavenger','scout',
 ]
 
-// dragonlore (plasma_technology): +1% wood, +0.66% stone, +0.33% grain per level
+// dragonlore: +1% wood, +0.66% stone, +0.33% grain per level
+// terrain: multiplier per resource based on kingdom terrain type
 function effectiveProduction(kingdom, res, cfg) {
   const dl    = res?.dragonlore ?? 0
   const speed = cfg.economy_speed ?? 1
+  const t     = terrainModifiers(kingdom.terrain)
   return {
-    wood:  cfg.basic_wood  + kingdom.woodProduction  * (1 + dl * 0.010)  * speed,
-    stone: cfg.basic_stone + kingdom.stoneProduction * (1 + dl * 0.0066) * speed,
-    grain:                   kingdom.grainProduction * (1 + dl * 0.0033) * speed,
+    wood:  cfg.basic_wood  + kingdom.woodProduction  * t.wood  * (1 + dl * 0.010)  * speed,
+    stone: cfg.basic_stone + kingdom.stoneProduction * t.stone * (1 + dl * 0.0066) * speed,
+    grain:                   kingdom.grainProduction * t.grain * (1 + dl * 0.0033) * speed,
   }
 }
 

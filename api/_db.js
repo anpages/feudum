@@ -99,6 +99,7 @@ export const kingdoms = pgTable('kingdoms', {
   moat:         integer('moat').default(0).notNull(),
   catapult:     integer('catapult').default(0).notNull(),
 
+  terrain:  varchar('terrain', { length: 20 }).default('balanced').notNull(),
   isNpc:    boolean('is_npc').default(false).notNull(),
   npcLevel: integer('npc_level').default(0).notNull(),
 
