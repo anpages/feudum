@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   ChevronLeft,
@@ -29,11 +29,20 @@ export function MapPage() {
   const [realm, setRealm] = useState(1)
   const [region, setRegion] = useState(1)
   const [selected, setSelected] = useState<MapSlot | null>(null)
+  const [centered, setCentered] = useState(false)
 
   const { data, isLoading } = useMap(realm, region)
 
   const maxRealm = data?.maxRealm ?? 3
   const maxRegion = data?.maxRegion ?? 10
+
+  useEffect(() => {
+    if (!centered && data?.myPosition) {
+      setRealm(data.myPosition.realm)
+      setRegion(data.myPosition.region)
+      setCentered(true)
+    }
+  }, [data?.myPosition, centered])
 
   function goToMyKingdom() {
     if (data?.myPosition) {
