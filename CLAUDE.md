@@ -270,61 +270,77 @@ Import from `@/components/ui` (barrel export).
 - [x] Logout button in ResourceBar
 - [x] `ProtectedRoute` returns `null` during auth check (no loading skeleton flash)
 
-### Phase 3 — Kingdom & Resources ✅ (partial)
+### Phase 3 — Kingdom & Resources ✅
 - [x] `GET /api/kingdoms/me` — returns kingdom with lazy resource tick applied
 - [x] Resource tick: `min(resource + production * elapsed_hours, capacity)` on every request
-- [ ] `useKingdom` hook wired to real endpoint (currently mocked)
-- [ ] Overview page: kingdom stats, resource totals, production rates
+- [x] `populationUsed` calculated from mobile unit columns on every request
+- [x] `useKingdom` hook wired to real endpoint (10s polling)
+- [x] Overview page: live queues, kingdom stats, resource totals, production rates, ranking
 
-### Phase 4 — Construction (Buildings)
-- [ ] `api/lib/buildings.ts` — cost & production formulas from reference (all buildings)
-- [ ] `GET /api/buildings` — current levels + upgrade cost + time remaining
-- [ ] `POST /api/buildings/upgrade` — deducts resources, enqueues build, optimistic update
-- [ ] Queue processing: complete finished items on each API request (lazy evaluation)
-- [ ] BuildingsPage UI: grid of buildings, level, cost, countdown timer
-- [ ] `useBuildings` hook with optimistic update on upgrade
+### Phase 4 — Construction (Buildings) ✅
+- [x] `api/lib/buildings.js` — 15 buildings with cost/production/storage formulas
+- [x] `GET /api/buildings` — current levels + upgrade cost + time remaining + requirements
+- [x] `POST /api/buildings/upgrade` — deducts wood/stone/grain, enqueues build
+- [x] Queue processing: lazy evaluation on each API request
+- [x] BuildingsPage UI: grid with countdown timers, cost display, requirements
+- [x] `useBuildings` hook with optimistic update + completion toast
+- [x] Storage buildings: granary/stonehouse/silo update capacity via `storageCapacity()` formula
+- [x] Utility buildings: workshop/engineersGuild reduce build time; cathedral/alchemistTower add production
 
-### Phase 5 — Research (Academy)
-- [ ] `api/lib/research.ts` — cost formulas (base cost × 2^level pattern)
-- [ ] `GET /api/research` — current levels + next upgrade cost + requirements
-- [ ] `POST /api/research/upgrade` — one active research at a time per player
-- [ ] ResearchPage UI: tech tree with requirements shown
-- [ ] `useResearch` hook
+### Phase 5 — Research (Academy) ✅
+- [x] `api/lib/research.js` — cost formulas (base cost × 2^level), build time
+- [x] `GET /api/research` — current levels + next upgrade cost + requirements
+- [x] `POST /api/research/upgrade` — one active research at a time per player
+- [x] ResearchPage UI: tech tree with requirements, countdown timer
+- [x] `useResearch` hook with optimistic update + completion toast
 
-### Phase 6 — Barracks (Units & Defenses)
-- [ ] `api/lib/units.ts` — unit stats (attack, shield, hull, speed, capacity, cost)
-- [ ] `GET /api/barracks` — available units, current counts, queue
-- [ ] `POST /api/barracks/train` — enqueue unit production
-- [ ] Unit queue: time per unit, parallel production
-- [ ] BarracksPage UI: two tabs (Unidades / Defensas), amounts, costs
-- [ ] `useBarracks` hook
+### Phase 6 — Barracks (Units & Defenses) ✅
+- [x] `api/lib/units.js` — 13 units + 11 defenses with full stats (attack, shield, hull, speed, cargo, cost)
+- [x] `GET /api/barracks` — available units, current counts, queue
+- [x] `POST /api/barracks/train` — enqueue unit production
+- [x] Unit queue: time per unit, batch production
+- [x] BarracksPage UI: two tabs (Unidades / Defensas), amounts, costs, requirements
+- [x] `useBarracks` hook with completion toast
 
-### Phase 7 — Map & Galaxy
-- [ ] Populate kingdoms table with NPC kingdoms for empty slots
-- [ ] `GET /api/map?realm=1&region=1` — returns all slots in a region with kingdom names/owners
-- [ ] MapPage UI: grid of realms → regions → slots, player highlights
-- [ ] Click slot → kingdom detail (owner, points)
+### Phase 7 — Map & Galaxy ✅
+- [x] NPC kingdoms generated deterministically (Wang hash, ~30% occupancy) — no DB rows needed
+- [x] `GET /api/map?realm=1&region=1` — real + NPC kingdoms, player highlight, debris per slot
+- [x] MapPage UI: grid of slots, click → detail panel with action buttons
+- [x] Detail panel: Atacar / Espiar / Transportar / Colonizar / Recolectar escombros → navigate to /armies with pre-filled coords
 
-### Phase 8 — Army Missions
-- [ ] `api/lib/speed.ts` — travel time formula (distance × base speed / unit speed)
-- [ ] `POST /api/armies/send` — validate army, deduct units from kingdom, create army_mission row
-- [ ] Mission types: attack, transport, spy, colonize, pillage, return
-- [ ] Mission processing: background arrival check on each request (lazy)
-- [ ] `GET /api/armies` — active missions with countdown
-- [ ] Fleet page UI: send form + active missions list
-- [ ] `useArmies` hook with optimistic send
+### Phase 8 — Army Missions ✅
+- [x] `api/lib/speed.js` — travel time formula based on slowest unit speed
+- [x] `POST /api/armies/send` — validate army, deduct units, create mission row
+- [x] Mission types: attack, transport, spy, colonize, scavenge
+- [x] `POST /api/armies/recall` — abort active mission, return time = elapsed so far
+- [x] Mission processing: lazy arrival + return on each GET /api/armies request
+- [x] `GET /api/armies` — active missions with countdown
+- [x] ArmiesPage UI: send form (pre-filled via URL params), active missions list, recall button
+- [x] `useArmies` + `useSendArmy` + `useRecallArmy` hooks
+- [x] ambassadorHall reduces travel time 5%/level (max 40%)
 
-### Phase 9 — Battle Engine
-- [ ] Port OGame rapid-fire / shield / attack formula to TypeScript (`api/lib/battle.ts`)
-- [ ] Reference: `/home/anpages/ogame-ref/app/BattleEngine/`
-- [ ] Battle report generation and storage
-- [ ] POST-battle: distribute loot, update units/defenses, create debris field (Scavenger missions)
-- [ ] Battle reports page + messaging
+### Phase 9 — Battle Engine ✅
+- [x] `api/lib/battle.js` — OGame rapid-fire / shield / attack formula
+- [x] Battle rounds: hull damage, shield absorption, rapid-fire checks
+- [x] Loot: 50% of defender resources, capped by cargo capacity
+- [x] Debris: 30% of lost units' cost → debrisFields table
+- [x] Scavenger missions: collect debris proportionally to cargo capacity
+- [x] Spy missions: OGame tech-diff formula, detection chance, counter-spy notification
+- [x] Colonize: creates new kingdom row at target slot
+- [x] Battle reports + spy reports stored as messages for attacker and defender
 
-### Phase 10 — Rankings & Polish
-- [ ] Points system: sum of resources spent on buildings + research + units
-- [ ] `GET /api/rankings` — top players sorted by points
-- [ ] Rankings page UI
-- [ ] Messages system (attack reports, spy reports, player messages)
-- [ ] Server settings: economy speed, universe size, new kingdom rules
-- [ ] Mobile-responsive layout pass
+### Phase 10 — Rankings & Polish (partial)
+- [x] `GET /api/rankings` — top players sorted by points (sum of resource columns)
+- [x] Rankings page UI
+- [x] Messages system: battle reports, spy reports; MessagesPage with detail panel
+- [x] Toast notifications on queue completion (buildings, research, units)
+- [x] 404 page
+- [x] Profile page: username editing, account info (`GET/PATCH /api/users/me`)
+- [x] Debris fields displayed on map slots
+- [ ] **Points system**: points field in kingdoms never updated — needs increment on upgrade/train
+- [ ] **Research combat bonuses**: `weapons`/`shielding`/`armor` levels not applied in `battle.js`
+- [ ] **Colony management UI**: colonized kingdoms not selectable; `kingdoms/me` always returns first kingdom
+- [ ] **Mission result display**: colonize/scavenge result not shown in ArmiesPage MissionRow
+- [ ] **Player-to-player messages**: only automated reports exist, no manual messaging
+- [ ] **Server settings**: economy speed, universe size hardcoded
+- [ ] **Mobile layout pass**: responsive design exists but untested on real devices
