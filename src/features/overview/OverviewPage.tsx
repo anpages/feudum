@@ -1,5 +1,5 @@
 import { type ReactNode, useState, useEffect } from 'react'
-import { Clock, TrendingUp, Hammer, FlaskConical, Swords, Send, Shield, ChevronRight, Zap } from 'lucide-react'
+import { Clock, TrendingUp, Hammer, FlaskConical, Swords, Send, Shield, ChevronRight, Zap, Trophy, ScrollText } from 'lucide-react'
 import {
   GiWoodPile, GiStoneBlock, GiWheat,
   GiAnvil, GiSpellBook, GiCrossedSwords,
@@ -163,7 +163,7 @@ export function OverviewPage() {
           {/* Active missions */}
           {(activeMissions > 0 || returningMissions > 0) && (
             <Card className="p-4 space-y-3 sm:col-span-2">
-              <p className="font-ui text-[0.6rem] text-ink-muted/60 uppercase tracking-widest">Ejércitos en marcha</p>
+              <p className="font-ui text-[0.6rem] text-ink-muted/60 uppercase tracking-widest">Misiones en marcha</p>
               {activeMissions > 0 && (
                 <StatRow icon={<Send size={12} />} label="En camino" value={`${activeMissions}`} note={activeMissions === 1 ? 'misión activa' : 'misiones activas'} highlight onClick={() => navigate('/armies')} />
               )}
@@ -172,6 +172,13 @@ export function OverviewPage() {
               )}
             </Card>
           )}
+
+          {/* Quick links */}
+          <Card className="p-4 space-y-3 sm:col-span-2">
+            <p className="font-ui text-[0.6rem] text-ink-muted/60 uppercase tracking-widest">Accesos rápidos</p>
+            <StatRow icon={<Trophy size={13} />} label="Clasificación" value={`#${myRanking?.rank ?? '—'}`} note={`${myRanking?.points.toLocaleString() ?? '—'} pts`} onClick={() => navigate('/rankings')} />
+            <StatRow icon={<ScrollText size={13} />} label="Mensajes" value="" note="bandeja de entrada" onClick={() => navigate('/messages')} />
+          </Card>
         </div>
       </section>
 

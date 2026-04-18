@@ -8,12 +8,9 @@ import {
   GiShield,
   GiSpellBook,
   GiMedievalBarracks,
-  GiCrossedSwords,
+  GiSwordsPower,
   GiTreasureMap,
-  GiTrophy,
-  GiScrollUnfurled,
 } from 'react-icons/gi'
-import { useUnreadCount } from '@/features/messages/useMessages'
 import { useAuth } from '@/features/auth/useAuth'
 
 interface NavItem {
@@ -23,16 +20,14 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { to: '/overview',    label: 'Reino',        Icon: GiCastle },
-  { to: '/resources',   label: 'Recursos',     Icon: GiFactory },
-  { to: '/facilities',  label: 'Instalaciones',Icon: GiVillage },
-  { to: '/research',    label: 'Academia',     Icon: GiSpellBook },
-  { to: '/barracks',    label: 'Cuartel',      Icon: GiMedievalBarracks },
-  { to: '/defense',     label: 'Defensa',      Icon: GiShield },
-  { to: '/armies',      label: 'Ejércitos',    Icon: GiCrossedSwords },
-  { to: '/map',         label: 'Mapa',         Icon: GiTreasureMap },
-  { to: '/rankings',    label: 'Rankings',     Icon: GiTrophy },
-  { to: '/messages',    label: 'Mensajes',     Icon: GiScrollUnfurled },
+  { to: '/overview',    label: 'Reino',         Icon: GiCastle },
+  { to: '/resources',   label: 'Recursos',      Icon: GiFactory },
+  { to: '/facilities',  label: 'Instalaciones', Icon: GiVillage },
+  { to: '/research',    label: 'Academia',      Icon: GiSpellBook },
+  { to: '/barracks',    label: 'Cuartel',       Icon: GiMedievalBarracks },
+  { to: '/defense',     label: 'Defensa',       Icon: GiShield },
+  { to: '/armies',      label: 'Misiones',      Icon: GiSwordsPower },
+  { to: '/map',         label: 'Mapa',          Icon: GiTreasureMap },
 ]
 
 interface Props {
@@ -41,7 +36,6 @@ interface Props {
 }
 
 export function NavBar({ isOpen, onClose }: Props) {
-  const unread = useUnreadCount()
   const { user } = useAuth()
 
   return (
@@ -71,11 +65,6 @@ export function NavBar({ isOpen, onClose }: Props) {
           >
             <Icon size={16} className="nav-icon shrink-0" />
             <span className="flex-1">{label}</span>
-            {to === '/messages' && unread > 0 && (
-              <span className="ml-auto text-[10px] font-ui font-semibold bg-crimson text-parchment rounded-full px-1.5 py-0.5 leading-none">
-                {unread > 99 ? '99+' : unread}
-              </span>
-            )}
           </NavLink>
         ))}
       </div>
