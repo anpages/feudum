@@ -13,12 +13,14 @@ export function MessagesPage() {
   const markAll = useMarkAllRead()
   const [selected,  setSelected]  = useState<GameMessage | null>(null)
   const [composing, setComposing] = useState(false)
+  const [replyTo,   setReplyTo]   = useState('')
 
   const messages = data?.messages ?? []
   const unread   = messages.filter(m => !m.viewed).length
 
-  function openCompose() {
+  function openCompose(to = '') {
     setSelected(null)
+    setReplyTo(to)
     setComposing(true)
   }
 
@@ -38,7 +40,7 @@ export function MessagesPage() {
               Marcar todo leído
             </Button>
           )}
-          <Button variant="primary" size="sm" onClick={openCompose}>
+          <Button variant="primary" size="sm" onClick={() => openCompose()}>
             <PenLine size={13} />
             Nuevo mensaje
           </Button>
@@ -49,7 +51,7 @@ export function MessagesPage() {
         <Card className="p-10 text-center anim-fade-up-1">
           <MailOpen size={28} className="mx-auto text-ink-muted/30 mb-3" />
           <p className="font-body text-sm text-ink-muted/60">No tienes mensajes</p>
-          <button onClick={openCompose} className="mt-3 font-ui text-xs text-gold hover:text-gold-light transition-colors">
+          <button onClick={() => openCompose()} className="mt-3 font-ui text-xs text-gold hover:text-gold-light transition-colors">
             Enviar el primero →
           </button>
         </Card>
@@ -91,9 +93,9 @@ export function MessagesPage() {
           {/* ── Detail / Compose ── */}
           <div>
             {composing ? (
-              <ComposePanel onClose={() => setComposing(false)} />
+              <ComposePanel onClose={() => setComposing(false)} initialTo={replyTo} />
             ) : selected ? (
-              <MessageDetail message={selected} onReply={(username) => { setComposing(true); setSelected(null); /* pass username via state below */ void username }} />
+              <MessageDetail message={selected} onReply={(username) => openCompose(username)} />
             ) : (
               <Card className="p-10 text-center h-full flex flex-col items-center justify-center gap-3">
                 <MailOpen size={24} className="text-ink-muted/25" />
