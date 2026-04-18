@@ -3,7 +3,7 @@ import { X } from 'lucide-react'
 import { type IconType } from 'react-icons'
 import {
   GiCastle, GiAnvil, GiSpellBook, GiMedievalBarracks,
-  GiCrossedSwords, GiTreasureMap,
+  GiCrossedSwords, GiTreasureMap, GiTrophy,
 } from 'react-icons/gi'
 
 interface NavItem {
@@ -19,6 +19,7 @@ const NAV_ITEMS: NavItem[] = [
   { to: '/barracks',  label: 'Cuartel',      Icon: GiMedievalBarracks},
   { to: '/armies',    label: 'Ejércitos',    Icon: GiCrossedSwords   },
   { to: '/map',       label: 'Mapa',         Icon: GiTreasureMap     },
+  { to: '/rankings',  label: 'Rankings',     Icon: GiTrophy          },
 ]
 
 interface Props {
