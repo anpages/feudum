@@ -20,8 +20,8 @@
 - [x] **Investigación afectando producción** — dragonlore +1%/+0.66%/+0.33% por nivel
 - [x] **Gestión de colonias** — selector en ResourceBar, `kingdoms/me?id=X`, `GET /api/kingdoms`
 - [x] **Pillaje contra NPCs** — misión rápida sin motor de batalla completo, loot por capacidad de carga
-- [ ] **Velocidad de viaje por investigación** — `horsemanship` (velocidad unidades) y `cartography` (reducción distancia) no se aplican en `api/lib/speed.js`
-- [ ] **Reparación de defensas post-batalla** — `repairDefenses()` existe pero no se llama en el caso de derrota del atacante
+- [x] **Velocidad de viaje por investigación** — horsemanship +10%/lv, cartography +20%/lv aplicados en `calcDuration`; fleet_speed_war/peaceful desde settings
+- [x] **Reparación de defensas post-batalla** — ya se llama en ambos casos (victoria y derrota)
 
 ---
 

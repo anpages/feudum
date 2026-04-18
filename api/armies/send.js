@@ -10,7 +10,7 @@ const UNIT_KEYS = [
   'merchant','caravan','colonist','scavenger','scout',
 ]
 
-const MISSION_TYPES = ['attack', 'transport', 'spy', 'colonize', 'scavenge', 'pillage']
+const MISSION_TYPES = ['attack', 'transport', 'spy', 'colonize', 'scavenge', 'pillage', 'deploy']
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end()
@@ -100,6 +100,18 @@ export default async function handler(req, res) {
     }
   }
 
+  // Deploy missions: target must be own kingdom (different slot)
+  if (missionType === 'deploy') {
+    const [target] = await db.select({ userId: kingdoms.userId }).from(kingdoms)
+      .where(and(
+        eq(kingdoms.realm,  tRealm),
+        eq(kingdoms.region, tRegion),
+        eq(kingdoms.slot,   tSlot),
+      )).limit(1)
+    if (!target) return res.status(400).json({ error: 'No existe un reino en ese slot' })
+    if (target.userId !== userId) return res.status(400).json({ error: 'Solo puedes desplegar a tus propios reinos' })
+  }
+
   // Pillage missions: combat units only, NPC target only
   if (missionType === 'pillage') {
     const [occupant] = await db.select({ id: kingdoms.id }).from(kingdoms)
@@ -118,7 +130,7 @@ export default async function handler(req, res) {
   let stoneLoad = 0
   let grainLoad = 0
 
-  if (missionType === 'transport') {
+  if (missionType === 'transport' || missionType === 'deploy') {
     woodLoad  = Math.max(0, parseFloat(rawResources?.wood  ?? 0) || 0)
     stoneLoad = Math.max(0, parseFloat(rawResources?.stone ?? 0) || 0)
     grainLoad = Math.max(0, parseFloat(rawResources?.grain ?? 0) || 0)

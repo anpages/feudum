@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ChevronLeft, ChevronRight, Home, Castle, User, Bot, MapPin, X, Swords, Eye, Tent, Pickaxe, Package, Skull } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Home, Castle, User, Bot, MapPin, X, Swords, Eye, Tent, Pickaxe, Package, Skull, Flag } from 'lucide-react'
 import { GiWoodPile, GiStoneBlock } from 'react-icons/gi'
 import { useMap, type MapSlot } from '@/hooks/useMap'
 import { Badge } from '@/components/ui/Badge'
@@ -204,7 +204,7 @@ export function MapPage() {
                     <Eye size={12} />
                     Espiar
                   </Button>
-                  {!selected.isNpc && (
+                  {!selected.isNpc && !selected.isPlayer && (
                     <Button
                       variant="ghost"
                       className="w-full"
@@ -212,6 +212,16 @@ export function MapPage() {
                     >
                       <Package size={12} />
                       Transportar
+                    </Button>
+                  )}
+                  {selected.isPlayer && (
+                    <Button
+                      variant="primary"
+                      className="w-full"
+                      onClick={() => sendMission('deploy')}
+                    >
+                      <Flag size={12} />
+                      Desplegar
                     </Button>
                   )}
                 </>

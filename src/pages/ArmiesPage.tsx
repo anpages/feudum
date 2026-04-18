@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { Send, Shield, Swords, Eye, Package, ChevronLeft, ChevronRight, Loader2, ArrowLeft, Trophy, Skull, Pickaxe, Undo2, Tent } from 'lucide-react'
+import { Send, Shield, Swords, Eye, Package, ChevronLeft, ChevronRight, Loader2, ArrowLeft, Trophy, Skull, Pickaxe, Undo2, Tent, Flag } from 'lucide-react'
 import { type IconType } from 'react-icons'
 import {
   GiLightFighter, GiHeavyFighter, GiMountedKnight, GiKnightBanner,
@@ -44,6 +44,7 @@ const MISSION_META: Record<MissionType, { label: string; Icon: typeof Swords; co
   spy:      { label: 'Espionaje',    Icon: Eye,      color: 'text-gold-dim', desc: 'Solo Exploradores. Recopila información.' },
   scavenge: { label: 'Recolección',  Icon: Pickaxe,  color: 'text-stone',    desc: 'Envía Carroñeros a recolectar escombros de batalla.' },
   colonize: { label: 'Colonización', Icon: Tent,     color: 'text-forest',   desc: 'Envía Colonistas a fundar una nueva colonia.' },
+  deploy:   { label: 'Despliegue',   Icon: Flag,     color: 'text-gold',     desc: 'Mover tropas a una colonia propia. Sin retorno.' },
 }
 
 // ── Countdown hook ────────────────────────────────────────────────────────────
@@ -107,7 +108,7 @@ export function ArmiesPage() {
       missionType,
       target: { realm: tRealm, region: tRegion, slot: tSlot },
       units,
-      resources: missionType === 'transport' ? resLoad : undefined,
+      resources: (missionType === 'transport' || missionType === 'deploy') ? resLoad : undefined,
     }, {
       onSuccess: () => {
         setUnits({})
@@ -208,8 +209,8 @@ export function ArmiesPage() {
             </div>
           </Card>
 
-          {/* Resource load (transport only) */}
-          {missionType === 'transport' && (
+          {/* Resource load (transport / deploy) */}
+          {(missionType === 'transport' || missionType === 'deploy') && (
             <Card className="p-4 space-y-3">
               <p className="font-ui text-xs text-ink-muted uppercase tracking-wider">Recursos a transportar</p>
               <div className="space-y-2">
@@ -326,7 +327,8 @@ function MissionRow({ mission, onEnd }: { mission: ArmyMission; onEnd: () => voi
     result.delivered !== undefined ||
     result.type === 'colonize' ||
     result.type === 'scavenge' ||
-    result.type === 'pillage'
+    result.type === 'pillage'  ||
+    result.type === 'deploy'
   )
 
   return (
@@ -433,6 +435,12 @@ function MissionRow({ mission, onEnd }: { mission: ArmyMission; onEnd: () => voi
           {result?.type === 'colonize' && result.success === false && (
             <span className="font-body text-xs text-ink-muted">{result.reason ?? 'Colonización fallida'}</span>
           )}
+          {result?.type === 'deploy' && result.success === true && (
+            <span className="font-body text-xs text-gold">Despliegue completado en {(result as any).target}</span>
+          )}
+          {result?.type === 'deploy' && result.success === false && (
+            <span className="font-body text-xs text-ink-muted">{result.reason ?? 'Despliegue fallido'}</span>
+          )}
           {result?.type === 'pillage' && (() => {
             const loot = result.loot ?? { wood: 0, stone: 0, grain: 0 }
             return (loot.wood > 0 || loot.stone > 0 || loot.grain > 0)
@@ -463,8 +471,8 @@ function MissionRow({ mission, onEnd }: { mission: ArmyMission; onEnd: () => voi
         </div>
       )}
 
-      {/* Transport resources */}
-      {mission.missionType === 'transport' && (mission.resources.wood + mission.resources.stone + mission.resources.grain) > 0 && (
+      {/* Transport / Deploy resources */}
+      {(mission.missionType === 'transport' || mission.missionType === 'deploy') && (mission.resources.wood + mission.resources.stone + mission.resources.grain) > 0 && (
         <div className="flex items-center gap-3 text-xs text-ink-muted flex-wrap">
           <Package size={11} className="shrink-0" />
           {mission.resources.wood  > 0 && <span>🪵 {formatResource(mission.resources.wood)}</span>}
