@@ -6,11 +6,12 @@ import { setSessionCookie } from '../../lib/handler.js'
 export default async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).end()
 
-  const code        = req.query.code
-  const redirectUri = req.query.redirectUri
-  if (!code || !redirectUri) return res.status(400).json({ error: 'missing_params' })
+  const { code, error } = req.query
+  if (error || !code) return res.redirect('/login?error=oauth_cancelled')
 
-  console.log('[oauth] exchanging code for token...')
+  const redirectUri = `${req.headers['x-forwarded-proto'] ?? 'http'}://${req.headers.host}/api/auth/google/callback`
+
+  console.log('[oauth] exchanging code...')
 
   const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
     method:  'POST',
@@ -24,11 +25,9 @@ export default async function handler(req, res) {
     }),
   })
 
-  console.log('[oauth] token status:', tokenRes.status)
   if (!tokenRes.ok) {
-    const body = await tokenRes.text()
-    console.error('[oauth] token exchange failed:', body)
-    return res.status(400).json({ error: 'token_exchange' })
+    console.error('[oauth] token exchange failed:', await tokenRes.text())
+    return res.redirect('/login?error=exchange_failed')
   }
 
   const { access_token } = await tokenRes.json()
@@ -36,31 +35,29 @@ export default async function handler(req, res) {
   const profileRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
     headers: { Authorization: `Bearer ${access_token}` },
   })
-
-  if (!profileRes.ok) return res.status(400).json({ error: 'profile_fetch' })
+  if (!profileRes.ok) return res.redirect('/login?error=profile_failed')
 
   const profile = await profileRes.json()
   console.log('[oauth] profile:', profile.email)
 
   let [user] = await db
-    .select({ id: users.id, username: users.username, email: users.email })
+    .select({ id: users.id, username: users.username })
     .from(users).where(eq(users.googleId, profile.sub)).limit(1)
 
   let isNew = false
-
   if (!user) {
     isNew = true
     const [newUser] = await db.insert(users).values({
       email:     profile.email,
       googleId:  profile.sub,
       avatarUrl: profile.picture,
-    }).returning({ id: users.id, username: users.username, email: users.email })
+    }).returning({ id: users.id, username: users.username })
     user = newUser
   }
 
   const token = await signToken(user.id)
   setSessionCookie(res, token)
 
-  console.log('[oauth] login complete, user:', user.id, isNew ? '(new)' : '')
-  return res.json({ id: user.id, username: user.username, email: user.email, needsNickname: isNew })
+  console.log('[oauth] login ok, user:', user.id, isNew ? '(new)' : '')
+  res.redirect(isNew || !user.username ? '/?next=onboarding' : '/?next=overview')
 }
