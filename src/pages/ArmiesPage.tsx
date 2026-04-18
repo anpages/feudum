@@ -139,14 +139,14 @@ export function ArmiesPage() {
           {/* Mission type selector */}
           <Card className="p-4 space-y-3">
             <p className="font-ui text-xs text-ink-muted uppercase tracking-wider">Tipo de misión</p>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-5 gap-1.5">
               {(Object.entries(MISSION_META) as [MissionType, typeof MISSION_META[MissionType]][]).map(([type, meta]) => {
                 const { Icon } = meta
                 return (
                   <button
                     key={type}
                     onClick={() => setMissionType(type)}
-                    className={`flex flex-col items-center gap-1.5 p-3 rounded border transition-all text-xs font-ui font-semibold ${
+                    className={`flex flex-col items-center gap-1 p-2 rounded border transition-all text-[0.65rem] font-ui font-semibold text-center leading-tight ${
                       missionType === type
                         ? 'bg-gold-soft border-gold/30 text-gold-dim shadow-sm'
                         : 'border-gold/10 text-ink-muted hover:border-gold/20 hover:bg-parchment'
@@ -320,7 +320,12 @@ function MissionRow({ mission, onEnd }: { mission: ArmyMission; onEnd: () => voi
   const unitList = Object.entries(mission.units).filter((entry): entry is [string, number] => (entry[1] ?? 0) > 0)
 
   const result = mission.result
-  const hasResult = result && (result.outcome || result.delivered !== undefined)
+  const hasResult = result && (
+    result.outcome !== undefined ||
+    result.delivered !== undefined ||
+    result.type === 'colonize' ||
+    result.type === 'scavenge'
+  )
 
   return (
     <Card className="p-4 space-y-3">
@@ -420,6 +425,25 @@ function MissionRow({ mission, onEnd }: { mission: ArmyMission; onEnd: () => voi
           {result?.type === 'spy' && (
             <span className="font-body text-xs text-ink-muted">{result.message}</span>
           )}
+          {result?.type === 'colonize' && result.success === true && (
+            <span className="font-body text-xs text-forest">Colonia fundada: {result.name}</span>
+          )}
+          {result?.type === 'colonize' && result.success === false && (
+            <span className="font-body text-xs text-ink-muted">{result.reason ?? 'Colonización fallida'}</span>
+          )}
+          {result?.type === 'scavenge' && (() => {
+            const c = result.collected ?? { wood: 0, stone: 0 }
+            return (c.wood > 0 || c.stone > 0)
+              ? (
+                <span className="font-body text-xs text-ink-muted flex items-center gap-2">
+                  <Pickaxe size={10} />
+                  {c.wood  > 0 && <span className="flex items-center gap-0.5"><GiWoodPile  size={10} className="inline" /> {formatResource(c.wood)}</span>}
+                  {c.stone > 0 && <span className="flex items-center gap-0.5"><GiStoneBlock size={10} className="inline" /> {formatResource(c.stone)}</span>}
+                  recogidos
+                </span>
+              )
+              : <span className="font-body text-xs text-ink-muted/60">Sin escombros en el destino</span>
+          })()}
         </div>
       )}
 

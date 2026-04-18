@@ -6,9 +6,9 @@
 
 ## 🔴 Bugs activos (rompen funcionalidad)
 
-- [ ] **Resultado colonize/scavenge no se muestra en ArmiesPage** — `MissionRow` solo chequea `outcome` y `delivered`, no maneja `result.type === 'colonize'` ni `result.type === 'scavenge'` con su campo `success`/`collected`
-- [ ] **Import innecesario en `api/armies/recall.js`** — importa `kingdoms` pero no lo usa; puede causar warning en Vercel
-- [ ] **Selector de misión desbalanceado** — ahora hay 5 tipos (attack/transport/spy/scavenge/colonize) en un grid de 3 columnas → queda roto visualmente
+- [x] **Resultado colonize/scavenge no se muestra en ArmiesPage** — añadidos casos colonize y scavenge en MissionRow; tipo `result` ampliado en useArmies.ts
+- [x] **Import innecesario en `api/armies/recall.js`** — eliminado import de `kingdoms`
+- [x] **Selector de misión desbalanceado** — cambiado a grid de 5 columnas con texto compacto
 
 ---
 

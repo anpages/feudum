@@ -26,6 +26,9 @@ export interface ArmyMission {
     delivered?: boolean
     reason?: string
     message?: string
+    success?: boolean
+    name?: string
+    collected?: { wood: number; stone: number }
   } | null
 }
 
