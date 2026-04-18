@@ -213,22 +213,15 @@ const RESEARCH_OPTIONS = [
   { id: 'divineBlessing',   label: 'Bendición Divina' },
 ]
 
-const NPC_LEVEL_META = [
-  { lv: 1, label: 'Débil',   hint: 'Granjeros con horcas' },
-  { lv: 2, label: 'Medio',   hint: 'Mercenarios entrenados' },
-  { lv: 3, label: 'Fuerte',  hint: 'Señores de la guerra' },
-]
-
 function NpcSeeder({ onStatus }: { onStatus: (s: string) => void }) {
   const seedNpcs = useSeedNpcs()
-  const [counts, setCounts] = useState<Record<number, string>>({ 1: '5', 2: '3', 3: '2' })
+  const [count, setCount] = useState('10')
 
-  const parsed = { 1: parseInt(counts[1]) || 0, 2: parseInt(counts[2]) || 0, 3: parseInt(counts[3]) || 0 }
-  const total  = parsed[1] + parsed[2] + parsed[3]
+  const total = parseInt(count) || 0
 
   async function handleSeed() {
     try {
-      const res = await seedNpcs.mutateAsync({ level1: parsed[1], level2: parsed[2], level3: parsed[3] })
+      const res = await seedNpcs.mutateAsync({ level1: total, level2: 0, level3: 0 })
       onStatus(`✓ ${res.created} NPCs creados (eliminados: ${res.deleted})`)
     } catch (e) {
       onStatus('✗ ' + (e as Error).message)
@@ -237,52 +230,38 @@ function NpcSeeder({ onStatus }: { onStatus: (s: string) => void }) {
 
   return (
     <Card className="p-5 space-y-4">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <div className="flex items-center gap-2">
-            <Bot size={15} className="text-gold" />
-            <h3 className="font-ui text-sm font-semibold text-ink">Poblar NPCs</h3>
-          </div>
-          <p className="font-body text-[11px] text-ink-muted/70 mt-1">
-            Borra todos los NPCs existentes y crea nuevos desde cero en slots aleatorios.
-          </p>
+      <div className="flex items-center gap-2">
+        <Bot size={15} className="text-gold" />
+        <h3 className="font-ui text-sm font-semibold text-ink">Poblar NPCs</h3>
+        <p className="font-body text-[11px] text-ink-muted/70 ml-1">
+          — Borra todos los existentes y crea nuevos desde cero en slots aleatorios.
+        </p>
+      </div>
+
+      <div className="flex items-end gap-3">
+        <div className="space-y-1">
+          <label className="block font-ui text-xs text-ink-muted">Cantidad</label>
+          <input
+            type="number"
+            min="1"
+            max="300"
+            value={count}
+            onChange={e => setCount(e.target.value)}
+            className="game-input w-24 text-center text-sm tabular-nums"
+          />
         </div>
-        <Badge variant={total > 0 ? 'gold' : 'stone'} className="shrink-0 tabular-nums">
-          {total} total
-        </Badge>
+        <Button
+          variant="danger"
+          size="sm"
+          disabled={seedNpcs.isPending || total <= 0}
+          onClick={handleSeed}
+        >
+          {seedNpcs.isPending
+            ? <Loader2 size={12} className="animate-spin" />
+            : <RotateCcw size={12} />}
+          Resetear y poblar
+        </Button>
       </div>
-
-      <div className="grid grid-cols-3 gap-3">
-        {NPC_LEVEL_META.map(({ lv, label, hint }) => (
-          <div key={lv} className="space-y-1.5">
-            <label className="block font-ui text-xs font-semibold text-ink">
-              Nv {lv} — {label}
-            </label>
-            <p className="font-body text-[10px] text-ink-muted/60">{hint}</p>
-            <input
-              type="number"
-              min="0"
-              max="100"
-              value={counts[lv]}
-              onChange={e => setCounts(c => ({ ...c, [lv]: e.target.value }))}
-              className="game-input w-full text-center text-sm tabular-nums"
-            />
-          </div>
-        ))}
-      </div>
-
-      <Button
-        variant="danger"
-        size="sm"
-        className="w-full"
-        disabled={seedNpcs.isPending || total === 0}
-        onClick={handleSeed}
-      >
-        {seedNpcs.isPending
-          ? <Loader2 size={12} className="animate-spin" />
-          : <RotateCcw size={12} />}
-        Resetear y poblar ({total} NPCs)
-      </Button>
     </Card>
   )
 }
