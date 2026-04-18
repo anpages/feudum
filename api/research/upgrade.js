@@ -2,6 +2,7 @@ import { eq } from 'drizzle-orm'
 import { db, kingdoms, research as researchTable, researchQueue } from '../_db.js'
 import { getSessionUserId } from '../lib/handler.js'
 import { RESEARCH, researchCost, researchTime, requirementsMet } from '../lib/research.js'
+import { getSettings } from '../lib/settings.js'
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end()
@@ -15,9 +16,10 @@ export default async function handler(req, res) {
   const def = RESEARCH.find(r => r.id === researchId)
   if (!def) return res.status(400).json({ error: 'Investigación desconocida' })
 
-  const [[kingdom], [resRow]] = await Promise.all([
+  const [[kingdom], [resRow], cfg] = await Promise.all([
     db.select().from(kingdoms).where(eq(kingdoms.userId, userId)).limit(1),
     db.select().from(researchTable).where(eq(researchTable.userId, userId)).limit(1),
+    getSettings(),
   ])
   if (!kingdom) return res.status(404).json({ error: 'Reino no encontrado' })
   if (!resRow)  return res.status(404).json({ error: 'Research no encontrado' })
@@ -39,15 +41,16 @@ export default async function handler(req, res) {
   const nextLevel     = currentLevel + 1
   const academyLevel  = kingdom.academy ?? 0
   const cost          = researchCost(def, currentLevel)
-  const timeSecs      = researchTime(cost.wood, cost.stone, academyLevel)
+  const timeSecs      = researchTime(cost.wood, cost.stone, academyLevel, cfg.research_speed ?? 1)
 
   // ── Lazy resource tick ────────────────────────────────────────────────────
   const now     = Math.floor(Date.now() / 1000)
   const elapsed = Math.max(0, now - kingdom.lastResourceUpdate) / 3600
+  const econSpeed = cfg.economy_speed ?? 1
 
-  let wood  = kingdom.wood  + kingdom.woodProduction  * elapsed
-  let stone = kingdom.stone + kingdom.stoneProduction * elapsed
-  let grain = kingdom.grain + kingdom.grainProduction * elapsed
+  let wood  = kingdom.wood  + kingdom.woodProduction  * elapsed * econSpeed
+  let stone = kingdom.stone + kingdom.stoneProduction * elapsed * econSpeed
+  let grain = kingdom.grain + kingdom.grainProduction * elapsed * econSpeed
 
   wood  = Math.min(wood,  kingdom.woodCapacity)
   stone = Math.min(stone, kingdom.stoneCapacity)
