@@ -37,9 +37,10 @@ const SUPPORT_UNITS: { id: string; name: string; Icon: IconType }[] = [
 const ALL_UNIT_META = [...COMBAT_UNITS, ...SUPPORT_UNITS]
 
 const MISSION_META: Record<MissionType, { label: string; Icon: typeof Swords; color: string; desc: string }> = {
-  attack:    { label: 'Ataque',      Icon: Swords,  color: 'text-crimson',  desc: 'Atacar y saquear el reino objetivo.' },
-  transport: { label: 'Transporte',  Icon: Package, color: 'text-forest',   desc: 'Transportar recursos al reino objetivo.' },
-  spy:       { label: 'Espionaje',   Icon: Eye,     color: 'text-gold-dim', desc: 'Solo Exploradores. Recopila información.' },
+  attack:   { label: 'Ataque',      Icon: Swords,   color: 'text-crimson',  desc: 'Atacar y saquear el reino objetivo.' },
+  transport:{ label: 'Transporte',  Icon: Package,  color: 'text-forest',   desc: 'Transportar recursos al reino objetivo.' },
+  spy:      { label: 'Espionaje',   Icon: Eye,      color: 'text-gold-dim', desc: 'Solo Exploradores. Recopila información.' },
+  scavenge: { label: 'Recolección', Icon: Pickaxe,  color: 'text-stone',    desc: 'Envía Carroñeros a recolectar escombros de batalla.' },
 }
 
 // ── Countdown hook ────────────────────────────────────────────────────────────

@@ -440,6 +440,10 @@ a { color: inherit; text-decoration: none; }
   0%, 100% { opacity: 0.6; }
   50%       { opacity: 1; }
 }
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
 
 .anim-fade-up   { animation: fadeUp 0.35s ease both; }
 .anim-fade-up-1 { animation: fadeUp 0.35s ease 0.05s both; }
@@ -447,8 +451,9 @@ a { color: inherit; text-decoration: none; }
 .anim-fade-up-3 { animation: fadeUp 0.35s ease 0.15s both; }
 .anim-fade-up-4 { animation: fadeUp 0.35s ease 0.20s both; }
 .anim-fade-up-5 { animation: fadeUp 0.35s ease 0.25s both; }
-.anim-float     { animation: float 4s ease-in-out infinite; }
-.anim-glow      { animation: glowPulse 2.5s ease-in-out infinite; }
+.anim-float      { animation: float 4s ease-in-out infinite; }
+.anim-glow       { animation: glowPulse 2.5s ease-in-out infinite; }
+.animate-slide-up { animation: slideUp 0.2s ease both; }
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ SKELETON ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 

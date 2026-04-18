@@ -4,7 +4,9 @@ import type { Kingdom } from '../../db/schema'
 
 export function useKingdom() {
   return useQuery({
-    queryKey: ['kingdom'],
-    queryFn: () => api.get<Kingdom>('/kingdoms/me'),
+    queryKey:        ['kingdom'],
+    queryFn:         () => api.get<Kingdom>('/kingdoms/me'),
+    staleTime:       5_000,
+    refetchInterval: 10_000,
   })
 }

@@ -1,5 +1,5 @@
 import { eq, and } from 'drizzle-orm'
-import { db, kingdoms, users, armyMissions, research, messages } from '../_db.js'
+import { db, kingdoms, armyMissions, research, messages, debrisFields } from '../_db.js'
 import { getSessionUserId } from '../lib/handler.js'
 import {
   buildBattleUnits, runBattle, calculateLoot,
@@ -269,6 +269,31 @@ async function processArrival(mission, myKingdom, now) {
 
       const battleResult = { type: 'attack', outcome, rounds, loot, debris, lostAtk, lostDef }
 
+      // Persist debris field if there's anything
+      if (debris.wood > 0 || debris.stone > 0) {
+        const [existing] = await db.select().from(debrisFields)
+          .where(and(
+            eq(debrisFields.realm,  mission.targetRealm),
+            eq(debrisFields.region, mission.targetRegion),
+            eq(debrisFields.slot,   mission.targetSlot),
+          )).limit(1)
+        if (existing) {
+          await db.update(debrisFields).set({
+            wood:  existing.wood  + debris.wood,
+            stone: existing.stone + debris.stone,
+            updatedAt: new Date(),
+          }).where(eq(debrisFields.id, existing.id))
+        } else {
+          await db.insert(debrisFields).values({
+            realm:  mission.targetRealm,
+            region: mission.targetRegion,
+            slot:   mission.targetSlot,
+            wood:   debris.wood,
+            stone:  debris.stone,
+          })
+        }
+      }
+
       await db.update(armyMissions).set({
         ...survivorPatch,
         state: 'returning', returnTime,
@@ -312,6 +337,30 @@ async function processArrival(mission, myKingdom, now) {
 
       const battleResult = { type: 'attack', outcome: 'defeat', rounds, lostAtk, lostDef, debris }
 
+      if (debris.wood > 0 || debris.stone > 0) {
+        const [existing] = await db.select().from(debrisFields)
+          .where(and(
+            eq(debrisFields.realm,  mission.targetRealm),
+            eq(debrisFields.region, mission.targetRegion),
+            eq(debrisFields.slot,   mission.targetSlot),
+          )).limit(1)
+        if (existing) {
+          await db.update(debrisFields).set({
+            wood:  existing.wood  + debris.wood,
+            stone: existing.stone + debris.stone,
+            updatedAt: new Date(),
+          }).where(eq(debrisFields.id, existing.id))
+        } else {
+          await db.insert(debrisFields).values({
+            realm:  mission.targetRealm,
+            region: mission.targetRegion,
+            slot:   mission.targetSlot,
+            wood:   debris.wood,
+            stone:  debris.stone,
+          })
+        }
+      }
+
       await db.update(armyMissions).set({
         ...zeroPatch, state: 'returning', returnTime,
         woodLoad: 0, stoneLoad: 0, grainLoad: 0,
@@ -335,6 +384,44 @@ async function processArrival(mission, myKingdom, now) {
         })
       }
     }
+    return
+  }
+
+  // ── Scavenge ──────────────────────────────────────────────────────────────────
+  if (mType === 'scavenge') {
+    const cargo = calcCargoCapacity(missionUnits)
+
+    // Find debris at target coords
+    const [debris] = await db.select().from(debrisFields)
+      .where(and(
+        eq(debrisFields.realm,  mission.targetRealm),
+        eq(debrisFields.region, mission.targetRegion),
+        eq(debrisFields.slot,   mission.targetSlot),
+      )).limit(1)
+
+    let collected = { wood: 0, stone: 0 }
+    if (debris && cargo > 0) {
+      const total = debris.wood + debris.stone
+      const ratio = Math.min(1, cargo / total)
+      collected.wood  = Math.floor(debris.wood  * ratio)
+      collected.stone = Math.floor(debris.stone * ratio)
+
+      const remaining = { wood: debris.wood - collected.wood, stone: debris.stone - collected.stone }
+      if (remaining.wood < 1 && remaining.stone < 1) {
+        await db.delete(debrisFields).where(eq(debrisFields.id, debris.id))
+      } else {
+        await db.update(debrisFields).set({
+          wood: remaining.wood, stone: remaining.stone, updatedAt: new Date(),
+        }).where(eq(debrisFields.id, debris.id))
+      }
+    }
+
+    await db.update(armyMissions).set({
+      state: 'returning', returnTime,
+      woodLoad: collected.wood, stoneLoad: collected.stone,
+      result: JSON.stringify({ type: 'scavenge', collected }),
+      updatedAt: new Date(),
+    }).where(eq(armyMissions.id, mission.id))
     return
   }
 

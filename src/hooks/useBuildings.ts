@@ -1,5 +1,8 @@
+import { useRef, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
+import { toast } from '@/lib/toast'
+import { BUILDING_LABELS } from '@/lib/labels'
 
 export interface BuildingInfo {
   id: string
@@ -17,11 +20,12 @@ export interface BuildingsResponse {
 }
 
 export function useBuildings() {
+  const prevRef = useRef<BuildingInfo[] | null>(null)
+
   const { data, ...rest } = useQuery({
     queryKey: ['buildings'],
     queryFn:  () => api.get<BuildingsResponse>('/buildings'),
     staleTime: 5_000,
-    // Poll aggressively when any building is in queue; otherwise each 10s
     refetchInterval: (query) => {
       const buildings = query.state.data?.buildings ?? []
       const now = Math.floor(Date.now() / 1000)
@@ -29,6 +33,20 @@ export function useBuildings() {
       return hasActive ? 3_000 : 10_000
     },
   })
+
+  useEffect(() => {
+    const buildings = data?.buildings
+    if (!buildings) return
+    if (prevRef.current) {
+      for (const b of buildings) {
+        const prev = prevRef.current.find(p => p.id === b.id)
+        if (prev?.inQueue && !b.inQueue && b.level > prev.level) {
+          toast.success(`${BUILDING_LABELS[b.id] ?? b.id} mejorado a nivel ${b.level}`)
+        }
+      }
+    }
+    prevRef.current = buildings
+  }, [data?.buildings])
 
   return { data, ...rest }
 }
@@ -43,7 +61,6 @@ export function useUpgradeBuilding() {
         { building: buildingId },
       ),
 
-    // Optimistic update: show building as queued immediately
     onMutate: async (buildingId: string) => {
       await qc.cancelQueries({ queryKey: ['buildings'] })
 
@@ -66,14 +83,12 @@ export function useUpgradeBuilding() {
       return { prev }
     },
 
-    // Roll back on error
     onError: (_err, _buildingId, context) => {
       if (context?.prev) {
         qc.setQueryData<BuildingsResponse>(['buildings'], context.prev)
       }
     },
 
-    // Always sync from server and deduct resources from kingdom
     onSettled: () => {
       qc.invalidateQueries({ queryKey: ['buildings'] })
       qc.invalidateQueries({ queryKey: ['kingdom'] })

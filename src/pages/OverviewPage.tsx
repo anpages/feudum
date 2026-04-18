@@ -1,5 +1,5 @@
-import { type ReactNode } from 'react'
-import { Users, Clock, TrendingUp } from 'lucide-react'
+import { type ReactNode, useState, useEffect } from 'react'
+import { Users, Clock, TrendingUp, Hammer, FlaskConical, Swords } from 'lucide-react'
 import {
   GiWoodPile, GiStoneBlock, GiWheat,
   GiAnvil, GiSpellBook, GiCrossedSwords,
@@ -7,8 +7,11 @@ import {
 import { useKingdom } from '@/hooks/useKingdom'
 import { useResourceTicker } from '@/hooks/useResourceTicker'
 import { useResearch } from '@/hooks/useResearch'
+import { useBuildings } from '@/hooks/useBuildings'
+import { useBarracks } from '@/hooks/useBarracks'
 import { useRankings } from '@/hooks/useRankings'
-import { formatResource } from '@/lib/format'
+import { formatResource, formatDuration } from '@/lib/format'
+import { label } from '@/lib/labels'
 import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { ProgressBar } from '@/components/ui/ProgressBar'
@@ -28,6 +31,8 @@ const UNIT_KEYS = [
 export function OverviewPage() {
   const { data: kingdom, isLoading } = useKingdom()
   const { data: researchData }       = useResearch()
+  const { data: buildingsData }      = useBuildings()
+  const { data: barracksData }       = useBarracks()
   const { data: rankingsData }       = useRankings()
   const resources = useResourceTicker(kingdom)
 
@@ -40,6 +45,22 @@ export function OverviewPage() {
     : 0
 
   const myRanking = rankingsData?.rankings.find(r => r.isMe)
+
+  const now = Math.floor(Date.now() / 1000)
+  const activeBuilding = buildingsData?.buildings.find(
+    b => b.inQueue && b.inQueue.finishesAt > now
+  )
+  const activeResearch = researchData?.research.find(
+    r => r.inQueue && r.inQueue.finishesAt > now
+  )
+  const allUnits = [
+    ...(barracksData?.units    ?? []),
+    ...(barracksData?.support  ?? []),
+    ...(barracksData?.defenses ?? []),
+  ]
+  const activeUnit = allUnits.find(u => u.inQueue && u.inQueue.finishesAt > now)
+
+  const hasQueue = !!(activeBuilding || activeResearch || activeUnit)
 
   if (isLoading) return <OverviewSkeleton />
 
@@ -68,9 +89,9 @@ export function OverviewPage() {
         <span className="section-heading anim-fade-up-1">Almacenes</span>
         <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
           <ResourceCard icon={<GiWoodPile   size={18} />} label="Madera"     value={resources.wood}  cap={kingdom?.woodCapacity  ?? 5000} rate={kingdom?.woodProduction  ?? 0} animClass="anim-fade-up-1" />
-          <ResourceCard icon={<GiStoneBlock size={18} />} label="Piedra"    value={resources.stone} cap={kingdom?.stoneCapacity ?? 5000} rate={kingdom?.stoneProduction ?? 0} animClass="anim-fade-up-2" />
-          <ResourceCard icon={<GiWheat      size={18} />} label="Grano"     value={resources.grain} cap={kingdom?.grainCapacity ?? 5000} rate={kingdom?.grainProduction ?? 0} animClass="anim-fade-up-3" />
-          <ResourceCard icon={<Users        size={17} />} label="Población" value={kingdom?.populationUsed ?? 0} cap={kingdom?.populationMax ?? 200} rate={0} animClass="anim-fade-up-4" />
+          <ResourceCard icon={<GiStoneBlock size={18} />} label="Piedra"     value={resources.stone} cap={kingdom?.stoneCapacity ?? 5000} rate={kingdom?.stoneProduction ?? 0} animClass="anim-fade-up-2" />
+          <ResourceCard icon={<GiWheat      size={18} />} label="Grano"      value={resources.grain} cap={kingdom?.grainCapacity ?? 5000} rate={kingdom?.grainProduction ?? 0} animClass="anim-fade-up-3" />
+          <ResourceCard icon={<Users        size={17} />} label="Población"  value={kingdom?.populationUsed ?? 0} cap={kingdom?.populationMax ?? 200} rate={0} animClass="anim-fade-up-4" />
         </div>
       </section>
 
@@ -84,18 +105,84 @@ export function OverviewPage() {
         </div>
       </section>
 
-      {/* ── Build queue ── */}
+      {/* ── Active queues ── */}
       <section>
-        <span className="section-heading anim-fade-up-3">Cola de Construcción</span>
-        <Card className="p-4 anim-fade-up-3">
-          <div className="flex items-center gap-3 text-ink-muted/60">
-            <Clock size={15} />
-            <span className="font-body text-sm">No hay construcciones en curso</span>
+        <span className="section-heading anim-fade-up-3">Colas Activas</span>
+        {hasQueue ? (
+          <div className="space-y-2 anim-fade-up-3">
+            {activeBuilding && (
+              <QueueRow
+                icon={<Hammer size={13} />}
+                label={`${label(activeBuilding.id)} → Nv. ${activeBuilding.inQueue!.level}`}
+                finishesAt={activeBuilding.inQueue!.finishesAt}
+                color="gold"
+              />
+            )}
+            {activeResearch && (
+              <QueueRow
+                icon={<FlaskConical size={13} />}
+                label={`${label(activeResearch.id)} → Nv. ${activeResearch.inQueue!.level}`}
+                finishesAt={activeResearch.inQueue!.finishesAt}
+                color="forest"
+              />
+            )}
+            {activeUnit && (
+              <QueueRow
+                icon={<Swords size={13} />}
+                label={`${label(activeUnit.id)} × ${activeUnit.inQueue!.amount}`}
+                finishesAt={activeUnit.inQueue!.finishesAt}
+                color="stone"
+              />
+            )}
           </div>
-        </Card>
+        ) : (
+          <Card className="p-4 anim-fade-up-3">
+            <div className="flex items-center gap-3 text-ink-muted/60">
+              <Clock size={15} />
+              <span className="font-body text-sm">No hay colas activas</span>
+            </div>
+          </Card>
+        )}
       </section>
 
     </div>
+  )
+}
+
+function QueueRow({ icon, label: lbl, finishesAt, color }: {
+  icon: ReactNode; label: string; finishesAt: number; color: 'gold' | 'forest' | 'stone'
+}) {
+  const [remaining, setRemaining] = useState(Math.max(0, finishesAt - Math.floor(Date.now() / 1000)))
+  const total = finishesAt - Math.floor(Date.now() / 1000) + remaining
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      setRemaining(r => Math.max(0, r - 1))
+    }, 1000)
+    return () => clearInterval(id)
+  }, [])
+
+  const colorClass = {
+    gold:   'text-gold',
+    forest: 'text-forest-light',
+    stone:  'text-ink-muted',
+  }[color]
+
+  const pct = total > 0 ? Math.max(0, Math.min(100, ((total - remaining) / total) * 100)) : 100
+
+  return (
+    <Card className="p-3">
+      <div className="flex items-center gap-2.5 mb-2">
+        <span className={colorClass}>{icon}</span>
+        <span className="font-ui text-sm text-ink flex-1 min-w-0 truncate">{lbl}</span>
+        <span className="font-ui text-xs tabular-nums text-ink-muted shrink-0">
+          {remaining > 0 ? formatDuration(remaining) : 'Completado'}
+        </span>
+      </div>
+      <div className="progress-track h-1">
+        <div className={`progress-fill transition-none`} style={{ width: `${pct}%` }} />
+      </div>
+    </Card>
   )
 }
 

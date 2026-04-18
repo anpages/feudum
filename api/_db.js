@@ -164,6 +164,19 @@ export const armyMissions = pgTable('army_missions', {
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 })
 
+// ── Debris fields ─────────────────────────────────────────────────────────────
+
+export const debrisFields = pgTable('debris_fields', {
+  id:        serial('id').primaryKey(),
+  realm:     integer('realm').notNull(),
+  region:    integer('region').notNull(),
+  slot:      integer('slot').notNull(),
+  wood:      real('wood').default(0).notNull(),
+  stone:     real('stone').default(0).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+})
+
 // ── Messages ──────────────────────────────────────────────────────────────────
 
 export const messages = pgTable('messages', {
@@ -179,4 +192,4 @@ export const messages = pgTable('messages', {
 // ── Connection ────────────────────────────────────────────────────────────────
 
 const sql = neon(process.env.DATABASE_URL)
-export const db = drizzle(sql, { schema: { users, kingdoms, research, researchQueue, buildingQueue, unitQueue, armyMissions, messages } })
+export const db = drizzle(sql, { schema: { users, kingdoms, research, researchQueue, buildingQueue, unitQueue, armyMissions, messages, debrisFields } })

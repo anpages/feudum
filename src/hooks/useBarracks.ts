@@ -1,5 +1,8 @@
+import { useRef, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
+import { toast } from '@/lib/toast'
+import { UNIT_LABELS } from '@/lib/labels'
 
 export interface UnitInfo {
   id: string
@@ -23,7 +26,9 @@ export interface BarracksResponse {
 }
 
 export function useBarracks() {
-  return useQuery({
+  const prevRef = useRef<UnitInfo[] | null>(null)
+
+  const result = useQuery({
     queryKey:  ['barracks'],
     queryFn:   () => api.get<BarracksResponse>('/barracks'),
     staleTime: 5_000,
@@ -37,6 +42,22 @@ export function useBarracks() {
       return all.some(u => u.inQueue && u.inQueue.finishesAt > now) ? 3_000 : 10_000
     },
   })
+
+  useEffect(() => {
+    if (!result.data) return
+    const all = [...result.data.units, ...result.data.support, ...result.data.defenses]
+    if (prevRef.current) {
+      for (const u of all) {
+        const prev = prevRef.current.find(p => p.id === u.id)
+        if (prev?.inQueue && !u.inQueue) {
+          toast.success(`${UNIT_LABELS[u.id] ?? u.id} — entrenamiento completado`)
+        }
+      }
+    }
+    prevRef.current = all
+  }, [result.data])
+
+  return result
 }
 
 export function useTrainUnit() {

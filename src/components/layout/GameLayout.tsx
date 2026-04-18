@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react'
 import { Outlet } from 'react-router-dom'
 import { ResourceBar } from './ResourceBar'
 import { NavBar } from './NavBar'
+import { ToastContainer } from '@/components/ui/ToastContainer'
 
 export function GameLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -23,6 +24,8 @@ export function GameLayout() {
           <Outlet />
         </div>
       </main>
+
+      <ToastContainer />
     </div>
   )
 }

@@ -1,5 +1,8 @@
+import { useRef, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
+import { toast } from '@/lib/toast'
+import { RESEARCH_LABELS } from '@/lib/labels'
 
 export interface ResearchInfo {
   id: string
@@ -18,7 +21,9 @@ export interface ResearchResponse {
 }
 
 export function useResearch() {
-  return useQuery({
+  const prevRef = useRef<ResearchInfo[] | null>(null)
+
+  const result = useQuery({
     queryKey: ['research'],
     queryFn:  () => api.get<ResearchResponse>('/research'),
     staleTime: 5_000,
@@ -28,6 +33,22 @@ export function useResearch() {
       return items.some(r => r.inQueue && r.inQueue.finishesAt > now) ? 3_000 : 10_000
     },
   })
+
+  useEffect(() => {
+    const items = result.data?.research
+    if (!items) return
+    if (prevRef.current) {
+      for (const r of items) {
+        const prev = prevRef.current.find(p => p.id === r.id)
+        if (prev?.inQueue && !r.inQueue && r.level > prev.level) {
+          toast.success(`${RESEARCH_LABELS[r.id] ?? r.id} alcanzado nivel ${r.level}`)
+        }
+      }
+    }
+    prevRef.current = items
+  }, [result.data?.research])
+
+  return result
 }
 
 export function useUpgradeResearch() {

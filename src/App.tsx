@@ -8,6 +8,7 @@ import { MapPage } from '@/pages/MapPage'
 import { ArmiesPage } from '@/pages/ArmiesPage'
 import { RankingsPage } from '@/pages/RankingsPage'
 import { MessagesPage } from '@/pages/MessagesPage'
+import { NotFoundPage } from '@/pages/NotFoundPage'
 import { LoginPage } from '@/pages/LoginPage'
 import { NicknamePage } from '@/pages/NicknamePage'
 import { useAuth } from '@/hooks/useAuth'
@@ -38,6 +39,7 @@ export default function App() {
     <Routes>
       <Route path="/login"      element={<LoginPage />} />
       <Route path="/onboarding" element={<NicknamePage />} />
+      <Route path="*"           element={<NotFoundPage />} />
 
       <Route element={<ProtectedRoute />}>
         <Route element={<GameLayout />}>
