@@ -421,15 +421,19 @@ Import from `@/components/ui` (barrel export).
   - Ref: `app/GameMissions/DeployMission.php`
 
 ### Phase 13 — Active NPCs (pending)
-- [ ] **NPC attack missions** — NPCs on the map periodically launch attack missions against player kingdoms (custom Feudum feature, not in OGame ref)
-  - Scheduler triggered lazily on `GET /api/kingdoms/me` (no persistent cron needed on Vercel serverless)
-  - NPC selects a nearby player kingdom as target based on proximity and inactivity window
-  - NPC army generated procedurally: power scales with kingdom building levels + randomness
-  - Mission runs through existing battle engine (full rapid-fire, loot, debris, battle report)
-  - Battle report sent as message to the defending player
-  - NPC has no return trip — army "dissolves" after battle
-  - Configurable via server settings: `NPC_AGGRESSION` (0 = off, 1 = low, 2 = medium, 3 = high), `NPC_ATTACK_INTERVAL_HOURS`
-  - Purpose: enables fully functional solo play and defensive mechanic testing with zero real players
+- [ ] **NPC kingdoms as real DB rows** — NPCs behave exactly like real players (custom Feudum feature, not in OGame ref)
+  - **DB**: add `isNpc: boolean` + `npcLevel: int` to `kingdoms` table; create one system NPC user (`id = -1`) as owner of all NPC kingdoms
+  - **Seeder**: on first migration / admin action, populate the universe with NPC kingdoms (replace Wang hash map generation with real rows); NPC buildings pre-set per `npcLevel` (1=weak, 2=medium, 3=strong)
+  - **Resources**: NPC kingdoms tick exactly like player kingdoms — they accumulate wood/stone/grain over time and can be looted down to zero
+  - **Units**: NPC kingdoms have real unit counts in their kingdom row — units destroyed in battle are permanently deducted
+  - **Spy**: spying an NPC returns real resource and troop data (same endpoint, no special case)
+  - **Pillage / Attack**: loot deducted from NPC's actual stored resources; debris generated from actual destroyed units
+  - **NPC rebuild AI** (lazy scheduler on `GET /api/kingdoms/me`): if NPC has enough resources, spend them to train units up to a target army size per `npcLevel`
+  - **NPC attack AI** (lazy scheduler on `GET /api/kingdoms/me`): if NPC army is above attack threshold and cooldown elapsed, launch attack mission against nearest player kingdom using real units from their DB row; units deducted on departure, return trip included
+  - **NPC return**: if NPC wins, they return with loot to their kingdom (resources added back); if they lose, units are gone permanently
+  - **Battle report**: both attacker (NPC) and defender (player) get full report — player sees real NPC fleet composition
+  - **Configurable**: `NPC_AGGRESSION` (0=off, 1=low, 2=medium, 3=high), `NPC_ATTACK_INTERVAL_HOURS`, `NPC_REBUILD_INTERVAL_HOURS` in `api/lib/config.js` and admin panel
+  - **Map**: MapPage reads NPC kingdoms from DB instead of generating via Wang hash; existing slot layout preserved
 
 ### Phase 14 — Expeditions (pending)
 - [ ] **Expedition** (`ExpeditionMission` in OGame ref) — exploration with random encounters
