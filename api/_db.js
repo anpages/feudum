@@ -61,6 +61,16 @@ export const research = pgTable('research', {
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 })
 
+export const unitQueue = pgTable('unit_queue', {
+  id:         serial('id').primaryKey(),
+  kingdomId:  integer('kingdom_id').notNull().references(() => kingdoms.id),
+  unit:       varchar('unit', { length: 50 }).notNull(),
+  amount:     integer('amount').notNull(),
+  startedAt:  integer('started_at').notNull(),
+  finishesAt: integer('finishes_at').notNull(),
+  createdAt:  timestamp('created_at').defaultNow().notNull(),
+})
+
 export const researchQueue = pgTable('research_queue', {
   id:         serial('id').primaryKey(),
   userId:     integer('user_id').notNull().references(() => users.id),
@@ -85,4 +95,4 @@ export const buildingQueue = pgTable('building_queue', {
 // ── Connection ────────────────────────────────────────────────────────────────
 
 const sql = neon(process.env.DATABASE_URL)
-export const db = drizzle(sql, { schema: { users, kingdoms, research, researchQueue, buildingQueue } })
+export const db = drizzle(sql, { schema: { users, kingdoms, research, researchQueue, buildingQueue, unitQueue } })
