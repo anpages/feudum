@@ -15,13 +15,26 @@ import {
 } from '../lib/battle.js'
 import { getSettings } from '../lib/settings.js'
 
-// ── Personality system ────────────────────────────────────────────────────────
-// Deterministic per kingdom position — never changes, gives consistent identity
+// ── Identity system ───────────────────────────────────────────────────────────
+// Both personality and class are deterministic from position — never change.
+// Personality: build order + attack behavior
+// Class: numerical stat bonuses (mirrors player character class system)
 
 function npcPersonality(kingdom) {
   const h = ((kingdom.realm * 374761 + kingdom.region * 6271 + kingdom.slot * 1013) >>> 0) % 3
   return ['economy', 'military', 'balanced'][h]
 }
+
+function npcClass(kingdom) {
+  // Different hash seed so class is independent from personality (9 combinations)
+  const h = ((kingdom.realm * 571349 + kingdom.region * 31337 + kingdom.slot * 9901) >>> 0) % 3
+  return ['collector', 'general', 'discoverer'][h]
+}
+
+// Class stat modifiers applied in growth + combat:
+// collector:  +25% resource production (accumulates faster, harder to loot dry)
+// general:    −10% unit cost, +1 extra unit type trained per tick, attacks more aggressively
+// discoverer: +1 extra building per tick (researches / builds faster), wider attack search radius
 
 // ── Build priorities per personality ─────────────────────────────────────────
 // economy:  focus production first, barracks last
@@ -119,17 +132,17 @@ function totalArmy(k) {
 async function growNpc(kingdom, cfg) {
   const npcLevel    = kingdom.npcLevel || 1
   const personality = npcPersonality(kingdom)
+  const cls         = npcClass(kingdom)
   const targets     = BUILDING_TARGETS[personality][npcLevel]
   const priority    = BUILD_PRIORITY[personality]
 
-  // Higher-level NPCs act faster: L1=1 build, L2=2 builds, L3=3 builds per tick
-  const maxBuilds = npcLevel
+  // Builds per tick: base = npcLevel; discoverer gets +1 extra
+  const maxBuilds = npcLevel + (cls === 'discoverer' ? 1 : 0)
 
   let { wood, stone, grain } = kingdom
   let patch = {}
   let buildsThisTick = 0
 
-  // Try to build up to maxBuilds buildings this tick
   for (const b of priority) {
     if (buildsThisTick >= maxBuilds) break
 
@@ -153,10 +166,12 @@ async function growNpc(kingdom, cfg) {
     }
   }
 
-  // Try to train units (only if barracks built) — up to 2 unit types for L3
-  const unitTargets = UNIT_TARGETS[personality][npcLevel] ?? {}
-  const barracksLv  = (patch.barracks ?? kingdom.barracks) ?? 0
-  const maxUnitTypes = npcLevel >= 3 ? 2 : 1
+  // Unit training: general trains 2 extra types, L3 gets 2, others 1
+  const unitTargets  = UNIT_TARGETS[personality][npcLevel] ?? {}
+  const barracksLv   = (patch.barracks ?? kingdom.barracks) ?? 0
+  const maxUnitTypes = (npcLevel >= 3 ? 2 : 1) + (cls === 'general' ? 1 : 0)
+  // general reduces effective unit cost by 10%
+  const costMult = cls === 'general' ? 0.9 : 1.0
   let unitTypesThisTick = 0
 
   for (const [unitId, targetCount] of Object.entries(unitTargets)) {
@@ -169,16 +184,18 @@ async function growNpc(kingdom, cfg) {
 
     const cost = UNIT_COSTS[unitId]
     if (!cost) continue
-    const need   = targetCount - current
-    const canAff = Math.min(
+    const need    = targetCount - current
+    const effWood  = Math.ceil(cost.wood  * costMult)
+    const effStone = Math.ceil(cost.stone * costMult)
+    const canAff  = Math.min(
       need,
-      Math.floor(wood / cost.wood),
-      cost.stone > 0 ? Math.floor(stone / cost.stone) : need,
+      Math.floor(wood / effWood),
+      effStone > 0 ? Math.floor(stone / effStone) : need,
     )
     if (canAff <= 0) continue
 
-    wood  -= cost.wood  * canAff
-    stone -= (cost.stone ?? 0) * canAff
+    wood  -= effWood  * canAff
+    stone -= effStone * canAff
     patch[unitId] = current + canAff
     unitTypesThisTick++
   }
@@ -200,50 +217,59 @@ async function attackAI(npcKingdom, playerKingdoms, now, cfg) {
 
   const npcLevel    = npcKingdom.npcLevel || 1
   const personality = npcPersonality(npcKingdom)
+  const cls         = npcClass(npcKingdom)
   const armySize    = totalArmy(npcKingdom)
-  const threshold   = ATTACK_THRESHOLD[personality][npcLevel]
+
+  // general gets -5 threshold (attacks earlier), collector gets +5 (attacks later)
+  const baseThreshold = ATTACK_THRESHOLD[personality][npcLevel]
+  const threshold = baseThreshold + (cls === 'general' ? -5 : cls === 'collector' ? 5 : 0)
 
   if (armySize < threshold) return false
 
   // Skip if NPC already has an active attack mission
-  const [existingMission] = await db.select({ id: armyMissions.id })
+  // general can have 2 simultaneous missions (more aggressive)
+  const activeMissions = await db.select({ id: armyMissions.id })
     .from(armyMissions)
     .where(and(
       eq(armyMissions.userId,      npcKingdom.userId),
       eq(armyMissions.missionType, 'attack'),
       eq(armyMissions.state,       'active'),
-    )).limit(1)
-  if (existingMission) return false
+    ))
+  const maxMissions = cls === 'general' ? 2 : 1
+  if (activeMissions.length >= maxMissions) return false
 
-  // Target selection: personality affects strategy
-  // economy = targets richest nearby; military = targets weakest (easy kill); balanced = richest
+  // Search radius: discoverer can range further (+1 region)
+  const baseRadius = 1
+  const radius = baseRadius + (cls === 'discoverer' ? 1 : 0)
+
   const sameRegion = playerKingdoms.filter(
     p => p.realm === npcKingdom.realm && p.region === npcKingdom.region
   )
   const candidates = sameRegion.length > 0
     ? sameRegion
     : playerKingdoms.filter(
-        p => p.realm === npcKingdom.realm && Math.abs(p.region - npcKingdom.region) <= 1
+        p => p.realm === npcKingdom.realm && Math.abs(p.region - npcKingdom.region) <= radius
       )
 
   if (candidates.length === 0) return false
 
+  // Target selection per personality + class:
+  // military → weakest (easy win); economy+collector → richest (max loot); others → richest
   let target
   if (personality === 'military') {
-    // Prefer weaker targets — smaller total resources (less defended, easier win)
     target = candidates.reduce((best, p) =>
       (p.wood + p.stone + p.grain) < (best.wood + best.stone + best.grain) ? p : best
     )
   } else {
-    // economy + balanced: richest target for maximum loot
     target = candidates.reduce((best, p) =>
       (p.wood + p.stone + p.grain) > (best.wood + best.stone + best.grain) ? p : best
     )
   }
 
-  // Compose force — military sends more (70-90%), economy sends less (50-70%)
-  const minRatio = personality === 'military' ? 0.70 : personality === 'economy' ? 0.50 : 0.60
-  const maxRatio = personality === 'military' ? 0.90 : personality === 'economy' ? 0.70 : 0.80
+  // Compose force:
+  // general sends more (70-90%), economy sends less (50-70%), discoverer is moderate (55-75%)
+  const minRatio = cls === 'general' ? 0.70 : cls === 'economy' || personality === 'economy' ? 0.50 : 0.55
+  const maxRatio = cls === 'general' ? 0.90 : cls === 'economy' || personality === 'economy' ? 0.70 : 0.75
   const sendRatio = minRatio + Math.random() * (maxRatio - minRatio)
 
   const force = {}
@@ -361,23 +387,31 @@ export default async function handler(req, res) {
   let ticked = 0, grew = 0, attacked = 0
 
   for (const kingdom of npcKingdoms) {
-    // Resource tick
+    // Resource tick — collector class gets +25% on top of what was produced this tick
     const tickResult = applyResourceTick(kingdom, cfg)
+    const cls = npcClass(kingdom)
+    const extraWood  = cls === 'collector' ? Math.floor((tickResult.wood  - kingdom.wood)  * 0.25) : 0
+    const extraStone = cls === 'collector' ? Math.floor((tickResult.stone - kingdom.stone) * 0.25) : 0
+    const extraGrain = cls === 'collector' ? Math.floor((tickResult.grain - kingdom.grain) * 0.25) : 0
+    const finalWood  = Math.min(tickResult.wood  + extraWood,  kingdom.woodCapacity)
+    const finalStone = Math.min(tickResult.stone + extraStone, kingdom.stoneCapacity)
+    const finalGrain = Math.min(tickResult.grain + extraGrain, kingdom.grainCapacity)
+
     if (
-      tickResult.wood !== kingdom.wood ||
-      tickResult.stone !== kingdom.stone ||
-      tickResult.grain !== kingdom.grain
+      finalWood  !== kingdom.wood ||
+      finalStone !== kingdom.stone ||
+      finalGrain !== kingdom.grain
     ) {
       await db.update(kingdoms).set({
-        wood:               tickResult.wood,
-        stone:              tickResult.stone,
-        grain:              tickResult.grain,
+        wood:               finalWood,
+        stone:              finalStone,
+        grain:              finalGrain,
         lastResourceUpdate: now,
         updatedAt:          new Date(),
       }).where(eq(kingdoms.id, kingdom.id))
-      kingdom.wood               = tickResult.wood
-      kingdom.stone              = tickResult.stone
-      kingdom.grain              = tickResult.grain
+      kingdom.wood               = finalWood
+      kingdom.stone              = finalStone
+      kingdom.grain              = finalGrain
       kingdom.lastResourceUpdate = now
       ticked++
     }
@@ -393,9 +427,13 @@ export default async function handler(req, res) {
     }
   }
 
-  // ── Include personality breakdown in response for debugging ───────────────
+  // ── Debug breakdown ────────────────────────────────────────────────────────
   const byPersonality = { economy: 0, military: 0, balanced: 0 }
-  for (const k of npcKingdoms) byPersonality[npcPersonality(k)]++
+  const byClass = { collector: 0, general: 0, discoverer: 0 }
+  for (const k of npcKingdoms) {
+    byPersonality[npcPersonality(k)]++
+    byClass[npcClass(k)]++
+  }
 
-  return res.json({ ok: true, npcCount: npcKingdoms.length, ticked, grew, attacked, byPersonality })
+  return res.json({ ok: true, npcCount: npcKingdoms.length, ticked, grew, attacked, byPersonality, byClass })
 }

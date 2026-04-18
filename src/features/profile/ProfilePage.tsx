@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
-import { User, Mail, Calendar, Save, Loader2, Pencil, Trash2, Zap } from 'lucide-react'
+import { User, Mail, Calendar, Save, Loader2, Pencil, Trash2, Zap, LogOut } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import { GiCastle } from 'react-icons/gi'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
@@ -49,9 +50,10 @@ const CLASSES = [
 const CHANGE_COST = 250
 
 export function ProfilePage() {
+  const navigate = useNavigate()
   const { data: profile, isLoading } = useProfile()
   const { data: kingdomsData } = useKingdoms()
-  const { user } = useAuth()
+  const { user, logout } = useAuth()
   const update = useUpdateProfile()
   const setClass = useSetClass()
   const rename = useRenameKingdom()
@@ -233,6 +235,26 @@ export function ProfilePage() {
               {update.isPending ? <Loader2 size={12} className="animate-spin" /> : saved ? '✓' : <Save size={12} />}
               {update.isPending ? 'Guardando…' : saved ? 'Guardado' : 'Guardar cambios'}
             </Button>
+          </Card>
+
+          {/* Logout */}
+          <Card className="p-5 anim-fade-up-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-ui text-sm font-semibold text-ink">Cerrar sesión</p>
+                <p className="font-body text-xs text-ink-muted/70 mt-0.5">{profile?.email}</p>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={async () => { await logout.mutateAsync(); navigate('/login', { replace: true }) }}
+                disabled={logout.isPending}
+                className="text-crimson hover:text-crimson hover:bg-crimson/5 shrink-0"
+              >
+                {logout.isPending ? <Loader2 size={12} className="animate-spin" /> : <LogOut size={12} />}
+                Salir
+              </Button>
+            </div>
           </Card>
         </div>
 
