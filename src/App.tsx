@@ -24,6 +24,15 @@ function ProtectedRoute() {
   return <Outlet />
 }
 
+function OnboardingRoute() {
+  const { user, isAuthenticated, isLoading } = useAuth()
+
+  if (isLoading) return null
+  if (!isAuthenticated) return <Navigate to="/login" replace />
+  if (user?.username !== null && user?.username !== undefined) return <Navigate to="/overview" replace />
+  return <NicknamePage />
+}
+
 function RootRedirect() {
   const [params] = useSearchParams()
   const next  = params.get('next')
@@ -39,8 +48,7 @@ export default function App() {
     <PWAInstallPrompt />
     <Routes>
       <Route path="/login"      element={<LoginPage />} />
-      <Route path="/onboarding" element={<NicknamePage />} />
-      <Route path="*"           element={<NotFoundPage />} />
+      <Route path="/onboarding" element={<OnboardingRoute />} />
 
       <Route element={<ProtectedRoute />}>
         <Route element={<GameLayout />}>
@@ -56,6 +64,8 @@ export default function App() {
           <Route path="/profile"  element={<ProfilePage />}  />
         </Route>
       </Route>
+
+      <Route path="*" element={<NotFoundPage />} />
     </Routes>
     </>
   )
