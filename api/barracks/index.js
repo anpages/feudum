@@ -1,7 +1,7 @@
 import { eq } from 'drizzle-orm'
 import { db, kingdoms, research as researchTable, unitQueue } from '../_db.js'
 import { getSessionUserId } from '../lib/handler.js'
-import { UNITS, SUPPORT_UNITS, DEFENSES, unitBuildTime, unitRequirementsMet } from '../lib/units.js'
+import { UNITS, SUPPORT_UNITS, DEFENSES, MISSILES, unitBuildTime, unitRequirementsMet } from '../lib/units.js'
 import { getSettings } from '../lib/settings.js'
 
 export default async function handler(req, res) {
@@ -72,8 +72,9 @@ export default async function handler(req, res) {
   }
 
   return res.json({
-    units:   UNITS.map(mapUnit),
-    support: SUPPORT_UNITS.map(mapUnit),
+    units:    UNITS.map(mapUnit),
+    support:  SUPPORT_UNITS.map(mapUnit),
     defenses: DEFENSES.map(mapUnit),
+    missiles: MISSILES.map(mapUnit),
   })
 }

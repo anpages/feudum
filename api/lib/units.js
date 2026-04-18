@@ -249,8 +249,22 @@ export const DEFENSES = [
   },
 ]
 
+// ── Missiles ──────────────────────────────────────────────────────────────────
+// Launchable one-way projectiles stored in armoury. Not troops — consumed on launch.
+export const MISSILES = [
+  {
+    id: 'ballistic',   // interplanetary_missile
+    woodBase: 8000, stoneBase: 2000, grainBase: 0,
+    hull: 4000,   shield: 0, attack: 0,  // hull used only for build time
+    requires: [
+      { type: 'building',  id: 'armoury',    level: 2 },
+      { type: 'research',  id: 'cartography', level: 1 },
+    ],
+  },
+]
+
 // All units catalog (for lookup)
-export const ALL_UNITS = [...UNITS, ...SUPPORT_UNITS, ...DEFENSES]
+export const ALL_UNITS = [...UNITS, ...SUPPORT_UNITS, ...DEFENSES, ...MISSILES]
 
 // ── Build time per unit ───────────────────────────────────────────────────────
 // From PlanetService.getUnitConstructionTime():

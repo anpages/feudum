@@ -9,6 +9,7 @@ export type MissionType =
   | 'pillage'
   | 'deploy'
   | 'expedition'
+  | 'missile'
 
 export type MissionState = 'active' | 'returning' | 'completed' | 'merchant'
 
@@ -35,6 +36,12 @@ export interface MissionResult {
   multiplier?: number
   fraction?: number
   destroyed?: boolean
+  // Missile-specific
+  targetName?: string
+  sentMissiles?: number
+  intercepted?: number
+  remaining?: number
+  damageDealt?: Record<string, number>
   // Merchant-specific
   merchantOffer?: {
     give: Partial<Resources>

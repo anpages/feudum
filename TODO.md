@@ -61,7 +61,7 @@ _(ninguno conocido actualmente)_
 
 17. [x] **Backend** — misión de expedición: destino slot especial (pos. 16); 9 outcomes ponderados (recursos, unidades, vacío, agujero negro, retraso, aceleración, merodeadores, bestias oscuras, éter)
 18. [x] **NPCFleetGenerator** — generar flota NPC aleatoria para encuentros de merodeadores/bestias; resolver con battle engine
-19. [ ] **Merchant mechanic** — propuesta de intercambio de recursos; jugador acepta/rechaza (pendiente, requiere async multi-step)
+19. [x] **Merchant mechanic** — propuesta de intercambio de recursos; jugador acepta/rechaza (pendiente, requiere async multi-step)
 20. [x] **DB** — campo `ether` en tabla `users`; tabla `ether_transactions`
 21. [x] **Frontend** — entrada "Tierras Ignotas" en MapPage; tipo expedición en ArmiesPage; resultado en MissionRow
 
@@ -69,9 +69,9 @@ _(ninguno conocido actualmente)_
 
 ## Fase 15 — Misiles
 
-22. [ ] **DB + units.js** — nueva unidad `ballistic` (misil, one-way, no retorna); almacenada en armoury
-23. [ ] **Backend** — `POST /api/armies/send` con `missionType: missile`; sin retorno; solo daña defensas; rango = nivel de cartografía × 5 − 1 regiones; trebuchet como interceptor
-24. [ ] **Frontend** — tab o sección "Misiles" en BarracksPage; botón en MapPage; resultado en MissionRow
+22. [x] **DB + units.js** — nueva unidad `ballistic` (misil, one-way, no retorna); almacenada en armoury
+23. [x] **Backend** — `POST /api/armies/send` con `missionType: missile`; sin retorno; solo daña defensas; rango = nivel de cartografía × 5 − 1 regiones; trebuchet como interceptor
+24. [x] **Frontend** — tabs Defensas + Misiles en BarracksPage; botón Bombardear en MapPage; resultado en MissionRow
 
 ---
 

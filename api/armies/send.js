@@ -11,7 +11,7 @@ const UNIT_KEYS = [
   'merchant','caravan','colonist','scavenger','scout',
 ]
 
-const MISSION_TYPES = ['attack', 'transport', 'spy', 'colonize', 'scavenge', 'pillage', 'deploy', 'expedition']
+const MISSION_TYPES = ['attack', 'transport', 'spy', 'colonize', 'scavenge', 'pillage', 'deploy', 'expedition', 'missile']
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end()
@@ -45,6 +45,8 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Las expediciones deben dirigirse al slot 16 (Tierras Ignotas)' })
   }
 
+  const isMissile = missionType === 'missile'
+
   // ── Load player kingdom + research + class ───────────────────────────────
   const [[kingdom], [researchRow], [userRow], cfg] = await Promise.all([
     db.select().from(kingdoms).where(eq(kingdoms.userId, userId)).limit(1),
@@ -57,6 +59,61 @@ export default async function handler(req, res) {
   // Can't attack yourself
   if (kingdom.realm === tRealm && kingdom.region === tRegion && kingdom.slot === tSlot) {
     return res.status(400).json({ error: 'No puedes enviar ejércitos a tu propio reino' })
+  }
+
+  // ── Missile mission — separate validation path ────────────────────────────
+  if (isMissile) {
+    const cartography = researchRow?.cartography ?? 0
+    if (cartography < 1) {
+      return res.status(400).json({ error: 'Necesitas al menos Cartografía nivel 1 para lanzar misiles' })
+    }
+    if (tRealm !== kingdom.realm) {
+      return res.status(400).json({ error: 'Los misiles no pueden cruzar reinos' })
+    }
+    const range = cartography * 5 - 1
+    if (Math.abs(tRegion - kingdom.region) > range) {
+      return res.status(400).json({ error: `Los misiles no alcanzan ese destino (rango: ${range} regiones)` })
+    }
+
+    const ballisticCount = parseInt(rawUnits?.ballistic ?? 0, 10)
+    if (ballisticCount <= 0) {
+      return res.status(400).json({ error: 'Debes enviar al menos un misil' })
+    }
+    if (ballisticCount > (kingdom.ballistic ?? 0)) {
+      return res.status(400).json({ error: `No tienes suficientes misiles (tienes ${kingdom.ballistic ?? 0})` })
+    }
+
+    const now        = Math.floor(Date.now() / 1000)
+    const travelSecs = 60 + Math.floor(Math.random() * 60)  // 60–120 s near-instant
+    const arrivalTime = now + travelSecs
+
+    const { wood, stone, grain } = applyResourceTick(kingdom, cfg)
+
+    await db.update(kingdoms).set({
+      ballistic: (kingdom.ballistic ?? 0) - ballisticCount,
+      wood, stone, grain,
+      lastResourceUpdate: now,
+      updatedAt: new Date(),
+    }).where(eq(kingdoms.id, kingdom.id))
+
+    const [inserted] = await db.insert(armyMissions).values({
+      userId,
+      missionType: 'missile',
+      state: 'active',
+      startRealm:  kingdom.realm,
+      startRegion: kingdom.region,
+      startSlot:   kingdom.slot,
+      targetRealm:  tRealm,
+      targetRegion: tRegion,
+      targetSlot:   tSlot,
+      departureTime: now,
+      arrivalTime,
+      returnTime: null,
+      woodLoad: 0, stoneLoad: 0, grainLoad: 0,
+      ballistic: ballisticCount,
+    }).returning({ id: armyMissions.id })
+
+    return res.json({ ok: true, missionId: inserted.id, arrivalTime, travelSeconds: travelSecs })
   }
 
   // ── Parse & validate units ────────────────────────────────────────────────

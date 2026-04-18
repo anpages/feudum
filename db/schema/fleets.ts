@@ -42,6 +42,7 @@ export const armyMissions = pgTable('army_missions', {
   colonist: integer('colonist').default(0).notNull(),
   scavenger: integer('scavenger').default(0).notNull(),
   scout: integer('scout').default(0).notNull(),
+  ballistic: integer('ballistic').default(0).notNull(),
 
   result: text('result'),
 

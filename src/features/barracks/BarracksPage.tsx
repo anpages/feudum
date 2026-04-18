@@ -15,6 +15,17 @@ import {
   GiCampingTent,
   GiVulture,
   GiSpyglass,
+  GiBowArrow,
+  GiCrossbow,
+  GiBallista,
+  GiCatapult,
+  GiWizardStaff,
+  GiDragonBreath,
+  GiWoodBeam,
+  GiBrickWall,
+  GiMoai,
+  GiWatchtower,
+  GiMissileLauncher,
 } from 'react-icons/gi'
 import { useQueryClient } from '@tanstack/react-query'
 import { Card } from '@/components/ui/Card'
@@ -41,11 +52,25 @@ const UNIT_META: Record<string, { name: string; Icon: IconType; description: str
   colonist:    { Icon: GiCampingTent,   name: 'Colonista',           description: 'Funda nuevos reinos en territorios vacíos.' },
   scavenger:   { Icon: GiVulture,       name: 'Carroñero',           description: 'Recoge los escombros de batallas.' },
   scout:       { Icon: GiSpyglass,      name: 'Explorador',          description: 'Espía reinos enemigos sin ser detectado.' },
+  // Defenses
+  archer:      { Icon: GiBowArrow,      name: 'Arquero',             description: 'Defensa ligera. Eficaz contra infantería.' },
+  crossbowman: { Icon: GiCrossbow,      name: 'Ballestero',          description: 'Defensa reforzada con alcance mayor.' },
+  ballista:    { Icon: GiBallista,      name: 'Ballista',            description: 'Artillería pesada. Destruye unidades acorazadas.' },
+  trebuchet:   { Icon: GiCatapult,      name: 'Trebuchet',           description: 'Cañón de asedio. Intercepta misiles balísticos (1:1).' },
+  mageTower:   { Icon: GiWizardStaff,   name: 'Torre Maga',          description: 'Defensa arcana con escudo masivo.' },
+  dragonCannon:{ Icon: GiDragonBreath,  name: 'Cañón Dragón',        description: 'Turreta de plasma dracónico. Devastadora.' },
+  palisade:    { Icon: GiWoodBeam,      name: 'Palizada',            description: 'Escudo pequeño. Protege toda la defensa.' },
+  castleWall:  { Icon: GiBrickWall,     name: 'Muralla',             description: 'Escudo máximo. Protección total del reino.' },
+  moat:        { Icon: GiMoai,          name: 'Foso',                description: 'Barrera defensiva. Ralentiza a los atacantes.' },
+  catapult:    { Icon: GiCatapult,      name: 'Catapulta',           description: 'Arma de asedio. Destruye posiciones enemigas.' },
+  beacon:      { Icon: GiWatchtower,    name: 'Faro',                description: 'Torre de vigilancia. Detecta ejércitos enemigos.' },
+  // Missiles
+  ballistic:   { Icon: GiMissileLauncher, name: 'Misil Balístico',   description: 'Misil de un solo uso. Daña defensas enemigas a distancia. Los trebuchets lo interceptan.' },
 }
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
-type Tab = 'units' | 'support'
+type Tab = 'units' | 'support' | 'defenses' | 'missiles'
 
 const BARRACKS_GUIDE_KEY = 'barracks_guide_seen'
 
@@ -73,8 +98,10 @@ export function BarracksPage() {
   if (isLoading) return <BarracksSkeleton />
 
   const TAB_ITEMS: Record<Tab, UnitInfo[]> = {
-    units:   data?.units   ?? [],
-    support: data?.support ?? [],
+    units:    data?.units    ?? [],
+    support:  data?.support  ?? [],
+    defenses: data?.defenses ?? [],
+    missiles: data?.missiles ?? [],
   }
 
   return (
@@ -107,7 +134,12 @@ export function BarracksPage() {
       {/* Tabs */}
       <div className="sticky top-[100px] z-20 -mx-4 px-4 sm:-mx-6 sm:px-6 py-2 bg-parchment/95 backdrop-blur-sm border-b border-gold/10 anim-fade-up-1">
         <div className="flex gap-1 p-1 bg-parchment-warm rounded-md w-fit">
-          {(['units', 'support'] as Tab[]).map(t => (
+          {([
+            ['units',    'Combate'],
+            ['support',  'Apoyo'],
+            ['defenses', 'Defensas'],
+            ['missiles', 'Misiles'],
+          ] as [Tab, string][]).map(([t, label]) => (
             <button
               key={t}
               onClick={() => setTab(t)}
@@ -117,7 +149,7 @@ export function BarracksPage() {
                   : 'text-ink-muted hover:text-ink'
               }`}
             >
-              {t === 'units' ? 'Combate' : 'Apoyo'}
+              {label}
             </button>
           ))}
         </div>

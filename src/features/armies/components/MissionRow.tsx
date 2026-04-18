@@ -17,6 +17,7 @@ import {
   Clock,
   Wind,
   Star,
+  Rocket,
 } from 'lucide-react'
 import { type IconType } from 'react-icons'
 import {
@@ -71,6 +72,7 @@ const MISSION_META: Record<MissionType, { label: string; Icon: typeof Swords; co
   colonize:   { label: 'Colonización', Icon: Tent,     color: 'text-forest' },
   deploy:     { label: 'Despliegue',   Icon: Flag,     color: 'text-gold' },
   expedition: { label: 'Expedición',   Icon: Compass,  color: 'text-gold' },
+  missile:    { label: 'Misil',        Icon: Rocket,   color: 'text-crimson' },
 }
 
 // ── Countdown hook ────────────────────────────────────────────────────────────
@@ -127,7 +129,8 @@ export function MissionRow({ mission, onEnd }: Props) {
       result.type === 'scavenge' ||
       result.type === 'pillage' ||
       result.type === 'deploy' ||
-      result.type === 'expedition')
+      result.type === 'expedition' ||
+      result.type === 'missile')
 
   // Merchant offer short-circuit render
   if (isMerchant && mission.result?.merchantOffer) {
@@ -177,6 +180,14 @@ export function MissionRow({ mission, onEnd }: Props) {
       {unitList.length > 0 && (
         <div className="flex items-center gap-2 flex-wrap">
           {unitList.map(([id, n]) => {
+            if (id === 'ballistic') {
+              return (
+                <div key={id} className="flex items-center gap-1 text-xs text-ink-muted">
+                  <Rocket size={13} className="text-crimson" />
+                  <span className="font-ui tabular-nums">{n.toLocaleString()}</span>
+                </div>
+              )
+            }
             const m = ALL_UNIT_META.find(u => u.id === id)
             return m ? (
               <div key={id} className="flex items-center gap-1 text-xs text-ink-muted">
@@ -348,11 +359,40 @@ export function MissionRow({ mission, onEnd }: Props) {
               )
             })()}
           {result?.type === 'expedition' && <ExpeditionResult result={result} />}
+          {result?.type === 'missile' && (
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <Rocket size={11} className="text-crimson shrink-0" />
+                <span className="font-ui text-xs font-semibold text-crimson">Bombardeo</span>
+                {result.intercepted != null && result.intercepted > 0 && (
+                  <span className="font-body text-xs text-ink-muted">
+                    · {result.intercepted} interceptados
+                  </span>
+                )}
+                {(result.remaining ?? 0) > 0 && (
+                  <span className="font-body text-xs text-crimson">
+                    · {result.remaining} impactos
+                  </span>
+                )}
+              </div>
+              {result.damageDealt && Object.keys(result.damageDealt).length > 0 && (
+                <div className="font-body text-xs text-ink-muted pl-4">
+                  Defensas destruidas:{' '}
+                  {Object.entries(result.damageDealt).map(([k, v]) => `${v} ${k}`).join(', ')}
+                </div>
+              )}
+              {(result.remaining ?? 0) === 0 && (
+                <span className="font-body text-xs text-forest pl-4">
+                  Todos los misiles interceptados
+                </span>
+              )}
+            </div>
+          )}
         </div>
       )}
 
       {/* Recall */}
-      {!isReturning && (
+      {!isReturning && mission.missionType !== 'missile' && (
         <button
           onClick={() => recall.mutate(mission.id)}
           disabled={recall.isPending}

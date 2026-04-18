@@ -1,0 +1,1 @@
+ALTER TABLE "kingdoms" ADD COLUMN IF NOT EXISTS "ballistic" integer NOT NULL DEFAULT 0;

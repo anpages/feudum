@@ -20,6 +20,7 @@ export function useBarracks() {
         ...(query.state.data?.units ?? []),
         ...(query.state.data?.support ?? []),
         ...(query.state.data?.defenses ?? []),
+        ...(query.state.data?.missiles ?? []),
       ]
       return all.some(u => u.inQueue && u.inQueue.finishesAt > now) ? 3_000 : 10_000
     },
@@ -27,7 +28,7 @@ export function useBarracks() {
 
   useEffect(() => {
     if (!result.data) return
-    const all = [...result.data.units, ...result.data.support, ...result.data.defenses]
+    const all = [...result.data.units, ...result.data.support, ...result.data.defenses, ...(result.data.missiles ?? [])]
     if (prevRef.current) {
       for (const u of all) {
         const prev = prevRef.current.find(p => p.id === u.id)
@@ -66,6 +67,7 @@ export function useTrainUnit() {
           units: findAndUpdate(prev.units),
           support: findAndUpdate(prev.support),
           defenses: findAndUpdate(prev.defenses),
+          missiles: findAndUpdate(prev.missiles ?? []),
         })
       }
 

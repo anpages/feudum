@@ -15,6 +15,7 @@ import {
   Flag,
   Plus,
   Compass,
+  Rocket,
 } from 'lucide-react'
 import { type IconType } from 'react-icons'
 import {
@@ -71,6 +72,7 @@ const MISSION_META: Record<MissionType, { label: string; Icon: typeof Swords; co
   colonize:  { label: 'Colonización', Icon: Tent,     color: 'text-forest',    desc: 'Envía Colonistas a fundar una nueva colonia.' },
   deploy:    { label: 'Despliegue',   Icon: Flag,     color: 'text-gold',      desc: 'Mover tropas a una colonia propia. Sin retorno.' },
   expedition:{ label: 'Expedición',   Icon: Compass,  color: 'text-gold',      desc: 'Explora las Tierras Ignotas. Destino fijo: slot 16.' },
+  missile:   { label: 'Misil',        Icon: Rocket,   color: 'text-crimson',   desc: 'Bombardeo a distancia. Solo daña defensas. Los trebuchets interceptan 1 misil cada uno.' },
 }
 
 // ── Page ──────────────────────────────────────────────────────────────────────
@@ -115,6 +117,7 @@ export function ArmiesPage() {
     setUnits(prev => ({ ...prev, [id]: n }))
   }
 
+  const isMissile  = missionType === 'missile'
   const totalUnits = Object.values(units).reduce((s, n) => s + n, 0)
   const canSend    = totalUnits > 0 && !send.isPending
 
@@ -257,38 +260,67 @@ export function ArmiesPage() {
 
           <div className="divider">◆</div>
 
-          {/* Units */}
+          {/* Units / Missiles */}
           <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <p className="font-ui text-xs text-ink-muted uppercase tracking-wider">Unidades</p>
-              {totalUnits > 0 && <Badge variant="gold">{totalUnits.toLocaleString()} seleccionadas</Badge>}
-            </div>
-            {!hasUnits ? (
-              <p className="font-body text-xs text-ink-muted/50 italic py-3 text-center">
-                No tienes unidades disponibles. Entrena en el Cuartel.
-              </p>
+            {isMissile ? (
+              <>
+                <p className="font-ui text-xs text-ink-muted uppercase tracking-wider">Misiles a lanzar</p>
+                {((kingdom as any)?.ballistic ?? 0) === 0 ? (
+                  <p className="font-body text-xs text-ink-muted/50 italic py-3 text-center">
+                    No tienes misiles balísticos. Fabrípalos en el Cuartel → Misiles.
+                  </p>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <Rocket size={14} className="text-crimson shrink-0" />
+                    <span className="font-ui text-xs text-ink flex-1">Misil Balístico</span>
+                    <span className="font-ui text-xs text-ink-muted tabular-nums shrink-0">
+                      {((kingdom as any)?.ballistic ?? 0).toLocaleString()} disponibles
+                    </span>
+                    <input
+                      type="number"
+                      min={0}
+                      max={(kingdom as any)?.ballistic ?? 0}
+                      value={units['ballistic'] ?? 0}
+                      onChange={e => setUnit('ballistic', e.target.value)}
+                      className="game-input w-16 py-1 text-sm text-center tabular-nums shrink-0"
+                    />
+                  </div>
+                )}
+              </>
             ) : (
-              <div className="space-y-1.5">
-                {ALL_UNIT_META.map(u => {
-                  const available = (kingdom as any)?.[u.id] ?? 0
-                  if (available === 0) return null
-                  return (
-                    <div key={u.id} className="flex items-center gap-2">
-                      <u.Icon size={14} className="text-gold-dim shrink-0" />
-                      <span className="font-ui text-xs text-ink flex-1 min-w-0 truncate">{u.name}</span>
-                      <span className="font-ui text-xs text-ink-muted tabular-nums shrink-0">{available.toLocaleString()}</span>
-                      <input
-                        type="number"
-                        min={0}
-                        max={available}
-                        value={units[u.id] ?? 0}
-                        onChange={e => setUnit(u.id, e.target.value)}
-                        className="game-input w-16 py-1 text-sm text-center tabular-nums shrink-0"
-                      />
-                    </div>
-                  )
-                })}
-              </div>
+              <>
+                <div className="flex items-center justify-between">
+                  <p className="font-ui text-xs text-ink-muted uppercase tracking-wider">Unidades</p>
+                  {totalUnits > 0 && <Badge variant="gold">{totalUnits.toLocaleString()} seleccionadas</Badge>}
+                </div>
+                {!hasUnits ? (
+                  <p className="font-body text-xs text-ink-muted/50 italic py-3 text-center">
+                    No tienes unidades disponibles. Entrena en el Cuartel.
+                  </p>
+                ) : (
+                  <div className="space-y-1.5">
+                    {ALL_UNIT_META.map(u => {
+                      const available = (kingdom as any)?.[u.id] ?? 0
+                      if (available === 0) return null
+                      return (
+                        <div key={u.id} className="flex items-center gap-2">
+                          <u.Icon size={14} className="text-gold-dim shrink-0" />
+                          <span className="font-ui text-xs text-ink flex-1 min-w-0 truncate">{u.name}</span>
+                          <span className="font-ui text-xs text-ink-muted tabular-nums shrink-0">{available.toLocaleString()}</span>
+                          <input
+                            type="number"
+                            min={0}
+                            max={available}
+                            value={units[u.id] ?? 0}
+                            onChange={e => setUnit(u.id, e.target.value)}
+                            className="game-input w-16 py-1 text-sm text-center tabular-nums shrink-0"
+                          />
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </>
             )}
           </div>
 

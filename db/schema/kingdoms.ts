@@ -75,6 +75,7 @@ export const kingdoms = pgTable('kingdoms', {
   castleWall: integer('castle_wall').default(0).notNull(),      // large_shield_dome
   moat: integer('moat').default(0).notNull(),                   // anti_ballistic_missile
   catapult: integer('catapult').default(0).notNull(),           // interplanetary_missile
+  ballistic: integer('ballistic').default(0).notNull(),         // launchable missile (stored in armoury)
 
   // ── Temperature & resource settings ─────────────────────────────────────────
   tempAvg:          integer('temp_avg').default(0).notNull(),

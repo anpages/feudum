@@ -16,6 +16,7 @@ import {
   Skull,
   Flag,
   Compass,
+  Rocket,
 } from 'lucide-react'
 import { GiWoodPile, GiStoneBlock } from 'react-icons/gi'
 import { useMap, type MapSlot } from '@/features/map/useMap'
@@ -257,6 +258,10 @@ export function MapPage() {
                   <Button variant="ghost" className="w-full" onClick={() => sendMission('spy')}>
                     <Eye size={12} />
                     Espiar
+                  </Button>
+                  <Button variant="ghost" className="w-full" onClick={() => sendMission('missile')}>
+                    <Rocket size={12} />
+                    Bombardear
                   </Button>
                   {!selected.isNpc && !selected.isPlayer && (
                     <Button variant="ghost" className="w-full" onClick={() => sendMission('transport')}>

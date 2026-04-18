@@ -17,6 +17,7 @@ export interface BarracksResponse {
   units: UnitInfo[]
   support: UnitInfo[]
   defenses: UnitInfo[]
+  missiles: UnitInfo[]
 }
 
 export interface TrainUnitResponse {
