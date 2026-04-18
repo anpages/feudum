@@ -46,13 +46,14 @@ export default async function handler(req, res) {
       .select({ realm: kingdoms.realm, region: kingdoms.region, slot: kingdoms.slot })
       .from(kingdoms)
     const takenSet = new Set(taken.map(p => `${p.realm}:${p.region}:${p.slot}`))
-    let position = null
-    outer: for (let realm = 1; realm <= 5; realm++)
+    const all = []
+    for (let realm = 1; realm <= 5; realm++)
       for (let region = 1; region <= 10; region++)
         for (let slot = 1; slot <= 15; slot++)
-          if (!takenSet.has(`${realm}:${region}:${slot}`)) { position = { realm, region, slot }; break outer }
+          if (!takenSet.has(`${realm}:${region}:${slot}`)) all.push({ realm, region, slot })
+    if (!all.length) return res.status(500).json({ error: 'no_slots' })
+    const position = all[Math.floor(Math.random() * all.length)]
 
-    if (!position) return res.status(500).json({ error: 'no_slots' })
 
     await db.insert(kingdoms).values({
       userId,

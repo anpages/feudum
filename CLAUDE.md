@@ -434,7 +434,8 @@ Import from `@/components/ui` (barrel export).
   - **NPC target selection** — player kingdom with most wood+stone+grain within 3-slot radius; if none, expand radius. Prioritises resource-rich targets like a real player would.
   - **NPC army sent** — 60–80% of available troops (random factor); reserves remainder for defense. Composition weighted toward fastest/strongest units.
   - **NPC return**: if NPC wins, return mission created with loot; resources added to NPC kingdom on arrival. If NPC loses, units are gone permanently.
-  - **NPC rebuild AI** — also runs in the same hourly cron: if NPC has enough resources, spend them to train units toward target army size per `npcLevel`. Uses existing barracks train logic.
+  - **NPC start from zero** — NPCs are seeded as empty kingdoms (no buildings, no units, no resources) and grow organically via the cron exactly like a player would. `npcLevel` controls their target army size and aggression threshold, not a shortcut to pre-built kingdoms. At server speed x4/x8 they grow proportionally faster. This ensures the threat scales naturally with the server age.
+  - **NPC rebuild AI** — also runs in the same hourly cron: if NPC has enough resources, spend them to train units toward target army size per `npcLevel`. Uses existing barracks train logic. Respects `ECONOMY_SPEED` multiplier.
   - **Battle report**: defender (player) gets full report in messages with real NPC fleet composition. Player may log in hours after the battle happened.
   - **Configurable**: `NPC_AGGRESSION` (0=off, 1=low, 2=medium, 3=high), `NPC_ATTACK_INTERVAL_HOURS` (default: 24/12/6 per aggression level), `NPC_REBUILD_INTERVAL_HOURS` in `api/lib/config.js` and admin panel
   - **Vercel Cron**: free tier allows 2 cron jobs; `/api/cron/npc-tick` runs hourly. Secured with `CRON_SECRET` header check.
