@@ -1,6 +1,7 @@
 import { type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { TreePine, Mountain, Wheat, Users, LogOut, Menu, Shield } from 'lucide-react'
+import { Users, LogOut, Menu } from 'lucide-react'
+import { GiWoodPile, GiStoneBlock, GiWheat, GiCastle } from 'react-icons/gi'
 import { useKingdom } from '@/hooks/useKingdom'
 import { useResourceTicker } from '@/hooks/useResourceTicker'
 import { useAuth } from '@/hooks/useAuth'
@@ -36,7 +37,7 @@ export function ResourceBar({ onMenuToggle }: Props) {
 
         <div className="flex items-center gap-2 min-w-0">
           <div className="w-7 h-7 rounded-full bg-gold/10 border border-gold/20 flex items-center justify-center shrink-0">
-            <Shield size={12} className="text-gold" />
+            <GiCastle className="text-gold" style={{ fontSize: 13 }} />
           </div>
           <div className="hidden sm:flex flex-col leading-none">
             <span className="font-display text-[0.62rem] text-gold-dim tracking-[0.2em] uppercase">
@@ -56,21 +57,21 @@ export function ResourceBar({ onMenuToggle }: Props) {
       {/* ── Center: resources ── */}
       <div className="flex items-center gap-1 flex-1 justify-center overflow-x-auto no-scrollbar px-2">
         <ResourcePill
-          icon={<TreePine size={11} />}
+          icon={<GiWoodPile style={{ fontSize: 13 }} />}
           label="Madera"
           value={resources.wood}
           cap={kingdom?.woodCapacity}
           rate={kingdom?.woodProduction}
         />
         <ResourcePill
-          icon={<Mountain size={11} />}
+          icon={<GiStoneBlock style={{ fontSize: 13 }} />}
           label="Piedra"
           value={resources.stone}
           cap={kingdom?.stoneCapacity}
           rate={kingdom?.stoneProduction}
         />
         <ResourcePill
-          icon={<Wheat size={11} />}
+          icon={<GiWheat style={{ fontSize: 13 }} />}
           label="Grano"
           value={resources.grain}
           cap={kingdom?.grainCapacity}

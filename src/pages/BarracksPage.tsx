@@ -1,5 +1,14 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, type ReactNode } from 'react'
 import { Sword, Shield, Heart, Clock, Lock, Loader2, Plus, Minus } from 'lucide-react'
+import { type IconType } from 'react-icons'
+import {
+  GiLightFighter, GiHeavyFighter, GiMountedKnight, GiKnightBanner,
+  GiCrossedSwords, GiSiegeTower, GiBattleMech, GiDragonHead,
+  GiTrade, GiCaravan, GiCampingTent, GiVulture, GiSpyglass,
+  GiArcher, GiCrossbow, GiBallista, GiTrebuchet,
+  GiCrystalBall, GiLuciferCannon, GiPalisade, GiDefensiveWall,
+  GiWoodPile, GiStoneBlock, GiWheat,
+} from 'react-icons/gi'
 import { useQueryClient } from '@tanstack/react-query'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
@@ -11,28 +20,28 @@ import { formatResource, formatDuration } from '@/lib/format'
 
 // ── Static metadata ───────────────────────────────────────────────────────────
 
-const UNIT_META: Record<string, { name: string; emoji: string; description: string }> = {
-  squire:       { emoji: '🗡', name: 'Escudero',           description: 'Infantería ligera, rápida y económica.' },
-  knight:       { emoji: '⚔', name: 'Caballero',          description: 'Combatiente pesado con armadura reforzada.' },
-  paladin:      { emoji: '🛡', name: 'Paladín',            description: 'Caballería de élite, equilibrio entre velocidad y potencia.' },
-  warlord:      { emoji: '👑', name: 'Señor de la Guerra', description: 'Nave de batalla. Destrucción masiva.' },
-  grandKnight:  { emoji: '⚜', name: 'Gran Caballero',     description: 'Interceptor de alta tecnología.' },
-  siegeMaster:  { emoji: '🔥', name: 'Maestro de Asedio',  description: 'Especialista en destruir defensas.' },
-  warMachine:   { emoji: '⚙', name: 'Máquina de Guerra',  description: 'El destructor más poderoso.' },
-  dragonKnight: { emoji: '🐉', name: 'Caballero Dragón',  description: 'La unidad definitiva. Capaz de destruir reinos.' },
-  merchant:     { emoji: '🛒', name: 'Mercader',           description: 'Transporte ligero de recursos.' },
-  caravan:      { emoji: '🚚', name: 'Caravana',           description: 'Transporte pesado de alta capacidad.' },
-  colonist:     { emoji: '🏰', name: 'Colonista',          description: 'Funda nuevos reinos en territorios vacíos.' },
-  scavenger:    { emoji: '♻', name: 'Carroñero',          description: 'Recoge los escombros de batallas.' },
-  scout:        { emoji: '🔍', name: 'Explorador',         description: 'Espía reinos enemigos sin ser detectado.' },
-  archer:       { emoji: '🏹', name: 'Arquero',            description: 'Defensa básica de bajo coste.' },
-  crossbowman:  { emoji: '✦',  name: 'Ballestero',         description: 'Defensa de rango medio con mayor precisión.' },
-  ballista:     { emoji: '🗼', name: 'Ballista',           description: 'Defensa pesada de largo alcance.' },
-  trebuchet:    { emoji: '⚡', name: 'Trebuchet',          description: 'Cañón de alta potencia de fuego.' },
-  mageTower:    { emoji: '🔮', name: 'Torre Mágica',       description: 'Defensa energética con alto escudo.' },
-  dragonCannon: { emoji: '🐲', name: 'Cañón de Dragón',   description: 'La defensa más devastadora.' },
-  palisade:     { emoji: '🛡', name: 'Empalizada',         description: 'Cúpula de escudo pequeña.' },
-  castleWall:   { emoji: '🏯', name: 'Muralla del Castillo', description: 'Cúpula de escudo grande.' },
+const UNIT_META: Record<string, { name: string; Icon: IconType; description: string }> = {
+  squire:       { Icon: GiLightFighter,  name: 'Escudero',              description: 'Infantería ligera, rápida y económica.' },
+  knight:       { Icon: GiHeavyFighter,  name: 'Caballero',             description: 'Combatiente pesado con armadura reforzada.' },
+  paladin:      { Icon: GiMountedKnight, name: 'Paladín',               description: 'Caballería de élite, equilibrio entre velocidad y potencia.' },
+  warlord:      { Icon: GiKnightBanner,  name: 'Señor de la Guerra',    description: 'Comandante de la batalla. Destrucción masiva.' },
+  grandKnight:  { Icon: GiCrossedSwords, name: 'Gran Caballero',        description: 'Interceptor de alta tecnología.' },
+  siegeMaster:  { Icon: GiSiegeTower,    name: 'Maestro de Asedio',     description: 'Especialista en destruir defensas.' },
+  warMachine:   { Icon: GiBattleMech,    name: 'Máquina de Guerra',     description: 'El destructor más poderoso.' },
+  dragonKnight: { Icon: GiDragonHead,    name: 'Caballero Dragón',      description: 'La unidad definitiva. Capaz de destruir reinos.' },
+  merchant:     { Icon: GiTrade,         name: 'Mercader',              description: 'Transporte ligero de recursos.' },
+  caravan:      { Icon: GiCaravan,       name: 'Caravana',              description: 'Transporte pesado de alta capacidad.' },
+  colonist:     { Icon: GiCampingTent,   name: 'Colonista',             description: 'Funda nuevos reinos en territorios vacíos.' },
+  scavenger:    { Icon: GiVulture,       name: 'Carroñero',             description: 'Recoge los escombros de batallas.' },
+  scout:        { Icon: GiSpyglass,      name: 'Explorador',            description: 'Espía reinos enemigos sin ser detectado.' },
+  archer:       { Icon: GiArcher,        name: 'Arquero',               description: 'Defensa básica de bajo coste.' },
+  crossbowman:  { Icon: GiCrossbow,      name: 'Ballestero',            description: 'Defensa de rango medio con mayor precisión.' },
+  ballista:     { Icon: GiBallista,      name: 'Ballista',              description: 'Defensa pesada de largo alcance.' },
+  trebuchet:    { Icon: GiTrebuchet,     name: 'Trebuchet',             description: 'Cañón de alta potencia de fuego.' },
+  mageTower:    { Icon: GiCrystalBall,   name: 'Torre Mágica',          description: 'Defensa energética con alto escudo.' },
+  dragonCannon: { Icon: GiLuciferCannon, name: 'Cañón de Dragón',      description: 'La defensa más devastadora.' },
+  palisade:     { Icon: GiPalisade,      name: 'Empalizada',            description: 'Cúpula de escudo pequeña.' },
+  castleWall:   { Icon: GiDefensiveWall, name: 'Muralla del Castillo',  description: 'Cúpula de escudo grande.' },
 }
 
 // ── Countdown hook ────────────────────────────────────────────────────────────
@@ -138,7 +147,7 @@ function UnitCard({
   unit, meta, resources, isTraining, onTrain, onCountdownEnd, animClass,
 }: {
   unit: UnitInfo
-  meta: { name: string; emoji: string; description: string }
+  meta: { name: string; Icon: IconType; description: string }
   resources: { wood: number; stone: number; grain: number }
   isTraining: boolean
   onTrain: (amount: number) => void
@@ -160,12 +169,16 @@ function UnitCard({
   const changeAmount = (delta: number) =>
     setAmount(a => Math.max(1, Math.min(a + delta, 9999)))
 
+  const { Icon } = meta
+
   return (
     <Card className={`p-5 flex flex-col gap-4 ${animClass}`}>
 
       {/* Header */}
       <div className="flex items-start gap-3">
-        <span className="text-2xl leading-none shrink-0">{meta.emoji}</span>
+        <div className="w-9 h-9 rounded-lg bg-gold-soft border border-gold/20 flex items-center justify-center shrink-0 mt-0.5">
+          <Icon size={20} className="text-gold-dim" />
+        </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-2">
             <h3 className="font-ui text-sm font-semibold text-ink">{meta.name}</h3>
@@ -205,9 +218,9 @@ function UnitCard({
 
       {/* Cost for current amount */}
       <div className="flex items-center gap-3 text-xs flex-wrap">
-        {totalWood  > 0 && <CostItem emoji="🪵" value={totalWood}  affordable={inQueue || canAfford} />}
-        {totalStone > 0 && <CostItem emoji="🪨" value={totalStone} affordable={inQueue || canAfford} />}
-        {totalGrain > 0 && <CostItem emoji="🌾" value={totalGrain} affordable={inQueue || canAfford} />}
+        {totalWood  > 0 && <CostItem icon={<GiWoodPile  size={13} />} value={totalWood}  affordable={inQueue || canAfford} />}
+        {totalStone > 0 && <CostItem icon={<GiStoneBlock size={13} />} value={totalStone} affordable={inQueue || canAfford} />}
+        {totalGrain > 0 && <CostItem icon={<GiWheat     size={13} />} value={totalGrain} affordable={inQueue || canAfford} />}
         <div className="flex items-center gap-1 ml-auto text-ink-muted/60">
           <Clock size={10} />
           <span className="font-body">{formatDuration(totalTime)}</span>
@@ -275,10 +288,10 @@ function UnitCard({
   )
 }
 
-function CostItem({ emoji, value, affordable }: { emoji: string; value: number; affordable: boolean }) {
+function CostItem({ icon, value, affordable }: { icon: ReactNode; value: number; affordable: boolean }) {
   return (
     <div className="flex items-center gap-1.5">
-      <span>{emoji}</span>
+      <span className="text-ink-muted/70">{icon}</span>
       <span className={`font-ui tabular-nums ${affordable ? 'text-ink-mid' : 'text-crimson'}`}>
         {formatResource(value)}
       </span>

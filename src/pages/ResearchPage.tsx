@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
-import { ArrowUp, Clock, Lock, Loader2, FlaskConical, Sword, Map, Eye } from 'lucide-react'
+import { ArrowUp, Clock, Lock, Loader2 } from 'lucide-react'
+import { GiCauldron, GiCrossedSwords, GiCompass, GiScrollQuill, GiWoodPile, GiStoneBlock, GiWheat } from 'react-icons/gi'
+import { type ReactNode } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
@@ -31,10 +33,10 @@ const RESEARCH_META: Record<string, { name: string; description: string; categor
 }
 
 const CATEGORY_ICONS: Record<string, React.ReactNode> = {
-  'Ciencia':      <FlaskConical size={13} />,
-  'Combate':      <Sword size={13} />,
-  'Logística':    <Map size={13} />,
-  'Inteligencia': <Eye size={13} />,
+  'Ciencia':      <GiCauldron      size={14} />,
+  'Combate':      <GiCrossedSwords size={14} />,
+  'Logística':    <GiCompass       size={14} />,
+  'Inteligencia': <GiScrollQuill   size={14} />,
 }
 
 const CATEGORIES = ['Ciencia', 'Combate', 'Logística', 'Inteligencia']
@@ -166,9 +168,9 @@ function ResearchCard({ item, meta, canAfford, globalQueueFull, isUpgrading, onU
       <div className="divider">◆</div>
 
       <div className="flex items-center gap-3 text-xs flex-wrap">
-        {item.costWood  > 0 && <CostItem emoji="🪵" value={item.costWood}  affordable={inQueue || canAfford} />}
-        {item.costStone > 0 && <CostItem emoji="🪨" value={item.costStone} affordable={inQueue || canAfford} />}
-        {item.costGrain > 0 && <CostItem emoji="🌾" value={item.costGrain} affordable={inQueue || canAfford} />}
+        {item.costWood  > 0 && <CostItem icon={<GiWoodPile  size={13} />} value={item.costWood}  affordable={inQueue || canAfford} />}
+        {item.costStone > 0 && <CostItem icon={<GiStoneBlock size={13} />} value={item.costStone} affordable={inQueue || canAfford} />}
+        {item.costGrain > 0 && <CostItem icon={<GiWheat     size={13} />} value={item.costGrain} affordable={inQueue || canAfford} />}
         <div className="flex items-center gap-1 ml-auto text-ink-muted/60">
           <Clock size={10} />
           <span className="font-body">{formatDuration(item.timeSeconds)}</span>
@@ -206,10 +208,10 @@ function ResearchCard({ item, meta, canAfford, globalQueueFull, isUpgrading, onU
   )
 }
 
-function CostItem({ emoji, value, affordable }: { emoji: string; value: number; affordable: boolean }) {
+function CostItem({ icon, value, affordable }: { icon: ReactNode; value: number; affordable: boolean }) {
   return (
     <div className="flex items-center gap-1.5">
-      <span>{emoji}</span>
+      <span className="text-ink-muted/70">{icon}</span>
       <span className={`font-ui tabular-nums ${affordable ? 'text-ink-mid' : 'text-crimson'}`}>
         {formatResource(value)}
       </span>

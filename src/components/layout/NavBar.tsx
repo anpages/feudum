@@ -1,20 +1,24 @@
 import { NavLink } from 'react-router-dom'
-import { Castle, Hammer, BookOpen, Swords, Map, X, Sword } from 'lucide-react'
-import { type ElementType } from 'react'
+import { X } from 'lucide-react'
+import { type IconType } from 'react-icons'
+import {
+  GiCastle, GiAnvil, GiSpellBook, GiMedievalBarracks,
+  GiCrossedSwords, GiTreasureMap,
+} from 'react-icons/gi'
 
 interface NavItem {
   to: string
   label: string
-  Icon: ElementType
+  Icon: IconType
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { to: '/overview',  label: 'Reino',        Icon: Castle   },
-  { to: '/buildings', label: 'Construcción', Icon: Hammer   },
-  { to: '/research',  label: 'Academia',     Icon: BookOpen },
-  { to: '/barracks',  label: 'Cuartel',      Icon: Swords   },
-  { to: '/armies',    label: 'Ejércitos',    Icon: Sword    },
-  { to: '/map',       label: 'Mapa',         Icon: Map      },
+  { to: '/overview',  label: 'Reino',        Icon: GiCastle          },
+  { to: '/buildings', label: 'Construcción', Icon: GiAnvil           },
+  { to: '/research',  label: 'Academia',     Icon: GiSpellBook       },
+  { to: '/barracks',  label: 'Cuartel',      Icon: GiMedievalBarracks},
+  { to: '/armies',    label: 'Ejércitos',    Icon: GiCrossedSwords   },
+  { to: '/map',       label: 'Mapa',         Icon: GiTreasureMap     },
 ]
 
 interface Props {
@@ -47,7 +51,7 @@ export function NavBar({ isOpen, onClose }: Props) {
             onClick={onClose}
             className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
           >
-            <Icon size={15} className="nav-icon shrink-0" />
+            <Icon size={16} className="nav-icon shrink-0" />
             <span>{label}</span>
           </NavLink>
         ))}

@@ -1,5 +1,11 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, type ReactNode } from 'react'
 import { ArrowUp, Clock, Lock, TrendingUp, Loader2 } from 'lucide-react'
+import { type IconType } from 'react-icons'
+import {
+  GiLogging, GiMining, GiGranary, GiWindmill,
+  GiAnvil, GiGearHammer, GiMedievalBarracks, GiSpellBook,
+  GiWoodPile, GiStoneBlock,
+} from 'react-icons/gi'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
@@ -11,15 +17,15 @@ import { useQueryClient } from '@tanstack/react-query'
 
 // ── Static metadata ───────────────────────────────────────────────────────────
 
-const BUILDING_META: Record<string, { name: string; description: string; emoji: string; produces: string | null }> = {
-  sawmill:        { name: 'Aserradero',           emoji: '🪓', produces: 'Madera',     description: 'Tala los bosques del reino para producir madera sin cesar.' },
-  quarry:         { name: 'Cantera',              emoji: '⛏',  produces: 'Piedra',     description: 'Extrae bloques de piedra de las colinas circundantes.' },
-  grainFarm:      { name: 'Granja',               emoji: '🌾', produces: 'Grano',      description: 'Cultiva extensos campos de trigo y cebada para la población.' },
-  windmill:       { name: 'Molino de Viento',     emoji: '⚙',  produces: 'Población',  description: 'Aumenta la capacidad máxima de población del reino.' },
-  workshop:       { name: 'Taller',               emoji: '🔨', produces: null,          description: 'Mecánicos expertos reducen los tiempos de toda construcción.' },
-  engineersGuild: { name: 'Gremio de Ingenieros', emoji: '📐', produces: null,          description: 'El pináculo de la ingeniería medieval. Acelera la construcción exponencialmente.' },
-  barracks:       { name: 'Cuartel',              emoji: '⚔',  produces: null,          description: 'Entrena guerreros y defensores para proteger el reino.' },
-  academy:        { name: 'Academia',             emoji: '📚', produces: null,          description: 'Centro de saber donde se desarrollan nuevas tecnologías.' },
+const BUILDING_META: Record<string, { name: string; description: string; Icon: IconType; produces: string | null }> = {
+  sawmill:        { name: 'Aserradero',           Icon: GiLogging,         produces: 'Madera',    description: 'Tala los bosques del reino para producir madera sin cesar.' },
+  quarry:         { name: 'Cantera',              Icon: GiMining,          produces: 'Piedra',    description: 'Extrae bloques de piedra de las colinas circundantes.' },
+  grainFarm:      { name: 'Granja',               Icon: GiGranary,         produces: 'Grano',     description: 'Cultiva extensos campos de trigo y cebada para la población.' },
+  windmill:       { name: 'Molino de Viento',     Icon: GiWindmill,        produces: 'Población', description: 'Aumenta la capacidad máxima de población del reino.' },
+  workshop:       { name: 'Taller',               Icon: GiAnvil,           produces: null,        description: 'Mecánicos expertos reducen los tiempos de toda construcción.' },
+  engineersGuild: { name: 'Gremio de Ingenieros', Icon: GiGearHammer,      produces: null,        description: 'El pináculo de la ingeniería medieval. Acelera la construcción exponencialmente.' },
+  barracks:       { name: 'Cuartel',              Icon: GiMedievalBarracks,produces: null,        description: 'Entrena guerreros y defensores para proteger el reino.' },
+  academy:        { name: 'Academia',             Icon: GiSpellBook,       produces: null,        description: 'Centro de saber donde se desarrollan nuevas tecnologías.' },
 }
 
 // ── Countdown hook ────────────────────────────────────────────────────────────
@@ -112,7 +118,7 @@ export function BuildingsPage() {
 
 interface CardProps {
   building: BuildingInfo
-  meta: { name: string; description: string; emoji: string; produces: string | null }
+  meta: { name: string; description: string; Icon: IconType; produces: string | null }
   canAfford: boolean
   isUpgrading: boolean
   onUpgrade: () => void
@@ -123,13 +129,16 @@ interface CardProps {
 function BuildingCard({ building, meta, canAfford, isUpgrading, onUpgrade, onCountdownEnd, animClass }: CardProps) {
   const countdown = useCountdown(building.inQueue?.finishesAt ?? null, onCountdownEnd)
   const inQueue   = !!building.inQueue && (countdown > 0 || building.inQueue.finishesAt > Math.floor(Date.now() / 1000))
+  const { Icon } = meta
 
   return (
     <Card className={`p-5 flex flex-col gap-4 ${animClass}`}>
 
       {/* Header */}
       <div className="flex items-start gap-3">
-        <span className="text-2xl leading-none mt-0.5 shrink-0">{meta.emoji}</span>
+        <div className="w-9 h-9 rounded-lg bg-gold-soft border border-gold/20 flex items-center justify-center shrink-0 mt-0.5">
+          <Icon size={20} className="text-gold-dim" />
+        </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-2">
             <h3 className="font-ui text-sm font-semibold text-ink leading-tight">{meta.name}</h3>
@@ -153,8 +162,8 @@ function BuildingCard({ building, meta, canAfford, isUpgrading, onUpgrade, onCou
 
       {/* Cost row */}
       <div className="flex items-center gap-4 text-xs">
-        <CostItem emoji="🪵" value={building.costWood}  affordable={inQueue || canAfford} />
-        <CostItem emoji="🪨" value={building.costStone} affordable={inQueue || canAfford} />
+        <CostItem icon={<GiWoodPile size={13} />}   value={building.costWood}  affordable={inQueue || canAfford} />
+        <CostItem icon={<GiStoneBlock size={13} />} value={building.costStone} affordable={inQueue || canAfford} />
         <div className="flex items-center gap-1 ml-auto text-ink-muted/60">
           <Clock size={10} />
           <span className="font-body">{formatDuration(building.timeSeconds)}</span>
@@ -191,10 +200,10 @@ function BuildingCard({ building, meta, canAfford, isUpgrading, onUpgrade, onCou
   )
 }
 
-function CostItem({ emoji, value, affordable }: { emoji: string; value: number; affordable: boolean }) {
+function CostItem({ icon, value, affordable }: { icon: ReactNode; value: number; affordable: boolean }) {
   return (
     <div className="flex items-center gap-1.5">
-      <span>{emoji}</span>
+      <span className="text-ink-muted/70">{icon}</span>
       <span className={`font-ui tabular-nums ${affordable ? 'text-ink-mid' : 'text-crimson'}`}>
         {formatResource(value)}
       </span>

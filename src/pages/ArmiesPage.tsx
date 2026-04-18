@@ -1,5 +1,11 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Send, Shield, Swords, Eye, Package, ChevronLeft, ChevronRight, Loader2, ArrowLeft, Trophy, Skull } from 'lucide-react'
+import { type IconType } from 'react-icons'
+import {
+  GiLightFighter, GiHeavyFighter, GiMountedKnight, GiKnightBanner,
+  GiCrossedSwords, GiSiegeTower, GiBattleMech, GiDragonHead,
+  GiTrade, GiCaravan, GiCampingTent, GiVulture, GiSpyglass,
+} from 'react-icons/gi'
 import { useQueryClient } from '@tanstack/react-query'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
@@ -10,22 +16,22 @@ import { formatResource, formatDuration } from '@/lib/format'
 
 // ── Unit metadata ─────────────────────────────────────────────────────────────
 
-const COMBAT_UNITS = [
-  { id: 'squire',       name: 'Escudero',            emoji: '🗡' },
-  { id: 'knight',       name: 'Caballero',           emoji: '⚔' },
-  { id: 'paladin',      name: 'Paladín',             emoji: '🛡' },
-  { id: 'warlord',      name: 'Señor de la Guerra',  emoji: '👑' },
-  { id: 'grandKnight',  name: 'Gran Caballero',      emoji: '⚜' },
-  { id: 'siegeMaster',  name: 'Maestro de Asedio',   emoji: '🔥' },
-  { id: 'warMachine',   name: 'Máquina de Guerra',   emoji: '⚙' },
-  { id: 'dragonKnight', name: 'Caballero Dragón',    emoji: '🐉' },
+const COMBAT_UNITS: { id: string; name: string; Icon: IconType }[] = [
+  { id: 'squire',       name: 'Escudero',           Icon: GiLightFighter  },
+  { id: 'knight',       name: 'Caballero',          Icon: GiHeavyFighter  },
+  { id: 'paladin',      name: 'Paladín',            Icon: GiMountedKnight },
+  { id: 'warlord',      name: 'Señor de la Guerra', Icon: GiKnightBanner  },
+  { id: 'grandKnight',  name: 'Gran Caballero',     Icon: GiCrossedSwords },
+  { id: 'siegeMaster',  name: 'Maestro de Asedio',  Icon: GiSiegeTower    },
+  { id: 'warMachine',   name: 'Máquina de Guerra',  Icon: GiBattleMech    },
+  { id: 'dragonKnight', name: 'Caballero Dragón',   Icon: GiDragonHead    },
 ]
-const SUPPORT_UNITS = [
-  { id: 'merchant',  name: 'Mercader',   emoji: '🛒' },
-  { id: 'caravan',   name: 'Caravana',   emoji: '🚚' },
-  { id: 'colonist',  name: 'Colonista',  emoji: '🏰' },
-  { id: 'scavenger', name: 'Carroñero',  emoji: '♻' },
-  { id: 'scout',     name: 'Explorador', emoji: '🔍' },
+const SUPPORT_UNITS: { id: string; name: string; Icon: IconType }[] = [
+  { id: 'merchant',  name: 'Mercader',   Icon: GiTrade      },
+  { id: 'caravan',   name: 'Caravana',   Icon: GiCaravan    },
+  { id: 'colonist',  name: 'Colonista',  Icon: GiCampingTent},
+  { id: 'scavenger', name: 'Carroñero',  Icon: GiVulture    },
+  { id: 'scout',     name: 'Explorador', Icon: GiSpyglass   },
 ]
 const ALL_UNIT_META = [...COMBAT_UNITS, ...SUPPORT_UNITS]
 
@@ -169,7 +175,7 @@ export function ArmiesPage() {
                 if (available === 0) return null
                 return (
                   <div key={u.id} className="flex items-center gap-3">
-                    <span className="text-base leading-none w-5 text-center">{u.emoji}</span>
+                    <u.Icon size={16} className="text-gold-dim shrink-0" />
                     <span className="font-ui text-xs text-ink flex-1">{u.name}</span>
                     <span className="font-ui text-xs text-ink-muted tabular-nums w-12 text-right">{available.toLocaleString()}</span>
                     <input
@@ -343,7 +349,7 @@ function MissionRow({ mission, onEnd }: { mission: ArmyMission; onEnd: () => voi
             const m = ALL_UNIT_META.find(u => u.id === id)
             return m ? (
               <div key={id} className="flex items-center gap-1 text-xs text-ink-muted">
-                <span>{m.emoji}</span>
+                <m.Icon size={13} className="text-gold-dim" />
                 <span className="font-ui tabular-nums">{n.toLocaleString()}</span>
               </div>
             ) : null
