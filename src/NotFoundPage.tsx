@@ -13,10 +13,7 @@ export function NotFoundPage() {
             Este territorio no aparece en ningún mapa del reino.
           </p>
         </div>
-        <Link
-          to="/overview"
-          className="btn btn-primary inline-flex"
-        >
+        <Link to="/overview" className="btn btn-primary inline-flex">
           Volver al Reino
         </Link>
       </div>

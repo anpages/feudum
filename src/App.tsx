@@ -30,15 +30,16 @@ function OnboardingRoute() {
 
   if (isLoading) return null
   if (!isAuthenticated) return <Navigate to="/login" replace />
-  if (user?.username !== null && user?.username !== undefined) return <Navigate to="/overview" replace />
+  if (user?.username !== null && user?.username !== undefined)
+    return <Navigate to="/overview" replace />
   return <NicknamePage />
 }
 
 function RootRedirect() {
   const [params] = useSearchParams()
-  const next  = params.get('next')
+  const next = params.get('next')
   const error = params.get('error')
-  if (error)              return <Navigate to={`/login?error=${error}`} replace />
+  if (error) return <Navigate to={`/login?error=${error}`} replace />
   if (next === 'onboarding') return <Navigate to="/onboarding" replace />
   return <Navigate to="/overview" replace />
 }
@@ -46,29 +47,29 @@ function RootRedirect() {
 export default function App() {
   return (
     <>
-    <PWAInstallPrompt />
-    <Routes>
-      <Route path="/login"      element={<LoginPage />} />
-      <Route path="/onboarding" element={<OnboardingRoute />} />
+      <PWAInstallPrompt />
+      <Routes>
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/onboarding" element={<OnboardingRoute />} />
 
-      <Route element={<ProtectedRoute />}>
-        <Route element={<GameLayout />}>
-          <Route path="/"          element={<RootRedirect />} />
-          <Route path="/overview"  element={<OverviewPage />}  />
-          <Route path="/buildings" element={<BuildingsPage />} />
-          <Route path="/research"  element={<ResearchPage />}  />
-          <Route path="/barracks"  element={<BarracksPage />}  />
-          <Route path="/map"       element={<MapPage />}       />
-          <Route path="/armies"    element={<ArmiesPage />}    />
-          <Route path="/rankings" element={<RankingsPage />} />
-          <Route path="/messages" element={<MessagesPage />} />
-          <Route path="/profile"  element={<ProfilePage />}  />
-          <Route path="/admin"    element={<AdminPage />}    />
+        <Route element={<ProtectedRoute />}>
+          <Route element={<GameLayout />}>
+            <Route path="/" element={<RootRedirect />} />
+            <Route path="/overview" element={<OverviewPage />} />
+            <Route path="/buildings" element={<BuildingsPage />} />
+            <Route path="/research" element={<ResearchPage />} />
+            <Route path="/barracks" element={<BarracksPage />} />
+            <Route path="/map" element={<MapPage />} />
+            <Route path="/armies" element={<ArmiesPage />} />
+            <Route path="/rankings" element={<RankingsPage />} />
+            <Route path="/messages" element={<MessagesPage />} />
+            <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/admin" element={<AdminPage />} />
+          </Route>
         </Route>
-      </Route>
 
-      <Route path="*" element={<NotFoundPage />} />
-    </Routes>
+        <Route path="*" element={<NotFoundPage />} />
+      </Routes>
     </>
   )
 }

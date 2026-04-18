@@ -11,8 +11,8 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 const variantClass: Record<Variant, string> = {
   primary: 'btn-primary',
-  ghost:   'btn-ghost',
-  danger:  'btn-danger',
+  ghost: 'btn-ghost',
+  danger: 'btn-danger',
 }
 
 const sizeClass: Record<Size, string> = {
@@ -21,7 +21,13 @@ const sizeClass: Record<Size, string> = {
   lg: 'text-[0.8rem] py-2.5 px-6',
 }
 
-export function Button({ children, className, variant = 'primary', size = 'md', ...props }: ButtonProps) {
+export function Button({
+  children,
+  className,
+  variant = 'primary',
+  size = 'md',
+  ...props
+}: ButtonProps) {
   return (
     <button className={cn('btn', variantClass[variant], sizeClass[size], className)} {...props}>
       {children}

@@ -1,35 +1,22 @@
 import { useRef, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { api } from '@/lib/api'
+import { researchService } from './services/researchService'
 import { toast } from '@/lib/toast'
 import { RESEARCH_LABELS } from '@/lib/labels'
+import type { ResearchInfo, ResearchResponse } from './types'
 
-export interface ResearchInfo {
-  id: string
-  level: number
-  costWood: number
-  costStone: number
-  costGrain: number
-  timeSeconds: number
-  requiresMet: boolean
-  requires: { type: 'building' | 'research'; id: string; level: number }[]
-  inQueue: { level: number; finishesAt: number } | null
-}
-
-export interface ResearchResponse {
-  research: ResearchInfo[]
-}
+export type { ResearchInfo, ResearchResponse }
 
 export function useResearch() {
   const prevRef = useRef<ResearchInfo[] | null>(null)
 
   const result = useQuery({
     queryKey: ['research'],
-    queryFn:  () => api.get<ResearchResponse>('/research'),
+    queryFn: researchService.getAll,
     staleTime: 5_000,
-    refetchInterval: (query) => {
+    refetchInterval: query => {
       const items = query.state.data?.research ?? []
-      const now   = Math.floor(Date.now() / 1000)
+      const now = Math.floor(Date.now() / 1000)
       return items.some(r => r.inQueue && r.inQueue.finishesAt > now) ? 3_000 : 10_000
     },
   })
@@ -55,8 +42,7 @@ export function useUpgradeResearch() {
   const qc = useQueryClient()
 
   return useMutation({
-    mutationFn: (researchId: string) =>
-      api.post<{ ok: boolean; finishesAt: number; timeSeconds: number }>('/research/upgrade', { research: researchId }),
+    mutationFn: (researchId: string) => researchService.upgrade(researchId),
 
     onMutate: async (researchId: string) => {
       await qc.cancelQueries({ queryKey: ['research'] })
@@ -68,9 +54,7 @@ export function useUpgradeResearch() {
           const finishesAt = Math.floor(Date.now() / 1000) + item.timeSeconds
           qc.setQueryData<ResearchResponse>(['research'], {
             research: prev.research.map(r =>
-              r.id === researchId
-                ? { ...r, inQueue: { level: r.level + 1, finishesAt } }
-                : r
+              r.id === researchId ? { ...r, inQueue: { level: r.level + 1, finishesAt } } : r
             ),
           })
         }

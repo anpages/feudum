@@ -14,18 +14,23 @@ export function ToastContainer() {
           className={`
             flex items-start gap-3 px-4 py-3 rounded-lg border shadow-lg
             pointer-events-auto animate-slide-up min-w-[260px] max-w-[360px]
-            ${toast.type === 'success' ? 'bg-parchment border-forest/30 text-ink'  : ''}
-            ${toast.type === 'error'   ? 'bg-parchment border-crimson/40 text-ink' : ''}
-            ${toast.type === 'info'    ? 'bg-parchment border-gold/30 text-ink'    : ''}
+            ${toast.type === 'success' ? 'bg-parchment border-forest/30 text-ink' : ''}
+            ${toast.type === 'error' ? 'bg-parchment border-crimson/40 text-ink' : ''}
+            ${toast.type === 'info' ? 'bg-parchment border-gold/30 text-ink' : ''}
           `}
         >
-          <span className={`shrink-0 mt-0.5 ${
-            toast.type === 'success' ? 'text-forest-light' :
-            toast.type === 'error'   ? 'text-crimson'      : 'text-gold'
-          }`}>
+          <span
+            className={`shrink-0 mt-0.5 ${
+              toast.type === 'success'
+                ? 'text-forest-light'
+                : toast.type === 'error'
+                  ? 'text-crimson'
+                  : 'text-gold'
+            }`}
+          >
             {toast.type === 'success' && <CheckCircle size={15} />}
-            {toast.type === 'error'   && <AlertCircle size={15} />}
-            {toast.type === 'info'    && <Info size={15} />}
+            {toast.type === 'error' && <AlertCircle size={15} />}
+            {toast.type === 'info' && <Info size={15} />}
           </span>
           <p className="font-ui text-sm flex-1 leading-snug">{toast.message}</p>
           <button

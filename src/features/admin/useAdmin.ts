@@ -1,42 +1,13 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { api } from '@/lib/api'
+import { adminService } from './services/adminService'
+import type { AdminSettings, AdminUser, AdminMission } from './types'
 
-export interface AdminSettings {
-  economy_speed: number
-  research_speed: number
-  fleet_speed_war: number
-  fleet_speed_peaceful: number
-  basic_wood: number
-  basic_stone: number
-}
-
-export interface AdminUser {
-  id: number
-  username: string | null
-  email: string
-  isAdmin: boolean
-  createdAt: string
-  kingdomId: number | null
-  kingdom: { id: number; realm: number; region: number; slot: number } | null
-}
-
-export interface AdminMission {
-  id: number
-  userId: number
-  username: string | null
-  missionType: string
-  state: string
-  arrivalTime: number
-  returnTime: number | null
-  targetRealm: number
-  targetRegion: number
-  targetSlot: number
-}
+export type { AdminSettings, AdminUser, AdminMission }
 
 export function useAdminSettings() {
   return useQuery({
     queryKey: ['admin', 'settings'],
-    queryFn:  () => api.get<AdminSettings>('/admin/settings'),
+    queryFn: adminService.getSettings,
     staleTime: 10_000,
     retry: false,
   })
@@ -45,7 +16,7 @@ export function useAdminSettings() {
 export function useAdminUsers() {
   return useQuery({
     queryKey: ['admin', 'users'],
-    queryFn:  () => api.get<{ users: AdminUser[] }>('/admin/users'),
+    queryFn: adminService.getUsers,
     staleTime: 10_000,
     retry: false,
   })
@@ -54,7 +25,7 @@ export function useAdminUsers() {
 export function useAdminFleet() {
   return useQuery({
     queryKey: ['admin', 'fleet'],
-    queryFn:  () => api.get<{ missions: AdminMission[]; now: number }>('/admin/fleet'),
+    queryFn: adminService.getFleet,
     staleTime: 5_000,
     refetchInterval: 10_000,
     retry: false,
@@ -64,8 +35,7 @@ export function useAdminFleet() {
 export function useUpdateSettings() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (patch: Partial<AdminSettings>) =>
-      api.patch<AdminSettings>('/admin/settings', patch),
+    mutationFn: (patch: Partial<AdminSettings>) => adminService.updateSettings(patch),
     onSuccess: data => qc.setQueryData(['admin', 'settings'], data),
   })
 }
@@ -74,23 +44,21 @@ export function useToggleAdmin() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: ({ userId, isAdmin }: { userId: number; isAdmin: boolean }) =>
-      api.patch<{ ok: boolean }>('/admin/users', { userId, isAdmin }),
+      adminService.toggleAdmin(userId, isAdmin),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['admin', 'users'] }),
   })
 }
 
 export function useDevAction() {
   return useMutation({
-    mutationFn: (body: Record<string, unknown>) =>
-      api.post<{ ok: boolean }>('/admin/dev', body),
+    mutationFn: (body: Record<string, unknown>) => adminService.devAction(body),
   })
 }
 
 export function useFastForward() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (body: { missionId?: number; all?: boolean }) =>
-      api.post<{ ok: boolean }>('/admin/fleet', body),
+    mutationFn: (body: { missionId?: number; all?: boolean }) => adminService.fastForward(body),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['admin', 'fleet'] }),
   })
 }

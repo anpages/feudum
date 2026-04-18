@@ -2,8 +2,14 @@ import { NavLink } from 'react-router-dom'
 import { X, ShieldAlert } from 'lucide-react'
 import { type IconType } from 'react-icons'
 import {
-  GiCastle, GiAnvil, GiSpellBook, GiMedievalBarracks,
-  GiCrossedSwords, GiTreasureMap, GiTrophy, GiScrollUnfurled,
+  GiCastle,
+  GiAnvil,
+  GiSpellBook,
+  GiMedievalBarracks,
+  GiCrossedSwords,
+  GiTreasureMap,
+  GiTrophy,
+  GiScrollUnfurled,
 } from 'react-icons/gi'
 import { useUnreadCount } from '@/features/messages/useMessages'
 import { useAuth } from '@/features/auth/useAuth'
@@ -15,14 +21,14 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { to: '/overview',  label: 'Reino',        Icon: GiCastle          },
-  { to: '/buildings', label: 'Construcción', Icon: GiAnvil           },
-  { to: '/research',  label: 'Academia',     Icon: GiSpellBook       },
-  { to: '/barracks',  label: 'Cuartel',      Icon: GiMedievalBarracks},
-  { to: '/armies',    label: 'Ejércitos',    Icon: GiCrossedSwords   },
-  { to: '/map',       label: 'Mapa',         Icon: GiTreasureMap     },
-  { to: '/rankings',  label: 'Rankings',     Icon: GiTrophy          },
-  { to: '/messages',  label: 'Mensajes',     Icon: GiScrollUnfurled  },
+  { to: '/overview', label: 'Reino', Icon: GiCastle },
+  { to: '/buildings', label: 'Construcción', Icon: GiAnvil },
+  { to: '/research', label: 'Academia', Icon: GiSpellBook },
+  { to: '/barracks', label: 'Cuartel', Icon: GiMedievalBarracks },
+  { to: '/armies', label: 'Ejércitos', Icon: GiCrossedSwords },
+  { to: '/map', label: 'Mapa', Icon: GiTreasureMap },
+  { to: '/rankings', label: 'Rankings', Icon: GiTrophy },
+  { to: '/messages', label: 'Mensajes', Icon: GiScrollUnfurled },
 ]
 
 interface Props {
@@ -32,14 +38,15 @@ interface Props {
 
 export function NavBar({ isOpen, onClose }: Props) {
   const unread = useUnreadCount()
-  const { user }  = useAuth()
+  const { user } = useAuth()
 
   return (
     <nav className={`game-sidebar ${isOpen ? 'open' : ''}`}>
-
       {/* Mobile close button */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-gold/10 lg:hidden">
-        <span className="font-display text-[0.62rem] text-gold-dim tracking-[0.2em] uppercase">Menú</span>
+        <span className="font-display text-[0.62rem] text-gold-dim tracking-[0.2em] uppercase">
+          Menú
+        </span>
         <button
           onClick={onClose}
           className="p-1 rounded text-ink-muted hover:text-ink transition-colors"
@@ -90,7 +97,6 @@ export function NavBar({ isOpen, onClose }: Props) {
           Feudum · Anno MMXXVI
         </p>
       </div>
-
     </nav>
   )
 }

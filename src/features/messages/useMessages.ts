@@ -1,24 +1,14 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { api } from '@/lib/api'
+import { messagesService } from './services/messagesService'
+import type { GameMessage, MessagesResponse } from './types'
 
-export interface GameMessage {
-  id:        number
-  type:      string   // 'battle' | 'spy' | 'system'
-  subject:   string
-  data:      Record<string, unknown>
-  viewed:    boolean
-  createdAt: string
-}
-
-interface MessagesResponse {
-  messages: GameMessage[]
-}
+export type { GameMessage, MessagesResponse }
 
 export function useMessages() {
   return useQuery({
-    queryKey:        ['messages'],
-    queryFn:         () => api.get<MessagesResponse>('/messages'),
-    staleTime:       15_000,
+    queryKey: ['messages'],
+    queryFn: messagesService.getAll,
+    staleTime: 15_000,
     refetchInterval: 30_000,
   })
 }
@@ -26,8 +16,8 @@ export function useMessages() {
 export function useMarkAllRead() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: () => api.patch('/messages', {}),
-    onSuccess:  () => qc.invalidateQueries({ queryKey: ['messages'] }),
+    mutationFn: messagesService.markAllRead,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['messages'] }),
   })
 }
 
@@ -35,7 +25,7 @@ export function useSendMessage() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (params: { to: string; subject: string; body: string }) =>
-      api.post<{ ok: boolean }>('/messages/send', params),
+      messagesService.send(params),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['messages'] }),
   })
 }

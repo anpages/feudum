@@ -1,92 +1,131 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useCallback } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { Send, Shield, Swords, Eye, Package, ChevronLeft, ChevronRight, Loader2, ArrowLeft, Trophy, Skull, Pickaxe, Undo2, Tent, Flag } from 'lucide-react'
+import {
+  Send,
+  Shield,
+  Swords,
+  Eye,
+  Package,
+  ChevronLeft,
+  ChevronRight,
+  Loader2,
+  Skull,
+  Pickaxe,
+  Tent,
+  Flag,
+} from 'lucide-react'
 import { type IconType } from 'react-icons'
 import {
-  GiLightFighter, GiHeavyFighter, GiMountedKnight, GiKnightBanner,
-  GiCrossedSwords, GiSiegeTower, GiBattleMech, GiDragonHead,
-  GiTrade, GiCaravan, GiCampingTent, GiVulture, GiSpyglass,
-  GiWoodPile, GiStoneBlock,
+  GiLightFighter,
+  GiHeavyFighter,
+  GiMountedKnight,
+  GiKnightBanner,
+  GiCrossedSwords,
+  GiSiegeTower,
+  GiBattleMech,
+  GiDragonHead,
+  GiTrade,
+  GiCaravan,
+  GiCampingTent,
+  GiVulture,
+  GiSpyglass,
 } from 'react-icons/gi'
 import { useQueryClient } from '@tanstack/react-query'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
-import { useArmies, useSendArmy, useRecallArmy, type MissionType, type ArmyMission } from '@/features/armies/useArmies'
+import { useArmies, useSendArmy, type MissionType } from '@/features/armies/useArmies'
 import { useKingdom } from '@/features/kingdom/useKingdom'
-import { formatResource, formatDuration } from '@/lib/format'
+import { MissionRow } from './components/MissionRow'
 
 // ── Unit metadata ─────────────────────────────────────────────────────────────
 
 const COMBAT_UNITS: { id: string; name: string; Icon: IconType }[] = [
-  { id: 'squire',       name: 'Escudero',           Icon: GiLightFighter  },
-  { id: 'knight',       name: 'Caballero',          Icon: GiHeavyFighter  },
-  { id: 'paladin',      name: 'Paladín',            Icon: GiMountedKnight },
-  { id: 'warlord',      name: 'Señor de la Guerra', Icon: GiKnightBanner  },
-  { id: 'grandKnight',  name: 'Gran Caballero',     Icon: GiCrossedSwords },
-  { id: 'siegeMaster',  name: 'Maestro de Asedio',  Icon: GiSiegeTower    },
-  { id: 'warMachine',   name: 'Máquina de Guerra',  Icon: GiBattleMech    },
-  { id: 'dragonKnight', name: 'Caballero Dragón',   Icon: GiDragonHead    },
+  { id: 'squire', name: 'Escudero', Icon: GiLightFighter },
+  { id: 'knight', name: 'Caballero', Icon: GiHeavyFighter },
+  { id: 'paladin', name: 'Paladín', Icon: GiMountedKnight },
+  { id: 'warlord', name: 'Señor de la Guerra', Icon: GiKnightBanner },
+  { id: 'grandKnight', name: 'Gran Caballero', Icon: GiCrossedSwords },
+  { id: 'siegeMaster', name: 'Maestro de Asedio', Icon: GiSiegeTower },
+  { id: 'warMachine', name: 'Máquina de Guerra', Icon: GiBattleMech },
+  { id: 'dragonKnight', name: 'Caballero Dragón', Icon: GiDragonHead },
 ]
 const SUPPORT_UNITS: { id: string; name: string; Icon: IconType }[] = [
-  { id: 'merchant',  name: 'Mercader',   Icon: GiTrade      },
-  { id: 'caravan',   name: 'Caravana',   Icon: GiCaravan    },
-  { id: 'colonist',  name: 'Colonista',  Icon: GiCampingTent},
-  { id: 'scavenger', name: 'Carroñero',  Icon: GiVulture    },
-  { id: 'scout',     name: 'Explorador', Icon: GiSpyglass   },
+  { id: 'merchant', name: 'Mercader', Icon: GiTrade },
+  { id: 'caravan', name: 'Caravana', Icon: GiCaravan },
+  { id: 'colonist', name: 'Colonista', Icon: GiCampingTent },
+  { id: 'scavenger', name: 'Carroñero', Icon: GiVulture },
+  { id: 'scout', name: 'Explorador', Icon: GiSpyglass },
 ]
 const ALL_UNIT_META = [...COMBAT_UNITS, ...SUPPORT_UNITS]
 
-const MISSION_META: Record<MissionType, { label: string; Icon: typeof Swords; color: string; desc: string }> = {
-  attack:   { label: 'Ataque',       Icon: Swords,   color: 'text-crimson',  desc: 'Atacar y saquear el reino objetivo.' },
-  pillage:  { label: 'Pillaje',      Icon: Skull,    color: 'text-crimson',  desc: 'Saqueo rápido contra NPCs. Sin batalla completa.' },
-  transport:{ label: 'Transporte',   Icon: Package,  color: 'text-forest',   desc: 'Transportar recursos al reino objetivo.' },
-  spy:      { label: 'Espionaje',    Icon: Eye,      color: 'text-gold-dim', desc: 'Solo Exploradores. Recopila información.' },
-  scavenge: { label: 'Recolección',  Icon: Pickaxe,  color: 'text-stone',    desc: 'Envía Carroñeros a recolectar escombros de batalla.' },
-  colonize: { label: 'Colonización', Icon: Tent,     color: 'text-forest',   desc: 'Envía Colonistas a fundar una nueva colonia.' },
-  deploy:   { label: 'Despliegue',   Icon: Flag,     color: 'text-gold',     desc: 'Mover tropas a una colonia propia. Sin retorno.' },
-}
-
-// ── Countdown hook ────────────────────────────────────────────────────────────
-
-function useCountdown(targetSecs: number | null, onEnd?: () => void) {
-  const [secs, setSecs] = useState(() =>
-    targetSecs ? Math.max(0, targetSecs - Math.floor(Date.now() / 1000)) : 0
-  )
-  useEffect(() => {
-    if (!targetSecs) { setSecs(0); return }
-    let fired = false
-    const tick = () => {
-      const rem = Math.max(0, targetSecs - Math.floor(Date.now() / 1000))
-      setSecs(rem)
-      if (rem === 0 && !fired) { fired = true; onEnd?.() }
-    }
-    tick()
-    const id = setInterval(tick, 1000)
-    return () => clearInterval(id)
-  }, [targetSecs, onEnd])
-  return secs
+const MISSION_META: Record<
+  MissionType,
+  { label: string; Icon: typeof Swords; color: string; desc: string }
+> = {
+  attack: {
+    label: 'Ataque',
+    Icon: Swords,
+    color: 'text-crimson',
+    desc: 'Atacar y saquear el reino objetivo.',
+  },
+  pillage: {
+    label: 'Pillaje',
+    Icon: Skull,
+    color: 'text-crimson',
+    desc: 'Saqueo rápido contra NPCs. Sin batalla completa.',
+  },
+  transport: {
+    label: 'Transporte',
+    Icon: Package,
+    color: 'text-forest',
+    desc: 'Transportar recursos al reino objetivo.',
+  },
+  spy: {
+    label: 'Espionaje',
+    Icon: Eye,
+    color: 'text-gold-dim',
+    desc: 'Solo Exploradores. Recopila información.',
+  },
+  scavenge: {
+    label: 'Recolección',
+    Icon: Pickaxe,
+    color: 'text-stone',
+    desc: 'Envía Carroñeros a recolectar escombros de batalla.',
+  },
+  colonize: {
+    label: 'Colonización',
+    Icon: Tent,
+    color: 'text-forest',
+    desc: 'Envía Colonistas a fundar una nueva colonia.',
+  },
+  deploy: {
+    label: 'Despliegue',
+    Icon: Flag,
+    color: 'text-gold',
+    desc: 'Mover tropas a una colonia propia. Sin retorno.',
+  },
 }
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export function ArmiesPage() {
-  const qc                          = useQueryClient()
+  const qc = useQueryClient()
   const { data: armies, isLoading } = useArmies()
-  const { data: kingdom }           = useKingdom()
-  const send                        = useSendArmy()
-  const [searchParams]              = useSearchParams()
+  const { data: kingdom } = useKingdom()
+  const send = useSendArmy()
+  const [searchParams] = useSearchParams()
 
-  const initRealm  = Math.max(1, parseInt(searchParams.get('realm')  ?? '1', 10) || 1)
+  const initRealm = Math.max(1, parseInt(searchParams.get('realm') ?? '1', 10) || 1)
   const initRegion = Math.max(1, parseInt(searchParams.get('region') ?? '1', 10) || 1)
-  const initSlot   = Math.max(1, parseInt(searchParams.get('slot')   ?? '1', 10) || 1)
-  const initType   = (searchParams.get('type') ?? 'attack') as MissionType
+  const initSlot = Math.max(1, parseInt(searchParams.get('slot') ?? '1', 10) || 1)
+  const initType = (searchParams.get('type') ?? 'attack') as MissionType
 
   const [missionType, setMissionType] = useState<MissionType>(initType)
-  const [tRealm,  setTRealm]  = useState(initRealm)
+  const [tRealm, setTRealm] = useState(initRealm)
   const [tRegion, setTRegion] = useState(initRegion)
-  const [tSlot,   setTSlot]   = useState(initSlot)
-  const [units,   setUnits]   = useState<Record<string, number>>({})
+  const [tSlot, setTSlot] = useState(initSlot)
+  const [units, setUnits] = useState<Record<string, number>>({})
   const [resLoad, setResLoad] = useState({ wood: 0, stone: 0, grain: 0 })
 
   const handleEnd = useCallback(() => {
@@ -101,29 +140,30 @@ export function ArmiesPage() {
   }
 
   const totalUnits = Object.values(units).reduce((s, n) => s + n, 0)
-  const canSend    = totalUnits > 0 && !send.isPending
+  const canSend = totalUnits > 0 && !send.isPending
 
   const handleSend = () => {
-    send.mutate({
-      missionType,
-      target: { realm: tRealm, region: tRegion, slot: tSlot },
-      units,
-      resources: (missionType === 'transport' || missionType === 'deploy') ? resLoad : undefined,
-    }, {
-      onSuccess: () => {
-        setUnits({})
-        setResLoad({ wood: 0, stone: 0, grain: 0 })
+    send.mutate(
+      {
+        missionType,
+        target: { realm: tRealm, region: tRegion, slot: tSlot },
+        units,
+        resources: missionType === 'transport' || missionType === 'deploy' ? resLoad : undefined,
       },
-    })
+      {
+        onSuccess: () => {
+          setUnits({})
+          setResLoad({ wood: 0, stone: 0, grain: 0 })
+        },
+      }
+    )
   }
 
-  const activeMissions  = armies?.missions.filter(m => m.state === 'active')    ?? []
+  const activeMissions = armies?.missions.filter(m => m.state === 'active') ?? []
   const returningMissions = armies?.missions.filter(m => m.state === 'returning') ?? []
 
   return (
     <div className="space-y-8">
-
-      {/* Header */}
       <div className="anim-fade-up">
         <span className="section-heading">Ejército</span>
         <h1 className="page-title mt-0.5">Misiones</h1>
@@ -133,16 +173,21 @@ export function ArmiesPage() {
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-
         {/* ── Send form ── */}
         <div className="space-y-4 anim-fade-up-1">
-          <h2 className="font-ui text-sm font-semibold text-ink uppercase tracking-widest">Enviar misión</h2>
+          <h2 className="font-ui text-sm font-semibold text-ink uppercase tracking-widest">
+            Enviar misión
+          </h2>
 
           {/* Mission type selector */}
           <Card className="p-4 space-y-3">
-            <p className="font-ui text-xs text-ink-muted uppercase tracking-wider">Tipo de misión</p>
+            <p className="font-ui text-xs text-ink-muted uppercase tracking-wider">
+              Tipo de misión
+            </p>
             <div className="grid grid-cols-3 sm:grid-cols-5 gap-1.5">
-              {(Object.entries(MISSION_META) as [MissionType, typeof MISSION_META[MissionType]][]).map(([type, meta]) => {
+              {(
+                Object.entries(MISSION_META) as [MissionType, (typeof MISSION_META)[MissionType]][]
+              ).map(([type, meta]) => {
                 const { Icon } = meta
                 return (
                   <button
@@ -167,9 +212,9 @@ export function ArmiesPage() {
           <Card className="p-4 space-y-3">
             <p className="font-ui text-xs text-ink-muted uppercase tracking-wider">Destino</p>
             <div className="grid grid-cols-3 gap-2">
-              <CoordPicker label="Reino"    value={tRealm}  min={1} max={3}  onChange={setTRealm}  />
-              <CoordPicker label="Región"   value={tRegion} min={1} max={10} onChange={setTRegion} />
-              <CoordPicker label="Posición" value={tSlot}   min={1} max={15} onChange={setTSlot}   />
+              <CoordPicker label="Reino" value={tRealm} min={1} max={3} onChange={setTRealm} />
+              <CoordPicker label="Región" value={tRegion} min={1} max={10} onChange={setTRegion} />
+              <CoordPicker label="Posición" value={tSlot} min={1} max={15} onChange={setTSlot} />
             </div>
           </Card>
 
@@ -188,8 +233,12 @@ export function ArmiesPage() {
                 return (
                   <div key={u.id} className="flex items-center gap-2">
                     <u.Icon size={14} className="text-gold-dim shrink-0" />
-                    <span className="font-ui text-xs text-ink flex-1 min-w-0 truncate">{u.name}</span>
-                    <span className="font-ui text-xs text-ink-muted tabular-nums shrink-0">{available.toLocaleString()}</span>
+                    <span className="font-ui text-xs text-ink flex-1 min-w-0 truncate">
+                      {u.name}
+                    </span>
+                    <span className="font-ui text-xs text-ink-muted tabular-nums shrink-0">
+                      {available.toLocaleString()}
+                    </span>
                     <input
                       type="number"
                       min={0}
@@ -201,20 +250,29 @@ export function ArmiesPage() {
                   </div>
                 )
               })}
-              {!kingdom || ALL_UNIT_META.every(u => ((kingdom as any)?.[u.id] ?? 0) === 0) && (
-                <p className="font-body text-xs text-ink-muted/50 italic py-2 text-center">
-                  No tienes unidades disponibles. Entrena unidades en el Cuartel.
-                </p>
-              )}
+              {!kingdom ||
+                (ALL_UNIT_META.every(u => ((kingdom as any)?.[u.id] ?? 0) === 0) && (
+                  <p className="font-body text-xs text-ink-muted/50 italic py-2 text-center">
+                    No tienes unidades disponibles. Entrena unidades en el Cuartel.
+                  </p>
+                ))}
             </div>
           </Card>
 
           {/* Resource load (transport / deploy) */}
           {(missionType === 'transport' || missionType === 'deploy') && (
             <Card className="p-4 space-y-3">
-              <p className="font-ui text-xs text-ink-muted uppercase tracking-wider">Recursos a transportar</p>
+              <p className="font-ui text-xs text-ink-muted uppercase tracking-wider">
+                Recursos a transportar
+              </p>
               <div className="space-y-2">
-                {([['wood','🪵','Madera'],['stone','🪨','Piedra'],['grain','🌾','Grano']] as const).map(([key, emoji, label]) => (
+                {(
+                  [
+                    ['wood', '🪵', 'Madera'],
+                    ['stone', '🪨', 'Piedra'],
+                    ['grain', '🌾', 'Grano'],
+                  ] as const
+                ).map(([key, emoji, label]) => (
                   <div key={key} className="flex items-center gap-3">
                     <span className="text-base w-5 text-center">{emoji}</span>
                     <span className="font-ui text-xs text-ink flex-1">{label}</span>
@@ -222,7 +280,12 @@ export function ArmiesPage() {
                       type="number"
                       min={0}
                       value={resLoad[key]}
-                      onChange={e => setResLoad(r => ({ ...r, [key]: Math.max(0, parseInt(e.target.value) || 0) }))}
+                      onChange={e =>
+                        setResLoad(r => ({
+                          ...r,
+                          [key]: Math.max(0, parseInt(e.target.value) || 0),
+                        }))
+                      }
                       className="game-input w-28 py-1 text-sm text-center tabular-nums"
                     />
                   </div>
@@ -231,19 +294,13 @@ export function ArmiesPage() {
             </Card>
           )}
 
-          {/* Error */}
           {send.isError && (
             <p className="font-ui text-xs text-crimson px-1">
               {(send.error as any)?.message ?? 'Error al enviar la misión'}
             </p>
           )}
 
-          <Button
-            variant="primary"
-            className="w-full"
-            disabled={!canSend}
-            onClick={handleSend}
-          >
+          <Button variant="primary" className="w-full" disabled={!canSend} onClick={handleSend}>
             {send.isPending ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
             {send.isPending ? 'Enviando…' : `Enviar ${MISSION_META[missionType].label}`}
           </Button>
@@ -274,18 +331,25 @@ export function ArmiesPage() {
               ))}
             </div>
           )}
-
         </div>
-
       </div>
     </div>
   )
 }
 
-// ── Coordinate picker ─────────────────────────────────────────────────────────
+// ── CoordPicker ───────────────────────────────────────────────────────────────
 
-function CoordPicker({ label, value, min, max, onChange }: {
-  label: string; value: number; min: number; max: number
+function CoordPicker({
+  label,
+  value,
+  min,
+  max,
+  onChange,
+}: {
+  label: string
+  value: number
+  min: number
+  max: number
   onChange: (n: number) => void
 }) {
   return (
@@ -296,207 +360,21 @@ function CoordPicker({ label, value, min, max, onChange }: {
           onClick={() => onChange(Math.max(min, value - 1))}
           disabled={value <= min}
           className="p-1 rounded border border-gold/20 text-ink-muted hover:bg-parchment-warm disabled:opacity-30 transition-colors"
-        ><ChevronLeft size={11} /></button>
-        <span className="font-ui font-semibold text-ink w-6 text-center tabular-nums text-sm">{value}</span>
+        >
+          <ChevronLeft size={11} />
+        </button>
+        <span className="font-ui font-semibold text-ink w-6 text-center tabular-nums text-sm">
+          {value}
+        </span>
         <button
           onClick={() => onChange(Math.min(max, value + 1))}
           disabled={value >= max}
           className="p-1 rounded border border-gold/20 text-ink-muted hover:bg-parchment-warm disabled:opacity-30 transition-colors"
-        ><ChevronRight size={11} /></button>
+        >
+          <ChevronRight size={11} />
+        </button>
       </div>
     </div>
-  )
-}
-
-// ── Mission row ───────────────────────────────────────────────────────────────
-
-function MissionRow({ mission, onEnd }: { mission: ArmyMission; onEnd: () => void }) {
-  const recall      = useRecallArmy()
-  const isReturning = mission.state === 'returning'
-  const target = isReturning ? mission.origin : mission.target
-  const targetTime = isReturning ? (mission.returnTime ?? 0) : mission.arrivalTime
-  const secs = useCountdown(targetTime, onEnd)
-
-  const meta   = MISSION_META[mission.missionType]
-  const { Icon } = meta
-  const unitList = Object.entries(mission.units).filter((entry): entry is [string, number] => (entry[1] ?? 0) > 0)
-
-  const result = mission.result
-  const hasResult = result && (
-    result.outcome !== undefined ||
-    result.delivered !== undefined ||
-    result.type === 'colonize' ||
-    result.type === 'scavenge' ||
-    result.type === 'pillage'  ||
-    result.type === 'deploy'
-  )
-
-  return (
-    <Card className="p-4 space-y-3">
-      <div className="flex items-start gap-3">
-        <div className={`w-8 h-8 rounded-full border flex items-center justify-center shrink-0 ${
-          isReturning ? 'bg-forest/10 border-forest/20' : 'bg-gold-soft border-gold/20'
-        }`}>
-          {isReturning
-            ? <ArrowLeft size={13} className="text-forest" />
-            : <Icon size={13} className={meta.color} />
-          }
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-ui text-sm font-semibold text-ink">{meta.label}</span>
-            <Badge variant={isReturning ? 'forest' : 'gold'}>
-              {isReturning ? 'Regresando' : 'En camino'}
-            </Badge>
-            {result?.outcome === 'victory' && <Badge variant="gold">Victoria</Badge>}
-            {result?.outcome === 'defeat'  && <Badge variant="crimson">Derrota</Badge>}
-          </div>
-          <p className="font-body text-xs text-ink-muted mt-0.5">
-            {isReturning ? 'Origen' : 'Destino'}: Reino {target.realm} · Región {target.region} · Pos. {target.slot}
-          </p>
-        </div>
-        <div className="shrink-0 text-right">
-          <p className="font-ui text-xs font-semibold text-ink tabular-nums">
-            {secs > 0 ? formatDuration(secs) : 'Llegando…'}
-          </p>
-          <p className="font-body text-[0.65rem] text-ink-muted/60 mt-0.5">
-            {isReturning ? 'regreso en' : 'llega en'}
-          </p>
-        </div>
-      </div>
-
-      {/* Units */}
-      {unitList.length > 0 && (
-        <div className="flex items-center gap-2 flex-wrap">
-          {unitList.map(([id, n]) => {
-            const m = ALL_UNIT_META.find(u => u.id === id)
-            return m ? (
-              <div key={id} className="flex items-center gap-1 text-xs text-ink-muted">
-                <m.Icon size={13} className="text-gold-dim" />
-                <span className="font-ui tabular-nums">{n.toLocaleString()}</span>
-              </div>
-            ) : null
-          })}
-        </div>
-      )}
-
-      {/* Battle result */}
-      {hasResult && (
-        <div className="pt-1 border-t border-gold/10 space-y-1.5">
-          {result?.outcome === 'victory' && (() => {
-            const loot   = result.loot   ?? { wood: 0, stone: 0, grain: 0 }
-            const debris = result.debris ?? { wood: 0, stone: 0 }
-            return (
-              <div className="flex items-center gap-3 flex-wrap">
-                <Trophy size={11} className="text-gold shrink-0" />
-                <span className="font-ui text-xs font-semibold text-gold">Victoria · {result.rounds} rondas</span>
-                {(loot.wood > 0 || loot.stone > 0 || loot.grain > 0) && (
-                  <span className="font-body text-xs text-ink-muted flex items-center gap-2">
-                    {loot.wood  > 0 && <span className="flex items-center gap-0.5"><GiWoodPile  size={11} className="text-ink-muted/60" /> {formatResource(loot.wood)}</span>}
-                    {loot.stone > 0 && <span className="flex items-center gap-0.5"><GiStoneBlock size={11} className="text-ink-muted/60" /> {formatResource(loot.stone)}</span>}
-                    {loot.grain > 0 && <span>🌾 {formatResource(loot.grain)}</span>}
-                  </span>
-                )}
-                {(debris.wood > 0 || debris.stone > 0) && (
-                  <span className="font-body text-xs text-ink-muted/60 flex items-center gap-1">
-                    <Pickaxe size={10} />
-                    {debris.wood  > 0 && <span><GiWoodPile  size={10} className="inline" /> {formatResource(debris.wood)}</span>}
-                    {debris.stone > 0 && <span><GiStoneBlock size={10} className="inline" /> {formatResource(debris.stone)}</span>}
-                    escombros
-                  </span>
-                )}
-              </div>
-            )
-          })()}
-          {result?.outcome === 'defeat' && (
-            <div className="flex items-center gap-2">
-              <Skull size={11} className="text-crimson shrink-0" />
-              <span className="font-ui text-xs font-semibold text-crimson">Derrota · {result.rounds} rondas</span>
-            </div>
-          )}
-          {result?.outcome === 'draw' && (
-            <div className="flex items-center gap-2">
-              <Shield size={11} className="text-ink-muted shrink-0" />
-              <span className="font-ui text-xs font-semibold text-ink-muted">Empate · {result.rounds} rondas</span>
-            </div>
-          )}
-          {result?.delivered === true && (
-            <span className="font-body text-xs text-forest">Recursos entregados</span>
-          )}
-          {result?.delivered === false && (
-            <span className="font-body text-xs text-ink-muted">{result.reason ?? 'No entregado'}</span>
-          )}
-          {result?.type === 'spy' && (
-            <span className="font-body text-xs text-ink-muted">{result.message}</span>
-          )}
-          {result?.type === 'colonize' && result.success === true && (
-            <span className="font-body text-xs text-forest">Colonia fundada: {result.name}</span>
-          )}
-          {result?.type === 'colonize' && result.success === false && (
-            <span className="font-body text-xs text-ink-muted">{result.reason ?? 'Colonización fallida'}</span>
-          )}
-          {result?.type === 'deploy' && result.success === true && (
-            <span className="font-body text-xs text-gold">Despliegue completado en {(result as any).target}</span>
-          )}
-          {result?.type === 'deploy' && result.success === false && (
-            <span className="font-body text-xs text-ink-muted">{result.reason ?? 'Despliegue fallido'}</span>
-          )}
-          {result?.type === 'pillage' && (() => {
-            const loot = result.loot ?? { wood: 0, stone: 0, grain: 0 }
-            return (loot.wood > 0 || loot.stone > 0 || loot.grain > 0)
-              ? (
-                <span className="font-body text-xs text-ink-muted flex items-center gap-2">
-                  <Skull size={10} className="text-crimson" />
-                  <span className="font-semibold text-crimson">Pillaje</span>
-                  {loot.wood  > 0 && <span className="flex items-center gap-0.5"><GiWoodPile  size={10} className="inline" /> {formatResource(loot.wood)}</span>}
-                  {loot.stone > 0 && <span className="flex items-center gap-0.5"><GiStoneBlock size={10} className="inline" /> {formatResource(loot.stone)}</span>}
-                  {loot.grain > 0 && <span className="flex items-center gap-0.5">🌾 {formatResource(loot.grain)}</span>}
-                </span>
-              )
-              : <span className="font-body text-xs text-ink-muted/60">NPC sin recursos</span>
-          })()}
-          {result?.type === 'scavenge' && (() => {
-            const c = result.collected ?? { wood: 0, stone: 0 }
-            return (c.wood > 0 || c.stone > 0)
-              ? (
-                <span className="font-body text-xs text-ink-muted flex items-center gap-2">
-                  <Pickaxe size={10} />
-                  {c.wood  > 0 && <span className="flex items-center gap-0.5"><GiWoodPile  size={10} className="inline" /> {formatResource(c.wood)}</span>}
-                  {c.stone > 0 && <span className="flex items-center gap-0.5"><GiStoneBlock size={10} className="inline" /> {formatResource(c.stone)}</span>}
-                  recogidos
-                </span>
-              )
-              : <span className="font-body text-xs text-ink-muted/60">Sin escombros en el destino</span>
-          })()}
-        </div>
-      )}
-
-      {/* Transport / Deploy resources */}
-      {(mission.missionType === 'transport' || mission.missionType === 'deploy') && (mission.resources.wood + mission.resources.stone + mission.resources.grain) > 0 && (
-        <div className="flex items-center gap-3 text-xs text-ink-muted flex-wrap">
-          <Package size={11} className="shrink-0" />
-          {mission.resources.wood  > 0 && <span>🪵 {formatResource(mission.resources.wood)}</span>}
-          {mission.resources.stone > 0 && <span>🪨 {formatResource(mission.resources.stone)}</span>}
-          {mission.resources.grain > 0 && <span>🌾 {formatResource(mission.resources.grain)}</span>}
-        </div>
-      )}
-
-      {/* Recall button — only for active outbound missions */}
-      {!isReturning && (
-        <button
-          onClick={() => recall.mutate(mission.id)}
-          disabled={recall.isPending}
-          className="flex items-center gap-1.5 text-xs font-ui text-ink-muted/60 hover:text-ink-muted transition-colors disabled:opacity-40"
-          title="Retirar misión"
-        >
-          {recall.isPending
-            ? <Loader2 size={10} className="animate-spin" />
-            : <Undo2 size={10} />
-          }
-          Retirar
-        </button>
-      )}
-    </Card>
   )
 }
 

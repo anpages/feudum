@@ -9,14 +9,16 @@ import { useKingdom } from '@/features/kingdom/useKingdom'
 
 export function ProfilePage() {
   const { data: profile, isLoading } = useProfile()
-  const { data: kingdom }            = useKingdom()
-  const update                       = useUpdateProfile()
+  const { data: kingdom } = useKingdom()
+  const update = useUpdateProfile()
 
   const [username, setUsername] = useState('')
-  const [saved,    setSaved]    = useState(false)
+  const [saved, setSaved] = useState(false)
 
   useEffect(() => {
-    if (profile?.username) setUsername(profile.username)
+    if (!profile?.username) return
+    const id = setTimeout(() => setUsername(profile.username ?? ''), 0)
+    return () => clearTimeout(id)
   }, [profile?.username])
 
   async function handleSave() {
@@ -29,12 +31,15 @@ export function ProfilePage() {
   if (isLoading) return <ProfileSkeleton />
 
   const joinDate = profile?.createdAt
-    ? new Date(profile.createdAt).toLocaleDateString('es', { year: 'numeric', month: 'long', day: 'numeric' })
+    ? new Date(profile.createdAt).toLocaleDateString('es', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      })
     : '—'
 
   return (
     <div className="space-y-8 max-w-lg">
-
       <div className="anim-fade-up">
         <span className="section-heading">Cuenta</span>
         <h1 className="page-title mt-0.5">Perfil</h1>
@@ -61,7 +66,9 @@ export function ProfilePage() {
 
       {/* Edit username */}
       <Card className="p-5 space-y-4 anim-fade-up-2">
-        <h2 className="font-ui text-sm font-semibold text-ink uppercase tracking-widest">Nombre de usuario</h2>
+        <h2 className="font-ui text-sm font-semibold text-ink uppercase tracking-widest">
+          Nombre de usuario
+        </h2>
 
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-full bg-parchment border border-gold/20 flex items-center justify-center shrink-0">
@@ -94,26 +101,32 @@ export function ProfilePage() {
           disabled={!username.trim() || update.isPending}
           className="w-full"
         >
-          {update.isPending
-            ? <Loader2 size={12} className="animate-spin" />
-            : saved
-              ? '✓ Guardado'
-              : <Save size={12} />
-          }
+          {update.isPending ? (
+            <Loader2 size={12} className="animate-spin" />
+          ) : saved ? (
+            '✓ Guardado'
+          ) : (
+            <Save size={12} />
+          )}
           {update.isPending ? 'Guardando…' : saved ? '' : 'Guardar cambios'}
         </Button>
       </Card>
 
       {/* Account info (read-only) */}
       <Card className="p-5 space-y-3 anim-fade-up-3">
-        <h2 className="font-ui text-sm font-semibold text-ink uppercase tracking-widest">Información de cuenta</h2>
+        <h2 className="font-ui text-sm font-semibold text-ink uppercase tracking-widest">
+          Información de cuenta
+        </h2>
 
         <div className="space-y-3">
-          <InfoRow icon={<Mail size={13} />} label="Correo electrónico" value={profile?.email ?? '—'} />
+          <InfoRow
+            icon={<Mail size={13} />}
+            label="Correo electrónico"
+            value={profile?.email ?? '—'}
+          />
           <InfoRow icon={<Calendar size={13} />} label="Fecha de registro" value={joinDate} />
         </div>
       </Card>
-
     </div>
   )
 }

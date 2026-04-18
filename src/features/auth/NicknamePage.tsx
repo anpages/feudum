@@ -4,9 +4,42 @@ import { useQueryClient } from '@tanstack/react-query'
 import { Shield, RefreshCw, Check } from 'lucide-react'
 import { authApi } from '@/lib/auth'
 
-const PREFIXES = ['Hierro', 'Piedra', 'Dorado', 'Oscuro', 'Valiente', 'Fierro', 'Trueno', 'Roble', 'Rojo', 'Plata']
-const SUFFIXES = ['Guardián', 'Espada', 'Forja', 'Torre', 'Halcón', 'Lobo', 'Escudo', 'Lanza', 'Cuervo', 'Hacha']
-const CLASSIC  = ['Aldric', 'Berthold', 'Cedric', 'Dunstan', 'Edmund', 'Godfrey', 'Harold', 'Oswin', 'Radulf', 'Wulfric']
+const PREFIXES = [
+  'Hierro',
+  'Piedra',
+  'Dorado',
+  'Oscuro',
+  'Valiente',
+  'Fierro',
+  'Trueno',
+  'Roble',
+  'Rojo',
+  'Plata',
+]
+const SUFFIXES = [
+  'Guardián',
+  'Espada',
+  'Forja',
+  'Torre',
+  'Halcón',
+  'Lobo',
+  'Escudo',
+  'Lanza',
+  'Cuervo',
+  'Hacha',
+]
+const CLASSIC = [
+  'Aldric',
+  'Berthold',
+  'Cedric',
+  'Dunstan',
+  'Edmund',
+  'Godfrey',
+  'Harold',
+  'Oswin',
+  'Radulf',
+  'Wulfric',
+]
 
 function generateSuggestions(): string[] {
   const pool: string[] = []
@@ -24,16 +57,16 @@ function generateSuggestions(): string[] {
 }
 
 export function NicknamePage() {
-  const navigate  = useNavigate()
-  const qc        = useQueryClient()
+  const navigate = useNavigate()
+  const qc = useQueryClient()
   const [suggestions, setSuggestions] = useState(() => generateSuggestions())
-  const [selected, setSelected]       = useState<string | null>(null)
-  const [custom, setCustom]           = useState('')
-  const [error, setError]             = useState('')
-  const [loading, setLoading]         = useState(false)
+  const [selected, setSelected] = useState<string | null>(null)
+  const [custom, setCustom] = useState('')
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
 
   const nickname = custom.trim() || selected || ''
-  const isValid  = /^[a-zA-Z0-9_]{3,20}$/.test(nickname)
+  const isValid = /^[a-zA-Z0-9_]{3,20}$/.test(nickname)
 
   function refresh() {
     setSelected(null)
@@ -69,12 +102,13 @@ export function NicknamePage() {
   return (
     <div className="bg-login min-h-screen flex items-center justify-center p-4">
       <div className="w-full max-w-md anim-fade-up">
-
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-14 h-14 rounded-full mb-4 bg-gold/8 border border-gold/20">
             <Shield size={24} className="text-gold" />
           </div>
-          <h1 className="font-display text-2xl text-ink tracking-[0.14em] uppercase">Elige tu nombre</h1>
+          <h1 className="font-display text-2xl text-ink tracking-[0.14em] uppercase">
+            Elige tu nombre
+          </h1>
           <p className="font-body text-ink-muted text-sm mt-2">
             Este será tu nombre en el reino. No podrás cambiarlo después.
           </p>
@@ -100,12 +134,16 @@ export function NicknamePage() {
               {suggestions.map(name => (
                 <button
                   key={name}
-                  onClick={() => { setSelected(name); setCustom('') }}
+                  onClick={() => {
+                    setSelected(name)
+                    setCustom('')
+                  }}
                   className={`
                     py-2.5 px-3 rounded border text-sm font-ui font-medium transition-all duration-150 text-left
-                    ${selected === name && !custom
-                      ? 'border-gold bg-gold/8 text-gold'
-                      : 'border-gold/20 bg-parchment-warm text-ink-mid hover:border-gold/40 hover:bg-gold/5'
+                    ${
+                      selected === name && !custom
+                        ? 'border-gold bg-gold/8 text-gold'
+                        : 'border-gold/20 bg-parchment-warm text-ink-mid hover:border-gold/40 hover:bg-gold/5'
                     }
                   `}
                 >
@@ -126,7 +164,10 @@ export function NicknamePage() {
             <input
               type="text"
               value={custom}
-              onChange={e => { setCustom(e.target.value); setSelected(null) }}
+              onChange={e => {
+                setCustom(e.target.value)
+                setSelected(null)
+              }}
               placeholder="Tu nombre de jugador…"
               maxLength={20}
               className="game-input w-full"
@@ -150,7 +191,6 @@ export function NicknamePage() {
             {loading ? 'Guardando…' : 'Entrar al reino'}
           </button>
         </div>
-
       </div>
     </div>
   )

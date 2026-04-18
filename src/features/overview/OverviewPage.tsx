@@ -1,8 +1,12 @@
 import { type ReactNode, useState, useEffect } from 'react'
 import { Users, Clock, TrendingUp, Hammer, FlaskConical, Swords } from 'lucide-react'
 import {
-  GiWoodPile, GiStoneBlock, GiWheat,
-  GiAnvil, GiSpellBook, GiCrossedSwords,
+  GiWoodPile,
+  GiStoneBlock,
+  GiWheat,
+  GiAnvil,
+  GiSpellBook,
+  GiCrossedSwords,
 } from 'react-icons/gi'
 import { useKingdom } from '@/features/kingdom/useKingdom'
 import { useResourceTicker } from '@/features/kingdom/useResourceTicker'
@@ -17,48 +21,79 @@ import { Badge } from '@/components/ui/Badge'
 import { ProgressBar } from '@/components/ui/ProgressBar'
 
 const BUILDING_KEYS = [
-  'sawmill','quarry','grainFarm','windmill','cathedral','workshop','engineersGuild',
-  'barracks','granary','stonehouse','silo','academy','alchemistTower','ambassadorHall','armoury',
+  'sawmill',
+  'quarry',
+  'grainFarm',
+  'windmill',
+  'cathedral',
+  'workshop',
+  'engineersGuild',
+  'barracks',
+  'granary',
+  'stonehouse',
+  'silo',
+  'academy',
+  'alchemistTower',
+  'ambassadorHall',
+  'armoury',
 ] as const
 
 const UNIT_KEYS = [
-  'squire','knight','paladin','warlord','grandKnight','siegeMaster','warMachine','dragonKnight',
-  'merchant','caravan','colonist','scavenger','scout','beacon',
-  'archer','crossbowman','ballista','trebuchet','mageTower','dragonCannon',
-  'palisade','castleWall','moat','catapult',
+  'squire',
+  'knight',
+  'paladin',
+  'warlord',
+  'grandKnight',
+  'siegeMaster',
+  'warMachine',
+  'dragonKnight',
+  'merchant',
+  'caravan',
+  'colonist',
+  'scavenger',
+  'scout',
+  'beacon',
+  'archer',
+  'crossbowman',
+  'ballista',
+  'trebuchet',
+  'mageTower',
+  'dragonCannon',
+  'palisade',
+  'castleWall',
+  'moat',
+  'catapult',
 ] as const
 
 export function OverviewPage() {
   const { data: kingdom, isLoading } = useKingdom()
-  const { data: researchData }       = useResearch()
-  const { data: buildingsData }      = useBuildings()
-  const { data: barracksData }       = useBarracks()
-  const { data: rankingsData }       = useRankings()
+  const { data: researchData } = useResearch()
+  const { data: buildingsData } = useBuildings()
+  const { data: barracksData } = useBarracks()
+  const { data: rankingsData } = useRankings()
   const resources = useResourceTicker(kingdom)
 
   const buildingCount = kingdom
-    ? BUILDING_KEYS.reduce((s, k) => s + (Number((kingdom as Record<string, unknown>)[k]) > 0 ? 1 : 0), 0)
+    ? BUILDING_KEYS.reduce(
+        (s, k) => s + (Number((kingdom as Record<string, unknown>)[k]) > 0 ? 1 : 0),
+        0
+      )
     : 0
   const researchCount = researchData?.research.filter(r => r.level > 0).length ?? 0
-  const troopCount    = kingdom
+  const troopCount = kingdom
     ? UNIT_KEYS.reduce((s, k) => s + (Number((kingdom as Record<string, unknown>)[k]) || 0), 0)
     : 0
 
   const myRanking = rankingsData?.rankings.find(r => r.isMe)
 
-  const now = Math.floor(Date.now() / 1000)
-  const activeBuilding = buildingsData?.buildings.find(
-    b => b.inQueue && b.inQueue.finishesAt > now
-  )
-  const activeResearch = researchData?.research.find(
-    r => r.inQueue && r.inQueue.finishesAt > now
-  )
+  const activeBuilding = buildingsData?.buildings.find(b => !!b.inQueue)
+  const activeResearch = researchData?.research.find(r => !!r.inQueue)
   const allUnits = [
-    ...(barracksData?.units    ?? []),
-    ...(barracksData?.support  ?? []),
+    ...(barracksData?.units ?? []),
+    ...(barracksData?.support ?? []),
     ...(barracksData?.defenses ?? []),
   ]
-  const activeUnit = allUnits.find(u => u.inQueue && u.inQueue.finishesAt > now)
+  const activeUnit = allUnits.find(u => !!u.inQueue)
 
   const hasQueue = !!(activeBuilding || activeResearch || activeUnit)
 
@@ -66,16 +101,14 @@ export function OverviewPage() {
 
   return (
     <div className="space-y-8">
-
       {/* ── Kingdom header ── */}
       <div className="anim-fade-up flex items-start justify-between gap-4 flex-wrap">
         <div>
           <span className="section-heading">Tu reino</span>
-          <h1 className="page-title mt-0.5">
-            {kingdom?.name ?? 'Mi Reino'}
-          </h1>
+          <h1 className="page-title mt-0.5">{kingdom?.name ?? 'Mi Reino'}</h1>
           <p className="font-body text-ink-muted text-sm mt-1.5">
-            Reino {kingdom?.realm ?? '—'} · Región {kingdom?.region ?? '—'} · Posición {kingdom?.slot ?? '—'}
+            Reino {kingdom?.realm ?? '—'} · Región {kingdom?.region ?? '—'} · Posición{' '}
+            {kingdom?.slot ?? '—'}
           </p>
         </div>
         <div className="flex items-center gap-2 mt-1">
@@ -88,10 +121,38 @@ export function OverviewPage() {
       <section>
         <span className="section-heading anim-fade-up-1">Almacenes</span>
         <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
-          <ResourceCard icon={<GiWoodPile   size={18} />} label="Madera"     value={resources.wood}  cap={kingdom?.woodCapacity  ?? 5000} rate={kingdom?.woodProduction  ?? 0} animClass="anim-fade-up-1" />
-          <ResourceCard icon={<GiStoneBlock size={18} />} label="Piedra"     value={resources.stone} cap={kingdom?.stoneCapacity ?? 5000} rate={kingdom?.stoneProduction ?? 0} animClass="anim-fade-up-2" />
-          <ResourceCard icon={<GiWheat      size={18} />} label="Grano"      value={resources.grain} cap={kingdom?.grainCapacity ?? 5000} rate={kingdom?.grainProduction ?? 0} animClass="anim-fade-up-3" />
-          <ResourceCard icon={<Users        size={17} />} label="Población"  value={kingdom?.populationUsed ?? 0} cap={kingdom?.populationMax ?? 200} rate={0} animClass="anim-fade-up-4" />
+          <ResourceCard
+            icon={<GiWoodPile size={18} />}
+            label="Madera"
+            value={resources.wood}
+            cap={kingdom?.woodCapacity ?? 5000}
+            rate={kingdom?.woodProduction ?? 0}
+            animClass="anim-fade-up-1"
+          />
+          <ResourceCard
+            icon={<GiStoneBlock size={18} />}
+            label="Piedra"
+            value={resources.stone}
+            cap={kingdom?.stoneCapacity ?? 5000}
+            rate={kingdom?.stoneProduction ?? 0}
+            animClass="anim-fade-up-2"
+          />
+          <ResourceCard
+            icon={<GiWheat size={18} />}
+            label="Grano"
+            value={resources.grain}
+            cap={kingdom?.grainCapacity ?? 5000}
+            rate={kingdom?.grainProduction ?? 0}
+            animClass="anim-fade-up-3"
+          />
+          <ResourceCard
+            icon={<Users size={17} />}
+            label="Población"
+            value={kingdom?.populationUsed ?? 0}
+            cap={kingdom?.populationMax ?? 200}
+            rate={0}
+            animClass="anim-fade-up-4"
+          />
         </div>
       </section>
 
@@ -99,9 +160,27 @@ export function OverviewPage() {
       <section>
         <span className="section-heading anim-fade-up-2">Estado del Reino</span>
         <div className="grid grid-cols-3 gap-3">
-          <StatCard icon={<GiAnvil        size={16} />} label="Edificios"       value={buildingCount.toString()} note="construidos"   animClass="anim-fade-up-2" />
-          <StatCard icon={<GiSpellBook    size={16} />} label="Investigaciones" value={researchCount.toString()} note="descubiertas" animClass="anim-fade-up-3" />
-          <StatCard icon={<GiCrossedSwords size={16} />} label="Tropas"         value={troopCount.toLocaleString()} note="en campo"  animClass="anim-fade-up-4" />
+          <StatCard
+            icon={<GiAnvil size={16} />}
+            label="Edificios"
+            value={buildingCount.toString()}
+            note="construidos"
+            animClass="anim-fade-up-2"
+          />
+          <StatCard
+            icon={<GiSpellBook size={16} />}
+            label="Investigaciones"
+            value={researchCount.toString()}
+            note="descubiertas"
+            animClass="anim-fade-up-3"
+          />
+          <StatCard
+            icon={<GiCrossedSwords size={16} />}
+            label="Tropas"
+            value={troopCount.toLocaleString()}
+            note="en campo"
+            animClass="anim-fade-up-4"
+          />
         </div>
       </section>
 
@@ -144,16 +223,25 @@ export function OverviewPage() {
           </Card>
         )}
       </section>
-
     </div>
   )
 }
 
-function QueueRow({ icon, label: lbl, finishesAt, color }: {
-  icon: ReactNode; label: string; finishesAt: number; color: 'gold' | 'forest' | 'stone'
+function QueueRow({
+  icon,
+  label: lbl,
+  finishesAt,
+  color,
+}: {
+  icon: ReactNode
+  label: string
+  finishesAt: number
+  color: 'gold' | 'forest' | 'stone'
 }) {
-  const [remaining, setRemaining] = useState(Math.max(0, finishesAt - Math.floor(Date.now() / 1000)))
-  const total = finishesAt - Math.floor(Date.now() / 1000) + remaining
+  const [remaining, setRemaining] = useState(() =>
+    Math.max(0, finishesAt - Math.floor(Date.now() / 1000))
+  )
+  const [total] = useState(remaining)
 
   useEffect(() => {
     const id = setInterval(() => {
@@ -163,9 +251,9 @@ function QueueRow({ icon, label: lbl, finishesAt, color }: {
   }, [])
 
   const colorClass = {
-    gold:   'text-gold',
+    gold: 'text-gold',
     forest: 'text-forest-light',
-    stone:  'text-ink-muted',
+    stone: 'text-ink-muted',
   }[color]
 
   const pct = total > 0 ? Math.max(0, Math.min(100, ((total - remaining) / total) * 100)) : 100
@@ -186,8 +274,20 @@ function QueueRow({ icon, label: lbl, finishesAt, color }: {
   )
 }
 
-function ResourceCard({ icon, label, value, cap, rate, animClass }: {
-  icon: ReactNode; label: string; value: number; cap: number; rate: number; animClass: string
+function ResourceCard({
+  icon,
+  label,
+  value,
+  cap,
+  rate,
+  animClass,
+}: {
+  icon: ReactNode
+  label: string
+  value: number
+  cap: number
+  rate: number
+  animClass: string
 }) {
   const isFull = value >= cap
   return (
@@ -202,12 +302,12 @@ function ResourceCard({ icon, label, value, cap, rate, animClass }: {
         {isFull && <Badge variant="crimson">Lleno</Badge>}
       </div>
 
-      <p className={`font-ui text-xl tabular-nums font-semibold ${isFull ? 'text-crimson' : 'text-ink'}`}>
+      <p
+        className={`font-ui text-xl tabular-nums font-semibold ${isFull ? 'text-crimson' : 'text-ink'}`}
+      >
         {formatResource(value)}
       </p>
-      <p className="text-xs text-ink-muted/60 tabular-nums mb-3">
-        / {formatResource(cap)}
-      </p>
+      <p className="text-xs text-ink-muted/60 tabular-nums mb-3">/ {formatResource(cap)}</p>
 
       <ProgressBar value={value} max={cap} />
 
@@ -221,15 +321,27 @@ function ResourceCard({ icon, label, value, cap, rate, animClass }: {
   )
 }
 
-function StatCard({ icon, label, value, note, animClass }: {
-  icon: ReactNode; label: string; value: string; note: string; animClass: string
+function StatCard({
+  icon,
+  label,
+  value,
+  note,
+  animClass,
+}: {
+  icon: ReactNode
+  label: string
+  value: string
+  note: string
+  animClass: string
 }) {
   return (
     <Card className={`p-4 flex items-center gap-3 ${animClass}`}>
       <span className="text-gold/60 shrink-0">{icon}</span>
       <div className="min-w-0">
         <p className="font-ui text-xl font-semibold text-ink leading-none">{value}</p>
-        <p className="font-ui text-xs font-semibold uppercase tracking-wide text-ink-muted mt-0.5 truncate">{label}</p>
+        <p className="font-ui text-xs font-semibold uppercase tracking-wide text-ink-muted mt-0.5 truncate">
+          {label}
+        </p>
         <p className="font-body text-xs text-ink-muted/60 mt-0.5">{note}</p>
       </div>
     </Card>
@@ -255,7 +367,9 @@ function OverviewSkeleton() {
               </div>
               <div className="skeleton h-6 w-24" />
               <div className="skeleton h-3 w-16" />
-              <div className="progress-track"><div className="progress-fill w-0" /></div>
+              <div className="progress-track">
+                <div className="progress-fill w-0" />
+              </div>
             </Card>
           ))}
         </div>

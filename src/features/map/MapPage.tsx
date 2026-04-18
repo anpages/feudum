@@ -1,6 +1,22 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ChevronLeft, ChevronRight, Home, Castle, User, Bot, MapPin, X, Swords, Eye, Tent, Pickaxe, Package, Skull, Flag } from 'lucide-react'
+import {
+  ChevronLeft,
+  ChevronRight,
+  Home,
+  Castle,
+  User,
+  Bot,
+  MapPin,
+  X,
+  Swords,
+  Eye,
+  Tent,
+  Pickaxe,
+  Package,
+  Skull,
+  Flag,
+} from 'lucide-react'
 import { GiWoodPile, GiStoneBlock } from 'react-icons/gi'
 import { useMap, type MapSlot } from '@/features/map/useMap'
 import { Badge } from '@/components/ui/Badge'
@@ -10,13 +26,13 @@ import { formatResource } from '@/lib/format'
 
 export function MapPage() {
   const navigate = useNavigate()
-  const [realm,  setRealm]  = useState(1)
+  const [realm, setRealm] = useState(1)
   const [region, setRegion] = useState(1)
   const [selected, setSelected] = useState<MapSlot | null>(null)
 
   const { data, isLoading } = useMap(realm, region)
 
-  const maxRealm  = data?.maxRealm  ?? 3
+  const maxRealm = data?.maxRealm ?? 3
   const maxRegion = data?.maxRegion ?? 10
 
   function goToMyKingdom() {
@@ -29,7 +45,7 @@ export function MapPage() {
 
   function handleSelectSlot(slot: MapSlot) {
     if (slot.isPlayer) return
-    setSelected(prev => prev?.slot === slot.slot ? null : slot)
+    setSelected(prev => (prev?.slot === slot.slot ? null : slot))
   }
 
   function sendMission(type: string) {
@@ -39,7 +55,6 @@ export function MapPage() {
 
   return (
     <div className="space-y-6">
-
       {/* Header */}
       <div className="anim-fade-up">
         <span className="section-heading">Exploración</span>
@@ -51,20 +66,31 @@ export function MapPage() {
 
       {/* Navigation bar */}
       <div className="flex items-center gap-3 flex-wrap anim-fade-up-1">
-
         <div className="flex items-center gap-1.5">
           <span className="section-heading mb-0 mr-1">Reino</span>
           <button
-            onClick={() => { setRealm(r => Math.max(1, r - 1)); setSelected(null) }}
+            onClick={() => {
+              setRealm(r => Math.max(1, r - 1))
+              setSelected(null)
+            }}
             disabled={realm <= 1}
             className="p-1 rounded border border-gold/20 text-ink-muted hover:bg-parchment-warm disabled:opacity-30 transition-colors"
-          ><ChevronLeft size={14} /></button>
-          <span className="font-ui font-semibold text-ink w-6 text-center tabular-nums">{realm}</span>
+          >
+            <ChevronLeft size={14} />
+          </button>
+          <span className="font-ui font-semibold text-ink w-6 text-center tabular-nums">
+            {realm}
+          </span>
           <button
-            onClick={() => { setRealm(r => Math.min(maxRealm, r + 1)); setSelected(null) }}
+            onClick={() => {
+              setRealm(r => Math.min(maxRealm, r + 1))
+              setSelected(null)
+            }}
             disabled={realm >= maxRealm}
             className="p-1 rounded border border-gold/20 text-ink-muted hover:bg-parchment-warm disabled:opacity-30 transition-colors"
-          ><ChevronRight size={14} /></button>
+          >
+            <ChevronRight size={14} />
+          </button>
         </div>
 
         <span className="text-ink-muted/30 font-ui">·</span>
@@ -72,16 +98,28 @@ export function MapPage() {
         <div className="flex items-center gap-1.5">
           <span className="section-heading mb-0 mr-1">Región</span>
           <button
-            onClick={() => { setRegion(r => Math.max(1, r - 1)); setSelected(null) }}
+            onClick={() => {
+              setRegion(r => Math.max(1, r - 1))
+              setSelected(null)
+            }}
             disabled={region <= 1}
             className="p-1 rounded border border-gold/20 text-ink-muted hover:bg-parchment-warm disabled:opacity-30 transition-colors"
-          ><ChevronLeft size={14} /></button>
-          <span className="font-ui font-semibold text-ink w-6 text-center tabular-nums">{region}</span>
+          >
+            <ChevronLeft size={14} />
+          </button>
+          <span className="font-ui font-semibold text-ink w-6 text-center tabular-nums">
+            {region}
+          </span>
           <button
-            onClick={() => { setRegion(r => Math.min(maxRegion, r + 1)); setSelected(null) }}
+            onClick={() => {
+              setRegion(r => Math.min(maxRegion, r + 1))
+              setSelected(null)
+            }}
             disabled={region >= maxRegion}
             className="p-1 rounded border border-gold/20 text-ink-muted hover:bg-parchment-warm disabled:opacity-30 transition-colors"
-          ><ChevronRight size={14} /></button>
+          >
+            <ChevronRight size={14} />
+          </button>
         </div>
 
         {data?.myPosition && (
@@ -97,15 +135,17 @@ export function MapPage() {
 
       <div className="flex items-center gap-2 font-ui text-xs text-ink-muted anim-fade-up-1">
         <MapPin size={11} className="text-gold" />
-        <span>Reino <strong className="text-ink">{realm}</strong> · Región <strong className="text-ink">{region}</strong></span>
-        {data?.myPosition && data.myPosition.realm === realm && data.myPosition.region === region && (
-          <Badge variant="gold">Tu región</Badge>
-        )}
+        <span>
+          Reino <strong className="text-ink">{realm}</strong> · Región{' '}
+          <strong className="text-ink">{region}</strong>
+        </span>
+        {data?.myPosition &&
+          data.myPosition.realm === realm &&
+          data.myPosition.region === region && <Badge variant="gold">Tu región</Badge>}
       </div>
 
       {/* Main content: grid + detail panel */}
       <div className={`grid gap-4 anim-fade-up-2 ${selected ? 'lg:grid-cols-[1fr_280px]' : ''}`}>
-
         {/* Detail panel — rendered first in DOM so it appears above slot list on mobile */}
         {selected && (
           <Card className="p-4 space-y-4 h-fit lg:sticky lg:top-20 lg:order-last">
@@ -196,11 +236,7 @@ export function MapPage() {
                     <Swords size={12} />
                     Atacar
                   </Button>
-                  <Button
-                    variant="ghost"
-                    className="w-full"
-                    onClick={() => sendMission('spy')}
-                  >
+                  <Button variant="ghost" className="w-full" onClick={() => sendMission('spy')}>
                     <Eye size={12} />
                     Espiar
                   </Button>
@@ -227,11 +263,7 @@ export function MapPage() {
                 </>
               )}
               {selected.debris && (selected.debris.wood > 0 || selected.debris.stone > 0) && (
-                <Button
-                  variant="ghost"
-                  className="w-full"
-                  onClick={() => sendMission('scavenge')}
-                >
+                <Button variant="ghost" className="w-full" onClick={() => sendMission('scavenge')}>
                   <Pickaxe size={12} />
                   Recolectar escombros
                 </Button>
@@ -257,7 +289,6 @@ export function MapPage() {
             </div>
           )}
         </div>
-
       </div>
     </div>
   )
@@ -265,7 +296,15 @@ export function MapPage() {
 
 // ── Slot row ──────────────────────────────────────────────────────────────────
 
-function SlotRow({ slot, isSelected, onClick }: { slot: MapSlot; isSelected: boolean; onClick: () => void }) {
+function SlotRow({
+  slot,
+  isSelected,
+  onClick,
+}: {
+  slot: MapSlot
+  isSelected: boolean
+  onClick: () => void
+}) {
   const isHighlighted = slot.isPlayer
   const hasDebris = slot.debris && (slot.debris.wood > 0 || slot.debris.stone > 0)
 
@@ -282,30 +321,34 @@ function SlotRow({ slot, isSelected, onClick }: { slot: MapSlot; isSelected: boo
               : 'bg-white border-gold/10 cursor-pointer hover:border-gold/20 hover:bg-parchment'
       }`}
     >
-
-      <span className={`font-ui text-xs tabular-nums w-5 text-center shrink-0 ${
-        isHighlighted ? 'text-gold font-bold' : 'text-ink-muted/50'
-      }`}>
+      <span
+        className={`font-ui text-xs tabular-nums w-5 text-center shrink-0 ${
+          isHighlighted ? 'text-gold font-bold' : 'text-ink-muted/50'
+        }`}
+      >
         {slot.slot}
       </span>
 
-      <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
-        slot.isEmpty
-          ? 'bg-parchment-warm border border-gold/10'
-          : isHighlighted
-            ? 'bg-gold/15 border border-gold/30'
-            : slot.isNpc
-              ? 'bg-parchment-warm border border-gold/15'
-              : 'bg-parchment-deep border border-gold/20'
-      }`}>
-        {slot.isEmpty
-          ? <span className="text-ink-muted/20 text-xs">·</span>
-          : isHighlighted
-            ? <Castle size={14} className="text-gold" />
-            : slot.isNpc
-              ? <Bot size={13} className="text-ink-muted/50" />
-              : <User size={13} className="text-ink-mid" />
-        }
+      <div
+        className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
+          slot.isEmpty
+            ? 'bg-parchment-warm border border-gold/10'
+            : isHighlighted
+              ? 'bg-gold/15 border border-gold/30'
+              : slot.isNpc
+                ? 'bg-parchment-warm border border-gold/15'
+                : 'bg-parchment-deep border border-gold/20'
+        }`}
+      >
+        {slot.isEmpty ? (
+          <span className="text-ink-muted/20 text-xs">·</span>
+        ) : isHighlighted ? (
+          <Castle size={14} className="text-gold" />
+        ) : slot.isNpc ? (
+          <Bot size={13} className="text-ink-muted/50" />
+        ) : (
+          <User size={13} className="text-ink-mid" />
+        )}
       </div>
 
       <div className="flex-1 min-w-0">
@@ -313,9 +356,11 @@ function SlotRow({ slot, isSelected, onClick }: { slot: MapSlot; isSelected: boo
           <span className="font-ui text-xs text-ink-muted/35 italic">Posición vacía</span>
         ) : (
           <>
-            <p className={`font-ui text-sm font-medium leading-tight truncate ${
-              isHighlighted ? 'text-gold-dim' : 'text-ink'
-            }`}>
+            <p
+              className={`font-ui text-sm font-medium leading-tight truncate ${
+                isHighlighted ? 'text-gold-dim' : 'text-ink'
+              }`}
+            >
               {slot.name}
             </p>
             <p className="font-body text-xs text-ink-muted truncate">
@@ -327,7 +372,10 @@ function SlotRow({ slot, isSelected, onClick }: { slot: MapSlot; isSelected: boo
 
       {/* Debris indicator */}
       {hasDebris && (
-        <div className="shrink-0 flex items-center gap-1 text-ink-muted/50 text-xs" title="Escombros de batalla">
+        <div
+          className="shrink-0 flex items-center gap-1 text-ink-muted/50 text-xs"
+          title="Escombros de batalla"
+        >
           <Pickaxe size={11} />
         </div>
       )}
@@ -345,7 +393,6 @@ function SlotRow({ slot, isSelected, onClick }: { slot: MapSlot; isSelected: boo
         {slot.isNpc && !slot.isEmpty && <Badge variant="stone">NPC</Badge>}
         {isSelected && !isHighlighted && <Badge variant="gold">▶</Badge>}
       </div>
-
     </div>
   )
 }
@@ -356,7 +403,10 @@ function MapSkeleton() {
   return (
     <div className="space-y-2">
       {[...Array(15)].map((_, i) => (
-        <div key={i} className="flex items-center gap-4 px-4 py-3 rounded border border-gold/10 bg-white">
+        <div
+          key={i}
+          className="flex items-center gap-4 px-4 py-3 rounded border border-gold/10 bg-white"
+        >
           <div className="skeleton w-5 h-3 rounded" />
           <div className="skeleton w-8 h-8 rounded-full" />
           <div className="flex-1 space-y-1.5">

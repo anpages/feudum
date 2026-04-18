@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { authApi } from '@/lib/auth'
+import { authService } from './services/authService'
 
 const ME_KEY = ['auth', 'me'] as const
 
@@ -8,15 +8,15 @@ export function useAuth() {
 
   const { data: user, isLoading } = useQuery({
     queryKey: ME_KEY,
-    queryFn:  authApi.me,
-    retry:    false,
+    queryFn: authService.me,
+    retry: false,
     staleTime: Infinity,
     refetchInterval: false,
   })
 
   const logout = useMutation({
-    mutationFn: authApi.logout,
-    onSuccess:  () => {
+    mutationFn: authService.logout,
+    onSuccess: () => {
       qc.setQueryData(ME_KEY, null)
       qc.clear()
     },
@@ -24,9 +24,9 @@ export function useAuth() {
 
   return {
     user,
-    isAuthenticated:  !!user,
+    isAuthenticated: !!user,
     isLoading,
-    signInWithGoogle: authApi.signInWithGoogle,
+    signInWithGoogle: authService.signInWithGoogle,
     logout,
   }
 }

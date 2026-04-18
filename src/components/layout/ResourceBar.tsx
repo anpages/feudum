@@ -2,7 +2,12 @@ import { useState, useRef, useEffect, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Users, LogOut, Menu, ChevronDown, Castle } from 'lucide-react'
 import { GiWoodPile, GiStoneBlock, GiWheat, GiCastle } from 'react-icons/gi'
-import { useKingdom, useKingdoms, useSwitchKingdom, getActiveKingdomId } from '@/features/kingdom/useKingdom'
+import {
+  useKingdom,
+  useKingdoms,
+  useSwitchKingdom,
+  getActiveKingdomId,
+} from '@/features/kingdom/useKingdom'
 import { useResourceTicker } from '@/features/kingdom/useResourceTicker'
 import { useAuth } from '@/features/auth/useAuth'
 import { formatResource } from '@/lib/format'
@@ -12,7 +17,7 @@ interface Props {
 }
 
 export function ResourceBar({ onMenuToggle }: Props) {
-  const navigate  = useNavigate()
+  const navigate = useNavigate()
   const { data: kingdom } = useKingdom()
   const resources = useResourceTicker(kingdom)
   const { user, logout } = useAuth()
@@ -24,7 +29,6 @@ export function ResourceBar({ onMenuToggle }: Props) {
 
   return (
     <header className="game-header">
-
       {/* ── Left: hamburger + brand + kingdom selector ── */}
       <div className="flex items-center gap-2 shrink-0 pr-3">
         <button
@@ -104,7 +108,6 @@ export function ResourceBar({ onMenuToggle }: Props) {
           <LogOut size={15} />
         </button>
       </div>
-
     </header>
   )
 }
@@ -112,9 +115,9 @@ export function ResourceBar({ onMenuToggle }: Props) {
 // ── Kingdom selector ──────────────────────────────────────────────────────────
 
 function KingdomSelector({ kingdomName }: { kingdomName?: string }) {
-  const { data }    = useKingdoms()
+  const { data } = useKingdoms()
   const switchKingdom = useSwitchKingdom()
-  const activeId    = getActiveKingdomId()
+  const activeId = getActiveKingdomId()
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
@@ -148,7 +151,10 @@ function KingdomSelector({ kingdomName }: { kingdomName?: string }) {
         className="flex items-center gap-0.5 font-ui text-[0.68rem] text-ink-muted hover:text-ink leading-tight mt-px transition-colors"
       >
         <span className="truncate max-w-[100px]">{kingdomName}</span>
-        <ChevronDown size={10} className={`shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
+        <ChevronDown
+          size={10}
+          className={`shrink-0 transition-transform ${open ? 'rotate-180' : ''}`}
+        />
       </button>
 
       {open && (
@@ -156,9 +162,12 @@ function KingdomSelector({ kingdomName }: { kingdomName?: string }) {
           {kingdoms.map(k => (
             <button
               key={k.id}
-              onClick={() => { switchKingdom(k.id === activeId ? null : k.id); setOpen(false) }}
+              onClick={() => {
+                switchKingdom(k.id === activeId ? null : k.id)
+                setOpen(false)
+              }}
               className={`w-full flex items-center gap-2 px-3 py-1.5 text-left transition-colors ${
-                (k.id === activeId || (!activeId && kingdoms[0]?.id === k.id))
+                k.id === activeId || (!activeId && kingdoms[0]?.id === k.id)
                   ? 'bg-gold/8 text-gold-dim'
                   : 'text-ink-muted hover:bg-parchment hover:text-ink'
               }`}
@@ -181,7 +190,11 @@ function KingdomSelector({ kingdomName }: { kingdomName?: string }) {
 // ── Resource pill ─────────────────────────────────────────────────────────────
 
 function ResourcePill({
-  icon, label, value, cap, rate,
+  icon,
+  label,
+  value,
+  cap,
+  rate,
 }: {
   icon: ReactNode
   label: string
@@ -192,9 +205,14 @@ function ResourcePill({
   const isFull = cap !== undefined && value >= cap
 
   return (
-    <div className="resource-pill" title={`${label}: ${formatResource(value)}${cap ? ` / ${formatResource(cap)}` : ''}${rate ? ` (+${formatResource(rate)}/h)` : ''}`}>
+    <div
+      className="resource-pill"
+      title={`${label}: ${formatResource(value)}${cap ? ` / ${formatResource(cap)}` : ''}${rate ? ` (+${formatResource(rate)}/h)` : ''}`}
+    >
       <span className={isFull ? 'text-crimson' : 'text-gold'}>{icon}</span>
-      <span className={`font-ui text-xs tabular-nums font-medium ${isFull ? 'text-crimson' : 'text-ink-mid'}`}>
+      <span
+        className={`font-ui text-xs tabular-nums font-medium ${isFull ? 'text-crimson' : 'text-ink-mid'}`}
+      >
         {formatResource(value)}
       </span>
       {rate !== undefined && rate > 0 && (

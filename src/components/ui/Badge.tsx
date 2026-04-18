@@ -8,10 +8,10 @@ interface BadgeProps extends HTMLAttributes<HTMLSpanElement> {
 }
 
 const variantClass: Record<Variant, string> = {
-  gold:    'badge-gold',
+  gold: 'badge-gold',
   crimson: 'badge-crimson',
-  forest:  'badge-forest',
-  stone:   'badge-stone',
+  forest: 'badge-forest',
+  stone: 'badge-stone',
 }
 
 export function Badge({ children, className, variant = 'gold', ...props }: BadgeProps) {

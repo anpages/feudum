@@ -9,23 +9,20 @@ interface BeforeInstallPromptEvent extends Event {
 
 export function PWAInstallPrompt() {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null)
-  const [dismissed, setDismissed]           = useState(false)
-  const [isIOS, setIsIOS]                   = useState(false)
-  const [showIOS, setShowIOS]               = useState(false)
+  const [dismissed, setDismissed] = useState(false)
+  const [isIOS] = useState(
+    () => /iphone|ipad|ipod/i.test(navigator.userAgent) && !(window.navigator as any).standalone
+  )
+  const [showIOS, setShowIOS] = useState(
+    () => /iphone|ipad|ipod/i.test(navigator.userAgent) && !(window.navigator as any).standalone
+  )
 
   useEffect(() => {
-    // Android / Chrome / Edge
     const handler = (e: Event) => {
       e.preventDefault()
       setDeferredPrompt(e as BeforeInstallPromptEvent)
     }
     window.addEventListener('beforeinstallprompt', handler)
-
-    // iOS detection
-    const isIosDev = /iphone|ipad|ipod/i.test(navigator.userAgent) && !(window.navigator as any).standalone
-    setIsIOS(isIosDev)
-    if (isIosDev) setShowIOS(true)
-
     return () => window.removeEventListener('beforeinstallprompt', handler)
   }, [])
 
@@ -50,11 +47,15 @@ export function PWAInstallPrompt() {
             <div className="flex-1 min-w-0">
               <p className="font-ui text-xs font-semibold text-ink">Instalar Feudum</p>
               <p className="font-body text-xs text-ink-muted mt-1 leading-relaxed">
-                Toca <strong>Compartir</strong> y luego <strong>«Añadir a pantalla de inicio»</strong> para instalar la app.
+                Toca <strong>Compartir</strong> y luego{' '}
+                <strong>«Añadir a pantalla de inicio»</strong> para instalar la app.
               </p>
             </div>
             <button
-              onClick={() => { setShowIOS(false); setDismissed(true) }}
+              onClick={() => {
+                setShowIOS(false)
+                setDismissed(true)
+              }}
               className="p-1 rounded text-ink-muted/50 hover:text-ink-muted transition-colors shrink-0"
             >
               <X size={14} />

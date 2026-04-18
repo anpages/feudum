@@ -109,20 +109,86 @@ minimum: 1 second
 
 Vercel serverless doesn't support persistent WebSockets. Game state is fetched via React Query polling (10s interval). Resource counts are interpolated locally every second in `useResourceTicker` using server-provided production rates — this keeps the UI feeling live without extra requests.
 
-### Folder layout
+### Frontend architecture — feature-based with service layer
+
+Esta es la arquitectura canónica del proyecto. **Toda nueva feature debe seguirla sin excepción.**
+
+```
+src/
+├── shared/
+│   ├── types/
+│   │   ├── user.ts        AuthUser, UserProfile
+│   │   ├── kingdom.ts     KingdomSummary, Resources
+│   │   ├── mission.ts     ArmyMission, MissionType, MissionState, MissionResult, SendArmyParams
+│   │   └── index.ts       barrel re-export
+│   └── services/
+│       └── http.ts        cliente HTTP tipado: http.get / http.post / http.patch / http.delete
+├── features/
+│   └── <feature>/
+│       ├── types.ts           tipos específicos de la feature (respuestas API, DTOs)
+│       ├── services/
+│       │   └── <feature>Service.ts   llamadas HTTP puras — sin React, sin estado
+│       ├── hooks/             (opcional) subdirectorio si hay muchos hooks
+│       ├── use<Feature>.ts    React Query hooks — importan del servicio, no de http directamente
+│       ├── components/
+│       │   └── <SubComponent>.tsx   sub-componentes extraídos de la page
+│       └── <Feature>Page.tsx  composición (~80–120 líneas), sin lógica HTTP inline
+├── components/
+│   ├── layout/    GameLayout, ResourceBar, NavBar  (compartidos, sin cambios)
+│   └── ui/        Card, Button, Badge, ProgressBar, RequirementsList  (barrel: @/components/ui)
+└── lib/
+    ├── api.ts     re-exporta http como `api` — solo para compatibilidad, usar http directamente
+    ├── auth.ts    re-exporta authService como `authApi` — solo para compatibilidad
+    ├── cn.ts      clsx + tailwind-merge
+    ├── format.ts  formatResource, formatDuration
+    ├── toast.ts   Zustand toast store
+    └── labels.ts  BUILDING_LABELS, RESEARCH_LABELS, UNIT_LABELS
+```
+
+#### Reglas de la arquitectura
+
+1. **Tipos compartidos** — si un tipo se usa en más de una feature, va en `src/shared/types/`. Tipos de uso exclusivo de una feature van en `features/<feature>/types.ts`.
+2. **HTTP solo en servicios** — los hooks nunca llaman `http.*` directamente. Toda llamada a la API va en `features/<feature>/services/<feature>Service.ts`.
+3. **Hooks = React Query + lógica** — los hooks importan del servicio como `queryFn: featureService.getAll`. Gestionan caché, optimistic updates y efectos secundarios (toasts).
+4. **Pages = composición** — las pages no contienen lógica HTTP inline ni componentes grandes embebidos. Extraer sub-componentes a `features/<feature>/components/` en cuanto superen ~80 líneas.
+5. **`lib/api.ts` y `lib/auth.ts`** son shims de compatibilidad y no se amplían. El código nuevo importa desde `@/shared/services/http` o desde el servicio de la feature.
+
+#### Features existentes
+
+| Feature | Servicio | Hook(s) | Sub-componentes |
+|---------|----------|---------|-----------------|
+| `auth` | `authService` | `useAuth` | — |
+| `kingdom` | `kingdomService` | `useKingdom`, `useKingdoms`, `useSwitchKingdom`, `useResourceTicker` | — |
+| `buildings` | `buildingsService` | `useBuildings`, `useUpgradeBuilding` | `BuildingCard` |
+| `research` | `researchService` | `useResearch`, `useUpgradeResearch` | — |
+| `barracks` | `barracksService` | `useBarracks`, `useTrainUnit` | — |
+| `armies` | `armiesService` | `useArmies`, `useSendArmy`, `useRecallArmy` | `MissionRow` |
+| `map` | `mapService` | `useMap` | — |
+| `messages` | `messagesService` | `useMessages`, `useMarkAllRead`, `useSendMessage`, `useUnreadCount` | — |
+| `rankings` | `rankingsService` | `useRankings` | — |
+| `profile` | `profileService` | `useProfile`, `useUpdateProfile` | — |
+| `admin` | `adminService` | `useAdminSettings`, `useAdminUsers`, `useAdminFleet`, `useUpdateSettings`, `useToggleAdmin`, `useDevAction`, `useFastForward` | — |
+| `overview` | — | (usa `useKingdom` directamente) | — |
+
+#### Añadir una nueva feature — checklist
+
+1. Crear `src/features/<feature>/types.ts` con los tipos de respuesta
+2. Crear `src/features/<feature>/services/<feature>Service.ts` con las llamadas `http.*`
+3. Crear `src/features/<feature>/use<Feature>.ts` con los React Query hooks que usan el servicio
+4. Crear `src/features/<feature>/<Feature>Page.tsx` que compone hooks + sub-componentes
+5. Si los sub-componentes superan ~80 líneas, extraerlos a `features/<feature>/components/`
+6. Registrar la ruta en `src/App.tsx`
+7. Si el tipo es compartido entre features, añadirlo a `src/shared/types/` y re-exportarlo desde `index.ts`
+
+### Backend folder layout
 
 ```
 api/index.ts              Hono entry point — mount new routers here
 api/routes/               One file per feature domain
+api/lib/                  Shared backend helpers (buildings.js, units.js, battle.js, tick.js, config.js…)
+api/middleware/           session.ts (requireAuth), admin.ts
 db/schema/                Drizzle table definitions (one file per domain)
 db/index.ts               Neon connection + re-exports all schema types
-src/components/layout/    GameLayout, ResourceBar, NavBar
-src/components/ui/        Card, Button, Badge, ProgressBar (+ index.ts barrel)
-src/hooks/                useKingdom (React Query), useResourceTicker (local ticker)
-src/lib/api.ts            Thin fetch wrapper (api.get / api.post / api.patch)
-src/lib/cn.ts             clsx + tailwind-merge utility
-src/lib/format.ts         formatResource, formatDuration
-src/pages/                One file per route
 ```
 
 ### tsconfig split
@@ -134,7 +200,7 @@ src/pages/                One file per route
 
 1. Create `api/routes/<feature>.ts` exporting a `new Hono()` router
 2. Mount it in `api/index.ts`: `app.route('/<feature>', featureRouter)`
-3. Add a corresponding hook in `src/hooks/use<Feature>.ts` using `api.get()`
+3. Follow the frontend checklist above to wire up the service + hook
 
 ### Adding a new DB table
 

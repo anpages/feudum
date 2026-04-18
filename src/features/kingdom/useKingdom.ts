@@ -1,14 +1,10 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { api } from '@/lib/api'
+import { kingdomService } from './services/kingdomService'
+import type { KingdomSummary } from '@/shared/types'
 import type { Kingdom } from '@/../db/schema'
 
-export interface KingdomSummary {
-  id:     number
-  name:   string
-  realm:  number
-  region: number
-  slot:   number
-}
+export type { KingdomSummary }
+export type { Kingdom }
 
 const STORAGE_KEY = 'feudum_active_kingdom'
 
@@ -24,11 +20,10 @@ export function setActiveKingdomId(id: number | null) {
 
 export function useKingdom() {
   const activeId = getActiveKingdomId()
-  const url = activeId ? `/kingdoms/me?id=${activeId}` : '/kingdoms/me'
   return useQuery({
-    queryKey:        ['kingdom', activeId],
-    queryFn:         () => api.get<Kingdom>(url),
-    staleTime:       5_000,
+    queryKey: ['kingdom', activeId],
+    queryFn: () => kingdomService.getMe(activeId),
+    staleTime: 5_000,
     refetchInterval: 10_000,
   })
 }
@@ -36,7 +31,7 @@ export function useKingdom() {
 export function useKingdoms() {
   return useQuery({
     queryKey: ['kingdoms'],
-    queryFn:  () => api.get<{ kingdoms: KingdomSummary[] }>('/kingdoms'),
+    queryFn: kingdomService.getAll,
     staleTime: 30_000,
   })
 }
