@@ -11,7 +11,7 @@ Responde siempre en español, independientemente del idioma en que esté escrito
 **Feudum** — a medieval browser strategy game built from scratch, mechanically inspired by classic OGame (pre-microtransaction era). This is NOT a fork or modification of OGame; it is a clean reimplementation with a medieval theme.
 
 **Live URLs:**
-- Production: https://ogame-xi.vercel.app
+- Production: https://feudum.anpages.com (custom domain) / https://ogame-xi.vercel.app (Vercel alias)
 - GitHub: https://github.com/anpages/feudum
 
 ## Local development
