@@ -1,35 +1,53 @@
-import { ArrowUp, Clock, Lock, TrendingUp } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { ArrowUp, Clock, Lock, TrendingUp, Loader2 } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
+import { useBuildings, useUpgradeBuilding, type BuildingInfo } from '@/hooks/useBuildings'
+import { useKingdom } from '@/hooks/useKingdom'
+import { useResourceTicker } from '@/hooks/useResourceTicker'
+import { formatResource, formatDuration } from '@/lib/format'
 
-interface BuildingDef {
-  id: string
-  name: string
-  description: string
-  emoji: string
-  baseWood: number
-  baseStone: number
-  factor: number
-  produces: string | null
-  requires?: { id: string; level: number; label: string }
+// ── Static metadata not returned by API ───────────────────────────────────────
+
+const BUILDING_META: Record<string, { name: string; description: string; emoji: string; produces: string | null }> = {
+  sawmill:        { name: 'Aserradero',           emoji: '🪓', produces: 'Madera',     description: 'Tala los bosques del reino para producir madera sin cesar.' },
+  quarry:         { name: 'Cantera',              emoji: '⛏',  produces: 'Piedra',     description: 'Extrae bloques de piedra de las colinas circundantes.' },
+  grainFarm:      { name: 'Granja',               emoji: '🌾', produces: 'Grano',      description: 'Cultiva extensos campos de trigo y cebada para la población.' },
+  windmill:       { name: 'Molino de Viento',     emoji: '⚙',  produces: 'Población',  description: 'Aumenta la capacidad máxima de población del reino.' },
+  workshop:       { name: 'Taller',               emoji: '🔨', produces: null,          description: 'Mecánicos expertos reducen los tiempos de toda construcción.' },
+  engineersGuild: { name: 'Gremio de Ingenieros', emoji: '📐', produces: null,          description: 'El pináculo de la ingeniería medieval. Acelera la construcción exponencialmente.' },
+  barracks:       { name: 'Cuartel',              emoji: '⚔',  produces: null,          description: 'Entrena guerreros y defensores para proteger el reino.' },
+  academy:        { name: 'Academia',             emoji: '📚', produces: null,          description: 'Centro de saber donde se desarrollan nuevas tecnologías.' },
 }
 
-const BUILDINGS: BuildingDef[] = [
-  { id: 'sawmill',        name: 'Aserradero',          description: 'Tala los bosques del reino para producir madera sin cesar.',                        emoji: '🪓', baseWood: 60,        baseStone: 15,     factor: 1.5, produces: 'Madera'    },
-  { id: 'quarry',         name: 'Cantera',              description: 'Extrae bloques de piedra de las colinas circundantes.',                              emoji: '⛏',  baseWood: 48,        baseStone: 24,     factor: 1.6, produces: 'Piedra'    },
-  { id: 'grainFarm',      name: 'Granja',               description: 'Cultiva extensos campos de trigo y cebada para la población.',                      emoji: '🌾', baseWood: 225,       baseStone: 75,     factor: 1.5, produces: 'Grano'     },
-  { id: 'windmill',       name: 'Molino de Viento',     description: 'Aumenta la capacidad máxima de población del reino.',                               emoji: '⚙',  baseWood: 75,        baseStone: 30,     factor: 1.5, produces: 'Población' },
-  { id: 'workshop',       name: 'Taller',               description: 'Mecánicos expertos reducen los tiempos de toda construcción.',                      emoji: '🔨', baseWood: 400,       baseStone: 120,    factor: 2.0, produces: null        },
-  { id: 'engineersGuild', name: 'Gremio de Ingenieros', description: 'El pináculo de la ingeniería medieval. Acelera la construcción exponencialmente.', emoji: '📐', baseWood: 1_000_000, baseStone: 500_000, factor: 2.0, produces: null, requires: { id: 'workshop', level: 10, label: 'Taller Nv 10' } },
-]
+// ── Countdown hook ────────────────────────────────────────────────────────────
 
-function buildCost(base: number, factor: number, level: number) {
-  return Math.floor(base * Math.pow(factor, level))
+function useCountdown(finishesAt: number | null) {
+  const [secs, setSecs] = useState(() => finishesAt ? Math.max(0, finishesAt - Math.floor(Date.now() / 1000)) : 0)
+
+  useEffect(() => {
+    if (!finishesAt) return
+    const tick = () => setSecs(Math.max(0, finishesAt - Math.floor(Date.now() / 1000)))
+    tick()
+    const id = setInterval(tick, 1000)
+    return () => clearInterval(id)
+  }, [finishesAt])
+
+  return secs
 }
+
+// ── Page ──────────────────────────────────────────────────────────────────────
 
 export function BuildingsPage() {
-  const levels: Record<string, number> = {}
+  const { data, isLoading } = useBuildings()
+  const { data: kingdom }   = useKingdom()
+  const resources           = useResourceTicker(kingdom)
+  const upgrade             = useUpgradeBuilding()
+
+  if (isLoading) return <BuildingsSkeleton />
+
+  const buildings = data?.buildings ?? []
 
   return (
     <div className="space-y-8">
@@ -45,21 +63,18 @@ export function BuildingsPage() {
       <section>
         <span className="section-heading anim-fade-up-1">Edificios disponibles</span>
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-          {BUILDINGS.map((b, i) => {
-            const lv        = levels[b.id] ?? 0
-            const costWood  = buildCost(b.baseWood,  b.factor, lv)
-            const costStone = buildCost(b.baseStone, b.factor, lv)
-            const reqLevel  = b.requires ? (levels[b.requires.id] ?? 0) : Infinity
-            const isLocked  = !!b.requires && reqLevel < b.requires.level
-
+          {buildings.map((b, i) => {
+            const meta = BUILDING_META[b.id]
+            if (!meta) return null
+            const canAfford = resources.wood >= b.costWood && resources.stone >= b.costStone
             return (
               <BuildingCard
                 key={b.id}
                 building={b}
-                level={lv}
-                costWood={costWood}
-                costStone={costStone}
-                isLocked={isLocked}
+                meta={meta}
+                canAfford={canAfford}
+                isUpgrading={upgrade.isPending && upgrade.variables === b.id}
+                onUpgrade={() => upgrade.mutate(b.id)}
                 animClass={`anim-fade-up-${Math.min(i + 1, 5) as 1|2|3|4|5}`}
               />
             )
@@ -71,67 +86,133 @@ export function BuildingsPage() {
   )
 }
 
-function BuildingCard({ building, level, costWood, costStone, isLocked, animClass }: {
-  building: BuildingDef; level: number; costWood: number; costStone: number; isLocked: boolean; animClass: string
+// ── Building card ─────────────────────────────────────────────────────────────
+
+function BuildingCard({
+  building, meta, canAfford, isUpgrading, onUpgrade, animClass,
+}: {
+  building: BuildingInfo
+  meta: { name: string; description: string; emoji: string; produces: string | null }
+  canAfford: boolean
+  isUpgrading: boolean
+  onUpgrade: () => void
+  animClass: string
 }) {
+  const countdown = useCountdown(building.inQueue?.finishesAt ?? null)
+  const inQueue   = !!building.inQueue && countdown > 0
+
   return (
     <Card className={`p-5 flex flex-col gap-4 ${animClass}`}>
 
+      {/* Header */}
       <div className="flex items-start gap-3">
-        <span className="text-2xl leading-none mt-0.5 shrink-0">{building.emoji}</span>
+        <span className="text-2xl leading-none mt-0.5 shrink-0">{meta.emoji}</span>
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-2">
             <h3 className="font-ui text-sm font-semibold text-ink leading-tight">
-              {building.name}
+              {meta.name}
             </h3>
-            <Badge variant={level > 0 ? 'gold' : 'stone'} className="shrink-0">
-              Nv {level}
+            <Badge variant={building.level > 0 ? 'gold' : 'stone'} className="shrink-0">
+              Nv {inQueue ? `${building.level}→${building.inQueue!.level}` : building.level}
             </Badge>
           </div>
           <p className="font-body text-xs text-ink-muted mt-1 leading-relaxed">
-            {building.description}
+            {meta.description}
           </p>
         </div>
       </div>
 
-      {building.produces && (
+      {/* Production tag */}
+      {meta.produces && (
         <div className="flex items-center gap-1.5 text-forest-light text-xs">
           <TrendingUp size={10} />
           <span className="font-ui font-semibold uppercase tracking-wide">
-            Produce: {building.produces}
+            Produce: {meta.produces}
           </span>
         </div>
       )}
 
       <div className="divider">◆</div>
 
-      <div className="flex items-center gap-4 text-ink-muted text-xs">
-        <div className="flex items-center gap-1.5">
-          <span>🪵</span>
-          <span className="font-ui tabular-nums text-ink-mid">{costWood.toLocaleString()}</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <span>🪨</span>
-          <span className="font-ui tabular-nums text-ink-mid">{costStone.toLocaleString()}</span>
-        </div>
+      {/* Cost row */}
+      <div className="flex items-center gap-4 text-xs">
+        <CostItem emoji="🪵" value={building.costWood}  canAfford={canAfford || inQueue} />
+        <CostItem emoji="🪨" value={building.costStone} canAfford={canAfford || inQueue} />
         <div className="flex items-center gap-1 ml-auto text-ink-muted/60">
           <Clock size={10} />
-          <span className="font-body">~2m</span>
+          <span className="font-body">{formatDuration(building.timeSeconds)}</span>
         </div>
       </div>
 
-      {isLocked ? (
+      {/* Action button */}
+      {inQueue ? (
+        <div className="mt-auto flex items-center justify-center gap-2 py-2 rounded border border-gold/15 bg-gold-soft text-gold-dim font-ui text-xs font-semibold uppercase tracking-wide">
+          <Loader2 size={12} className="animate-spin" />
+          En construcción — {formatDuration(countdown)}
+        </div>
+      ) : !building.requiresMet ? (
         <Button variant="ghost" className="w-full mt-auto" disabled>
           <Lock size={11} />
-          Requiere {building.requires!.label}
+          Requiere {building.requires?.building} Nv {building.requires?.level}
         </Button>
       ) : (
-        <Button variant="primary" className="w-full mt-auto" disabled title="Disponible en Fase 4">
-          <ArrowUp size={11} />
-          Mejorar a Nv {level + 1}
+        <Button
+          variant="primary"
+          className="w-full mt-auto"
+          disabled={!canAfford || isUpgrading}
+          onClick={onUpgrade}
+        >
+          {isUpgrading
+            ? <Loader2 size={11} className="animate-spin" />
+            : <ArrowUp size={11} />
+          }
+          {canAfford ? `Mejorar a Nv ${building.level + 1}` : 'Recursos insuficientes'}
         </Button>
       )}
 
     </Card>
+  )
+}
+
+function CostItem({ emoji, value, canAfford }: { emoji: string; value: number; canAfford: boolean }) {
+  return (
+    <div className="flex items-center gap-1.5">
+      <span>{emoji}</span>
+      <span className={`font-ui tabular-nums ${canAfford ? 'text-ink-mid' : 'text-crimson'}`}>
+        {formatResource(value)}
+      </span>
+    </div>
+  )
+}
+
+// ── Skeleton ──────────────────────────────────────────────────────────────────
+
+function BuildingsSkeleton() {
+  return (
+    <div className="space-y-8">
+      <div className="space-y-2">
+        <div className="skeleton h-2.5 w-20" />
+        <div className="skeleton h-8 w-40" />
+        <div className="skeleton h-3 w-64" />
+      </div>
+      <div>
+        <div className="skeleton h-2.5 w-28 mb-4" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+          {[...Array(6)].map((_, i) => (
+            <Card key={i} className="p-5 space-y-4">
+              <div className="flex gap-3">
+                <div className="skeleton w-8 h-8 rounded" />
+                <div className="flex-1 space-y-2">
+                  <div className="skeleton h-3 w-32" />
+                  <div className="skeleton h-2.5 w-full" />
+                  <div className="skeleton h-2.5 w-3/4" />
+                </div>
+              </div>
+              <div className="skeleton h-8 w-full rounded" />
+            </Card>
+          ))}
+        </div>
+      </div>
+    </div>
   )
 }
