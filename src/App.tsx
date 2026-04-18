@@ -9,6 +9,7 @@ import { ArmiesPage } from '@/pages/ArmiesPage'
 import { LoginPage } from '@/pages/LoginPage'
 import { NicknamePage } from '@/pages/NicknamePage'
 import { useAuth } from '@/hooks/useAuth'
+import { PWAInstallPrompt } from '@/components/PWAInstallPrompt'
 
 function ProtectedRoute() {
   const { user, isAuthenticated, isLoading } = useAuth()
@@ -30,6 +31,8 @@ function RootRedirect() {
 
 export default function App() {
   return (
+    <>
+    <PWAInstallPrompt />
     <Routes>
       <Route path="/login"      element={<LoginPage />} />
       <Route path="/onboarding" element={<NicknamePage />} />
@@ -46,5 +49,6 @@ export default function App() {
         </Route>
       </Route>
     </Routes>
+    </>
   )
 }

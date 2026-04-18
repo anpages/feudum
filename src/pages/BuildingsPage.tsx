@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, type ReactNode } from 'react'
-import { ArrowUp, Clock, Lock, TrendingUp, Loader2 } from 'lucide-react'
+import { ArrowUp, Clock, TrendingUp, Loader2 } from 'lucide-react'
 import { type IconType } from 'react-icons'
 import {
   GiLogging, GiMining, GiGranary, GiWindmill,
@@ -14,6 +14,7 @@ import { useKingdom } from '@/hooks/useKingdom'
 import { useResourceTicker } from '@/hooks/useResourceTicker'
 import { formatResource, formatDuration } from '@/lib/format'
 import { useQueryClient } from '@tanstack/react-query'
+import { RequirementsList } from '@/components/ui/RequirementsList'
 
 // ── Static metadata ───────────────────────────────────────────────────────────
 
@@ -99,6 +100,7 @@ export function BuildingsPage() {
                 key={b.id}
                 building={b}
                 meta={meta}
+                kingdom={kingdom}
                 canAfford={canAfford}
                 isUpgrading={upgrade.isPending && upgrade.variables === b.id}
                 onUpgrade={() => upgrade.mutate(b.id)}
@@ -119,6 +121,7 @@ export function BuildingsPage() {
 interface CardProps {
   building: BuildingInfo
   meta: { name: string; description: string; Icon: IconType; produces: string | null }
+  kingdom?: Record<string, unknown> | null
   canAfford: boolean
   isUpgrading: boolean
   onUpgrade: () => void
@@ -126,7 +129,7 @@ interface CardProps {
   animClass: string
 }
 
-function BuildingCard({ building, meta, canAfford, isUpgrading, onUpgrade, onCountdownEnd, animClass }: CardProps) {
+function BuildingCard({ building, meta, kingdom, canAfford, isUpgrading, onUpgrade, onCountdownEnd, animClass }: CardProps) {
   const countdown = useCountdown(building.inQueue?.finishesAt ?? null, onCountdownEnd)
   const inQueue   = !!building.inQueue && (countdown > 0 || building.inQueue.finishesAt > Math.floor(Date.now() / 1000))
   const { Icon } = meta
@@ -177,10 +180,12 @@ function BuildingCard({ building, meta, canAfford, isUpgrading, onUpgrade, onCou
           {countdown > 0 ? formatDuration(countdown) : 'Finalizando…'}
         </div>
       ) : !building.requiresMet ? (
-        <Button variant="ghost" className="w-full mt-auto" disabled>
-          <Lock size={11} />
-          Requiere {building.requires?.building} Nv {building.requires?.level}
-        </Button>
+        <div className="mt-auto">
+          <RequirementsList
+            requires={building.requires ? [{ type: 'building', id: building.requires.building, level: building.requires.level }] : []}
+            kingdom={kingdom}
+          />
+        </div>
       ) : (
         <Button
           variant="primary"

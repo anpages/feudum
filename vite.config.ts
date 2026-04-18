@@ -1,10 +1,66 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
+import { VitePWA } from 'vite-plugin-pwa'
 import path from 'path'
 
 export default defineConfig({
-  plugins: [react(), tailwindcss()],
+  plugins: [
+    react(),
+    tailwindcss(),
+    VitePWA({
+      registerType: 'autoUpdate',
+      includeAssets: ['favicon.svg', 'apple-touch-icon.png', 'icons/*.png'],
+      manifest: {
+        name: 'Feudum — Estrategia Medieval',
+        short_name: 'Feudum',
+        description: 'Construye tu reino medieval, investiga tecnologías y conquista el mundo.',
+        theme_color: '#f5e6c8',
+        background_color: '#f5e6c8',
+        display: 'standalone',
+        orientation: 'portrait-primary',
+        start_url: '/',
+        scope: '/',
+        lang: 'es',
+        categories: ['games', 'strategy'],
+        icons: [
+          { src: '/icons/icon-96.png',  sizes: '96x96',   type: 'image/png' },
+          { src: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
+          { src: '/icons/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+          { src: '/icons/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+        ],
+        shortcuts: [
+          { name: 'Mi Reino',        short_name: 'Reino',    url: '/overview',  icons: [{ src: '/icons/icon-96.png', sizes: '96x96' }] },
+          { name: 'Construcción',    short_name: 'Construir',url: '/buildings', icons: [{ src: '/icons/icon-96.png', sizes: '96x96' }] },
+          { name: 'Cuartel',         short_name: 'Cuartel',  url: '/barracks',  icons: [{ src: '/icons/icon-96.png', sizes: '96x96' }] },
+        ],
+      },
+      workbox: {
+        // Cache strategy for static assets
+        runtimeCaching: [
+          {
+            urlPattern: /^\/api\//,
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'api-cache',
+              networkTimeoutSeconds: 5,
+              expiration: { maxEntries: 50, maxAgeSeconds: 60 },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
+          {
+            urlPattern: /\.(js|css|woff2?)$/,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'assets-cache',
+              expiration: { maxEntries: 60, maxAgeSeconds: 30 * 24 * 60 * 60 },
+            },
+          },
+        ],
+      },
+      devOptions: { enabled: false },
+    }),
+  ],
   server: {
     port: process.env.PORT ? parseInt(process.env.PORT) : 5173,
     strictPort: true,

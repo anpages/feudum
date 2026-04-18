@@ -1,5 +1,9 @@
 import { type ReactNode } from 'react'
-import { TreePine, Mountain, Wheat, Users, Hammer, BookOpen, Swords, Clock, TrendingUp } from 'lucide-react'
+import { Users, Clock, TrendingUp } from 'lucide-react'
+import {
+  GiWoodPile, GiStoneBlock, GiWheat,
+  GiAnvil, GiSpellBook, GiCrossedSwords,
+} from 'react-icons/gi'
 import { useKingdom } from '@/hooks/useKingdom'
 import { useResourceTicker } from '@/hooks/useResourceTicker'
 import { formatResource } from '@/lib/format'
@@ -24,7 +28,7 @@ export function OverviewPage() {
             {kingdom?.name ?? 'Mi Reino'}
           </h1>
           <p className="font-body text-ink-muted text-sm mt-1.5">
-            Reino 1 · Región 1 · Posición 1
+            Reino {kingdom?.realm ?? '—'} · Región {kingdom?.region ?? '—'} · Posición {kingdom?.slot ?? '—'}
           </p>
         </div>
         <div className="flex items-center gap-2 mt-1">
@@ -37,10 +41,10 @@ export function OverviewPage() {
       <section>
         <span className="section-heading anim-fade-up-1">Almacenes</span>
         <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
-          <ResourceCard icon={<TreePine size={17} />} label="Madera"     value={resources.wood}  cap={kingdom?.woodCapacity  ?? 5000} rate={kingdom?.woodProduction  ?? 0} animClass="anim-fade-up-1" />
-          <ResourceCard icon={<Mountain  size={17} />} label="Piedra"    value={resources.stone} cap={kingdom?.stoneCapacity ?? 5000} rate={kingdom?.stoneProduction ?? 0} animClass="anim-fade-up-2" />
-          <ResourceCard icon={<Wheat     size={17} />} label="Grano"     value={resources.grain} cap={kingdom?.grainCapacity ?? 5000} rate={kingdom?.grainProduction ?? 0} animClass="anim-fade-up-3" />
-          <ResourceCard icon={<Users     size={17} />} label="Población" value={kingdom?.populationUsed ?? 0} cap={kingdom?.populationMax ?? 200} rate={0} animClass="anim-fade-up-4" />
+          <ResourceCard icon={<GiWoodPile   size={18} />} label="Madera"     value={resources.wood}  cap={kingdom?.woodCapacity  ?? 5000} rate={kingdom?.woodProduction  ?? 0} animClass="anim-fade-up-1" />
+          <ResourceCard icon={<GiStoneBlock size={18} />} label="Piedra"    value={resources.stone} cap={kingdom?.stoneCapacity ?? 5000} rate={kingdom?.stoneProduction ?? 0} animClass="anim-fade-up-2" />
+          <ResourceCard icon={<GiWheat      size={18} />} label="Grano"     value={resources.grain} cap={kingdom?.grainCapacity ?? 5000} rate={kingdom?.grainProduction ?? 0} animClass="anim-fade-up-3" />
+          <ResourceCard icon={<Users        size={17} />} label="Población" value={kingdom?.populationUsed ?? 0} cap={kingdom?.populationMax ?? 200} rate={0} animClass="anim-fade-up-4" />
         </div>
       </section>
 
@@ -48,9 +52,9 @@ export function OverviewPage() {
       <section>
         <span className="section-heading anim-fade-up-2">Estado del Reino</span>
         <div className="grid grid-cols-3 gap-3">
-          <StatCard icon={<Hammer   size={14} />} label="Edificios"        value="0" note="mejoras activas" animClass="anim-fade-up-2" />
-          <StatCard icon={<BookOpen size={14} />} label="Investigaciones"  value="0" note="descubiertas"    animClass="anim-fade-up-3" />
-          <StatCard icon={<Swords   size={14} />} label="Tropas"           value="0" note="en campo"        animClass="anim-fade-up-4" />
+          <StatCard icon={<GiAnvil        size={16} />} label="Edificios"       value="0" note="mejoras activas" animClass="anim-fade-up-2" />
+          <StatCard icon={<GiSpellBook    size={16} />} label="Investigaciones" value="0" note="descubiertas"   animClass="anim-fade-up-3" />
+          <StatCard icon={<GiCrossedSwords size={16} />} label="Tropas"         value="0" note="en campo"       animClass="anim-fade-up-4" />
         </div>
       </section>
 

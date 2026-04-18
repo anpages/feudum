@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, type ReactNode } from 'react'
-import { Sword, Shield, Heart, Clock, Lock, Loader2, Plus, Minus } from 'lucide-react'
+import { Sword, Shield, Heart, Clock, Loader2, Plus, Minus } from 'lucide-react'
 import { type IconType } from 'react-icons'
 import {
   GiLightFighter, GiHeavyFighter, GiMountedKnight, GiKnightBanner,
@@ -15,8 +15,10 @@ import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { useBarracks, useTrainUnit, type UnitInfo } from '@/hooks/useBarracks'
 import { useKingdom } from '@/hooks/useKingdom'
+import { useResearch, type ResearchInfo } from '@/hooks/useResearch'
 import { useResourceTicker } from '@/hooks/useResourceTicker'
 import { formatResource, formatDuration } from '@/lib/format'
+import { RequirementsList } from '@/components/ui/RequirementsList'
 
 // ── Static metadata ───────────────────────────────────────────────────────────
 
@@ -74,6 +76,7 @@ export function BarracksPage() {
   const qc                          = useQueryClient()
   const { data, isLoading, refetch} = useBarracks()
   const { data: kingdom }           = useKingdom()
+  const { data: researchData }      = useResearch()
   const resources                   = useResourceTicker(kingdom)
   const train                       = useTrainUnit()
 
@@ -128,6 +131,8 @@ export function BarracksPage() {
               unit={u}
               meta={meta}
               resources={resources}
+              kingdom={kingdom}
+              research={researchData?.research}
               isTraining={train.isPending && train.variables?.unit === u.id}
               onTrain={(amount) => train.mutate({ unit: u.id, amount })}
               onCountdownEnd={handleCountdownEnd}
@@ -144,11 +149,13 @@ export function BarracksPage() {
 // ── Unit card ─────────────────────────────────────────────────────────────────
 
 function UnitCard({
-  unit, meta, resources, isTraining, onTrain, onCountdownEnd, animClass,
+  unit, meta, resources, kingdom, research, isTraining, onTrain, onCountdownEnd, animClass,
 }: {
   unit: UnitInfo
   meta: { name: string; Icon: IconType; description: string }
   resources: { wood: number; stone: number; grain: number }
+  kingdom?: Record<string, unknown> | null
+  research?: ResearchInfo[] | null
   isTraining: boolean
   onTrain: (amount: number) => void
   onCountdownEnd: () => void
@@ -236,10 +243,13 @@ function UnitCard({
           </div>
         </div>
       ) : !unit.requiresMet ? (
-        <Button variant="ghost" className="w-full mt-auto" disabled>
-          <Lock size={11} />
-          Requisitos no cumplidos
-        </Button>
+        <div className="mt-auto">
+          <RequirementsList
+            requires={unit.requires}
+            kingdom={kingdom}
+            research={research ? Object.fromEntries(research.map(r => [r.id, r.level])) : {}}
+          />
+        </div>
       ) : (
         <div className="mt-auto space-y-2">
           {/* Amount stepper */}

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { ArrowUp, Clock, Lock, Loader2 } from 'lucide-react'
+import { ArrowUp, Clock, Loader2 } from 'lucide-react'
 import { GiCauldron, GiCrossedSwords, GiCompass, GiScrollQuill, GiWoodPile, GiStoneBlock, GiWheat } from 'react-icons/gi'
 import { type ReactNode } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
@@ -10,6 +10,7 @@ import { useResearch, useUpgradeResearch, type ResearchInfo } from '@/hooks/useR
 import { useKingdom } from '@/hooks/useKingdom'
 import { useResourceTicker } from '@/hooks/useResourceTicker'
 import { formatResource, formatDuration } from '@/lib/format'
+import { RequirementsList } from '@/components/ui/RequirementsList'
 
 // ── Static metadata ───────────────────────────────────────────────────────────
 
@@ -112,11 +113,14 @@ export function ResearchPage() {
                 const canAfford = resources.wood  >= r.costWood
                                && resources.stone >= r.costStone
                                && resources.grain >= r.costGrain
+                const researchLevels = Object.fromEntries(items.map(x => [x.id, x.level]))
                 return (
                   <ResearchCard
                     key={r.id}
                     item={r}
                     meta={meta}
+                    kingdom={kingdom}
+                    researchLevels={researchLevels}
                     canAfford={canAfford}
                     globalQueueFull={hasInQueue && !r.inQueue}
                     isUpgrading={upgrade.isPending && upgrade.variables === r.id}
@@ -140,6 +144,8 @@ export function ResearchPage() {
 interface CardProps {
   item: ResearchInfo
   meta: { name: string; description: string; category: string }
+  kingdom?: Record<string, unknown> | null
+  researchLevels?: Record<string, number>
   canAfford: boolean
   globalQueueFull: boolean
   isUpgrading: boolean
@@ -148,7 +154,7 @@ interface CardProps {
   animClass: string
 }
 
-function ResearchCard({ item, meta, canAfford, globalQueueFull, isUpgrading, onUpgrade, onCountdownEnd, animClass }: CardProps) {
+function ResearchCard({ item, meta, kingdom, researchLevels, canAfford, globalQueueFull, isUpgrading, onUpgrade, onCountdownEnd, animClass }: CardProps) {
   const countdown = useCountdown(item.inQueue?.finishesAt ?? null, onCountdownEnd)
   const inQueue   = !!item.inQueue && item.inQueue.finishesAt > Math.floor(Date.now() / 1000)
 
@@ -183,10 +189,13 @@ function ResearchCard({ item, meta, canAfford, globalQueueFull, isUpgrading, onU
           {countdown > 0 ? formatDuration(countdown) : 'Finalizando…'}
         </div>
       ) : !item.requiresMet ? (
-        <Button variant="ghost" className="w-full mt-auto" disabled>
-          <Lock size={11} />
-          Requisitos no cumplidos
-        </Button>
+        <div className="mt-auto">
+          <RequirementsList
+            requires={item.requires}
+            kingdom={kingdom}
+            research={researchLevels}
+          />
+        </div>
       ) : globalQueueFull ? (
         <Button variant="ghost" className="w-full mt-auto" disabled>
           <Clock size={11} />
