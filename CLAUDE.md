@@ -2,6 +2,10 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Idioma
+
+Responde siempre en español, independientemente del idioma en que esté escrito el código o los mensajes del sistema.
+
 ## Project
 
 **Feudum** — a medieval browser strategy game built from scratch, mechanically inspired by classic OGame (pre-microtransaction era). This is NOT a fork or modification of OGame; it is a clean reimplementation with a medieval theme.
@@ -18,7 +22,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 npm start            # vercel dev → frontend + API on http://localhost:3000
 ```
 
-How it works: `vercel dev` reads `devCommand: "vite --port 3000"` from `vercel.json`, starts Vite for the frontend, and serves `api/index.ts` as a local serverless function at `/api/*`. Environment variables are loaded automatically from `.env.local`.
+How it works: `vercel dev` reads `devCommand: "vite"` from `vercel.json`, injects a free `$PORT` env var, starts Vite on that port, and serves `api/index.ts` as a local serverless function at `/api/*`. The gateway itself listens on :3000. Environment variables are loaded automatically from `.env.local`.
+
+> **Port note:** `devCommand` must NOT hardcode `--port 3000` — that causes Vite and `vercel dev` to fight over the same port and the gateway falls back to :3001. Vite reads `process.env.PORT` (set in `vite.config.ts` → `server.port`).
 
 ```bash
 # Other commands
@@ -96,7 +102,7 @@ minimum: 1 second
 | Backend | Hono — all routes under `/api`, deployed as Vercel serverless functions |
 | Database | Neon (serverless PostgreSQL) via `@neondatabase/serverless` |
 | ORM | Drizzle ORM — schema in `db/schema/`, migrations in `db/migrations/` |
-| Auth | Better Auth (not yet wired up) |
+| Auth | Custom JWT: Node.js `crypto.scrypt` + `jose` (httpOnly cookie `feudum_session`, 30d) |
 | Deploy | Vercel — `vercel.json` rewrites `/api/*` → `api/index.ts` |
 
 ### Real-time approach
@@ -106,15 +112,17 @@ Vercel serverless doesn't support persistent WebSockets. Game state is fetched v
 ### Folder layout
 
 ```
-api/index.ts           Hono entry point — mount new routers here
-api/routes/            One file per feature domain
-db/schema/             Drizzle table definitions (one file per domain)
-db/index.ts            Neon connection + re-exports all schema types
-src/components/layout/ GameLayout, ResourceBar, NavBar
-src/hooks/             useKingdom (React Query), useResourceTicker (local ticker)
-src/lib/api.ts         Thin fetch wrapper (api.get / api.post / api.patch)
-src/lib/format.ts      formatResource, formatDuration
-src/pages/             One file per route — mostly placeholders
+api/index.ts              Hono entry point — mount new routers here
+api/routes/               One file per feature domain
+db/schema/                Drizzle table definitions (one file per domain)
+db/index.ts               Neon connection + re-exports all schema types
+src/components/layout/    GameLayout, ResourceBar, NavBar
+src/components/ui/        Card, Button, Badge, ProgressBar (+ index.ts barrel)
+src/hooks/                useKingdom (React Query), useResourceTicker (local ticker)
+src/lib/api.ts            Thin fetch wrapper (api.get / api.post / api.patch)
+src/lib/cn.ts             clsx + tailwind-merge utility
+src/lib/format.ts         formatResource, formatDuration
+src/pages/                One file per route
 ```
 
 ### tsconfig split
@@ -160,16 +168,73 @@ src/pages/             One file per route — mostly placeholders
 
 Research mapping: see `db/schema/research.ts` — each field has an inline comment with the OGame equivalent.
 
-## Design tokens
+## Design system
 
-Custom Tailwind colors defined in `src/index.css` via `@theme`:
-- `parchment` / `parchment-dark` — main text / surface colors
-- `gold` / `gold-light` — primary accent (headings, active nav)
-- `crimson` — danger / full resources
-- `forest` — secondary accent
-- `ink` — dark text on light surfaces
+**Aesthetic:** Dark Illuminated Manuscript — near-black obsidian surfaces, gold-leaf accents, glass-morphism panels, noise-texture background.
 
-Use `font-display` class for headings (Cinzel serif) and `font-body` for long text (Crimson Text).
+### Color tokens (`src/index.css` `@theme`)
+
+| Token | Hex | Use |
+|-------|-----|-----|
+| `parchment` | #f5e6c8 | Primary text |
+| `parchment-dark` | #e8d5a3 | Secondary text |
+| `parchment-dim` | #c4b08a | Muted text |
+| `ink` | #2c1810 | Dark text on light bg |
+| `gold` | #c9a227 | Primary accent, borders |
+| `gold-light` | #e8c547 | Headings, active states |
+| `gold-dim` | #8a6e1a | Subtle gold |
+| `crimson` | #8b1a1a | Danger, full resources |
+| `crimson-light` | #c22b2b | Bright danger |
+| `forest` | #2d4a1e | Positive/production |
+| `forest-light` | #4a7a32 | Bright positive |
+| `void` | #0a0705 | Page background |
+| `obsidian` | #110d08 | Card background |
+| `tomb` | #1a1208 | Elevated surface |
+| `dusk` | #251a0d | Hover surface |
+
+### Typography
+- `font-display` → **Cinzel** serif — reserved for h1/logo only (kingdom name in ResourceBar, LoginPage title)
+- `font-ui` → **Outfit** — all UI chrome: buttons, nav labels, badges, resource values, form labels
+- `font-body` → **Inter** — body copy, descriptions, form inputs
+
+> **Rule:** Never use Cinzel at small sizes (< 1rem) — it becomes illegible. Use `font-ui` (Outfit) for anything below `text-base`.
+
+### CSS utility classes (defined in `src/index.css`)
+
+| Class | Purpose |
+|-------|---------|
+| `.bg-game` | Page background with noise texture + radial glows |
+| `.glass` / `.glass-strong` | Glass-morphism panel |
+| `.card-medieval` | Dark card with animated four-corner ornament |
+| `.card-corner-tr` / `.card-corner-bl` | Required child divs for the other two corners |
+| `.btn` + `.btn-primary/ghost/danger` | Button variants |
+| `.badge` + `.badge-gold/crimson/forest/stone` | Badge variants |
+| `.progress-track` + `.progress-fill` | Resource fill bar (add `.full` at 100%) |
+| `.game-input` | Styled text/email/password input |
+| `.resource-bar` | Sticky 52px frosted top header |
+| `.resource-item` | Individual resource pill inside the bar |
+| `.game-nav` | Sticky nav bar (top: 52px) |
+| `.nav-link` + `.active` | Nav tab with gold underline glow |
+| `.section-heading` | Small caps section label |
+| `.divider` | Ornamental horizontal rule with center slot |
+| `.skeleton` | Shimmer loading placeholder |
+| `.anim-fade-up` / `.anim-fade-up-{1-5}` | Staggered page entry animation |
+| `.anim-pulse-gold` / `.anim-float` / `.anim-glow` | Ambient animations |
+| `.no-scrollbar` | Hide scrollbar (used on nav + resource bar) |
+
+### UI components (`src/components/ui/`)
+
+- **`<Card>`** — wraps `.card-medieval` and auto-injects the two corner `<div>`s
+- **`<Button variant="primary|ghost|danger" size="sm|md|lg">`**
+- **`<Badge variant="gold|crimson|forest|stone">`**
+- **`<ProgressBar value={n} max={n}>`** — turns crimson at 100%
+
+Import from `@/components/ui` (barrel export).
+
+### Layout structure
+- `ResourceBar` — sticky at `top:0`, height 52px. Shows kingdom name, 3 resource pills (value + mini fill bar + rate on lg), population.
+- `NavBar` — sticky at `top:52px`. Cinzel uppercase tabs; active tab gets gold bottom border + blur glow.
+- `GameLayout` — wraps both, renders `<Outlet>` in `max-w-7xl mx-auto px-4 sm:px-6 py-8`.
 
 ---
 
@@ -183,19 +248,32 @@ Use `font-display` class for headings (Cinzel serif) and `font-body` for long te
 - [x] Vercel deployment pipeline (push to main → auto-deploy)
 - [x] Resource bar with local ticker (1s interpolation)
 - [x] Navigation layout (Reino / Construcción / Academia / Cuartel / Mapa)
+- [x] Complete design system (Dark Illuminated Manuscript aesthetic)
+  - `src/index.css` — all tokens, component classes, animations
+  - `src/components/ui/` — Card, Button, Badge, ProgressBar
+  - `src/lib/cn.ts` — clsx + tailwind-merge utility
+  - ResourceBar, NavBar, GameLayout fully redesigned
+  - OverviewPage, BuildingsPage, LoginPage — rich UI shells ready for API wiring
+- [x] Fix port conflict: `vercel dev` gateway on :3000, Vite reads `$PORT`
 
-### Phase 2 — Auth & Onboarding
-- [ ] Better Auth setup: email/password register + login
-- [ ] Session middleware on Hono routes
-- [ ] `POST /api/auth/register` — creates user + first kingdom at random position
-- [ ] `POST /api/auth/login` / logout
-- [ ] Protected route redirect (unauthenticated → /login)
-- [ ] Login page UI
+### Phase 2 — Auth & Onboarding ✅
+- [x] Custom JWT auth (scrypt password hash via Node.js `crypto`, JWT via `jose`)
+- [x] `api/lib/crypto.ts` — scrypt hash/verify (no external deps)
+- [x] `api/lib/jwt.ts` — 30-day JWT signed with `BETTER_AUTH_SECRET`
+- [x] `api/middleware/session.ts` — Hono `requireAuth` middleware (reads `feudum_session` cookie)
+- [x] `POST /api/auth/register` — creates user + research row + kingdom at random slot
+- [x] `POST /api/auth/login` / `POST /api/auth/logout`
+- [x] `GET /api/auth/me` — returns current user (used for session check)
+- [x] Protected route in React (`ProtectedRoute` in `App.tsx`)
+- [x] `useAuth` hook — React Query `['auth','me']` + login/register/logout mutations
+- [x] Login page fully wired (form submission, error display, redirect on success)
+- [x] Logout button in ResourceBar
+- [x] `ProtectedRoute` returns `null` during auth check (no loading skeleton flash)
 
-### Phase 3 — Kingdom & Resources
-- [ ] `GET /api/kingdoms/me` — returns kingdom with fresh resource calculation
-- [ ] Resource update on every API call: apply `production * elapsed_hours` since `lastResourceUpdate`
-- [ ] `useKingdom` hook wired to real endpoint
+### Phase 3 — Kingdom & Resources ✅ (partial)
+- [x] `GET /api/kingdoms/me` — returns kingdom with lazy resource tick applied
+- [x] Resource tick: `min(resource + production * elapsed_hours, capacity)` on every request
+- [ ] `useKingdom` hook wired to real endpoint (currently mocked)
 - [ ] Overview page: kingdom stats, resource totals, production rates
 
 ### Phase 4 — Construction (Buildings)

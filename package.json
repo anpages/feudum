@@ -15,6 +15,7 @@
   },
   "dependencies": {
     "@hono/node-server": "^1.19.14",
+    "@hono/zod-validator": "^0.7.6",
     "@neondatabase/serverless": "^1.1.0",
     "@tanstack/react-query": "^5.99.0",
     "@tanstack/react-query-devtools": "^5.99.0",
@@ -35,6 +36,7 @@
     "@types/node": "^24.12.2",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
+    "@vercel/node": "^5.7.11",
     "@vitejs/plugin-react": "^6.0.1",
     "drizzle-kit": "^0.31.10",
     "eslint": "^9.39.4",

@@ -1,11 +1,11 @@
-import { pgTable, serial, text, timestamp, varchar } from 'drizzle-orm/pg-core'
+import { pgTable, serial, timestamp, varchar } from 'drizzle-orm/pg-core'
 
 export const users = pgTable('users', {
   id: serial('id').primaryKey(),
-  username: varchar('username', { length: 50 }).notNull().unique(),
+  username: varchar('username', { length: 50 }).unique(),
   email: varchar('email', { length: 255 }).notNull().unique(),
-  passwordHash: text('password_hash').notNull(),
-  lastIp: varchar('last_ip', { length: 45 }),
+  googleId: varchar('google_id', { length: 255 }).notNull().unique(),
+  avatarUrl: varchar('avatar_url', { length: 500 }),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 })

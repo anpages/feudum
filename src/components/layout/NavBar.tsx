@@ -1,35 +1,64 @@
 import { NavLink } from 'react-router-dom'
-import { clsx } from 'clsx'
+import { Castle, Hammer, BookOpen, Swords, Map, X } from 'lucide-react'
+import { type ElementType } from 'react'
 
-const NAV_ITEMS = [
-  { to: '/overview',  label: 'Reino' },
-  { to: '/buildings', label: 'Construcción' },
-  { to: '/research',  label: 'Academia' },
-  { to: '/barracks',  label: 'Cuartel' },
-  { to: '/map',       label: 'Mapa' },
+interface NavItem {
+  to: string
+  label: string
+  Icon: ElementType
+}
+
+const NAV_ITEMS: NavItem[] = [
+  { to: '/overview',  label: 'Reino',        Icon: Castle   },
+  { to: '/buildings', label: 'Construcción', Icon: Hammer   },
+  { to: '/research',  label: 'Academia',     Icon: BookOpen },
+  { to: '/barracks',  label: 'Cuartel',      Icon: Swords   },
+  { to: '/map',       label: 'Mapa',         Icon: Map      },
 ]
 
-export function NavBar() {
+interface Props {
+  isOpen: boolean
+  onClose: () => void
+}
+
+export function NavBar({ isOpen, onClose }: Props) {
   return (
-    <nav className="bg-stone-900 border-b border-stone-800">
-      <div className="max-w-7xl mx-auto flex items-center gap-1 px-4 overflow-x-auto">
-        {NAV_ITEMS.map(({ to, label }) => (
+    <nav className={`game-sidebar ${isOpen ? 'open' : ''}`}>
+
+      {/* Mobile close button */}
+      <div className="flex items-center justify-between px-4 py-3 border-b border-gold/10 lg:hidden">
+        <span className="font-display text-xs text-gold tracking-widest uppercase">Menú</span>
+        <button
+          onClick={onClose}
+          className="p-1 rounded text-ink-muted hover:text-ink transition-colors"
+        >
+          <X size={16} />
+        </button>
+      </div>
+
+      {/* Nav items */}
+      <div className="py-3 flex-1">
+        <p className="nav-section-label">Gestión</p>
+        {NAV_ITEMS.map(({ to, label, Icon }) => (
           <NavLink
             key={to}
             to={to}
-            className={({ isActive }) =>
-              clsx(
-                'px-4 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors',
-                isActive
-                  ? 'border-gold text-gold'
-                  : 'border-transparent text-stone-400 hover:text-parchment hover:border-stone-500',
-              )
-            }
+            onClick={onClose}
+            className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
           >
-            {label}
+            <Icon size={15} />
+            <span>{label}</span>
           </NavLink>
         ))}
       </div>
+
+      {/* Footer */}
+      <div className="px-4 py-3 border-t border-gold/10">
+        <p className="font-ui text-[0.6rem] text-ink-muted/50 tracking-widest uppercase">
+          Feudum · v0.1
+        </p>
+      </div>
+
     </nav>
   )
 }
