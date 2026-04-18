@@ -8,7 +8,6 @@ import {
   User,
   Bot,
   MapPin,
-  X,
   Swords,
   Eye,
   Tent,
@@ -21,7 +20,7 @@ import { GiWoodPile, GiStoneBlock } from 'react-icons/gi'
 import { useMap, type MapSlot } from '@/features/map/useMap'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
-import { Card } from '@/components/ui/Card'
+import { Sheet } from '@/components/ui/Sheet'
 import { formatResource } from '@/lib/format'
 
 export function MapPage() {
@@ -153,39 +152,43 @@ export function MapPage() {
           data.myPosition.region === region && <Badge variant="gold">Tu región</Badge>}
       </div>
 
-      {/* Main content: grid + detail panel */}
-      <div className={`grid gap-4 anim-fade-up-2 ${selected ? 'lg:grid-cols-[1fr_280px]' : ''}`}>
-        {/* Detail panel — rendered first in DOM so it appears above slot list on mobile */}
-        {selected && (
-          <Card className="p-4 space-y-4 h-fit lg:sticky lg:top-20 lg:order-last">
-            <div className="flex items-start justify-between gap-2">
-              <div>
-                <p className="font-ui text-[0.6rem] text-ink-muted/60 uppercase tracking-widest">
-                  Pos. {selected.slot}
-                </p>
-                <p className="font-ui text-sm font-semibold text-ink leading-tight mt-0.5">
-                  {selected.isEmpty ? 'Posición vacía' : selected.name}
-                </p>
-                {!selected.isEmpty && (
-                  <p className="font-body text-xs text-ink-muted mt-0.5">
-                    {selected.isNpc ? 'NPC' : `@${selected.username}`}
-                  </p>
-                )}
-              </div>
-              <button
-                onClick={() => setSelected(null)}
-                className="p-1 rounded text-ink-muted hover:text-ink hover:bg-parchment-warm transition-colors shrink-0"
-              >
-                <X size={13} />
-              </button>
-            </div>
+      {/* Slots list */}
+      <div className="anim-fade-up-2">
+        {isLoading ? (
+          <MapSkeleton />
+        ) : (
+          <div className="space-y-2">
+            {(data?.slots ?? []).map(slot => (
+              <SlotRow
+                key={slot.slot}
+                slot={slot}
+                isSelected={selected?.slot === slot.slot}
+                onClick={() => handleSelectSlot(slot)}
+              />
+            ))}
+          </div>
+        )}
+      </div>
 
+      {/* Slot detail — Sheet modal */}
+      <Sheet
+        open={!!selected}
+        onClose={() => setSelected(null)}
+        title={selected ? `Pos. ${selected.slot} — ${selected.isEmpty ? 'Posición vacía' : selected.name}` : ''}
+        maxWidth="max-w-md"
+      >
+        {selected && (
+          <div className="p-5 space-y-4">
             {!selected.isEmpty && (
-              <div className="flex items-center gap-1.5">
-                <span className="font-ui text-xs text-ink-muted">Puntos:</span>
-                <span className="font-ui text-xs font-semibold text-ink tabular-nums">
-                  {selected.points.toLocaleString()}
+              <div className="flex items-center gap-2">
+                <span className="font-body text-xs text-ink-muted">
+                  {selected.isNpc ? 'NPC' : `@${selected.username}`}
                 </span>
+                {!selected.isEmpty && (
+                  <span className="font-ui text-xs text-ink-muted tabular-nums ml-auto">
+                    {selected.points.toLocaleString()} pts
+                  </span>
+                )}
               </div>
             )}
 
@@ -217,22 +220,14 @@ export function MapPage() {
             {/* Action buttons */}
             <div className="space-y-2">
               {selected.isEmpty ? (
-                <Button
-                  variant="primary"
-                  className="w-full"
-                  onClick={() => sendMission('colonize')}
-                >
+                <Button variant="primary" className="w-full" onClick={() => sendMission('colonize')}>
                   <Tent size={12} />
                   Colonizar
                 </Button>
               ) : (
                 <>
                   {selected.isNpc && (
-                    <Button
-                      variant="primary"
-                      className="w-full"
-                      onClick={() => sendMission('pillage')}
-                    >
+                    <Button variant="primary" className="w-full" onClick={() => sendMission('pillage')}>
                       <Skull size={12} />
                       Saquear
                     </Button>
@@ -250,21 +245,13 @@ export function MapPage() {
                     Espiar
                   </Button>
                   {!selected.isNpc && !selected.isPlayer && (
-                    <Button
-                      variant="ghost"
-                      className="w-full"
-                      onClick={() => sendMission('transport')}
-                    >
+                    <Button variant="ghost" className="w-full" onClick={() => sendMission('transport')}>
                       <Package size={12} />
                       Transportar
                     </Button>
                   )}
                   {selected.isPlayer && (
-                    <Button
-                      variant="primary"
-                      className="w-full"
-                      onClick={() => sendMission('deploy')}
-                    >
+                    <Button variant="primary" className="w-full" onClick={() => sendMission('deploy')}>
                       <Flag size={12} />
                       Desplegar
                     </Button>
@@ -278,27 +265,9 @@ export function MapPage() {
                 </Button>
               )}
             </div>
-          </Card>
+          </div>
         )}
-
-        {/* Slots list — lg:order-first so it stays left column on desktop */}
-        <div className="lg:order-first">
-          {isLoading ? (
-            <MapSkeleton />
-          ) : (
-            <div className="space-y-2">
-              {(data?.slots ?? []).map(slot => (
-                <SlotRow
-                  key={slot.slot}
-                  slot={slot}
-                  isSelected={selected?.slot === slot.slot}
-                  onClick={() => handleSelectSlot(slot)}
-                />
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
+      </Sheet>
     </div>
   )
 }

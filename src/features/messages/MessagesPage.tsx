@@ -6,7 +6,6 @@ import {
   Eye,
   CheckCheck,
   PenLine,
-  X,
   Send,
   Loader2,
   User,
@@ -21,6 +20,7 @@ import {
 import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
+import { Sheet } from '@/components/ui/Sheet'
 import { formatResource } from '@/lib/format'
 import { toast } from '@/lib/toast'
 
@@ -68,7 +68,7 @@ export function MessagesPage() {
         </div>
       </div>
 
-      {messages.length === 0 && !composing ? (
+      {messages.length === 0 ? (
         <Card className="p-10 text-center anim-fade-up-1">
           <MailOpen size={28} className="mx-auto text-ink-muted/30 mb-3" />
           <p className="font-body text-sm text-ink-muted/60">No tienes mensajes</p>
@@ -80,64 +80,59 @@ export function MessagesPage() {
           </button>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-4 anim-fade-up-1">
-          {/* ── List ── */}
-          <div className="space-y-1.5">
-            {messages.map(msg => (
-              <button
-                key={msg.id}
-                onClick={() => {
-                  setSelected(msg)
-                  setComposing(false)
-                }}
-                className={`w-full text-left rounded-lg border px-3.5 py-3 transition-colors ${
-                  !composing && selected?.id === msg.id
-                    ? 'border-gold/60 bg-gold/5'
-                    : 'border-gold/10 bg-parchment hover:bg-gold/5'
-                }`}
-              >
-                <div className="flex items-start gap-2.5">
-                  <span
-                    className={`mt-0.5 shrink-0 ${msg.viewed ? 'text-ink-muted/40' : 'text-gold'}`}
-                  >
-                    {msg.viewed ? <MailOpen size={14} /> : <Mail size={14} />}
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <span
-                        className={`font-ui text-sm truncate ${msg.viewed ? 'text-ink-muted' : 'text-ink font-semibold'}`}
-                      >
-                        {msg.subject}
-                      </span>
-                      <MessageTypeBadge type={msg.type} />
-                    </div>
-                    <p className="font-body text-xs text-ink-muted/60 mt-0.5 truncate">
-                      {new Date(msg.createdAt).toLocaleString('es-ES', {
-                        dateStyle: 'short',
-                        timeStyle: 'short',
-                      })}
-                    </p>
+        <div className="space-y-1.5 anim-fade-up-1">
+          {messages.map(msg => (
+            <button
+              key={msg.id}
+              onClick={() => { setSelected(msg); setComposing(false) }}
+              className={`w-full text-left rounded-lg border px-3.5 py-3 transition-colors ${
+                !composing && selected?.id === msg.id
+                  ? 'border-gold/60 bg-gold/5'
+                  : 'border-gold/10 bg-parchment hover:bg-gold/5'
+              }`}
+            >
+              <div className="flex items-start gap-2.5">
+                <span className={`mt-0.5 shrink-0 ${msg.viewed ? 'text-ink-muted/40' : 'text-gold'}`}>
+                  {msg.viewed ? <MailOpen size={14} /> : <Mail size={14} />}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className={`font-ui text-sm truncate ${msg.viewed ? 'text-ink-muted' : 'text-ink font-semibold'}`}>
+                      {msg.subject}
+                    </span>
+                    <MessageTypeBadge type={msg.type} />
                   </div>
+                  <p className="font-body text-xs text-ink-muted/60 mt-0.5 truncate">
+                    {new Date(msg.createdAt).toLocaleString('es-ES', { dateStyle: 'short', timeStyle: 'short' })}
+                  </p>
                 </div>
-              </button>
-            ))}
-          </div>
-
-          {/* ── Detail / Compose ── */}
-          <div>
-            {composing ? (
-              <ComposePanel onClose={() => setComposing(false)} initialTo={replyTo} />
-            ) : selected ? (
-              <MessageDetail message={selected} onReply={username => openCompose(username)} />
-            ) : (
-              <Card className="p-10 text-center h-full flex flex-col items-center justify-center gap-3">
-                <MailOpen size={24} className="text-ink-muted/25" />
-                <p className="font-body text-sm text-ink-muted/50">Selecciona un mensaje</p>
-              </Card>
-            )}
-          </div>
+              </div>
+            </button>
+          ))}
         </div>
       )}
+
+      {/* Message detail — Sheet */}
+      <Sheet
+        open={!!selected && !composing}
+        onClose={() => setSelected(null)}
+        title={selected?.subject}
+        maxWidth="max-w-xl"
+      >
+        {selected && (
+          <MessageDetail message={selected} onReply={username => openCompose(username)} />
+        )}
+      </Sheet>
+
+      {/* Compose — Sheet */}
+      <Sheet
+        open={composing}
+        onClose={() => setComposing(false)}
+        title="Nuevo mensaje"
+        maxWidth="max-w-lg"
+      >
+        <ComposePanel onClose={() => setComposing(false)} initialTo={replyTo} />
+      </Sheet>
     </div>
   )
 }
@@ -162,87 +157,35 @@ function ComposePanel({ onClose, initialTo = '' }: { onClose: () => void; initia
   }
 
   return (
-    <Card className="p-5 space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="font-ui text-sm font-semibold text-ink uppercase tracking-widest">
-          Nuevo mensaje
-        </h2>
-        <button
-          onClick={onClose}
-          className="p-1 rounded text-ink-muted hover:text-ink hover:bg-parchment-warm transition-colors"
-        >
-          <X size={14} />
-        </button>
-      </div>
-
+    <div className="p-5 space-y-4">
       <div className="space-y-3">
         <div>
-          <label className="font-ui text-xs text-ink-muted uppercase tracking-wider block mb-1">
-            Para (username)
-          </label>
+          <label className="font-ui text-xs text-ink-muted uppercase tracking-wider block mb-1">Para (username)</label>
           <div className="relative">
-            <User
-              size={13}
-              className="absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-muted/50"
-            />
-            <input
-              type="text"
-              value={to}
-              onChange={e => setTo(e.target.value)}
-              placeholder="nombre_usuario"
-              className="game-input w-full pl-8"
-            />
+            <User size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-muted/50" />
+            <input type="text" value={to} onChange={e => setTo(e.target.value)} placeholder="nombre_usuario" className="game-input w-full pl-8" />
           </div>
         </div>
-
         <div>
-          <label className="font-ui text-xs text-ink-muted uppercase tracking-wider block mb-1">
-            Asunto
-          </label>
-          <input
-            type="text"
-            value={subject}
-            onChange={e => setSubject(e.target.value)}
-            maxLength={100}
-            placeholder="Motivo del mensaje..."
-            className="game-input w-full"
-          />
+          <label className="font-ui text-xs text-ink-muted uppercase tracking-wider block mb-1">Asunto</label>
+          <input type="text" value={subject} onChange={e => setSubject(e.target.value)} maxLength={100} placeholder="Motivo del mensaje..." className="game-input w-full" />
         </div>
-
         <div>
-          <label className="font-ui text-xs text-ink-muted uppercase tracking-wider block mb-1">
-            Mensaje
-          </label>
-          <textarea
-            value={body}
-            onChange={e => setBody(e.target.value)}
-            maxLength={2000}
-            rows={6}
-            placeholder="Escribe tu mensaje aquí..."
-            className="game-input w-full resize-none"
-          />
-          <p className="text-right font-ui text-[0.6rem] text-ink-muted/50 mt-0.5">
-            {body.length}/2000
-          </p>
+          <label className="font-ui text-xs text-ink-muted uppercase tracking-wider block mb-1">Mensaje</label>
+          <textarea value={body} onChange={e => setBody(e.target.value)} maxLength={2000} rows={6} placeholder="Escribe tu mensaje aquí..." className="game-input w-full resize-none" />
+          <p className="text-right font-ui text-[0.6rem] text-ink-muted/50 mt-0.5">{body.length}/2000</p>
         </div>
       </div>
 
       {send.isError && (
-        <p className="font-ui text-xs text-crimson">
-          {(send.error as Error)?.message ?? 'Error al enviar'}
-        </p>
+        <p className="font-ui text-xs text-crimson">{(send.error as Error)?.message ?? 'Error al enviar'}</p>
       )}
 
-      <Button
-        variant="primary"
-        className="w-full"
-        disabled={!to.trim() || !subject.trim() || !body.trim() || send.isPending}
-        onClick={handleSend}
-      >
+      <Button variant="primary" className="w-full" disabled={!to.trim() || !subject.trim() || !body.trim() || send.isPending} onClick={handleSend}>
         {send.isPending ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
         {send.isPending ? 'Enviando…' : 'Enviar mensaje'}
       </Button>
-    </Card>
+    </div>
   )
 }
 
@@ -285,30 +228,18 @@ function MessageDetail({
   const d = message.data
 
   return (
-    <Card className="p-5 space-y-5">
-      <div className="flex items-start gap-3 pb-4 border-b border-gold/10">
-        <span className="text-gold mt-0.5">
-          {message.type === 'battle' ? (
-            <Sword size={16} />
-          ) : message.type === 'spy' ? (
-            <Eye size={16} />
-          ) : (
-            <Mail size={16} />
-          )}
+    <div className="p-5 space-y-5">
+      <div className="flex items-center gap-3 pb-4 border-b border-gold/10">
+        <span className="text-gold">
+          {message.type === 'battle' ? <Sword size={15} /> : message.type === 'spy' ? <Eye size={15} /> : <Mail size={15} />}
         </span>
-        <div className="flex-1 min-w-0">
-          <h2 className="font-display text-base text-ink">{message.subject}</h2>
-          <p className="font-body text-xs text-ink-muted/60 mt-0.5">
-            {new Date(message.createdAt).toLocaleString('es-ES', {
-              dateStyle: 'long',
-              timeStyle: 'short',
-            })}
-          </p>
-        </div>
+        <p className="font-body text-xs text-ink-muted/60">
+          {new Date(message.createdAt).toLocaleString('es-ES', { dateStyle: 'long', timeStyle: 'short' })}
+        </p>
         {message.type === 'player' && typeof d.fromUsername === 'string' && (
           <button
             onClick={() => onReply(d.fromUsername as string)}
-            className="shrink-0 font-ui text-xs text-gold hover:text-gold-light transition-colors flex items-center gap-1"
+            className="ml-auto shrink-0 font-ui text-xs text-gold hover:text-gold-light transition-colors flex items-center gap-1"
           >
             <PenLine size={11} /> Responder
           </button>
@@ -318,7 +249,7 @@ function MessageDetail({
       {message.type === 'battle' && <BattleDetail data={d} />}
       {message.type === 'spy' && <SpyDetail data={d} />}
       {message.type === 'player' && <PlayerDetail data={d} />}
-    </Card>
+    </div>
   )
 }
 
