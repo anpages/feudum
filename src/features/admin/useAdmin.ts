@@ -69,3 +69,9 @@ export function useSeedNpcs() {
       adminService.seedNpcs(params),
   })
 }
+
+export function useResetNpcs() {
+  return useMutation({
+    mutationFn: () => adminService.resetNpcs(),
+  })
+}

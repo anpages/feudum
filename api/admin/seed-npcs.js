@@ -52,15 +52,7 @@ export default async function handler(req, res) {
   if (!adminId) return res.status(403).json({ error: 'forbidden' })
 
   const { action } = req.body
-  if (action !== 'seed_npcs') return res.status(400).json({ error: 'unknown_action' })
-
-  const level1 = Math.max(0, parseInt(req.body.level1 ?? 0, 10) || 0)
-  const level2 = Math.max(0, parseInt(req.body.level2 ?? 0, 10) || 0)
-  const level3 = Math.max(0, parseInt(req.body.level3 ?? 0, 10) || 0)
-  const total  = level1 + level2 + level3
-
-  if (total === 0)   return res.status(400).json({ error: 'total_must_be_positive' })
-  if (total > 300)   return res.status(400).json({ error: 'max_300_npcs' })
+  if (!['seed_npcs', 'reset_npcs'].includes(action)) return res.status(400).json({ error: 'unknown_action' })
 
   // ── Get or create NPC system user ─────────────────────────────────────────
   let [npcUser] = await db.select({ id: users.id })
@@ -75,16 +67,28 @@ export default async function handler(req, res) {
   }
   const npcUserId = npcUser.id
 
-  // ── Delete all existing NPC kingdoms ──────────────────────────────────────
-  const deleted = await db.delete(kingdoms)
-    .where(eq(kingdoms.isNpc, true))
-    .returning({ id: kingdoms.id })
+  // ── Reset: just delete all NPC kingdoms and return ────────────────────────
+  if (action === 'reset_npcs') {
+    const deleted = await db.delete(kingdoms)
+      .where(eq(kingdoms.isNpc, true))
+      .returning({ id: kingdoms.id })
+    return res.json({ ok: true, deleted: deleted.length, created: 0 })
+  }
 
-  // ── Build list of available slots (not taken by real players) ─────────────
+  // ── Seed: add NPCs to existing ones ───────────────────────────────────────
+  const level1 = Math.max(0, parseInt(req.body.level1 ?? 0, 10) || 0)
+  const level2 = Math.max(0, parseInt(req.body.level2 ?? 0, 10) || 0)
+  const level3 = Math.max(0, parseInt(req.body.level3 ?? 0, 10) || 0)
+  const total  = level1 + level2 + level3
+
+  if (total === 0)  return res.status(400).json({ error: 'total_must_be_positive' })
+  if (total > 300)  return res.status(400).json({ error: 'max_300_npcs' })
+
+  // ── Build list of available slots (not taken by any kingdom) ──────────────
   const { maxRealm, maxRegion, maxSlot } = UNIVERSE
-  const realRows = await db.select({ realm: kingdoms.realm, region: kingdoms.region, slot: kingdoms.slot })
-    .from(kingdoms).where(eq(kingdoms.isNpc, false))
-  const takenSet = new Set(realRows.map(k => `${k.realm}:${k.region}:${k.slot}`))
+  const takenRows = await db.select({ realm: kingdoms.realm, region: kingdoms.region, slot: kingdoms.slot })
+    .from(kingdoms)
+  const takenSet = new Set(takenRows.map(k => `${k.realm}:${k.region}:${k.slot}`))
 
   const available = []
   for (let realm = 1; realm <= maxRealm; realm++)
@@ -101,7 +105,6 @@ export default async function handler(req, res) {
   shuffle(available)
   const chosen = available.slice(0, total)
 
-  // Build level assignment: [1,1,...,2,2,...,3,3,...] then shuffle
   const levels = [
     ...Array(level1).fill(1),
     ...Array(level2).fill(2),
@@ -130,11 +133,10 @@ export default async function handler(req, res) {
     lastResourceUpdate: now,
   }))
 
-  // Insert in chunks of 50 to avoid query size limits
   for (let i = 0; i < batch.length; i += 50) {
     await db.insert(kingdoms).values(batch.slice(i, i + 50))
   }
 
   const byLevel = { 1: level1, 2: level2, 3: level3 }
-  return res.json({ ok: true, deleted: deleted.length, created: total, byLevel, npcUserId })
+  return res.json({ ok: true, deleted: 0, created: total, byLevel, npcUserId })
 }

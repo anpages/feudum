@@ -14,6 +14,7 @@ import {
   useDevAction,
   useFastForward,
   useSeedNpcs,
+  useResetNpcs,
 } from '@/features/admin/useAdmin'
 import { formatDuration } from '@/lib/format'
 
@@ -214,15 +215,26 @@ const RESEARCH_OPTIONS = [
 ]
 
 function NpcSeeder({ onStatus }: { onStatus: (s: string) => void }) {
-  const seedNpcs = useSeedNpcs()
+  const seedNpcs  = useSeedNpcs()
+  const resetNpcs = useResetNpcs()
   const [count, setCount] = useState('10')
 
-  const total = parseInt(count) || 0
+  const total   = parseInt(count) || 0
+  const pending = seedNpcs.isPending || resetNpcs.isPending
 
   async function handleSeed() {
     try {
       const res = await seedNpcs.mutateAsync({ level1: total, level2: 0, level3: 0 })
-      onStatus(`✓ ${res.created} NPCs creados (eliminados: ${res.deleted})`)
+      onStatus(`✓ ${res.created} NPCs añadidos`)
+    } catch (e) {
+      onStatus('✗ ' + (e as Error).message)
+    }
+  }
+
+  async function handleReset() {
+    try {
+      const res = await resetNpcs.mutateAsync()
+      onStatus(`✓ ${res.deleted} NPCs eliminados`)
     } catch (e) {
       onStatus('✗ ' + (e as Error).message)
     }
@@ -233,14 +245,11 @@ function NpcSeeder({ onStatus }: { onStatus: (s: string) => void }) {
       <div className="flex items-center gap-2">
         <Bot size={15} className="text-gold" />
         <h3 className="font-ui text-sm font-semibold text-ink">Poblar NPCs</h3>
-        <p className="font-body text-[11px] text-ink-muted/70 ml-1">
-          — Borra todos los existentes y crea nuevos desde cero en slots aleatorios.
-        </p>
       </div>
 
       <div className="flex items-end gap-3">
         <div className="space-y-1">
-          <label className="block font-ui text-xs text-ink-muted">Cantidad</label>
+          <label className="block font-ui text-xs text-ink-muted">Cantidad a añadir</label>
           <input
             type="number"
             min="1"
@@ -251,15 +260,22 @@ function NpcSeeder({ onStatus }: { onStatus: (s: string) => void }) {
           />
         </div>
         <Button
-          variant="danger"
+          variant="primary"
           size="sm"
-          disabled={seedNpcs.isPending || total <= 0}
+          disabled={pending || total <= 0}
           onClick={handleSeed}
         >
-          {seedNpcs.isPending
-            ? <Loader2 size={12} className="animate-spin" />
-            : <RotateCcw size={12} />}
-          Resetear y poblar
+          {seedNpcs.isPending ? <Loader2 size={12} className="animate-spin" /> : <Bot size={12} />}
+          Añadir {total > 0 ? total : ''} NPCs
+        </Button>
+        <Button
+          variant="danger"
+          size="sm"
+          disabled={pending}
+          onClick={handleReset}
+        >
+          {resetNpcs.isPending ? <Loader2 size={12} className="animate-spin" /> : <RotateCcw size={12} />}
+          Reset
         </Button>
       </div>
     </Card>

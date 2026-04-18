@@ -17,4 +17,6 @@ export const adminService = {
       '/admin/seed-npcs',
       { action: 'seed_npcs', ...params },
     ),
+  resetNpcs: () =>
+    http.post<{ ok: boolean; deleted: number }>('/admin/seed-npcs', { action: 'reset_npcs' }),
 }
