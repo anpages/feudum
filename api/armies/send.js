@@ -1,7 +1,8 @@
 import { eq, and } from 'drizzle-orm'
-import { db, kingdoms, armyMissions } from '../_db.js'
+import { db, kingdoms, armyMissions, research } from '../_db.js'
 import { getSessionUserId } from '../lib/handler.js'
 import { calcDistance, calcDuration, calcCargoCapacity } from '../lib/speed.js'
+import { getSettings } from '../lib/settings.js'
 
 const UNIT_KEYS = [
   'squire','knight','paladin','warlord','grandKnight',
@@ -36,9 +37,12 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Coordenadas de destino inválidas' })
   }
 
-  // ── Load player kingdom ───────────────────────────────────────────────────
-  const [kingdom] = await db.select().from(kingdoms)
-    .where(eq(kingdoms.userId, userId)).limit(1)
+  // ── Load player kingdom + research ───────────────────────────────────────
+  const [[kingdom], [researchRow], cfg] = await Promise.all([
+    db.select().from(kingdoms).where(eq(kingdoms.userId, userId)).limit(1),
+    db.select().from(research).where(eq(research.userId, userId)).limit(1),
+    getSettings(),
+  ])
   if (!kingdom) return res.status(404).json({ error: 'Reino no encontrado' })
 
   // Can't attack yourself
@@ -134,10 +138,12 @@ export default async function handler(req, res) {
   // ── Calculate travel time (ambassadorHall reduces by 5%/level, max 40%) ──────
   const origin   = { realm: kingdom.realm, region: kingdom.region, slot: kingdom.slot }
   const dest     = { realm: tRealm,        region: tRegion,        slot: tSlot        }
-  const distance = calcDistance(origin, dest)
-  const baseSecs = calcDuration(distance, units)
-  const speedBonus = Math.min(0.40, (kingdom.ambassadorHall ?? 0) * 0.05)
-  const travelSecs = Math.max(1, Math.round(baseSecs * (1 - speedBonus)))
+  const isWar        = ['attack', 'pillage', 'spy'].includes(missionType)
+  const universeSpeed = isWar ? cfg.fleet_speed_war : cfg.fleet_speed_peaceful
+  const distance     = calcDistance(origin, dest)
+  const baseSecs     = calcDuration(distance, units, 100, universeSpeed, researchRow ?? {})
+  const speedBonus   = Math.min(0.40, (kingdom.ambassadorHall ?? 0) * 0.05)
+  const travelSecs   = Math.max(1, Math.round(baseSecs * (1 - speedBonus)))
 
   if (travelSecs === 0) {
     return res.status(400).json({ error: 'No se pudo calcular el tiempo de viaje' })

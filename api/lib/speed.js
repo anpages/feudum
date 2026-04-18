@@ -58,12 +58,18 @@ export function calcDistance(from, to) {
  * @param {Object} units — { squire: 5, knight: 2, ... } only positive values
  * @param {number} speedPct — 100 = full speed
  * @param {number} universeSpeed — server speed multiplier
+ * @param {Object} research — { horsemanship, cartography } levels
  * @returns {number} travel time in seconds
  */
-export function calcDuration(distance, units, speedPct = 100, universeSpeed = 1) {
+export function calcDuration(distance, units, speedPct = 100, universeSpeed = 1, research = {}) {
+  const horseLv = research.horsemanship ?? 0
+  const cartoLv = research.cartography  ?? 0
+  // horsemanship: +10%/level (combustion_drive), cartography: +20%/level (impulse_drive)
+  const researchMultiplier = 1 + horseLv * 0.10 + cartoLv * 0.20
+
   const speeds = Object.entries(units)
     .filter(([, n]) => n > 0)
-    .map(([id]) => UNIT_SPEEDS[id] ?? 10000)
+    .map(([id]) => (UNIT_SPEEDS[id] ?? 10000) * researchMultiplier)
   if (speeds.length === 0) return 0
   const slowest = Math.min(...speeds)
   return Math.max(1, Math.round(
