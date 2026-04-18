@@ -20,9 +20,10 @@ function ProtectedRoute() {
 
 function RootRedirect() {
   const [params] = useSearchParams()
-  const next = params.get('next')
+  const next  = params.get('next')
+  const error = params.get('error')
+  if (error)              return <Navigate to={`/login?error=${error}`} replace />
   if (next === 'onboarding') return <Navigate to="/onboarding" replace />
-  if (next === 'overview')   return <Navigate to="/overview"   replace />
   return <Navigate to="/overview" replace />
 }
 

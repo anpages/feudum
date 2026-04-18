@@ -7,7 +7,7 @@ export default async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).end()
 
   const { code, error } = req.query
-  if (error || !code) return res.redirect('/login?error=oauth_cancelled')
+  if (error || !code) return res.redirect('/?error=oauth_cancelled')
 
   const redirectUri = `${req.headers['x-forwarded-proto'] ?? 'http'}://${req.headers.host}/api/auth/google/callback`
 
@@ -27,7 +27,7 @@ export default async function handler(req, res) {
 
   if (!tokenRes.ok) {
     console.error('[oauth] token exchange failed:', await tokenRes.text())
-    return res.redirect('/login?error=exchange_failed')
+    return res.redirect('/?error=exchange_failed')
   }
 
   const { access_token } = await tokenRes.json()
@@ -35,7 +35,7 @@ export default async function handler(req, res) {
   const profileRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
     headers: { Authorization: `Bearer ${access_token}` },
   })
-  if (!profileRes.ok) return res.redirect('/login?error=profile_failed')
+  if (!profileRes.ok) return res.redirect('/?error=profile_failed')
 
   const profile = await profileRes.json()
   console.log('[oauth] profile:', profile.email)
