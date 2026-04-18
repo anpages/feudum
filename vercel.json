@@ -4,6 +4,9 @@
     { "handle": "filesystem" },
     { "src": "/(.*)", "dest": "/index.html" }
   ],
+  "functions": {
+    "api/**/*.js": { "includeFiles": "db/**" }
+  },
   "buildCommand": "npm run build",
   "devCommand": "vite",
   "outputDirectory": "dist"
