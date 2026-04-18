@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm'
+import { eq, and, gte } from 'drizzle-orm'
 import { db, kingdoms, research as researchTable, unitQueue } from '../_db.js'
 import { getSessionUserId } from '../lib/handler.js'
 import { ALL_UNITS, unitBuildTime, unitRequirementsMet } from '../lib/units.js'
@@ -58,13 +58,23 @@ export default async function handler(req, res) {
   const timeSecs   = unitBuildTime(def.hull, barracksLv, egLv, amount, cfg.economy_speed ?? 1)
   const finishesAt = now + timeSecs
 
-  await db.update(kingdoms).set({
+  const updated = await db.update(kingdoms).set({
     wood:  wood  - totalWood,
     stone: stone - totalStone,
     grain: grain - totalGrain,
     lastResourceUpdate: now,
     updatedAt: new Date(),
-  }).where(eq(kingdoms.id, kingdom.id))
+  }).where(and(
+    eq(kingdoms.id, kingdom.id),
+    eq(kingdoms.lastResourceUpdate, kingdom.lastResourceUpdate),
+    gte(kingdoms.wood,  totalWood),
+    gte(kingdoms.stone, totalStone),
+    gte(kingdoms.grain, totalGrain),
+  )).returning({ id: kingdoms.id })
+
+  if (updated.length === 0) {
+    return res.status(409).json({ error: 'Conflicto de concurrencia, inténtalo de nuevo' })
+  }
 
   await db.insert(unitQueue).values({
     kingdomId: kingdom.id,

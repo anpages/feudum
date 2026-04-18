@@ -2,9 +2,9 @@
  * POST /api/armies/merchant
  * Accept or decline a pending merchant trade offer from an expedition.
  */
-import { eq, and } from 'drizzle-orm'
+import { eq, and, gte } from 'drizzle-orm'
 import { db, armyMissions, kingdoms, messages, users } from '../_db.js'
-import { getSessionUserId } from '../lib/session.js'
+import { getSessionUserId } from '../lib/handler.js'
 
 const UNIT_KEYS = [
   'squire','knight','paladin','warlord','grandKnight',
@@ -84,7 +84,22 @@ export default async function handler(req, res) {
     if (recvGrain > 0) kingdomPatch.grain = Math.min((kingdomPatch.grain ?? homeKingdom.grain) + recvGrain, homeKingdom.grainCapacity)
   }
 
-  await db.update(kingdoms).set(kingdomPatch).where(eq(kingdoms.id, homeKingdom.id))
+  const whereClause = accept
+    ? and(
+        eq(kingdoms.id, homeKingdom.id),
+        gte(kingdoms.wood,  offer.give.wood  ?? 0),
+        gte(kingdoms.stone, offer.give.stone ?? 0),
+        gte(kingdoms.grain, offer.give.grain ?? 0),
+      )
+    : eq(kingdoms.id, homeKingdom.id)
+
+  const updatedRows = await db.update(kingdoms).set(kingdomPatch)
+    .where(whereClause)
+    .returning({ id: kingdoms.id })
+
+  if (updatedRows.length === 0) {
+    return res.status(400).json({ error: 'Recursos insuficientes para el intercambio' })
+  }
   await db.delete(armyMissions).where(eq(armyMissions.id, missionId))
 
   await db.insert(messages).values({

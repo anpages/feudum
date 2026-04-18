@@ -1,4 +1,4 @@
-import { eq, and } from 'drizzle-orm'
+import { eq, and, gte } from 'drizzle-orm'
 import { db, kingdoms, armyMissions, research, users } from '../_db.js'
 import { getSessionUserId } from '../lib/handler.js'
 import { calcDistance, calcDuration, calcCargoCapacity } from '../lib/speed.js'
@@ -197,9 +197,10 @@ export default async function handler(req, res) {
   let grainLoad = 0
 
   if (missionType === 'transport' || missionType === 'deploy') {
-    woodLoad  = Math.max(0, parseFloat(rawResources?.wood  ?? 0) || 0)
-    stoneLoad = Math.max(0, parseFloat(rawResources?.stone ?? 0) || 0)
-    grainLoad = Math.max(0, parseFloat(rawResources?.grain ?? 0) || 0)
+    const safeFloat = v => { const n = parseFloat(v ?? 0); return isFinite(n) && n >= 0 ? n : 0 }
+    woodLoad  = safeFloat(rawResources?.wood)
+    stoneLoad = safeFloat(rawResources?.stone)
+    grainLoad = safeFloat(rawResources?.grain)
 
     const capacity = calcCargoCapacity(units)
     if (woodLoad + stoneLoad + grainLoad > capacity) {
@@ -229,21 +230,37 @@ export default async function handler(req, res) {
   const arrivalTime = now + travelSecs
   const returnTime  = arrivalTime + travelSecs
 
-  // ── Deduct units and resources from kingdom ───────────────────────────────
-  const patch = { updatedAt: new Date() }
+  // ── Deduct units and resources atomically ────────────────────────────────
+  const { wood, stone, grain } = applyResourceTick(kingdom, cfg)
+
+  const patch = {
+    wood:  wood  - woodLoad,
+    stone: stone - stoneLoad,
+    grain: grain - grainLoad,
+    lastResourceUpdate: now,
+    updatedAt: new Date(),
+  }
   for (const k of UNIT_KEYS) {
     if (units[k] > 0) patch[k] = (kingdom[k] ?? 0) - units[k]
   }
 
-  // Lazy resource tick before deducting resources
-  const { wood, stone, grain } = applyResourceTick(kingdom, cfg)
+  // Optimistic lock: only update if kingdom hasn't been modified concurrently.
+  // lastResourceUpdate acts as version — concurrent requests will see 0 rows updated.
+  const unitWhereConditions = UNIT_KEYS
+    .filter(k => units[k] > 0)
+    .map(k => gte(kingdoms[k], units[k]))
 
-  patch.wood  = wood  - woodLoad
-  patch.stone = stone - stoneLoad
-  patch.grain = grain - grainLoad
-  patch.lastResourceUpdate = now
+  const updated = await db.update(kingdoms).set(patch)
+    .where(and(
+      eq(kingdoms.id, kingdom.id),
+      eq(kingdoms.lastResourceUpdate, kingdom.lastResourceUpdate),
+      ...unitWhereConditions,
+    ))
+    .returning({ id: kingdoms.id })
 
-  await db.update(kingdoms).set(patch).where(eq(kingdoms.id, kingdom.id))
+  if (updated.length === 0) {
+    return res.status(409).json({ error: 'Conflicto de concurrencia, inténtalo de nuevo' })
+  }
 
   // ── Create mission ────────────────────────────────────────────────────────
   const missionRow = {

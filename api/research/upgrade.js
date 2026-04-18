@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm'
+import { eq, and, gte } from 'drizzle-orm'
 import { db, kingdoms, research as researchTable, researchQueue, users } from '../_db.js'
 import { getSessionUserId } from '../lib/handler.js'
 import { RESEARCH, researchCost, researchTime, requirementsMet } from '../lib/research.js'
@@ -57,13 +57,23 @@ export default async function handler(req, res) {
 
   const finishesAt = now + timeSecs
 
-  await db.update(kingdoms).set({
+  const updated = await db.update(kingdoms).set({
     wood:  wood  - cost.wood,
     stone: stone - cost.stone,
     grain: grain - cost.grain,
     lastResourceUpdate: now,
     updatedAt: new Date(),
-  }).where(eq(kingdoms.id, kingdom.id))
+  }).where(and(
+    eq(kingdoms.id, kingdom.id),
+    eq(kingdoms.lastResourceUpdate, kingdom.lastResourceUpdate),
+    gte(kingdoms.wood,  cost.wood),
+    gte(kingdoms.stone, cost.stone),
+    gte(kingdoms.grain, cost.grain),
+  )).returning({ id: kingdoms.id })
+
+  if (updated.length === 0) {
+    return res.status(409).json({ error: 'Conflicto de concurrencia, inténtalo de nuevo' })
+  }
 
   await db.insert(researchQueue).values({
     userId,
