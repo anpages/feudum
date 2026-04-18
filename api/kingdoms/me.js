@@ -1,6 +1,7 @@
 import { eq, and } from 'drizzle-orm'
 import { db, kingdoms, research } from '../_db.js'
 import { getSessionUserId } from '../lib/handler.js'
+import { getSettings } from '../lib/settings.js'
 
 const MOBILE_UNIT_KEYS = [
   'squire','knight','paladin','warlord','grandKnight',
@@ -8,17 +9,13 @@ const MOBILE_UNIT_KEYS = [
   'merchant','caravan','colonist','scavenger','scout',
 ]
 
-// OGame basic income: 30 wood/h + 15 stone/h regardless of buildings (ref: SettingsService.php basicIncome)
-const BASIC_WOOD  = 30
-const BASIC_STONE = 15
-
 // dragonlore (plasma_technology): +1% wood, +0.66% stone, +0.33% grain per level
-function effectiveProduction(kingdom, res) {
+function effectiveProduction(kingdom, res, cfg) {
   const dl = res?.dragonlore ?? 0
   return {
-    wood:  BASIC_WOOD  + kingdom.woodProduction  * (1 + dl * 0.010),
-    stone: BASIC_STONE + kingdom.stoneProduction * (1 + dl * 0.0066),
-    grain:               kingdom.grainProduction * (1 + dl * 0.0033),
+    wood:  cfg.basic_wood  + kingdom.woodProduction  * (1 + dl * 0.010),
+    stone: cfg.basic_stone + kingdom.stoneProduction * (1 + dl * 0.0066),
+    grain:                   kingdom.grainProduction * (1 + dl * 0.0033),
   }
 }
 
@@ -35,13 +32,14 @@ export default async function handler(req, res) {
     ? and(eq(kingdoms.userId, userId), eq(kingdoms.id, requestedId))
     : eq(kingdoms.userId, userId)
 
-  const [[kingdom], [researchRow]] = await Promise.all([
+  const [[kingdom], [researchRow], cfg] = await Promise.all([
     db.select().from(kingdoms).where(whereClause).limit(1),
     db.select().from(research).where(eq(research.userId, userId)).limit(1),
+    getSettings(),
   ])
   if (!kingdom) return res.status(404).json({ error: 'Reino no encontrado' })
 
-  const eff            = effectiveProduction(kingdom, researchRow)
+  const eff            = effectiveProduction(kingdom, researchRow, cfg)
   const now            = Math.floor(Date.now() / 1000)
   const elapsed        = Math.max(0, now - kingdom.lastResourceUpdate) / 3600
   const populationUsed = MOBILE_UNIT_KEYS.reduce((s, k) => s + (kingdom[k] ?? 0), 0)

@@ -3,7 +3,7 @@ import { api } from './api'
 export interface AuthUser {
   id: number
   username: string | null
-  needsNickname?: boolean
+  isAdmin?: boolean
 }
 
 export const authApi = {

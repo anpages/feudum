@@ -9,11 +9,20 @@ import { ArmiesPage } from '@/pages/ArmiesPage'
 import { RankingsPage } from '@/pages/RankingsPage'
 import { MessagesPage } from '@/pages/MessagesPage'
 import { ProfilePage } from '@/pages/ProfilePage'
+import { AdminPage } from '@/pages/AdminPage'
 import { NotFoundPage } from '@/pages/NotFoundPage'
 import { LoginPage } from '@/pages/LoginPage'
 import { NicknamePage } from '@/pages/NicknamePage'
 import { useAuth } from '@/hooks/useAuth'
 import { PWAInstallPrompt } from '@/components/PWAInstallPrompt'
+
+function AdminRoute() {
+  const { user, isAuthenticated, isLoading } = useAuth()
+  if (isLoading) return null
+  if (!isAuthenticated) return <Navigate to="/login" replace />
+  if (!user?.isAdmin) return <Navigate to="/overview" replace />
+  return <AdminPage />
+}
 
 function ProtectedRoute() {
   const { user, isAuthenticated, isLoading } = useAuth()
@@ -64,6 +73,8 @@ export default function App() {
           <Route path="/profile"  element={<ProfilePage />}  />
         </Route>
       </Route>
+
+      <Route path="/admin" element={<AdminRoute />} />
 
       <Route path="*" element={<NotFoundPage />} />
     </Routes>

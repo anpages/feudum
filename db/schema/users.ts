@@ -1,4 +1,4 @@
-import { pgTable, serial, timestamp, varchar } from 'drizzle-orm/pg-core'
+import { pgTable, serial, timestamp, varchar, boolean } from 'drizzle-orm/pg-core'
 
 export const users = pgTable('users', {
   id: serial('id').primaryKey(),
@@ -6,6 +6,7 @@ export const users = pgTable('users', {
   email: varchar('email', { length: 255 }).notNull().unique(),
   googleId: varchar('google_id', { length: 255 }).notNull().unique(),
   avatarUrl: varchar('avatar_url', { length: 500 }),
+  isAdmin: boolean('is_admin').default(false).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 })

@@ -9,7 +9,7 @@ export default async function handler(req, res) {
   if (!userId) return res.status(401).json({ error: 'No autenticado' })
 
   const [user] = await db
-    .select({ id: users.id, username: users.username })
+    .select({ id: users.id, username: users.username, isAdmin: users.isAdmin })
     .from(users).where(eq(users.id, userId)).limit(1)
 
   if (!user) return res.status(404).json({ error: 'Usuario no encontrado' })

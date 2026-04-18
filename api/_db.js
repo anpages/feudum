@@ -12,7 +12,14 @@ export const users = pgTable('users', {
   email:     varchar('email',     { length: 255 }).notNull().unique(),
   googleId:  varchar('google_id', { length: 255 }).notNull().unique(),
   avatarUrl: varchar('avatar_url',{ length: 500 }),
+  isAdmin:   boolean('is_admin').default(false).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+})
+
+export const settings = pgTable('settings', {
+  key:       varchar('key',   { length: 100 }).primaryKey(),
+  value:     varchar('value', { length: 255 }).notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 })
 
@@ -217,4 +224,4 @@ export const messages = pgTable('messages', {
 // ── Connection ────────────────────────────────────────────────────────────────
 
 const sql = neon(process.env.DATABASE_URL)
-export const db = drizzle(sql, { schema: { users, kingdoms, research, researchQueue, buildingQueue, unitQueue, armyMissions, messages, debrisFields } })
+export const db = drizzle(sql, { schema: { users, kingdoms, research, researchQueue, buildingQueue, unitQueue, armyMissions, messages, debrisFields, settings } })

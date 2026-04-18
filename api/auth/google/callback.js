@@ -44,6 +44,8 @@ export default async function handler(req, res) {
     .select({ id: users.id, username: users.username })
     .from(users).where(eq(users.googleId, profile.sub)).limit(1)
 
+  const isAdminEmail = process.env.ADMIN_EMAIL && profile.email === process.env.ADMIN_EMAIL
+
   let isNew = false
   if (!user) {
     isNew = true
@@ -51,8 +53,11 @@ export default async function handler(req, res) {
       email:     profile.email,
       googleId:  profile.sub,
       avatarUrl: profile.picture,
+      isAdmin:   !!isAdminEmail,
     }).returning({ id: users.id, username: users.username })
     user = newUser
+  } else if (isAdminEmail && !user.isAdmin) {
+    await db.update(users).set({ isAdmin: true }).where(eq(users.id, user.id))
   }
 
   const token = await signToken(user.id)
