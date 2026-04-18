@@ -70,7 +70,7 @@ const UNIT_META: Record<string, { name: string; Icon: IconType; description: str
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
-type Tab = 'units' | 'support' | 'defenses' | 'missiles'
+type Tab = 'units' | 'support' | 'missiles'
 
 const BARRACKS_GUIDE_KEY = 'barracks_guide_seen'
 
@@ -98,9 +98,8 @@ export function BarracksPage() {
   if (isLoading) return <BarracksSkeleton />
 
   const TAB_ITEMS: Record<Tab, UnitInfo[]> = {
-    units:    data?.units    ?? [],
-    support:  data?.support  ?? [],
-    defenses: data?.defenses ?? [],
+    units:   data?.units   ?? [],
+    support: data?.support ?? [],
     missiles: data?.missiles ?? [],
   }
 
@@ -137,7 +136,6 @@ export function BarracksPage() {
           {([
             ['units',    'Combate'],
             ['support',  'Apoyo'],
-            ['defenses', 'Defensas'],
             ['missiles', 'Misiles'],
           ] as [Tab, string][]).map(([t, label]) => (
             <button
