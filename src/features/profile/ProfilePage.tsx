@@ -4,8 +4,8 @@ import { GiCastle } from 'react-icons/gi'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
-import { useProfile, useUpdateProfile } from '@/hooks/useProfile'
-import { useKingdom } from '@/hooks/useKingdom'
+import { useProfile, useUpdateProfile } from '@/features/profile/useProfile'
+import { useKingdom } from '@/features/kingdom/useKingdom'
 
 export function ProfilePage() {
   const { data: profile, isLoading } = useProfile()

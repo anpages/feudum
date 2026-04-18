@@ -3,6 +3,7 @@ import { db, kingdoms, armyMissions, research } from '../_db.js'
 import { getSessionUserId } from '../lib/handler.js'
 import { calcDistance, calcDuration, calcCargoCapacity } from '../lib/speed.js'
 import { getSettings } from '../lib/settings.js'
+import { applyResourceTick } from '../lib/tick.js'
 
 const UNIT_KEYS = [
   'squire','knight','paladin','warlord','grandKnight',
@@ -172,11 +173,7 @@ export default async function handler(req, res) {
   }
 
   // Lazy resource tick before deducting resources
-  const elapsed   = Math.max(0, now - kingdom.lastResourceUpdate) / 3600
-  const econSpeed = cfg.economy_speed ?? 1
-  let wood  = Math.min(kingdom.wood  + kingdom.woodProduction  * elapsed * econSpeed, kingdom.woodCapacity)
-  let stone = Math.min(kingdom.stone + kingdom.stoneProduction * elapsed * econSpeed, kingdom.stoneCapacity)
-  let grain = Math.min(kingdom.grain + kingdom.grainProduction * elapsed * econSpeed, kingdom.grainCapacity)
+  const { wood, stone, grain } = applyResourceTick(kingdom, cfg)
 
   patch.wood  = wood  - woodLoad
   patch.stone = stone - stoneLoad

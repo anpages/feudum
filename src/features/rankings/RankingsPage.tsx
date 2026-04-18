@@ -2,7 +2,7 @@ import { Trophy, Medal } from 'lucide-react'
 import { GiLaurelCrown, GiScrollQuill } from 'react-icons/gi'
 import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
-import { useRankings, type RankingEntry } from '@/hooks/useRankings'
+import { useRankings, type RankingEntry } from '@/features/rankings/useRankings'
 import { formatResource } from '@/lib/format'
 
 export function RankingsPage() {

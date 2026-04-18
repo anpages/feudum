@@ -5,8 +5,8 @@ import {
   GiCastle, GiAnvil, GiSpellBook, GiMedievalBarracks,
   GiCrossedSwords, GiTreasureMap, GiTrophy, GiScrollUnfurled,
 } from 'react-icons/gi'
-import { useUnreadCount } from '@/hooks/useMessages'
-import { useAuth } from '@/hooks/useAuth'
+import { useUnreadCount } from '@/features/messages/useMessages'
+import { useAuth } from '@/features/auth/useAuth'
 
 interface NavItem {
   to: string

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Mail, MailOpen, Sword, Eye, CheckCheck, PenLine, X, Send, Loader2, User } from 'lucide-react'
 import { GiWoodPile, GiStoneBlock, GiWheat } from 'react-icons/gi'
-import { useMessages, useMarkAllRead, useSendMessage, type GameMessage } from '@/hooks/useMessages'
+import { useMessages, useMarkAllRead, useSendMessage, type GameMessage } from '@/features/messages/useMessages'
 import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'

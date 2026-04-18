@@ -2,9 +2,9 @@ import { useState, useRef, useEffect, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Users, LogOut, Menu, ChevronDown, Castle } from 'lucide-react'
 import { GiWoodPile, GiStoneBlock, GiWheat, GiCastle } from 'react-icons/gi'
-import { useKingdom, useKingdoms, useSwitchKingdom, getActiveKingdomId } from '@/hooks/useKingdom'
-import { useResourceTicker } from '@/hooks/useResourceTicker'
-import { useAuth } from '@/hooks/useAuth'
+import { useKingdom, useKingdoms, useSwitchKingdom, getActiveKingdomId } from '@/features/kingdom/useKingdom'
+import { useResourceTicker } from '@/features/kingdom/useResourceTicker'
+import { useAuth } from '@/features/auth/useAuth'
 import { formatResource } from '@/lib/format'
 
 interface Props {

@@ -12,8 +12,8 @@ import { useQueryClient } from '@tanstack/react-query'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
-import { useArmies, useSendArmy, useRecallArmy, type MissionType, type ArmyMission } from '@/hooks/useArmies'
-import { useKingdom } from '@/hooks/useKingdom'
+import { useArmies, useSendArmy, useRecallArmy, type MissionType, type ArmyMission } from '@/features/armies/useArmies'
+import { useKingdom } from '@/features/kingdom/useKingdom'
 import { formatResource, formatDuration } from '@/lib/format'
 
 // ── Unit metadata ─────────────────────────────────────────────────────────────

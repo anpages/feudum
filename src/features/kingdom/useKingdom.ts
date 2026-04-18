@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
-import type { Kingdom } from '../../db/schema'
+import type { Kingdom } from '@/../db/schema'
 
 export interface KingdomSummary {
   id:     number

@@ -37,7 +37,7 @@
 ## 🔵 Features nuevas — Misiones
 
 - [x] **Pillaje** — misión NPC-only, saqueo rápido sin batalla (fase 11)
-- [ ] **Despliegue** — mover tropas a colonia propia sin retorno; solo válido contra reino propio (fácil)
+- [x] **Despliegue** — mover tropas a colonia propia sin retorno; solo válido contra reino propio (fácil)
 - [ ] **Expedición** — exploración con encuentros aleatorios (recursos, tropas, piratas, mercader); escala con `exploration`
 - [ ] **Misiles** — ataque de un solo sentido contra defensas; rango basado en nivel de investigación; requiere nuevo tipo de unidad
 

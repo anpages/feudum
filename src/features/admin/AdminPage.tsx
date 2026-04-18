@@ -4,11 +4,11 @@ import { Settings, Users, Zap, Swords, Loader2, ChevronDown, Save } from 'lucide
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
-import { useAuth } from '@/hooks/useAuth'
+import { useAuth } from '@/features/auth/useAuth'
 import {
   useAdminSettings, useAdminUsers, useAdminFleet,
   useUpdateSettings, useToggleAdmin, useDevAction, useFastForward,
-} from '@/hooks/useAdmin'
+} from '@/features/admin/useAdmin'
 import { formatDuration } from '@/lib/format'
 
 // ─── Auth guard ───────────────────────────────────────────────────────────────

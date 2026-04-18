@@ -1,6 +1,6 @@
 import { useSearchParams } from 'react-router-dom'
 import { Shield } from 'lucide-react'
-import { useAuth } from '@/hooks/useAuth'
+import { useAuth } from '@/features/auth/useAuth'
 
 export function LoginPage() {
   const [searchParams]      = useSearchParams()

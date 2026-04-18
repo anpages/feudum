@@ -3,6 +3,7 @@ import { db, kingdoms, research as researchTable, unitQueue } from '../_db.js'
 import { getSessionUserId } from '../lib/handler.js'
 import { ALL_UNITS, unitBuildTime, unitRequirementsMet } from '../lib/units.js'
 import { getSettings } from '../lib/settings.js'
+import { applyResourceTick } from '../lib/tick.js'
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end()
@@ -41,13 +42,7 @@ export default async function handler(req, res) {
   }
 
   // ── Lazy resource tick ────────────────────────────────────────────────────
-  const now     = Math.floor(Date.now() / 1000)
-  const elapsed = Math.max(0, now - kingdom.lastResourceUpdate) / 3600
-
-  const econSpeed = cfg.economy_speed ?? 1
-  let wood  = Math.min(kingdom.wood  + kingdom.woodProduction  * elapsed * econSpeed, kingdom.woodCapacity)
-  let stone = Math.min(kingdom.stone + kingdom.stoneProduction * elapsed * econSpeed, kingdom.stoneCapacity)
-  let grain = Math.min(kingdom.grain + kingdom.grainProduction * elapsed * econSpeed, kingdom.grainCapacity)
+  const { wood, stone, grain, now } = applyResourceTick(kingdom, cfg)
 
   const totalWood  = def.woodBase  * amount
   const totalStone = def.stoneBase * amount

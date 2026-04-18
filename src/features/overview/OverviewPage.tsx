@@ -4,12 +4,12 @@ import {
   GiWoodPile, GiStoneBlock, GiWheat,
   GiAnvil, GiSpellBook, GiCrossedSwords,
 } from 'react-icons/gi'
-import { useKingdom } from '@/hooks/useKingdom'
-import { useResourceTicker } from '@/hooks/useResourceTicker'
-import { useResearch } from '@/hooks/useResearch'
-import { useBuildings } from '@/hooks/useBuildings'
-import { useBarracks } from '@/hooks/useBarracks'
-import { useRankings } from '@/hooks/useRankings'
+import { useKingdom } from '@/features/kingdom/useKingdom'
+import { useResourceTicker } from '@/features/kingdom/useResourceTicker'
+import { useResearch } from '@/features/research/useResearch'
+import { useBuildings } from '@/features/buildings/useBuildings'
+import { useBarracks } from '@/features/barracks/useBarracks'
+import { useRankings } from '@/features/rankings/useRankings'
 import { formatResource, formatDuration } from '@/lib/format'
 import { label } from '@/lib/labels'
 import { Card } from '@/components/ui/Card'

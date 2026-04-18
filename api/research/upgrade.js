@@ -3,6 +3,7 @@ import { db, kingdoms, research as researchTable, researchQueue } from '../_db.j
 import { getSessionUserId } from '../lib/handler.js'
 import { RESEARCH, researchCost, researchTime, requirementsMet } from '../lib/research.js'
 import { getSettings } from '../lib/settings.js'
+import { applyResourceTick } from '../lib/tick.js'
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end()
@@ -44,17 +45,7 @@ export default async function handler(req, res) {
   const timeSecs      = researchTime(cost.wood, cost.stone, academyLevel, cfg.research_speed ?? 1)
 
   // ── Lazy resource tick ────────────────────────────────────────────────────
-  const now     = Math.floor(Date.now() / 1000)
-  const elapsed = Math.max(0, now - kingdom.lastResourceUpdate) / 3600
-  const econSpeed = cfg.economy_speed ?? 1
-
-  let wood  = kingdom.wood  + kingdom.woodProduction  * elapsed * econSpeed
-  let stone = kingdom.stone + kingdom.stoneProduction * elapsed * econSpeed
-  let grain = kingdom.grain + kingdom.grainProduction * elapsed * econSpeed
-
-  wood  = Math.min(wood,  kingdom.woodCapacity)
-  stone = Math.min(stone, kingdom.stoneCapacity)
-  grain = Math.min(grain, kingdom.grainCapacity)
+  const { wood, stone, grain, now } = applyResourceTick(kingdom, cfg)
 
   // ── Check resources ───────────────────────────────────────────────────────
   if (wood  < cost.wood)  return res.status(400).json({ error: 'Madera insuficiente',  need: cost.wood,  have: Math.floor(wood) })
