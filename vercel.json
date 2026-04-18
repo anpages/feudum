@@ -3,9 +3,11 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "routes": [
-    { "src": "/api/(.*)", "dest": "/api/$1" },
-    { "src": "/@(.*)",   "dest": "/@$1"    },
+    { "src": "/api/(.*)",          "dest": "/api/$1"          },
+    { "src": "/@(.*)",             "dest": "/@$1"             },
+    { "src": "/src/(.*)",          "dest": "/src/$1"          },
+    { "src": "/node_modules/(.*)", "dest": "/node_modules/$1" },
     { "handle": "filesystem" },
-    { "src": "/(.*)",    "dest": "/index.html" }
+    { "src": "/(.*)",              "dest": "/index.html"      }
   ]
 }
