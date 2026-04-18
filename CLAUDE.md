@@ -418,33 +418,138 @@ Import from `@/components/ui` (barrel export).
   - Only valid target: own kingdom (different slot)
   - Units added to destination on arrival, no return trip
   - Simple: no battle, no loot
+  - Ref: `app/GameMissions/DeployMission.php`
 
 ### Phase 13 — Expeditions (pending)
 - [ ] **Expedition** (`ExpeditionMission` in OGame ref) — exploration with random encounters
   - Target: empty slot beyond map edge (special coord e.g. slot 16)
-  - Outcomes: resources found, units found, nothing, pirates attack, trader, dark matter
+  - 10 weighted outcomes: resources, units, nothing, black_hole, delay, speedup, pirates, aliens, merchant, dark_matter
   - Scales with fleet size and `exploration` research level
+  - NPCFleetGeneratorService for pirate/alien combats
+  - Merchant mechanic: propose resource trade, accept/reject
+  - Ref: `app/GameMissions/ExpeditionMission.php`, `app/Services/NPCFleetGeneratorService.php`
 
 ### Phase 14 — Missiles (pending)
 - [ ] **Missile strikes** (`MissileMission` in OGame ref) — interplanetary missiles
-  - Requires `trebuchet` defense (already exists as Trebuchet) as interceptors
-  - New unit type: `ballistic` missile (one-way, no return)
-  - Range: `impulse_drive` equivalent research level × 5 − 1 regions
+  - Requires `trebuchet` defense (already exists) as interceptors
+  - New unit type: `ballistic` missile (one-way, no return, stored in armoury)
+  - Range: `cartography` research level × 5 − 1 regions
   - Targets defenses only, no unit damage
+  - Ref: `app/GameMissions/MissileMission.php`
 
 ### Phase 15 — Alliances (pending)
 - [ ] **Alliance system** (`AllianceController` in OGame ref)
-  - DB tables: `alliances`, `alliance_members`
-  - Create/join/leave/disband alliance
-  - Alliance tag, description, member list
-  - Alliance rankings (sum of member points)
+  - DB tables: `alliances`, `alliance_members`, `alliance_ranks`, `alliance_applications`, `alliance_highscores`
+  - Create/join (with application text)/leave/disband alliance
+  - Alliance tag, name, internal text, external text, logo URL, homepage
+  - Custom rank system with granular permissions
+  - Accept/reject applications
+  - Transfer leadership, kick members
+  - Alliance rankings (sum of member points), calculated by scheduler
   - Alliance chat (message thread per alliance)
-  - ACS Defend mission: send fleet to defend ally kingdom
+  - Alliance depot: shared resource pool with per-rank permissions
+  - Ref: `app/Http/Controllers/AllianceController.php`, `app/Services/AllianceService.php`, `app/Services/AllianceDepotService.php`
 
-### Phase 16 — Social & Polish (pending)
+### Phase 16 — ACS (Allied Combat System) (pending)
+- [ ] **Fleet Unions** — coordinate multi-player attacks/defenses
+  - DB tables: `fleet_unions`, `fleet_union_invites`
+  - Create union (defines destination, max fleets, max players)
+  - Invite other players; join union
+  - All fleets arrive simultaneously at target
+  - Ref: `app/Models/FleetUnion.php`, `app/Services/FleetUnionService.php`
+- [ ] **ACS Defend mission** — send army to defend ally's kingdom
+  - Configurable hold time (hours) — fleet waits at destination
+  - Participates in battle if attacked during hold
+  - Returns automatically after hold expires
+  - Requires Fleet Union
+  - Ref: `app/GameMissions/AcsDefendMission.php`
+
+### Phase 17 — Moon System (pending)
+- [ ] **Moon** — new entity spawned from large battles
+  - Spawn chance proportional to fleet size destroyed (configurable)
+  - Separate fields count, max buildings differ from kingdom
+  - New buildings exclusive to moons: Jump Gate, Sensor Phalanx
+  - Ref: `app/Models/Planet.php` (type: Planet | Moon), `app/Services/PlanetService.php`
+- [ ] **Jump Gate** — teleport army between own moons
+  - Cooldown between uses (configurable)
+  - No travel time, one-way per cooldown
+  - Ref: `app/Http/Controllers/JumpGateController.php`
+- [ ] **Sensor Phalanx** — scan enemy fleet movements
+  - Range based on building level
+  - Shows incoming/outgoing missions at target coordinate
+  - Ref: `app/Http/Controllers/PhalanxController.php`
+- [ ] **Moon Destruction mission** — destroy enemy moon with Dragon Knights
+  - Probability formula based on fleet size
+  - Catastrophic failure chance (lose fleet + trigger moon destruction)
+  - Ref: `app/GameMissions/MoonDestructionMission.php`
+- [ ] **Planet Move** — relocate kingdom to new coordinate
+  - Requires Jump Gate
+  - Cooldown between moves
+  - Atomic DB transaction
+  - Ref: `app/Models/PlanetMove.php`, `app/Services/PlanetMoveService.php`
+
+### Phase 18 — Dark Matter & Premium (pending)
+- [ ] **Dark Matter** — obtainable in-game resource (no real money required)
+  - Obtained via Expeditions (one of the 10 outcomes)
+  - DB: `dark_matter_transactions` (user_id, type, amount, reason)
+  - Ref: `app/Services/DarkMatterService.php`
+- [ ] **Accelerators (Halvings)** — spend Dark Matter to halve build/research/train times
+  - One per item per queue slot
+  - Ref: `app/Services/HalvingService.php`
+
+### Phase 19 — Character Classes (pending)
+- [ ] **3 character classes** selectable per player (cost: Dark Matter to change)
+  - DB: `users.character_class`
+  - **Collector** — +25% mine production, +100% transport speed, +50% Crawler bonus
+  - **General** — +100% combat unit speed, -50% grain consumption, +2 fleet slots, +2 combat research levels
+  - **Discoverer** — -25% research time, +2 expedition slots, -50% expedition enemy chance, +20% phalanx range, 75% loot from inactive players
+  - Each class unlocks a special exclusive unit
+  - Ref: `app/Enums/CharacterClass.php`, `app/Services/CharacterClassService.php`
+
+### Phase 20 — Social Features (pending)
+- [ ] **Buddy system** — add/remove friends, see online status, block players
+  - DB: `buddy_requests` (user_id, buddy_id, status)
+  - Ref: `app/Http/Controllers/BuddiesController.php`, `app/Services/BuddyService.php`
+- [ ] **Player search** — search players by username or coordinate
+  - Ref: `app/Http/Controllers/SearchController.php`
+- [ ] **Player notes / bookmarks** — private notes attached to coordinates
+  - DB: `notes` (user_id, coordinate, title, content)
+  - Ref: `app/Http/Controllers/NotesController.php`
+- [ ] **Fleet templates** — save army compositions for reuse
+  - DB: `fleet_templates` (user_id, name, units_composition JSON)
+  - Ref: `app/Models/FleetTemplate.php`
+- [ ] **Vacation mode** — temporary protection against attacks
+  - DB: `users.vacation_mode_enabled_at`, `users.vacation_mode_until`
+  - Minimum duration enforced; blocks all outgoing missions while active
 - [ ] **Real-time notifications** — Server-Sent Events for new messages/arrivals
-- [ ] **Buddy system** — add friends, see online status
-- [ ] **Player notes** — private notes per player
-- [ ] **Improved NPC espionage** — varied data (random troops, detection events)
+- [ ] **Global chat** — real-time chat channel for all players
+  - DB: `chat_messages` (user_id, message, created_at)
+  - Ref: `app/Http/Controllers/ChatController.php`, `app/Services/ChatService.php`
+
+### Phase 21 — Rankings & Automation (pending)
+- [ ] **Multi-category rankings** — separate leaderboards for buildings, research, units, economy
+  - DB: `highscores` table with category column
+  - Ref: `app/Models/Highscore.php`, `app/Services/HighscoreService.php`
+- [ ] **Alliance rankings** — sum of all member points
+  - DB: `alliance_highscores`
+  - Ref: `app/Models/AllianceHighscore.php`
+- [ ] **Scheduler / cron jobs** — automated background tasks
+  - Hourly: recalculate highscores + alliance scores
+  - Daily: cleanup expired debris fields, cleanup old wreck data
+  - Periodic: Dark Matter regeneration (if enabled)
+  - Ref: `app/Console/Commands/Scheduler/`
+- [ ] **Enhanced debris fields** — expiry + auto-cleanup, JSON metadata
+  - Ref: `app/Models/WreckField.php`, `app/Services/WreckFieldService.php`
+
+### Phase 22 — User Options & Polish (pending)
+- [ ] **User options page** — privacy settings, notification preferences, visual theme
+  - Ref: `app/Http/Controllers/OptionsController.php`
+- [ ] **Rewards / achievements** — milestone-based reward system
+  - Ref: `app/Http/Controllers/RewardsController.php`
 - [ ] **Research speed bonus** — `horsemanship`/`cartography` applied to travel time calc
-- [ ] **Moon system** — spawn moon on large battles; jump gates between moons (late-game)
+- [ ] **Improved NPC espionage** — varied random troop data, detection events
+- [ ] **Ban system (admin)** — temporary/permanent bans with reason and history
+  - DB: `bans` (user_id, admin_id, reason, expires_at)
+  - Ref: `app/Models/Ban.php`
+- [ ] **Admin: fleet timing tools** — debug and adjust mission timers
+  - Ref: `app/Http/Controllers/Admin/FleetTimingController.php`
