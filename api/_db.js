@@ -14,8 +14,18 @@ export const users = pgTable('users', {
   avatarUrl: varchar('avatar_url',{ length: 500 }),
   isAdmin:   boolean('is_admin').default(false).notNull(),
   isNpc:     boolean('is_npc').default(false).notNull(),
+  ether:     integer('ether').default(0).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
+})
+
+export const etherTransactions = pgTable('ether_transactions', {
+  id:        serial('id').primaryKey(),
+  userId:    integer('user_id').notNull().references(() => users.id),
+  type:      text('type').notNull(),
+  amount:    integer('amount').notNull(),
+  reason:    text('reason'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
 })
 
 export const settings = pgTable('settings', {

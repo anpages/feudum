@@ -14,6 +14,7 @@ import {
   Tent,
   Flag,
   Plus,
+  Compass,
 } from 'lucide-react'
 import { type IconType } from 'react-icons'
 import {
@@ -62,13 +63,14 @@ const SUPPORT_UNITS: { id: string; name: string; Icon: IconType }[] = [
 const ALL_UNIT_META = [...COMBAT_UNITS, ...SUPPORT_UNITS]
 
 const MISSION_META: Record<MissionType, { label: string; Icon: typeof Swords; color: string; desc: string }> = {
-  attack:   { label: 'Ataque',       Icon: Swords,  color: 'text-crimson',   desc: 'Atacar y saquear el reino objetivo.' },
-  pillage:  { label: 'Pillaje',      Icon: Skull,   color: 'text-crimson',   desc: 'Saqueo rápido contra NPCs. Sin batalla completa.' },
-  transport:{ label: 'Transporte',   Icon: Package, color: 'text-forest',    desc: 'Transportar recursos al reino objetivo.' },
-  spy:      { label: 'Espionaje',    Icon: Eye,     color: 'text-gold-dim',  desc: 'Solo Exploradores. Recopila información.' },
-  scavenge: { label: 'Recolección',  Icon: Pickaxe, color: 'text-stone',     desc: 'Envía Carroñeros a recolectar escombros.' },
-  colonize: { label: 'Colonización', Icon: Tent,    color: 'text-forest',    desc: 'Envía Colonistas a fundar una nueva colonia.' },
-  deploy:   { label: 'Despliegue',   Icon: Flag,    color: 'text-gold',      desc: 'Mover tropas a una colonia propia. Sin retorno.' },
+  attack:    { label: 'Ataque',       Icon: Swords,   color: 'text-crimson',   desc: 'Atacar y saquear el reino objetivo.' },
+  pillage:   { label: 'Pillaje',      Icon: Skull,    color: 'text-crimson',   desc: 'Saqueo rápido contra NPCs. Sin batalla completa.' },
+  transport: { label: 'Transporte',   Icon: Package,  color: 'text-forest',    desc: 'Transportar recursos al reino objetivo.' },
+  spy:       { label: 'Espionaje',    Icon: Eye,      color: 'text-gold-dim',  desc: 'Solo Exploradores. Recopila información.' },
+  scavenge:  { label: 'Recolección',  Icon: Pickaxe,  color: 'text-stone',     desc: 'Envía Carroñeros a recolectar escombros.' },
+  colonize:  { label: 'Colonización', Icon: Tent,     color: 'text-forest',    desc: 'Envía Colonistas a fundar una nueva colonia.' },
+  deploy:    { label: 'Despliegue',   Icon: Flag,     color: 'text-gold',      desc: 'Mover tropas a una colonia propia. Sin retorno.' },
+  expedition:{ label: 'Expedición',   Icon: Compass,  color: 'text-gold',      desc: 'Explora las Tierras Ignotas. Destino fijo: slot 16.' },
 }
 
 // ── Page ──────────────────────────────────────────────────────────────────────
@@ -117,10 +119,11 @@ export function ArmiesPage() {
   const canSend    = totalUnits > 0 && !send.isPending
 
   const handleSend = () => {
+    const destSlot = missionType === 'expedition' ? 16 : tSlot
     send.mutate(
       {
         missionType,
-        target: { realm: tRealm, region: tRegion, slot: tSlot },
+        target: { realm: tRealm, region: tRegion, slot: destSlot },
         units,
         resources: missionType === 'transport' || missionType === 'deploy' ? resLoad : undefined,
       },
@@ -239,11 +242,17 @@ export function ArmiesPage() {
           {/* Destination */}
           <div className="space-y-2">
             <p className="font-ui text-xs text-ink-muted uppercase tracking-wider">Destino</p>
-            <div className="grid grid-cols-3 gap-3">
-              <CoordPicker label="Reino"   value={tRealm}  min={1} max={3}  onChange={setTRealm} />
-              <CoordPicker label="Región"  value={tRegion} min={1} max={10} onChange={setTRegion} />
-              <CoordPicker label="Posición" value={tSlot}  min={1} max={15} onChange={setTSlot} />
-            </div>
+            {missionType === 'expedition' ? (
+              <p className="font-body text-xs text-gold/80 italic py-1">
+                Las expediciones se dirigen automáticamente a las <strong>Tierras Ignotas</strong> (slot 16).
+              </p>
+            ) : (
+              <div className="grid grid-cols-3 gap-3">
+                <CoordPicker label="Reino"    value={tRealm}  min={1} max={3}  onChange={setTRealm} />
+                <CoordPicker label="Región"   value={tRegion} min={1} max={10} onChange={setTRegion} />
+                <CoordPicker label="Posición" value={tSlot}   min={1} max={15} onChange={setTSlot} />
+              </div>
+            )}
           </div>
 
           <div className="divider">◆</div>

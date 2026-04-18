@@ -8,6 +8,7 @@ export type MissionType =
   | 'colonize'
   | 'pillage'
   | 'deploy'
+  | 'expedition'
 
 export type MissionState = 'active' | 'returning' | 'completed'
 
@@ -26,6 +27,14 @@ export interface MissionResult {
   name?: string
   target?: string
   collected?: { wood: number; stone: number }
+  // Expedition-specific
+  expeditionOutcome?: string
+  found?: Resources | Record<string, number>
+  ether?: number
+  battleOutcome?: string
+  multiplier?: number
+  fraction?: number
+  destroyed?: boolean
 }
 
 export interface ArmyMission {

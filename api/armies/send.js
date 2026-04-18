@@ -11,7 +11,7 @@ const UNIT_KEYS = [
   'merchant','caravan','colonist','scavenger','scout',
 ]
 
-const MISSION_TYPES = ['attack', 'transport', 'spy', 'colonize', 'scavenge', 'pillage', 'deploy']
+const MISSION_TYPES = ['attack', 'transport', 'spy', 'colonize', 'scavenge', 'pillage', 'deploy', 'expedition']
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end()
@@ -31,11 +31,18 @@ export default async function handler(req, res) {
   const tRegion = parseInt(target?.region, 10)
   const tSlot   = parseInt(target?.slot,   10)
 
+  const isExpedition = missionType === 'expedition'
+  const maxSlot = isExpedition ? 16 : 15
+
   if (!tRealm || !tRegion || !tSlot
     || tRealm < 1 || tRealm > 3
     || tRegion < 1 || tRegion > 10
-    || tSlot < 1 || tSlot > 15) {
+    || tSlot < 1 || tSlot > maxSlot) {
     return res.status(400).json({ error: 'Coordenadas de destino inválidas' })
+  }
+
+  if (isExpedition && tSlot !== 16) {
+    return res.status(400).json({ error: 'Las expediciones deben dirigirse al slot 16 (Tierras Ignotas)' })
   }
 
   // ── Load player kingdom + research ───────────────────────────────────────
@@ -152,7 +159,7 @@ export default async function handler(req, res) {
   const origin   = { realm: kingdom.realm, region: kingdom.region, slot: kingdom.slot }
   const dest     = { realm: tRealm,        region: tRegion,        slot: tSlot        }
   const isWar        = ['attack', 'pillage', 'spy'].includes(missionType)
-  const universeSpeed = isWar ? cfg.fleet_speed_war : cfg.fleet_speed_peaceful
+  const universeSpeed = isWar ? parseFloat(cfg.fleet_speed_war ?? 1) : parseFloat(cfg.fleet_speed_peaceful ?? 1)
   const distance     = calcDistance(origin, dest)
   const baseSecs     = calcDuration(distance, units, 100, universeSpeed, researchRow ?? {})
   const speedBonus   = Math.min(0.40, (kingdom.ambassadorHall ?? 0) * 0.05)

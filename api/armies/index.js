@@ -1,11 +1,12 @@
 import { eq, and } from 'drizzle-orm'
-import { db, kingdoms, armyMissions, research, messages, debrisFields } from '../_db.js'
+import { db, kingdoms, armyMissions, research, messages, debrisFields, users, etherTransactions } from '../_db.js'
 import { getSessionUserId } from '../lib/handler.js'
 import {
   buildBattleUnits, runBattle, calculateLoot,
   calculateDebris, repairDefenses, calcCargoCapacity, UNIT_STATS,
 } from '../lib/battle.js'
 import { resolveIncomingNpcAttacks } from '../lib/npc-resolve.js'
+import { resolveExpedition } from '../lib/expedition.js'
 
 const UNIT_KEYS = [
   'squire','knight','paladin','warlord','grandKnight',
@@ -550,6 +551,88 @@ async function processArrival(mission, myKingdom, now) {
       type:   'battle',
       subject: `⚔️ Pillaje en R${mission.targetRealm}:${mission.targetRegion}:${mission.targetSlot}`,
       data:   JSON.stringify(result),
+    })
+    return
+  }
+
+  // ── Expedition ────────────────────────────────────────────────────────────────
+  if (mType === 'expedition') {
+    const [researchRow] = await db.select().from(research)
+      .where(eq(research.userId, myKingdom.userId)).limit(1)
+
+    const { outcome, result, unitPatch, returnTimeDelta, etherGained, destroyed } =
+      resolveExpedition(missionUnits, researchRow ?? {}, travelSecs)
+
+    // Black hole or lost combat — units destroyed, no return
+    if (destroyed) {
+      await db.update(armyMissions).set({
+        state: 'completed',
+        result: JSON.stringify({ type: 'expedition', outcome, ...result }),
+        updatedAt: new Date(),
+      }).where(eq(armyMissions.id, mission.id))
+
+      await db.insert(messages).values({
+        userId: myKingdom.userId,
+        type:   'expedition',
+        subject: outcome === 'black_hole'
+          ? '🌀 Tormenta Arcana — tu flota ha desaparecido'
+          : `⚔️ Tierras Ignotas — ${outcome === 'bandits' ? 'Merodeadores' : 'Bestias Oscuras'} — derrota`,
+        data: JSON.stringify({ type: 'expedition', outcome, ...result }),
+      })
+      return
+    }
+
+    // Apply unit patch (units found in combat survivors or units found outcome)
+    const finalUnits = { ...missionUnits }
+    if (unitPatch) Object.assign(finalUnits, unitPatch)
+
+    // Resources found
+    const woodLoad  = result.found?.wood  ?? 0
+    const stoneLoad = result.found?.stone ?? 0
+    const grainLoad = result.found?.grain ?? 0
+
+    const adjustedReturn = returnTime + returnTimeDelta
+
+    await db.update(armyMissions).set({
+      ...finalUnits,
+      state: 'returning',
+      returnTime: Math.max(now + 1, adjustedReturn),
+      woodLoad, stoneLoad, grainLoad,
+      result: JSON.stringify({ type: 'expedition', outcome, ...result }),
+      updatedAt: new Date(),
+    }).where(eq(armyMissions.id, mission.id))
+
+    // Ether reward
+    if (etherGained > 0) {
+      const [currentUser] = await db.select({ ether: users.ether })
+        .from(users).where(eq(users.id, myKingdom.userId)).limit(1)
+      await db.update(users)
+        .set({ ether: (currentUser?.ether ?? 0) + etherGained })
+        .where(eq(users.id, myKingdom.userId))
+      await db.insert(etherTransactions).values({
+        userId: myKingdom.userId,
+        type: 'expedition',
+        amount: etherGained,
+        reason: 'Reliquias encontradas en las Tierras Ignotas',
+      })
+    }
+
+    const outcomeLabels = {
+      nothing: '🌑 Tierras Ignotas — expedición vacía',
+      resources: '💰 Tierras Ignotas — botín abandonado',
+      units: '⚔️ Tierras Ignotas — supervivientes encontrados',
+      delay: '🌫️ Tierras Ignotas — caminos perdidos',
+      speedup: '💨 Tierras Ignotas — viento favorable',
+      bandits: '⚔️ Tierras Ignotas — Merodeadores — victoria',
+      demons: '⚔️ Tierras Ignotas — Bestias Oscuras — victoria',
+      ether: '✨ Tierras Ignotas — reliquias arcanas',
+    }
+
+    await db.insert(messages).values({
+      userId: myKingdom.userId,
+      type:   'expedition',
+      subject: outcomeLabels[outcome] ?? '🌑 Tierras Ignotas — expedición completada',
+      data: JSON.stringify({ type: 'expedition', outcome, ...result }),
     })
     return
   }

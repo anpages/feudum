@@ -15,6 +15,7 @@ import {
   Package,
   Skull,
   Flag,
+  Compass,
 } from 'lucide-react'
 import { GiWoodPile, GiStoneBlock } from 'react-icons/gi'
 import { useMap, type MapSlot } from '@/features/map/useMap'
@@ -166,6 +167,21 @@ export function MapPage() {
                 onClick={() => handleSelectSlot(slot)}
               />
             ))}
+            {/* Slot 16 — Tierras Ignotas (expedition target) */}
+            <button
+              onClick={() => navigate(`/armies?realm=${realm}&region=${region}&slot=16&type=expedition`)}
+              className="w-full flex items-center gap-2 sm:gap-4 px-3 sm:px-4 py-2.5 rounded border border-gold/20 bg-gold-soft/40 hover:bg-gold-soft transition-colors cursor-pointer"
+            >
+              <span className="font-ui text-xs tabular-nums w-5 text-center shrink-0 text-gold/60 font-bold">16</span>
+              <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 bg-gold/10 border border-gold/25">
+                <Compass size={14} className="text-gold" />
+              </div>
+              <div className="flex-1 min-w-0 text-left">
+                <p className="font-ui text-sm font-medium text-gold-dim leading-tight">Tierras Ignotas</p>
+                <p className="font-body text-xs text-ink-muted/60 italic">Slot de expedición · Solo exploración</p>
+              </div>
+              <Badge variant="gold">Expedición</Badge>
+            </button>
           </div>
         )}
       </div>
