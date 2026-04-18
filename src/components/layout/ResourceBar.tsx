@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Users, LogOut, Menu, ChevronDown, Castle } from 'lucide-react'
+import { Users, LogOut, Menu, ChevronDown, Castle, UserRound } from 'lucide-react'
 import { GiWoodPile, GiStoneBlock, GiWheat, GiCastle } from 'react-icons/gi'
 import {
   useKingdom,
@@ -89,8 +89,15 @@ export function ResourceBar({ onMenuToggle }: Props) {
 
       <div className="header-divider mx-1 hidden sm:block" />
 
-      {/* ── Right: logout ── */}
-      <div className="flex items-center gap-1.5 shrink-0 pl-3">
+      {/* ── Right: profile + logout ── */}
+      <div className="flex items-center gap-1 shrink-0 pl-3">
+        <button
+          onClick={() => navigate('/profile')}
+          className="p-1.5 rounded text-ink-muted hover:text-ink hover:bg-parchment-warm transition-colors"
+          title="Perfil"
+        >
+          <UserRound size={15} />
+        </button>
         <button
           onClick={handleLogout}
           className="p-1.5 rounded text-ink-muted hover:text-crimson hover:bg-crimson/5 transition-colors"

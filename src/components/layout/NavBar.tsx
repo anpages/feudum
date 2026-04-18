@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom'
-import { X, ShieldAlert, UserRound } from 'lucide-react'
+import { X, ShieldAlert } from 'lucide-react'
 import { type IconType } from 'react-icons'
 import {
   GiCastle,
@@ -92,16 +92,8 @@ export function NavBar({ isOpen, onClose }: Props) {
       )}
 
       {/* Footer */}
-      <div className="px-2 pb-2 border-t border-gold/10 pt-2">
-        <NavLink
-          to="/profile"
-          onClick={onClose}
-          className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
-        >
-          <UserRound size={16} className="nav-icon shrink-0" />
-          <span className="flex-1">{user?.username ?? 'Perfil'}</span>
-        </NavLink>
-        <p className="font-ui text-[0.58rem] text-ink-muted/40 tracking-[0.18em] uppercase select-none px-2 pt-2">
+      <div className="px-4 py-3 border-t border-gold/10">
+        <p className="font-ui text-[0.58rem] text-ink-muted/40 tracking-[0.18em] uppercase select-none">
           Feudum · Anno MMXXVI
         </p>
       </div>
