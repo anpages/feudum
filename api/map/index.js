@@ -8,56 +8,6 @@ const MAX_REALM  = UNIVERSE.maxRealm
 const MAX_REGION = UNIVERSE.maxRegion
 const MAX_SLOT   = UNIVERSE.maxSlot
 
-// ── Deterministic NPC generator (no DB, seeded by position) ──────────────────
-const NPC_FIRST = [
-  'Aldric','Berthold','Cedric','Dorian','Edmund','Faolan','Gareth','Hadwin',
-  'Ingram','Jarvis','Kelwin','Leofric','Maldred','Norbert','Oswin','Perkin',
-  'Quillan','Radulf','Sigmund','Torben','Ulric','Valthor','Wendell','Xander',
-  'Yorick','Zachary','Aelric','Baldric','Cormac','Drest',
-]
-const NPC_EPITHET = [
-  'el Fuerte','el Sabio','el Oscuro','el Justo','el Temido','el Grande',
-  'Puño de Hierro','Corazón de León','el Antiguo','el Intrépido',
-]
-
-// Wang hash — mixes bits thoroughly so nearby inputs diverge wildly
-function wangHash(n) {
-  n = (n ^ 61) ^ (n >>> 16)
-  n = Math.imul(n, 9)
-  n = n ^ (n >>> 4)
-  n = Math.imul(n, 0x27d4eb2d)
-  n = n ^ (n >>> 15)
-  return n >>> 0
-}
-
-function seededRand(seed) {
-  let s = wangHash(seed)
-  return () => {
-    s = wangHash(s + 1)
-    return s / 0x100000000
-  }
-}
-
-function generateNpc(realm, region, slot) {
-  // Multiply by large primes so adjacent slots produce completely different seeds
-  const seed = realm * 374761397 + region * 1234567 + slot * 7654321
-  const rand = seededRand(seed)
-  const occupied = rand() > 0.70  // ~30% of slots have NPC kingdoms
-
-  if (!occupied) return null
-
-  const firstName = NPC_FIRST[Math.floor(rand() * NPC_FIRST.length)]
-  const epithet   = rand() > 0.5 ? ` ${NPC_EPITHET[Math.floor(rand() * NPC_EPITHET.length)]}` : ''
-  const points    = Math.floor(rand() * 50000)
-
-  return {
-    name:     `Reino de ${firstName}${epithet}`,
-    username: `${firstName.toLowerCase()}${seed % 99}`,
-    points,
-    isNpc:    true,
-  }
-}
-
 // ── Handler ───────────────────────────────────────────────────────────────────
 
 export default async function handler(req, res) {
@@ -119,12 +69,6 @@ export default async function handler(req, res) {
         isEmpty:   false,
         debris,
       }
-    }
-
-    // Fallback: Wang-hash virtual NPC for slots without a DB row (pre-seeding or edge cases)
-    const npc = generateNpc(realm, region, slot)
-    if (npc) {
-      return { slot, kingdomId: null, ...npc, isPlayer: false, isEmpty: false, debris }
     }
 
     return { slot, kingdomId: null, name: null, username: null, isPlayer: false, isNpc: false, points: 0, isEmpty: true, debris }
