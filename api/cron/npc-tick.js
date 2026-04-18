@@ -117,10 +117,12 @@ function totalArmy(k) {
 // Buildings: always upgrade the building most "behind" its priority weight.
 // Units: always train more of the highest-priority unit the barracks supports.
 // Growth is naturally exponential: more production → more resources → faster builds.
+// Boss kingdoms use military personality + no batch limit + 2× build speed.
 
 async function growNpc(kingdom, cfg, now) {
-  const personality = npcPersonality(kingdom)
-  const cls         = npcClass(kingdom)
+  const isBoss      = kingdom.isBoss ?? false
+  const personality = isBoss ? 'military' : npcPersonality(kingdom)
+  const cls         = isBoss ? 'general'  : npcClass(kingdom)
   const weights     = BUILD_WEIGHTS[personality]
   const speed       = parseFloat(cfg.economy_speed ?? ECONOMY_SPEED)
 
@@ -132,7 +134,6 @@ async function growNpc(kingdom, cfg, now) {
 
   // ── Building upgrade ───────────────────────────────────────────────────────
   if (canBuild) {
-    // Score each building: currentLevel / weight → lowest = most behind
     const candidates = Object.entries(weights)
       .map(([id, weight]) => {
         const def = BUILDINGS.find(x => x.id === id)
@@ -141,7 +142,7 @@ async function growNpc(kingdom, cfg, now) {
         return { id, def, currentLv, score: currentLv / weight }
       })
       .filter(Boolean)
-      .sort((a, b) => a.score - b.score)  // most behind first
+      .sort((a, b) => a.score - b.score)
 
     for (const { id, def, currentLv } of candidates) {
       const nextLv = currentLv + 1
@@ -158,7 +159,8 @@ async function growNpc(kingdom, cfg, now) {
         const workshopLv       = (patch.workshop       ?? kingdom.workshop)       ?? 0
         const engineersGuildLv = (patch.engineersGuild ?? kingdom.engineersGuild) ?? 0
         const rawTime  = buildTime(cost.wood, cost.stone, nextLv, workshopLv, engineersGuildLv, speed)
-        const timeBonus = cls === 'discoverer' ? 0.75 : 1.0
+        // Boss builds 2× faster; discoverer gets 0.75×
+        const timeBonus = isBoss ? 0.5 : (cls === 'discoverer' ? 0.75 : 1.0)
         patch.npcBuildAvailableAt = now + Math.max(30, Math.floor(rawTime * timeBonus))
         break
       }
@@ -166,10 +168,11 @@ async function growNpc(kingdom, cfg, now) {
   }
 
   // ── Unit training ──────────────────────────────────────────────────────────
-  // Train as many as resources allow; general gets -10% cost + 2 unit types/tick
   const barracksLv   = (patch.barracks ?? kingdom.barracks) ?? 0
-  const maxUnitTypes = cls === 'general' ? 2 : 1
-  const costMult     = cls === 'general' ? 0.9 : 1.0
+  // Boss trains up to 3 unit types and 200 units per type; general trains 2 types, 50 units
+  const maxUnitTypes = isBoss ? 3 : (cls === 'general' ? 2 : 1)
+  const batchCap     = isBoss ? 200 : 50
+  const costMult     = (isBoss || cls === 'general') ? 0.9 : 1.0
   let unitTypesTrained = 0
 
   for (const unitId of UNIT_PRIORITY[personality]) {
@@ -191,8 +194,7 @@ async function growNpc(kingdom, cfg, now) {
     )
     if (canAfford <= 0) continue
 
-    // Cap per tick to avoid buying thousands at once when resources are huge
-    const batch = Math.min(canAfford, 50)
+    const batch = Math.min(canAfford, batchCap)
     wood  -= effWood  * batch
     stone -= effStone * batch
     patch[unitId] = (kingdom[unitId] ?? 0) + batch

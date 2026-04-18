@@ -5,6 +5,7 @@ import {
   calculateDebris, repairDefenses, calcCargoCapacity,
 } from '../battle.js'
 import { UNIT_KEYS, DEFENSE_KEYS, extractUnits } from './keys.js'
+import { setSetting, getStringSetting } from '../settings.js'
 
 async function upsertDebris(realm, region, slot, debris) {
   if (debris.wood <= 0 && debris.stone <= 0) return
@@ -84,6 +85,24 @@ export async function processAttack(mission, myKingdom, now, targetKingdom) {
       woodLoad: loot.wood, stoneLoad: loot.stone, grainLoad: loot.grain,
       result: JSON.stringify(battleResult), updatedAt: new Date(),
     }).where(eq(armyMissions.id, mission.id))
+
+    // ── Season victory: player defeated the boss ───────────────────────────
+    if (outcome === 'victory' && targetKingdom?.isBoss) {
+      const seasonState = await getStringSetting('season_state')
+      if (seasonState === 'active') {
+        await Promise.all([
+          setSetting('season_state',              'ended'),
+          setSetting('season_end',                Math.floor(Date.now() / 1000)),
+          setSetting('season_winner_user_id',     String(myKingdom.userId)),
+          setSetting('season_winner_condition',   'boss_defeated'),
+        ])
+        await db.insert(messages).values({
+          userId: myKingdom.userId, type: 'season',
+          subject: '🏆 ¡Victoria de Temporada! — El Jefe Final ha caído',
+          data: JSON.stringify({ seasonVictory: true, condition: 'boss_defeated', bossName: targetName }),
+        })
+      }
+    }
 
     await db.insert(messages).values({
       userId: myKingdom.userId, type: 'battle',
