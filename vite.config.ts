@@ -36,18 +36,10 @@ export default defineConfig({
         ],
       },
       workbox: {
-        // Cache strategy for static assets
+        // Never intercept /api/* navigations — the OAuth callback is a server
+        // redirect and the SW must let it reach Vercel, not follow it internally.
+        navigateFallbackDenylist: [/^\/api\//],
         runtimeCaching: [
-          {
-            urlPattern: /^\/api\//,
-            handler: 'NetworkFirst',
-            options: {
-              cacheName: 'api-cache',
-              networkTimeoutSeconds: 5,
-              expiration: { maxEntries: 50, maxAgeSeconds: 60 },
-              cacheableResponse: { statuses: [0, 200] },
-            },
-          },
           {
             urlPattern: /\.(js|css|woff2?)$/,
             handler: 'CacheFirst',
