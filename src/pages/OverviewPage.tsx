@@ -6,14 +6,40 @@ import {
 } from 'react-icons/gi'
 import { useKingdom } from '@/hooks/useKingdom'
 import { useResourceTicker } from '@/hooks/useResourceTicker'
+import { useResearch } from '@/hooks/useResearch'
+import { useRankings } from '@/hooks/useRankings'
 import { formatResource } from '@/lib/format'
 import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { ProgressBar } from '@/components/ui/ProgressBar'
 
+const BUILDING_KEYS = [
+  'sawmill','quarry','grainFarm','windmill','cathedral','workshop','engineersGuild',
+  'barracks','granary','stonehouse','silo','academy','alchemistTower','ambassadorHall','armoury',
+] as const
+
+const UNIT_KEYS = [
+  'squire','knight','paladin','warlord','grandKnight','siegeMaster','warMachine','dragonKnight',
+  'merchant','caravan','colonist','scavenger','scout','beacon',
+  'archer','crossbowman','ballista','trebuchet','mageTower','dragonCannon',
+  'palisade','castleWall','moat','catapult',
+] as const
+
 export function OverviewPage() {
   const { data: kingdom, isLoading } = useKingdom()
+  const { data: researchData }       = useResearch()
+  const { data: rankingsData }       = useRankings()
   const resources = useResourceTicker(kingdom)
+
+  const buildingCount = kingdom
+    ? BUILDING_KEYS.reduce((s, k) => s + (Number((kingdom as Record<string, unknown>)[k]) > 0 ? 1 : 0), 0)
+    : 0
+  const researchCount = researchData?.research.filter(r => r.level > 0).length ?? 0
+  const troopCount    = kingdom
+    ? UNIT_KEYS.reduce((s, k) => s + (Number((kingdom as Record<string, unknown>)[k]) || 0), 0)
+    : 0
+
+  const myRanking = rankingsData?.rankings.find(r => r.isMe)
 
   if (isLoading) return <OverviewSkeleton />
 
@@ -32,8 +58,8 @@ export function OverviewPage() {
           </p>
         </div>
         <div className="flex items-center gap-2 mt-1">
-          <Badge variant="stone">Puntos: 0</Badge>
-          <Badge variant="gold">Rango: —</Badge>
+          <Badge variant="stone">Puntos: {myRanking?.points.toLocaleString() ?? '—'}</Badge>
+          <Badge variant="gold">Rango: {myRanking ? `#${myRanking.rank}` : '—'}</Badge>
         </div>
       </div>
 
@@ -52,9 +78,9 @@ export function OverviewPage() {
       <section>
         <span className="section-heading anim-fade-up-2">Estado del Reino</span>
         <div className="grid grid-cols-3 gap-3">
-          <StatCard icon={<GiAnvil        size={16} />} label="Edificios"       value="0" note="mejoras activas" animClass="anim-fade-up-2" />
-          <StatCard icon={<GiSpellBook    size={16} />} label="Investigaciones" value="0" note="descubiertas"   animClass="anim-fade-up-3" />
-          <StatCard icon={<GiCrossedSwords size={16} />} label="Tropas"         value="0" note="en campo"       animClass="anim-fade-up-4" />
+          <StatCard icon={<GiAnvil        size={16} />} label="Edificios"       value={buildingCount.toString()} note="construidos"   animClass="anim-fade-up-2" />
+          <StatCard icon={<GiSpellBook    size={16} />} label="Investigaciones" value={researchCount.toString()} note="descubiertas" animClass="anim-fade-up-3" />
+          <StatCard icon={<GiCrossedSwords size={16} />} label="Tropas"         value={troopCount.toLocaleString()} note="en campo"  animClass="anim-fade-up-4" />
         </div>
       </section>
 

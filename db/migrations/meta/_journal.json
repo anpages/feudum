@@ -30,5 +30,12 @@
       "tag": "0003_army_result_column",
       "breakpoints": true
     }
+    ,{
+      "idx": 4,
+      "version": "7",
+      "when": 1745280000000,
+      "tag": "0004_messages",
+      "breakpoints": true
+    }
   ]
 }

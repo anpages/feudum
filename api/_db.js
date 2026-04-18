@@ -1,7 +1,7 @@
 import { neon } from '@neondatabase/serverless'
 import { drizzle } from 'drizzle-orm/neon-http'
 import {
-  pgTable, serial, integer, varchar, real, timestamp, text,
+  pgTable, serial, integer, varchar, real, timestamp, text, boolean,
 } from 'drizzle-orm/pg-core'
 
 // ── Schema (mirrors db/schema/*.ts) ──────────────────────────────────────────
@@ -164,7 +164,19 @@ export const armyMissions = pgTable('army_missions', {
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 })
 
+// ── Messages ──────────────────────────────────────────────────────────────────
+
+export const messages = pgTable('messages', {
+  id:        serial('id').primaryKey(),
+  userId:    integer('user_id').notNull().references(() => users.id),
+  type:      varchar('type', { length: 20 }).notNull(),
+  subject:   varchar('subject', { length: 255 }).notNull(),
+  data:      text('data').notNull(),
+  viewed:    boolean('viewed').default(false).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
 // ── Connection ────────────────────────────────────────────────────────────────
 
 const sql = neon(process.env.DATABASE_URL)
-export const db = drizzle(sql, { schema: { users, kingdoms, research, researchQueue, buildingQueue, unitQueue, armyMissions } })
+export const db = drizzle(sql, { schema: { users, kingdoms, research, researchQueue, buildingQueue, unitQueue, armyMissions, messages } })

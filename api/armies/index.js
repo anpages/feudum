@@ -1,5 +1,5 @@
 import { eq, and } from 'drizzle-orm'
-import { db, kingdoms, users, armyMissions, research } from '../_db.js'
+import { db, kingdoms, users, armyMissions, research, messages } from '../_db.js'
 import { getSessionUserId } from '../lib/handler.js'
 import {
   buildBattleUnits, runBattle, calculateLoot,
@@ -48,9 +48,103 @@ async function processArrival(mission, myKingdom, now) {
 
   // ── Spy ──────────────────────────────────────────────────────────────────────
   if (mType === 'spy') {
+    const scouts = missionUnits.scout ?? 0
+
+    // Resolve target
+    const [target] = await db
+      .select().from(kingdoms)
+      .where(and(
+        eq(kingdoms.realm,  mission.targetRealm),
+        eq(kingdoms.region, mission.targetRegion),
+        eq(kingdoms.slot,   mission.targetSlot),
+      )).limit(1)
+
+    // Attacker spycraft level
+    const [atkRes] = await db.select().from(research)
+      .where(eq(research.userId, myKingdom.userId)).limit(1)
+    const atkSpy = atkRes?.spycraft ?? 0
+
+    let report
+    if (!target) {
+      // NPC target
+      const seed   = mission.targetRealm * 374761397 + mission.targetRegion * 1234567 + mission.targetSlot * 7654321
+      const npcPts = ((seed ^ (seed >>> 16)) >>> 0) % 20000
+      report = {
+        type: 'spy',
+        isNpc: true,
+        targetName: 'Reino NPC',
+        resources: { wood: Math.floor(1000 + npcPts / 10), stone: Math.floor(800 + npcPts / 12), grain: Math.floor(600 + npcPts / 15) },
+        units:    scouts >= 2 ? { archer: 5 + Math.floor(npcPts / 2000), ballista: Math.floor(npcPts / 5000) } : null,
+        defense:  scouts >= 3 ? { archer: 5 + Math.floor(npcPts / 2000), ballista: Math.floor(npcPts / 5000) } : null,
+        buildings: null,
+        researchData: null,
+        detected: false,
+      }
+    } else {
+      const [defRes] = await db.select().from(research)
+        .where(eq(research.userId, target.userId)).limit(1)
+      const defSpy = defRes?.spycraft ?? 0
+
+      // OGame formula: extra scouts needed = max(0, defSpy - atkSpy)^2
+      const techDiff = Math.max(0, defSpy - atkSpy)
+      const extraNeeded = techDiff * techDiff
+      const remaining = Math.max(0, scouts - extraNeeded)
+
+      const canSee = (threshold, levelAdv) =>
+        remaining >= threshold || atkSpy - levelAdv >= defSpy
+
+      // Counter-espionage detection chance
+      const defenderShips = UNIT_KEYS.reduce((s, k) => s + (target[k] ?? 0), 0)
+      const detectionChance = defenderShips > 0
+        ? Math.min(100, Math.max(0, (defenderShips * (defSpy - atkSpy + 1)) / (scouts * 4) * 100))
+        : 0
+      const detected = Math.random() * 100 < detectionChance
+
+      const pick = (keys) => {
+        const obj = {}
+        for (const k of keys) if ((target[k] ?? 0) > 0) obj[k] = target[k]
+        return Object.keys(obj).length ? obj : null
+      }
+
+      report = {
+        type: 'spy',
+        isNpc: false,
+        targetName: target.name,
+        resources: { wood: target.wood, stone: target.stone, grain: target.grain },
+        units:       canSee(2, 1) ? pick(UNIT_KEYS)    : null,
+        defense:     canSee(3, 2) ? pick(DEFENSE_KEYS) : null,
+        buildings:   canSee(5, 3) ? {
+          sawmill: target.sawmill, quarry: target.quarry, grainFarm: target.grainFarm,
+          windmill: target.windmill, workshop: target.workshop, barracks: target.barracks,
+          academy: target.academy,
+        } : null,
+        researchData: canSee(7, 4) ? null : null, // research visible only at high levels
+        detected,
+        detectionChance: Math.round(detectionChance),
+      }
+
+      // Notify defender if detected
+      if (detected && target.userId) {
+        await db.insert(messages).values({
+          userId:  target.userId,
+          type:    'spy',
+          subject: `Espía detectado en tu reino`,
+          data:    JSON.stringify({ type: 'spy_detected', spycraft: atkSpy, scouts }),
+        })
+      }
+    }
+
+    // Save spy report as message for attacker
+    await db.insert(messages).values({
+      userId:  myKingdom.userId,
+      type:    'spy',
+      subject: `Informe de espionaje: ${report.targetName}`,
+      data:    JSON.stringify(report),
+    })
+
     await db.update(armyMissions).set({
       state: 'returning', returnTime,
-      result: JSON.stringify({ type: 'spy', message: 'Explorador regresa sin ser detectado.' }),
+      result: JSON.stringify(report),
       updatedAt: new Date(),
     }).where(eq(armyMissions.id, mission.id))
     return
@@ -173,17 +267,32 @@ async function processArrival(mission, myKingdom, now) {
         survivorPatch[k] = survivingAtk[k] ?? 0
       }
 
+      const battleResult = { type: 'attack', outcome, rounds, loot, debris, lostAtk, lostDef }
+
       await db.update(armyMissions).set({
         ...survivorPatch,
         state: 'returning', returnTime,
         woodLoad: loot.wood, stoneLoad: loot.stone, grainLoad: loot.grain,
-        result: JSON.stringify({
-          type: 'attack', outcome, rounds,
-          loot, debris,
-          lostAtk, lostDef,
-        }),
+        result: JSON.stringify(battleResult),
         updatedAt: new Date(),
       }).where(eq(armyMissions.id, mission.id))
+
+      // Battle report messages
+      const targetName = targetKingdom?.name ?? `NPC (R${mission.targetRealm}:${mission.targetRegion}:${mission.targetSlot})`
+      await db.insert(messages).values({
+        userId: myKingdom.userId,
+        type: 'battle',
+        subject: `${outcome === 'victory' ? '⚔️ Victoria' : '🤝 Empate'} contra ${targetName}`,
+        data: JSON.stringify(battleResult),
+      })
+      if (targetKingdom?.userId) {
+        await db.insert(messages).values({
+          userId: targetKingdom.userId,
+          type: 'battle',
+          subject: `🛡️ Tu reino fue atacado`,
+          data: JSON.stringify({ ...battleResult, outcome: outcome === 'victory' ? 'defeat' : outcome }),
+        })
+      }
 
     } else {
       // Defeat — all attacker units lost, return empty
@@ -201,12 +310,30 @@ async function processArrival(mission, myKingdom, now) {
         await db.update(kingdoms).set(defPatch).where(eq(kingdoms.id, targetKingdom.id))
       }
 
+      const battleResult = { type: 'attack', outcome: 'defeat', rounds, lostAtk, lostDef, debris }
+
       await db.update(armyMissions).set({
         ...zeroPatch, state: 'returning', returnTime,
         woodLoad: 0, stoneLoad: 0, grainLoad: 0,
-        result: JSON.stringify({ type: 'attack', outcome: 'defeat', rounds, lostAtk, lostDef, debris }),
+        result: JSON.stringify(battleResult),
         updatedAt: new Date(),
       }).where(eq(armyMissions.id, mission.id))
+
+      const targetName = targetKingdom?.name ?? `NPC (R${mission.targetRealm}:${mission.targetRegion}:${mission.targetSlot})`
+      await db.insert(messages).values({
+        userId: myKingdom.userId,
+        type: 'battle',
+        subject: `💀 Derrota contra ${targetName}`,
+        data: JSON.stringify(battleResult),
+      })
+      if (targetKingdom?.userId) {
+        await db.insert(messages).values({
+          userId: targetKingdom.userId,
+          type: 'battle',
+          subject: `🛡️ Defensa exitosa — atacante derrotado`,
+          data: JSON.stringify({ ...battleResult, outcome: 'victory' }),
+        })
+      }
     }
     return
   }

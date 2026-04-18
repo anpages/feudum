@@ -3,8 +3,9 @@ import { X } from 'lucide-react'
 import { type IconType } from 'react-icons'
 import {
   GiCastle, GiAnvil, GiSpellBook, GiMedievalBarracks,
-  GiCrossedSwords, GiTreasureMap, GiTrophy,
+  GiCrossedSwords, GiTreasureMap, GiTrophy, GiScrollUnfurled,
 } from 'react-icons/gi'
+import { useUnreadCount } from '@/hooks/useMessages'
 
 interface NavItem {
   to: string
@@ -20,6 +21,7 @@ const NAV_ITEMS: NavItem[] = [
   { to: '/armies',    label: 'Ejércitos',    Icon: GiCrossedSwords   },
   { to: '/map',       label: 'Mapa',         Icon: GiTreasureMap     },
   { to: '/rankings',  label: 'Rankings',     Icon: GiTrophy          },
+  { to: '/messages',  label: 'Mensajes',     Icon: GiScrollUnfurled  },
 ]
 
 interface Props {
@@ -28,6 +30,8 @@ interface Props {
 }
 
 export function NavBar({ isOpen, onClose }: Props) {
+  const unread = useUnreadCount()
+
   return (
     <nav className={`game-sidebar ${isOpen ? 'open' : ''}`}>
 
@@ -53,7 +57,12 @@ export function NavBar({ isOpen, onClose }: Props) {
             className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
           >
             <Icon size={16} className="nav-icon shrink-0" />
-            <span>{label}</span>
+            <span className="flex-1">{label}</span>
+            {to === '/messages' && unread > 0 && (
+              <span className="ml-auto text-[10px] font-ui font-semibold bg-crimson text-parchment rounded-full px-1.5 py-0.5 leading-none">
+                {unread > 99 ? '99+' : unread}
+              </span>
+            )}
           </NavLink>
         ))}
       </div>
