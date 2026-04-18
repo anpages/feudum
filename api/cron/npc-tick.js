@@ -136,11 +136,11 @@ async function growNpc(kingdom, cfg) {
 // ── Attack AI ─────────────────────────────────────────────────────────────────
 
 async function attackAI(npcKingdom, playerKingdoms, now, cfg) {
-  if (NPC_AGGRESSION === 0) return
+  if (NPC_AGGRESSION === 0) return false
 
   const npcLevel   = npcKingdom.npcLevel || 1
   const armySize   = totalArmy(npcKingdom)
-  if (armySize < ATTACK_THRESHOLD[npcLevel]) return
+  if (armySize < ATTACK_THRESHOLD[npcLevel]) return false
 
   // Skip if NPC already has an active attack mission
   const [existingMission] = await db.select({ id: armyMissions.id })
@@ -150,7 +150,7 @@ async function attackAI(npcKingdom, playerKingdoms, now, cfg) {
       eq(armyMissions.missionType, 'attack'),
       eq(armyMissions.state,       'active'),
     )).limit(1)
-  if (existingMission) return
+  if (existingMission) return false
 
   // Find richest player kingdom in same realm+region (any slot)
   const sameRegion = playerKingdoms.filter(
@@ -163,14 +163,14 @@ async function attackAI(npcKingdom, playerKingdoms, now, cfg) {
         p => p.realm === npcKingdom.realm && Math.abs(p.region - npcKingdom.region) <= 1
       )
 
-  if (candidates.length === 0) return
+  if (candidates.length === 0) return false
 
   // Pick the richest target
   const target = candidates.reduce((best, p) =>
     (p.wood + p.stone + p.grain) > (best.wood + best.stone + best.grain) ? p : best
   )
 
-  // Compose attack force: 70% of army
+  // Compose attack force: 60-80% of army
   const sendRatio = 0.60 + Math.random() * 0.20
   const force = {}
   let totalSent = 0
@@ -180,7 +180,7 @@ async function attackAI(npcKingdom, playerKingdoms, now, cfg) {
     const send = Math.floor(n * sendRatio)
     if (send > 0) { force[u] = send; totalSent += send }
   }
-  if (totalSent === 0) return
+  if (totalSent === 0) return false
 
   const universeSpeed = parseFloat(cfg.fleet_speed_war ?? 1)
   const dist  = calcDistance(npcKingdom, target)
@@ -207,6 +207,8 @@ async function attackAI(npcKingdom, playerKingdoms, now, cfg) {
   for (const [u, n] of Object.entries(force)) deduct[u] = (npcKingdom[u] ?? 0) - n
   await db.update(kingdoms).set({ ...deduct, updatedAt: new Date() })
     .where(eq(kingdoms.id, npcKingdom.id))
+
+  return true
 }
 
 // ── Process NPC return missions ───────────────────────────────────────────────
@@ -314,8 +316,8 @@ export default async function handler(req, res) {
 
     // Attack AI
     if (NPC_AGGRESSION > 0 && playerKingdoms.length > 0) {
-      await attackAI(kingdom, playerKingdoms, now, cfg)
-      attacked++
+      const launched = await attackAI(kingdom, playerKingdoms, now, cfg)
+      if (launched) attacked++
     }
   }
 
