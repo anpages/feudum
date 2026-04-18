@@ -8,7 +8,6 @@ import { db, users, kingdoms, armyMissions, messages, debrisFields } from '../_d
 import { applyResourceTick } from '../lib/tick.js'
 import { BUILDINGS, buildCost, buildTime, applyBuildingEffect } from '../lib/buildings.js'
 import { ECONOMY_SPEED, NPC_AGGRESSION, NPC_ATTACK_INTERVAL_HOURS } from '../lib/config.js'
-import { buildTime } from '../lib/buildings.js'
 import { calcDistance, calcDuration } from '../lib/speed.js'
 import {
   buildBattleUnits, runBattle, calculateLoot,

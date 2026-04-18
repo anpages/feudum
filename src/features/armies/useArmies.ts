@@ -42,6 +42,21 @@ export function useRecallArmy() {
 
   return useMutation({
     mutationFn: (missionId: number) => armiesService.recall(missionId),
+    onMutate: async (missionId) => {
+      await qc.cancelQueries({ queryKey: ['armies'] })
+      const prev = qc.getQueryData<ArmiesResponse>(['armies'])
+      if (prev) {
+        qc.setQueryData<ArmiesResponse>(['armies'], {
+          missions: prev.missions.map(m =>
+            m.id === missionId ? { ...m, state: 'returning' as const } : m
+          ),
+        })
+      }
+      return { prev }
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.prev) qc.setQueryData(['armies'], context.prev)
+    },
     onSettled: () => {
       qc.invalidateQueries({ queryKey: ['armies'] })
     },
@@ -54,6 +69,19 @@ export function useMerchantRespond() {
   return useMutation({
     mutationFn: ({ missionId, accept }: { missionId: number; accept: boolean }) =>
       armiesService.merchantRespond(missionId, accept),
+    onMutate: async ({ missionId }) => {
+      await qc.cancelQueries({ queryKey: ['armies'] })
+      const prev = qc.getQueryData<ArmiesResponse>(['armies'])
+      if (prev) {
+        qc.setQueryData<ArmiesResponse>(['armies'], {
+          missions: prev.missions.filter(m => m.id !== missionId),
+        })
+      }
+      return { prev }
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.prev) qc.setQueryData(['armies'], context.prev)
+    },
     onSettled: () => {
       qc.invalidateQueries({ queryKey: ['armies'] })
       qc.invalidateQueries({ queryKey: ['kingdom'] })
