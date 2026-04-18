@@ -1,5 +1,5 @@
 import { eq } from 'drizzle-orm'
-import { db, kingdoms } from '../../db'
+import { db, kingdoms } from '../_db.js'
 import { getSessionUserId } from '../lib/handler.js'
 
 export default async function handler(req, res) {

@@ -1,4 +1,4 @@
-import { db, users } from '../../db'
+import { db, users } from '../_db.js'
 import { eq } from 'drizzle-orm'
 import { getSessionUserId } from '../lib/handler.js'
 

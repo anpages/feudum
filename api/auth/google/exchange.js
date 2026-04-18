@@ -1,5 +1,5 @@
 import { eq } from 'drizzle-orm'
-import { db, users } from '../../../db'
+import { db, users } from '../../_db.js'
 import { signToken } from '../../lib/jwt.js'
 import { setSessionCookie } from '../../lib/handler.js'
 

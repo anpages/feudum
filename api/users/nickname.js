@@ -1,5 +1,5 @@
 import { eq } from 'drizzle-orm'
-import { db, users, kingdoms, research } from '../../db'
+import { db, users, kingdoms, research } from '../_db.js'
 import { getSessionUserId } from '../lib/handler.js'
 
 const NICKNAME_RE = /^[a-zA-Z0-9_]{3,20}$/
