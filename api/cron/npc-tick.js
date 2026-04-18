@@ -7,13 +7,14 @@ import { eq, and, lte } from 'drizzle-orm'
 import { db, users, kingdoms, armyMissions, messages, debrisFields } from '../_db.js'
 import { applyResourceTick } from '../lib/tick.js'
 import { BUILDINGS, buildCost, buildTime, applyBuildingEffect } from '../lib/buildings.js'
-import { ECONOMY_SPEED, NPC_AGGRESSION, NPC_ATTACK_INTERVAL_HOURS } from '../lib/config.js'
+import { ECONOMY_SPEED, NPC_AGGRESSION, NPC_ATTACK_INTERVAL_HOURS, UNIVERSE } from '../lib/config.js'
 import { calcDistance, calcDuration } from '../lib/speed.js'
 import {
   buildBattleUnits, runBattle, calculateLoot,
   calculateDebris, repairDefenses, calcCargoCapacity,
 } from '../lib/battle.js'
-import { getSettings } from '../lib/settings.js'
+import { getSettings, setSetting } from '../lib/settings.js'
+import { getBossForSeason, getBossPosition } from '../lib/bosses.js'
 
 // ── Identity system ───────────────────────────────────────────────────────────
 // Both personality and class are deterministic from position — never change.
@@ -352,6 +353,120 @@ async function processNpcReturns(npcUserId, npcKingdomsById, now) {
   }
 }
 
+// ── Season auto-management ────────────────────────────────────────────────────
+
+async function manageSeason(cfg, now) {
+  const seasonState  = cfg.season_state  ?? null
+  const seasonEnd    = parseInt(cfg.season_end ?? '0', 10)
+  const seasonNumber = parseInt(cfg.season_number ?? '0', 10)
+
+  // No season yet → bootstrap season 1
+  if (!seasonState || seasonState === '') {
+    await startNewSeason(1, cfg)
+    return { action: 'bootstrap', season: 1 }
+  }
+
+  // Active season expired → end it and start next
+  if (seasonState === 'active' && seasonEnd > 0 && now > seasonEnd) {
+    // Determine winner by most points if no boss was defeated
+    const winnerCondition = cfg.season_winner_condition ?? ''
+    if (!winnerCondition || winnerCondition === '') {
+      await setSetting('season_winner_condition', 'points')
+      await setSetting('season_state', 'ended')
+    }
+    // Start next season after short cooldown (already past end time → start now)
+    const nextNumber = seasonNumber + 1
+    await startNewSeason(nextNumber, cfg)
+    return { action: 'transition', from: seasonNumber, to: nextNumber }
+  }
+
+  return null
+}
+
+async function startNewSeason(seasonNumber, cfg) {
+  const boss = getBossForSeason(seasonNumber)
+
+  // Ensure NPC user exists
+  let [npcUser] = await db.select({ id: users.id })
+    .from(users).where(eq(users.isNpc, true)).limit(1)
+  if (!npcUser) {
+    ;[npcUser] = await db.insert(users).values({
+      email: 'npc@feudum.internal', isNpc: true, isAdmin: false,
+    }).returning({ id: users.id })
+  }
+
+  // Remove old boss
+  await db.delete(kingdoms).where(eq(kingdoms.isBoss, true))
+
+  // Find free slot at center
+  const center = getBossPosition(UNIVERSE)
+  const freeSlot = await findFreeSlotForBoss(center)
+
+  const diff = boss.difficulty
+  const speed = parseFloat(cfg.economy_speed ?? ECONOMY_SPEED)
+  const now = Math.floor(Date.now() / 1000)
+
+  await db.insert(kingdoms).values({
+    userId:   npcUser.id,
+    name:     boss.name,
+    ...freeSlot,
+    isNpc:    true,
+    isBoss:   true,
+    npcLevel: 3,
+    wood:  Math.round(500000 * diff),  stone: Math.round(400000 * diff),
+    grain: Math.round(100000 * diff),
+    woodCapacity: 10_000_000, stoneCapacity: 10_000_000, grainCapacity: 10_000_000,
+    sawmill: Math.round(15 * diff), quarry: Math.round(13 * diff),
+    grainFarm: Math.round(11 * diff), windmill: Math.round(10 * diff),
+    cathedral: Math.round(5 * diff), workshop: Math.round(8 * diff),
+    engineersGuild: Math.round(4 * diff), barracks: 12,
+    granary: Math.round(6 * diff), stonehouse: Math.round(6 * diff),
+    silo: Math.round(5 * diff), academy: Math.round(3 * diff),
+    armoury: Math.round(4 * diff), alchemistTower: Math.round(3 * diff),
+    ambassadorHall: Math.round(2 * diff),
+    squire: Math.round(500 * diff), knight: Math.round(200 * diff),
+    paladin: Math.round(80 * diff), warlord: Math.round(30 * diff),
+    grandKnight: Math.round(15 * diff), siegeMaster: Math.round(10 * diff),
+    warMachine: Math.round(5 * diff), dragonKnight: Math.round(3 * diff),
+    archer: Math.round(300 * diff), crossbowman: Math.round(150 * diff),
+    ballista: Math.round(60 * diff), mageTower: Math.round(40 * diff),
+    palisade: 1, castleWall: 1,
+    woodProduction: 0, stoneProduction: 0, grainProduction: 0,
+    lastResourceUpdate: now,
+  })
+
+  const baseDays = 30
+  const durationSecs = Math.round((baseDays / speed) * 86400)
+  const seasonEnd = now + durationSecs
+
+  await Promise.all([
+    setSetting('season_number',           String(seasonNumber)),
+    setSetting('season_state',            'active'),
+    setSetting('season_start',            String(now)),
+    setSetting('season_end',              String(seasonEnd)),
+    setSetting('season_boss_slug',        boss.slug),
+    setSetting('season_winner_user_id',   ''),
+    setSetting('season_winner_condition', ''),
+  ])
+}
+
+async function findFreeSlotForBoss({ realm, region, slot }) {
+  for (let s = slot; s <= 15; s++) {
+    const [existing] = await db.select({ id: kingdoms.id }).from(kingdoms)
+      .where(and(eq(kingdoms.realm, realm), eq(kingdoms.region, region), eq(kingdoms.slot, s))).limit(1)
+    if (!existing) return { realm, region, slot: s }
+  }
+  for (let r = 1; r <= 10; r++) {
+    if (r === region) continue
+    for (let s = 1; s <= 15; s++) {
+      const [existing] = await db.select({ id: kingdoms.id }).from(kingdoms)
+        .where(and(eq(kingdoms.realm, realm), eq(kingdoms.region, r), eq(kingdoms.slot, s))).limit(1)
+      if (!existing) return { realm, region: r, slot: s }
+    }
+  }
+  return { realm, region, slot }
+}
+
 // ── Handler ───────────────────────────────────────────────────────────────────
 
 export default async function handler(req, res) {
@@ -364,6 +479,9 @@ export default async function handler(req, res) {
 
   const now = Math.floor(Date.now() / 1000)
   const cfg = await getSettings()
+
+  // Auto-manage season (bootstrap + transitions)
+  const seasonAction = await manageSeason(cfg, now)
 
   // Load NPC system user
   const [npcUser] = await db.select({ id: users.id })
@@ -441,5 +559,5 @@ export default async function handler(req, res) {
     byClass[npcClass(k)]++
   }
 
-  return res.json({ ok: true, npcCount: npcKingdoms.length, ticked, grew, attacked, byPersonality, byClass })
+  return res.json({ ok: true, npcCount: npcKingdoms.length, ticked, grew, attacked, byPersonality, byClass, seasonAction })
 }

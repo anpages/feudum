@@ -3,6 +3,7 @@ import { Outlet, useLocation } from 'react-router-dom'
 import { ResourceBar } from './ResourceBar'
 import { NavBar } from './NavBar'
 import { ToastContainer } from '@/components/ui/ToastContainer'
+import { SeasonBanner } from '@/features/season/SeasonBanner'
 
 export function GameLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -15,6 +16,7 @@ export function GameLayout() {
   return (
     <div className="game-layout">
       <ResourceBar onMenuToggle={toggleSidebar} />
+      <SeasonBanner />
 
       {sidebarOpen && <div className="sidebar-overlay lg:hidden" onClick={closeSidebar} />}
 
