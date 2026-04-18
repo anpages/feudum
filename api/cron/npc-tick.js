@@ -364,7 +364,7 @@ async function processNpcReturns(npcUserId, npcKingdomsById, now) {
 // ── Handler ───────────────────────────────────────────────────────────────────
 
 export default async function handler(req, res) {
-  if (req.method !== 'POST') return res.status(405).end()
+  if (req.method !== 'GET') return res.status(405).end()
 
   const cronSecret = process.env.CRON_SECRET
   if (!cronSecret || req.headers['authorization'] !== `Bearer ${cronSecret}`) {
