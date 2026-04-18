@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Users, LogOut, Menu, ChevronDown, Castle, UserRound } from 'lucide-react'
+import { Users, LogOut, Menu, ChevronDown, Castle, UserRound, Zap } from 'lucide-react'
 import { GiWoodPile, GiStoneBlock, GiWheat, GiCastle } from 'react-icons/gi'
 import {
   useKingdom,
@@ -20,7 +20,7 @@ export function ResourceBar({ onMenuToggle }: Props) {
   const navigate = useNavigate()
   const { data: kingdom } = useKingdom()
   const resources = useResourceTicker(kingdom)
-  const { logout } = useAuth()
+  const { user, logout } = useAuth()
 
   async function handleLogout() {
     await logout.mutateAsync()
@@ -85,6 +85,14 @@ export function ResourceBar({ onMenuToggle }: Props) {
             {formatResource(kingdom?.populationMax ?? 0)}
           </span>
         </div>
+        {(user?.ether ?? 0) > 0 && (
+          <div className="hidden lg:flex resource-pill items-center gap-1.5" title="Éter arcano">
+            <Zap size={11} className="text-gold" />
+            <span className="font-ui text-xs tabular-nums text-gold-dim font-semibold">
+              {user!.ether}
+            </span>
+          </div>
+        )}
       </div>
 
       <div className="header-divider mx-1 hidden sm:block" />

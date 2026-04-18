@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { ArrowUp, Clock, Loader2 } from 'lucide-react'
+import { ArrowUp, Clock, Loader2, Zap } from 'lucide-react'
 import {
   GiCauldron,
   GiCrossedSwords,
@@ -15,6 +15,7 @@ import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { useResearch, useUpgradeResearch, type ResearchInfo } from '@/features/research/useResearch'
+import { useAccelerate } from '@/features/queues/useAccelerate'
 import { useKingdom } from '@/features/kingdom/useKingdom'
 import { useResourceTicker } from '@/features/kingdom/useResourceTicker'
 import { formatResource, formatDuration } from '@/lib/format'
@@ -146,6 +147,7 @@ export function ResearchPage() {
   const { data: kingdom } = useKingdom()
   const resources = useResourceTicker(kingdom)
   const upgrade = useUpgradeResearch()
+  const accelerate = useAccelerate()
 
   const handleCountdownEnd = useCallback(() => {
     refetch()
@@ -201,6 +203,8 @@ export function ResearchPage() {
                     isUpgrading={upgrade.isPending && upgrade.variables === r.id}
                     onUpgrade={() => upgrade.mutate(r.id)}
                     onCountdownEnd={handleCountdownEnd}
+                    onAccelerate={r.inQueue ? () => accelerate.mutate('research') : undefined}
+                    isAccelerating={accelerate.isPending}
                     animClass={`anim-fade-up-${Math.min(i + 1, 5) as 1 | 2 | 3 | 4 | 5}`}
                   />
                 )
@@ -225,6 +229,8 @@ interface CardProps {
   isUpgrading: boolean
   onUpgrade: () => void
   onCountdownEnd: () => void
+  onAccelerate?: () => void
+  isAccelerating?: boolean
   animClass: string
 }
 
@@ -238,6 +244,8 @@ function ResearchCard({
   isUpgrading,
   onUpgrade,
   onCountdownEnd,
+  onAccelerate,
+  isAccelerating,
   animClass,
 }: CardProps) {
   const countdown = useCountdown(item.inQueue?.finishesAt ?? null, onCountdownEnd)
@@ -288,9 +296,21 @@ function ResearchCard({
       </div>
 
       {inQueue ? (
-        <div className="mt-auto flex items-center justify-center gap-2 py-2.5 rounded border border-gold/15 bg-gold-soft text-gold-dim font-ui text-xs font-semibold uppercase tracking-wide">
-          <Loader2 size={12} className="animate-spin" />
-          {countdown > 0 ? formatDuration(countdown) : 'Finalizando…'}
+        <div className="mt-auto space-y-2">
+          <div className="flex items-center justify-center gap-2 py-2 rounded border border-gold/15 bg-gold-soft text-gold-dim font-ui text-xs font-semibold uppercase tracking-wide">
+            <Loader2 size={12} className="animate-spin" />
+            {countdown > 0 ? formatDuration(countdown) : 'Finalizando…'}
+          </div>
+          {onAccelerate && (
+            <button
+              onClick={onAccelerate}
+              disabled={isAccelerating}
+              className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded border border-gold/20 font-ui text-xs text-gold-dim hover:bg-gold-soft transition-colors disabled:opacity-40"
+            >
+              {isAccelerating ? <Loader2 size={10} className="animate-spin" /> : <Zap size={10} />}
+              Acelerar · {Math.max(1, Math.ceil(countdown / 600))} Éter
+            </button>
+          )}
         </div>
       ) : !item.requiresMet ? (
         <div className="mt-auto">

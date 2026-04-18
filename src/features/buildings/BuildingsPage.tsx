@@ -23,6 +23,7 @@ import {
 } from 'react-icons/gi'
 import { Card } from '@/components/ui/Card'
 import { useBuildings, useUpgradeBuilding } from '@/features/buildings/useBuildings'
+import { useAccelerate } from '@/features/queues/useAccelerate'
 import { useKingdom } from '@/features/kingdom/useKingdom'
 import { useResourceTicker } from '@/features/kingdom/useResourceTicker'
 import { useQueryClient } from '@tanstack/react-query'
@@ -216,6 +217,7 @@ export function BuildingsPage() {
   const { data: kingdom } = useKingdom()
   const resources = useResourceTicker(kingdom)
   const upgrade = useUpgradeBuilding()
+  const accelerate = useAccelerate()
   const [guideOpen, setGuideOpen] = useState(false)
   const [guideDismissed, setGuideDismissed] = useState(
     () => localStorage.getItem(GUIDE_STORAGE_KEY) === '1'
@@ -376,6 +378,8 @@ export function BuildingsPage() {
                     isUpgrading={upgrade.isPending && upgrade.variables === b.id}
                     onUpgrade={() => upgrade.mutate(b.id)}
                     onCountdownEnd={handleCountdownEnd}
+                    onAccelerate={b.inQueue ? () => accelerate.mutate('building') : undefined}
+                    isAccelerating={accelerate.isPending}
                     dimmed={locked}
                   />
                 )

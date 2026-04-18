@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, type ReactNode } from 'react'
-import { Sword, Shield, Heart, Clock, Loader2, Plus, Minus, X, Lightbulb } from 'lucide-react'
+import { Sword, Shield, Heart, Clock, Loader2, Plus, Minus, X, Lightbulb, Zap } from 'lucide-react'
 import { type IconType } from 'react-icons'
 import {
   GiLightFighter,
@@ -35,6 +35,7 @@ import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { useBarracks, useTrainUnit, type UnitInfo } from '@/features/barracks/useBarracks'
+import { useAccelerate } from '@/features/queues/useAccelerate'
 import { useKingdom } from '@/features/kingdom/useKingdom'
 import { useResearch, type ResearchInfo } from '@/features/research/useResearch'
 import { useResourceTicker } from '@/features/kingdom/useResourceTicker'
@@ -189,6 +190,7 @@ export function BarracksPage() {
   const { data: researchData } = useResearch()
   const resources = useResourceTicker(kingdom)
   const train = useTrainUnit()
+  const accelerate = useAccelerate()
 
   const handleCountdownEnd = useCallback(() => {
     refetch()
@@ -269,6 +271,8 @@ export function BarracksPage() {
               isTraining={train.isPending && train.variables?.unit === u.id}
               onTrain={amount => train.mutate({ unit: u.id, amount })}
               onCountdownEnd={handleCountdownEnd}
+              onAccelerate={u.inQueue ? () => accelerate.mutate('unit') : undefined}
+              isAccelerating={accelerate.isPending}
               animClass={`anim-fade-up-${Math.min(i + 1, 5) as 1 | 2 | 3 | 4 | 5}`}
             />
           )
@@ -289,6 +293,8 @@ function UnitCard({
   isTraining,
   onTrain,
   onCountdownEnd,
+  onAccelerate,
+  isAccelerating,
   animClass,
 }: {
   unit: UnitInfo
@@ -299,6 +305,8 @@ function UnitCard({
   isTraining: boolean
   onTrain: (amount: number) => void
   onCountdownEnd: () => void
+  onAccelerate?: () => void
+  isAccelerating?: boolean
   animClass: string
 }) {
   const [amount, setAmount] = useState(1)
@@ -399,6 +407,16 @@ function UnitCard({
             {unit.inQueue!.amount} unidades ·{' '}
             {countdown > 0 ? formatDuration(countdown) : 'Finalizando…'}
           </div>
+          {onAccelerate && (
+            <button
+              onClick={onAccelerate}
+              disabled={isAccelerating}
+              className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded border border-gold/20 font-ui text-xs text-gold-dim hover:bg-gold-soft transition-colors disabled:opacity-40"
+            >
+              {isAccelerating ? <Loader2 size={10} className="animate-spin" /> : <Zap size={10} />}
+              Acelerar · {Math.max(1, Math.ceil(countdown / 600))} Éter
+            </button>
+          )}
         </div>
       ) : !unit.requiresMet ? (
         <div className="mt-auto">
