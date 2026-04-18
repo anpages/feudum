@@ -1,5 +1,5 @@
 import { eq } from 'drizzle-orm'
-import { db, kingdoms, research as researchTable, researchQueue } from '../_db.js'
+import { db, kingdoms, research as researchTable, researchQueue, users } from '../_db.js'
 import { getSessionUserId } from '../lib/handler.js'
 import { RESEARCH, researchCost, researchTime, requirementsMet } from '../lib/research.js'
 import { getSettings } from '../lib/settings.js'
@@ -17,9 +17,10 @@ export default async function handler(req, res) {
   const def = RESEARCH.find(r => r.id === researchId)
   if (!def) return res.status(400).json({ error: 'Investigación desconocida' })
 
-  const [[kingdom], [resRow], cfg] = await Promise.all([
+  const [[kingdom], [resRow], [userRow], cfg] = await Promise.all([
     db.select().from(kingdoms).where(eq(kingdoms.userId, userId)).limit(1),
     db.select().from(researchTable).where(eq(researchTable.userId, userId)).limit(1),
+    db.select({ characterClass: users.characterClass }).from(users).where(eq(users.id, userId)).limit(1),
     getSettings(),
   ])
   if (!kingdom) return res.status(404).json({ error: 'Reino no encontrado' })
@@ -42,7 +43,9 @@ export default async function handler(req, res) {
   const nextLevel     = currentLevel + 1
   const academyLevel  = kingdom.academy ?? 0
   const cost          = researchCost(def, currentLevel)
-  const timeSecs      = researchTime(cost.wood, cost.stone, academyLevel, cfg.research_speed ?? 1)
+  const baseTime      = researchTime(cost.wood, cost.stone, academyLevel, cfg.research_speed ?? 1)
+  // Discoverer class: -25% research time
+  const timeSecs      = userRow?.characterClass === 'discoverer' ? Math.max(1, Math.floor(baseTime * 0.75)) : baseTime
 
   // ── Lazy resource tick ────────────────────────────────────────────────────
   const { wood, stone, grain, now } = applyResourceTick(kingdom, cfg)

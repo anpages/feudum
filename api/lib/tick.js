@@ -5,8 +5,9 @@ import { terrainModifiers } from './terrain.js'
 /**
  * Compute ticked resources without writing to DB.
  * Returns updated { wood, stone, grain, now }.
+ * @param {string|null} characterClass — optional player class (collector gets +25% production)
  */
-export function applyResourceTick(kingdom, cfg) {
+export function applyResourceTick(kingdom, cfg, characterClass = null) {
   const now     = Math.floor(Date.now() / 1000)
   const elapsed = Math.max(0, now - kingdom.lastResourceUpdate) / 3600
   const speed   = cfg.economy_speed ?? 1
@@ -16,11 +17,12 @@ export function applyResourceTick(kingdom, cfg) {
   }
 
   const t = terrainModifiers(kingdom.terrain)
+  const classBonus = characterClass === 'collector' ? 1.25 : 1.0
 
   return {
-    wood:  Math.min(kingdom.wood  + kingdom.woodProduction  * t.wood  * elapsed * speed, kingdom.woodCapacity),
-    stone: Math.min(kingdom.stone + kingdom.stoneProduction * t.stone * elapsed * speed, kingdom.stoneCapacity),
-    grain: Math.min(kingdom.grain + kingdom.grainProduction * t.grain * elapsed * speed, kingdom.grainCapacity),
+    wood:  Math.min(kingdom.wood  + kingdom.woodProduction  * t.wood  * elapsed * speed * classBonus, kingdom.woodCapacity),
+    stone: Math.min(kingdom.stone + kingdom.stoneProduction * t.stone * elapsed * speed * classBonus, kingdom.stoneCapacity),
+    grain: Math.min(kingdom.grain + kingdom.grainProduction * t.grain * elapsed * speed * classBonus, kingdom.grainCapacity),
     now,
   }
 }

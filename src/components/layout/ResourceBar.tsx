@@ -85,14 +85,15 @@ export function ResourceBar({ onMenuToggle }: Props) {
             {formatResource(kingdom?.populationMax ?? 0)}
           </span>
         </div>
-        {(user?.ether ?? 0) > 0 && (
-          <div className="hidden lg:flex resource-pill items-center gap-1.5" title="Éter arcano">
-            <Zap size={11} className="text-gold" />
-            <span className="font-ui text-xs tabular-nums text-gold-dim font-semibold">
-              {user!.ether}
-            </span>
-          </div>
-        )}
+        <div
+          className={`hidden lg:flex resource-pill items-center gap-1.5 ${(user?.ether ?? 0) === 0 ? 'opacity-30' : ''}`}
+          title="Éter arcano — se obtiene en expediciones y se gasta acelerando colas o cambiando clase"
+        >
+          <Zap size={11} className="text-gold" />
+          <span className="font-ui text-xs tabular-nums text-gold-dim font-semibold">
+            {user?.ether ?? 0}
+          </span>
+        </div>
       </div>
 
       <div className="header-divider mx-1 hidden sm:block" />

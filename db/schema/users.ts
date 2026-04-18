@@ -9,6 +9,7 @@ export const users = pgTable('users', {
   isAdmin: boolean('is_admin').default(false).notNull(),
   isNpc: boolean('is_npc').default(false).notNull(),
   ether: integer('ether').default(0).notNull(),
+  characterClass: varchar('character_class', { length: 20 }),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 })

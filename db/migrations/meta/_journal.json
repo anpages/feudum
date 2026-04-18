@@ -72,5 +72,12 @@
       "tag": "0009_terrain",
       "breakpoints": true
     }
+    ,{
+      "idx": 10,
+      "version": "7",
+      "when": 1776729600000,
+      "tag": "0010_character_class",
+      "breakpoints": true
+    }
   ]
 }

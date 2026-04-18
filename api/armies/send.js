@@ -1,5 +1,5 @@
 import { eq, and } from 'drizzle-orm'
-import { db, kingdoms, armyMissions, research } from '../_db.js'
+import { db, kingdoms, armyMissions, research, users } from '../_db.js'
 import { getSessionUserId } from '../lib/handler.js'
 import { calcDistance, calcDuration, calcCargoCapacity } from '../lib/speed.js'
 import { getSettings } from '../lib/settings.js'
@@ -45,10 +45,11 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Las expediciones deben dirigirse al slot 16 (Tierras Ignotas)' })
   }
 
-  // ── Load player kingdom + research ───────────────────────────────────────
-  const [[kingdom], [researchRow], cfg] = await Promise.all([
+  // ── Load player kingdom + research + class ───────────────────────────────
+  const [[kingdom], [researchRow], [userRow], cfg] = await Promise.all([
     db.select().from(kingdoms).where(eq(kingdoms.userId, userId)).limit(1),
     db.select().from(research).where(eq(research.userId, userId)).limit(1),
+    db.select({ characterClass: users.characterClass }).from(users).where(eq(users.id, userId)).limit(1),
     getSettings(),
   ])
   if (!kingdom) return res.status(404).json({ error: 'Reino no encontrado' })
@@ -161,7 +162,7 @@ export default async function handler(req, res) {
   const isWar        = ['attack', 'pillage', 'spy'].includes(missionType)
   const universeSpeed = isWar ? parseFloat(cfg.fleet_speed_war ?? 1) : parseFloat(cfg.fleet_speed_peaceful ?? 1)
   const distance     = calcDistance(origin, dest)
-  const baseSecs     = calcDuration(distance, units, 100, universeSpeed, researchRow ?? {})
+  const baseSecs     = calcDuration(distance, units, 100, universeSpeed, researchRow ?? {}, userRow?.characterClass ?? null)
   const speedBonus   = Math.min(0.40, (kingdom.ambassadorHall ?? 0) * 0.05)
   const travelSecs   = Math.max(1, Math.round(baseSecs * (1 - speedBonus)))
 

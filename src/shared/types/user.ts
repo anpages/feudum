@@ -3,6 +3,7 @@ export interface AuthUser {
   username: string | null
   isAdmin?: boolean
   ether?: number
+  characterClass?: string | null
 }
 
 export interface UserProfile {

@@ -1,55 +1,47 @@
 import { type ReactNode, useState, useEffect } from 'react'
-import { Clock, TrendingUp, Hammer, FlaskConical, Swords, Send } from 'lucide-react'
+import { Clock, TrendingUp, Hammer, FlaskConical, Swords, Send, Shield, ChevronRight } from 'lucide-react'
 import {
-  GiWoodPile,
-  GiStoneBlock,
-  GiWheat,
-  GiAnvil,
-  GiSpellBook,
-  GiCrossedSwords,
+  GiWoodPile, GiStoneBlock, GiWheat,
+  GiAnvil, GiSpellBook, GiCrossedSwords,
 } from 'react-icons/gi'
+import { useNavigate } from 'react-router-dom'
 import { useKingdom } from '@/features/kingdom/useKingdom'
 import { useResearch } from '@/features/research/useResearch'
 import { useBuildings } from '@/features/buildings/useBuildings'
 import { useBarracks } from '@/features/barracks/useBarracks'
 import { useArmies } from '@/features/armies/useArmies'
 import { useRankings } from '@/features/rankings/useRankings'
+import { useAuth } from '@/features/auth/useAuth'
 import { formatResource, formatDuration } from '@/lib/format'
 import { label } from '@/lib/labels'
 import { terrainInfo } from '@/lib/terrain'
 import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 
+const CLASS_INFO: Record<string, { emoji: string; label: string; color: string }> = {
+  collector:  { emoji: '⛏️', label: 'Coleccionista', color: 'text-forest-light' },
+  general:    { emoji: '⚔️', label: 'General',       color: 'text-crimson-light' },
+  discoverer: { emoji: '🧭', label: 'Explorador',    color: 'text-gold'         },
+}
+
 const BUILDING_KEYS = [
-  'sawmill', 'quarry', 'grainFarm', 'windmill', 'cathedral', 'workshop',
-  'engineersGuild', 'barracks', 'granary', 'stonehouse', 'silo', 'academy',
-  'alchemistTower', 'ambassadorHall', 'armoury',
+  'sawmill','quarry','grainFarm','windmill','cathedral','workshop',
+  'engineersGuild','barracks','granary','stonehouse','silo','academy',
+  'alchemistTower','ambassadorHall','armoury',
 ] as const
 
-const UNIT_KEYS = [
-  'squire', 'knight', 'paladin', 'warlord', 'grandKnight', 'siegeMaster',
-  'warMachine', 'dragonKnight', 'merchant', 'caravan', 'colonist', 'scavenger',
-  'scout', 'beacon', 'archer', 'crossbowman', 'ballista', 'trebuchet',
-  'mageTower', 'dragonCannon', 'palisade', 'castleWall', 'moat', 'catapult',
-] as const
-
-const COMBAT_KEYS = [
-  'squire', 'knight', 'paladin', 'warlord', 'grandKnight', 'siegeMaster',
-  'warMachine', 'dragonKnight',
-] as const
-
-const DEFENSE_KEYS = [
-  'archer', 'crossbowman', 'ballista', 'trebuchet', 'mageTower',
-  'dragonCannon', 'palisade', 'castleWall', 'moat', 'catapult',
-] as const
+const COMBAT_KEYS = ['squire','knight','paladin','warlord','grandKnight','siegeMaster','warMachine','dragonKnight'] as const
+const DEFENSE_KEYS = ['archer','crossbowman','ballista','trebuchet','mageTower','dragonCannon','palisade','castleWall','moat','catapult'] as const
 
 export function OverviewPage() {
+  const navigate = useNavigate()
   const { data: kingdom, isLoading } = useKingdom()
   const { data: researchData } = useResearch()
   const { data: buildingsData } = useBuildings()
   const { data: barracksData } = useBarracks()
   const { data: armiesData } = useArmies()
   const { data: rankingsData } = useRankings()
+  const { user } = useAuth()
 
   const buildingCount = kingdom
     ? BUILDING_KEYS.reduce((s, k) => s + (Number((kingdom as Record<string, unknown>)[k]) > 0 ? 1 : 0), 0)
@@ -61,140 +53,131 @@ export function OverviewPage() {
   const defenseCount = kingdom
     ? DEFENSE_KEYS.reduce((s, k) => s + (Number((kingdom as Record<string, unknown>)[k]) || 0), 0)
     : 0
-  const totalTroops = kingdom
-    ? UNIT_KEYS.reduce((s, k) => s + (Number((kingdom as Record<string, unknown>)[k]) || 0), 0)
-    : 0
-
   const myRanking = rankingsData?.rankings.find(r => r.isMe)
   const activeMissions = armiesData?.missions.filter(m => m.state === 'active').length ?? 0
   const returningMissions = armiesData?.missions.filter(m => m.state === 'returning').length ?? 0
 
   const activeBuilding = buildingsData?.buildings.find(b => !!b.inQueue)
   const activeResearch = researchData?.research.find(r => !!r.inQueue)
-  const allUnits = [
-    ...(barracksData?.units ?? []),
-    ...(barracksData?.support ?? []),
-    ...(barracksData?.defenses ?? []),
-  ]
+  const allUnits = [...(barracksData?.units ?? []), ...(barracksData?.support ?? []), ...(barracksData?.defenses ?? [])]
   const activeUnit = allUnits.find(u => !!u.inQueue)
   const hasQueue = !!(activeBuilding || activeResearch || activeUnit)
 
   const terrain = kingdom ? terrainInfo(kingdom.terrain) : null
+  const charClass = user?.characterClass ? CLASS_INFO[user.characterClass] : null
 
   if (isLoading) return <OverviewSkeleton />
 
   return (
-    <div className="space-y-8">
-      {/* ── Kingdom header ── */}
-      <div className="anim-fade-up flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <span className="section-heading">Panel de mando</span>
-          <h1 className="page-title mt-0.5">Resumen</h1>
-          <p className="font-body text-ink-muted text-sm mt-1.5">
-            R{kingdom?.realm ?? '—'} · Región {kingdom?.region ?? '—'} · Pos. {kingdom?.slot ?? '—'}
-          </p>
+    <div className="space-y-6">
+
+      {/* ── Kingdom identity banner ── */}
+      <Card className="p-5 anim-fade-up">
+        <div className="flex items-start justify-between gap-4 flex-wrap">
+          <div>
+            <p className="font-body text-xs text-ink-muted/60 uppercase tracking-widest mb-1">Panel de mando</p>
+            <h1 className="font-display text-2xl text-gold-dim leading-tight">{kingdom?.name ?? '—'}</h1>
+            <p className="font-body text-sm text-ink-muted mt-1">
+              Reino {kingdom?.realm ?? '—'} · Región {kingdom?.region ?? '—'} · Posición {kingdom?.slot ?? '—'}
+            </p>
+          </div>
+          <div className="flex flex-col items-end gap-2">
+            <Badge variant="gold">Rango #{myRanking?.rank ?? '—'}</Badge>
+            <span className="font-ui text-xs tabular-nums text-ink-muted">
+              {myRanking?.points.toLocaleString() ?? '—'} pts
+            </span>
+          </div>
         </div>
-        <div className="flex items-center gap-2 mt-1 flex-wrap">
+
+        {/* Tags row */}
+        <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-gold/10">
           {terrain && (
-            <span className={`font-ui text-xs ${terrain.color} flex items-center gap-1 border border-current/20 rounded px-2 py-0.5`}>
-              <span>{terrain.emoji}</span>
-              <span>{terrain.label}</span>
-              <span className="text-ink-muted/50">· {terrain.bonus}</span>
+            <span className={`inline-flex items-center gap-1.5 font-ui text-xs px-2.5 py-1 rounded-full border ${terrain.color} border-current/25 bg-current/5`}>
+              {terrain.emoji} {terrain.label} · {terrain.bonus}
             </span>
           )}
-          <Badge variant="stone">Puntos: {myRanking?.points.toLocaleString() ?? '—'}</Badge>
-          <Badge variant="gold">Rango: {myRanking ? `#${myRanking.rank}` : '—'}</Badge>
+          {charClass && (
+            <span className={`inline-flex items-center gap-1.5 font-ui text-xs px-2.5 py-1 rounded-full border ${charClass.color} border-current/25 bg-current/5`}>
+              {charClass.emoji} {charClass.label}
+            </span>
+          )}
+          {!charClass && (
+            <button
+              onClick={() => navigate('/profile')}
+              className="inline-flex items-center gap-1.5 font-ui text-xs px-2.5 py-1 rounded-full border border-gold/20 text-ink-muted/60 hover:text-gold hover:border-gold/40 transition-colors"
+            >
+              Elige una clase de personaje →
+            </button>
+          )}
         </div>
-      </div>
+      </Card>
 
       {/* ── Production rates ── */}
-      <section>
-        <span className="section-heading anim-fade-up-1">Producción por hora</span>
-        <div className="grid grid-cols-3 gap-3 anim-fade-up-1">
-          <ProductionCard
-            icon={<GiWoodPile size={16} />}
+      <section className="anim-fade-up-1">
+        <div className="flex items-center justify-between mb-3">
+          <span className="section-heading mb-0">Producción por hora</span>
+        </div>
+        <div className="grid grid-cols-3 gap-3">
+          <ProductionRow
+            icon={<GiWoodPile size={14} />}
             label="Madera"
             rate={kingdom?.woodProduction ?? 0}
-            isBoosted={terrain?.label === 'Bosque'}
+            boosted={terrain?.label === 'Bosque'}
           />
-          <ProductionCard
-            icon={<GiStoneBlock size={16} />}
+          <ProductionRow
+            icon={<GiStoneBlock size={14} />}
             label="Piedra"
             rate={kingdom?.stoneProduction ?? 0}
-            isBoosted={terrain?.label === 'Montaña'}
+            boosted={terrain?.label === 'Montaña'}
           />
-          <ProductionCard
-            icon={<GiWheat size={16} />}
+          <ProductionRow
+            icon={<GiWheat size={14} />}
             label="Grano"
             rate={kingdom?.grainProduction ?? 0}
-            isBoosted={terrain?.label === 'Llanura'}
+            boosted={terrain?.label === 'Llanura'}
           />
         </div>
       </section>
 
-      {/* ── Military summary ── */}
-      <section>
-        <span className="section-heading anim-fade-up-2">Fuerza Militar</span>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 anim-fade-up-2">
-          <StatCard
-            icon={<GiCrossedSwords size={16} />}
-            label="Combate"
-            value={combatCount.toLocaleString()}
-            note="unidades"
-          />
-          <StatCard
-            icon={<Swords size={14} />}
-            label="Defensa"
-            value={defenseCount.toLocaleString()}
-            note="unidades"
-          />
-          <StatCard
-            icon={<Send size={13} />}
-            label="En marcha"
-            value={activeMissions.toString()}
-            note={activeMissions === 1 ? 'misión activa' : 'misiones activas'}
-            highlight={activeMissions > 0}
-          />
-          <StatCard
-            icon={<Send size={13} className="rotate-180" />}
-            label="Regresando"
-            value={returningMissions.toString()}
-            note={returningMissions === 1 ? 'misión' : 'misiones'}
-            highlight={returningMissions > 0}
-          />
-        </div>
-      </section>
+      {/* ── Stats + missions in a horizontal layout ── */}
+      <section className="anim-fade-up-2">
+        <span className="section-heading">Estado</span>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
 
-      {/* ── Kingdom stats ── */}
-      <section>
-        <span className="section-heading anim-fade-up-3">Estado del Reino</span>
-        <div className="grid grid-cols-3 gap-3 anim-fade-up-3">
-          <StatCard
-            icon={<GiAnvil size={16} />}
-            label="Edificios"
-            value={buildingCount.toString()}
-            note="construidos"
-          />
-          <StatCard
-            icon={<GiSpellBook size={16} />}
-            label="Investigaciones"
-            value={researchCount.toString()}
-            note="descubiertas"
-          />
-          <StatCard
-            icon={<GiCrossedSwords size={16} />}
-            label="Tropas totales"
-            value={totalTroops.toLocaleString()}
-            note="en campo"
-          />
+          {/* Kingdom stats */}
+          <Card className="p-4 space-y-3">
+            <p className="font-ui text-[0.6rem] text-ink-muted/60 uppercase tracking-widest">Desarrollo</p>
+            <StatRow icon={<GiAnvil size={13} />} label="Edificios" value={`${buildingCount}`} note="construidos" onClick={() => navigate('/buildings')} />
+            <StatRow icon={<GiSpellBook size={13} />} label="Investigaciones" value={`${researchCount}`} note="descubiertas" onClick={() => navigate('/research')} />
+          </Card>
+
+          {/* Military stats */}
+          <Card className="p-4 space-y-3">
+            <p className="font-ui text-[0.6rem] text-ink-muted/60 uppercase tracking-widest">Fuerza militar</p>
+            <StatRow icon={<GiCrossedSwords size={13} />} label="Combate" value={combatCount.toLocaleString()} note="tropas" onClick={() => navigate('/barracks')} />
+            <StatRow icon={<Shield size={13} />} label="Defensa" value={defenseCount.toLocaleString()} note="unidades" onClick={() => navigate('/barracks')} />
+          </Card>
+
+          {/* Active missions */}
+          {(activeMissions > 0 || returningMissions > 0) && (
+            <Card className="p-4 space-y-3 sm:col-span-2">
+              <p className="font-ui text-[0.6rem] text-ink-muted/60 uppercase tracking-widest">Ejércitos en marcha</p>
+              {activeMissions > 0 && (
+                <StatRow icon={<Send size={12} />} label="En camino" value={`${activeMissions}`} note={activeMissions === 1 ? 'misión activa' : 'misiones activas'} highlight onClick={() => navigate('/armies')} />
+              )}
+              {returningMissions > 0 && (
+                <StatRow icon={<Send size={12} className="rotate-180" />} label="Regresando" value={`${returningMissions}`} note={returningMissions === 1 ? 'misión' : 'misiones'} highlight onClick={() => navigate('/armies')} />
+              )}
+            </Card>
+          )}
         </div>
       </section>
 
       {/* ── Active queues ── */}
-      <section>
-        <span className="section-heading anim-fade-up-4">Colas Activas</span>
+      <section className="anim-fade-up-3">
+        <span className="section-heading">Colas activas</span>
         {hasQueue ? (
-          <div className="space-y-2 anim-fade-up-4">
+          <div className="space-y-2">
             {activeBuilding && (
               <QueueRow
                 icon={<Hammer size={13} />}
@@ -221,23 +204,64 @@ export function OverviewPage() {
             )}
           </div>
         ) : (
-          <Card className="p-4 anim-fade-up-4">
-            <div className="flex items-center gap-3 text-ink-muted/60">
-              <Clock size={15} />
+          <Card className="p-4">
+            <div className="flex items-center gap-3 text-ink-muted/50">
+              <Clock size={14} />
               <span className="font-body text-sm">No hay colas activas</span>
             </div>
           </Card>
         )}
       </section>
+
     </div>
+  )
+}
+
+// ── Sub-components ────────────────────────────────────────────────────────────
+
+function ProductionRow({
+  icon, label, rate, boosted,
+}: { icon: ReactNode; label: string; rate: number; boosted: boolean }) {
+  return (
+    <Card className="p-3">
+      <div className="flex items-center gap-1.5 mb-2">
+        <span className={boosted ? 'text-gold' : 'text-gold/50'}>{icon}</span>
+        <span className="font-ui text-[0.6rem] font-semibold uppercase tracking-wide text-ink-muted truncate">
+          {label}
+        </span>
+        {boosted && <Badge variant="gold" className="shrink-0 !text-[0.55rem] !px-1 !py-0">+25%</Badge>}
+      </div>
+      <p className="font-ui text-lg tabular-nums font-semibold text-ink leading-none">
+        {formatResource(rate)}
+      </p>
+      <p className="flex items-center gap-0.5 mt-1 text-forest-light text-[0.6rem]">
+        <TrendingUp size={8} />
+        <span>/h</span>
+      </p>
+    </Card>
+  )
+}
+
+function StatRow({
+  icon, label: lbl, value, note, highlight, onClick,
+}: { icon: ReactNode; label: string; value: string; note: string; highlight?: boolean; onClick?: () => void }) {
+  return (
+    <button
+      className="w-full flex items-center gap-2.5 group hover:opacity-80 transition-opacity text-left"
+      onClick={onClick}
+    >
+      <span className={`shrink-0 ${highlight ? 'text-gold' : 'text-gold/50'}`}>{icon}</span>
+      <span className={`font-ui text-sm font-semibold tabular-nums ${highlight ? 'text-gold' : 'text-ink'}`}>{value}</span>
+      <span className="font-ui text-xs text-ink-muted">{lbl}</span>
+      <span className="font-body text-xs text-ink-muted/50 ml-auto">{note}</span>
+      <ChevronRight size={12} className="text-ink-muted/30 group-hover:text-ink-muted/60 shrink-0" />
+    </button>
   )
 }
 
 function QueueRow({
   icon, label: lbl, finishesAt, color,
-}: {
-  icon: ReactNode; label: string; finishesAt: number; color: 'gold' | 'forest' | 'stone'
-}) {
+}: { icon: ReactNode; label: string; finishesAt: number; color: 'gold' | 'forest' | 'stone' }) {
   const [remaining, setRemaining] = useState(() =>
     Math.max(0, finishesAt - Math.floor(Date.now() / 1000))
   )
@@ -267,81 +291,39 @@ function QueueRow({
   )
 }
 
-function ProductionCard({
-  icon, label, rate, isBoosted,
-}: {
-  icon: ReactNode; label: string; rate: number; isBoosted: boolean
-}) {
-  return (
-    <Card className="p-4">
-      <div className="flex items-center gap-2 mb-2">
-        <span className={isBoosted ? 'text-gold' : 'text-gold/60'}>{icon}</span>
-        <span className="font-ui text-xs font-semibold uppercase tracking-wide text-ink-muted truncate">
-          {label}
-        </span>
-        {isBoosted && <Badge variant="gold" className="shrink-0">+25%</Badge>}
-      </div>
-      <p className="font-ui text-xl tabular-nums font-semibold text-ink leading-none">
-        {formatResource(rate)}
-      </p>
-      <p className="flex items-center gap-1 mt-1.5 text-forest-light text-xs">
-        <TrendingUp size={9} />
-        <span className="tabular-nums">por hora</span>
-      </p>
-    </Card>
-  )
-}
-
-function StatCard({
-  icon, label, value, note, highlight,
-}: {
-  icon: ReactNode; label: string; value: string; note: string; highlight?: boolean
-}) {
-  return (
-    <Card className="p-4 flex items-center gap-3">
-      <span className={`shrink-0 ${highlight ? 'text-gold' : 'text-gold/60'}`}>{icon}</span>
-      <div className="min-w-0">
-        <p className={`font-ui text-xl font-semibold leading-none ${highlight ? 'text-gold' : 'text-ink'}`}>
-          {value}
-        </p>
-        <p className="font-ui text-xs font-semibold uppercase tracking-wide text-ink-muted mt-0.5 truncate">
-          {label}
-        </p>
-        <p className="font-body text-xs text-ink-muted/60 mt-0.5">{note}</p>
-      </div>
-    </Card>
-  )
-}
-
 function OverviewSkeleton() {
   return (
-    <div className="space-y-8">
-      <div className="space-y-2">
-        <div className="skeleton h-2.5 w-14" />
-        <div className="skeleton h-8 w-52" />
-        <div className="skeleton h-3 w-36" />
-      </div>
-      <div>
-        <div className="skeleton h-2.5 w-16 mb-4" />
-        <div className="grid grid-cols-3 gap-3">
-          {[...Array(3)].map((_, i) => (
-            <Card key={i} className="p-4 space-y-3">
-              <div className="skeleton h-3 w-20" />
-              <div className="skeleton h-6 w-16" />
-            </Card>
-          ))}
+    <div className="space-y-6">
+      <Card className="p-5 space-y-3">
+        <div className="flex justify-between">
+          <div className="space-y-2">
+            <div className="skeleton h-2.5 w-20" />
+            <div className="skeleton h-7 w-48" />
+            <div className="skeleton h-3 w-36" />
+          </div>
+          <div className="skeleton h-6 w-16 rounded-full" />
         </div>
-      </div>
-      <div>
-        <div className="skeleton h-2.5 w-16 mb-4" />
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {[...Array(4)].map((_, i) => (
-            <Card key={i} className="p-4 space-y-2">
-              <div className="skeleton h-3 w-16" />
-              <div className="skeleton h-6 w-10" />
-            </Card>
-          ))}
+        <div className="pt-4 border-t border-gold/10 flex gap-2">
+          <div className="skeleton h-5 w-28 rounded-full" />
+          <div className="skeleton h-5 w-20 rounded-full" />
         </div>
+      </Card>
+      <div className="grid grid-cols-3 gap-3">
+        {[...Array(3)].map((_, i) => (
+          <Card key={i} className="p-3 space-y-2">
+            <div className="skeleton h-2.5 w-12" />
+            <div className="skeleton h-5 w-16" />
+          </Card>
+        ))}
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {[...Array(2)].map((_, i) => (
+          <Card key={i} className="p-4 space-y-3">
+            <div className="skeleton h-2 w-16" />
+            <div className="skeleton h-4 w-full" />
+            <div className="skeleton h-4 w-3/4" />
+          </Card>
+        ))}
       </div>
     </div>
   )
