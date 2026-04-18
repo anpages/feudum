@@ -1,5 +1,5 @@
 import { type ReactNode, useState, useEffect } from 'react'
-import { Clock, TrendingUp, Hammer, FlaskConical, Swords, Send, Shield, ChevronRight } from 'lucide-react'
+import { Clock, TrendingUp, Hammer, FlaskConical, Swords, Send, Shield, ChevronRight, Zap } from 'lucide-react'
 import {
   GiWoodPile, GiStoneBlock, GiWheat,
   GiAnvil, GiSpellBook, GiCrossedSwords,
@@ -114,14 +114,31 @@ export function OverviewPage() {
 
       {/* ── Production rates ── */}
       <section className="anim-fade-up-1">
-        <div className="flex items-center justify-between mb-3">
-          <span className="section-heading mb-0">Producción por hora</span>
-        </div>
-        <div className="grid grid-cols-3 gap-3">
-          <ProductionRow icon={<GiWoodPile size={14} />} label="Madera" rate={kingdom?.woodProduction ?? 0} />
-          <ProductionRow icon={<GiStoneBlock size={14} />} label="Piedra" rate={kingdom?.stoneProduction ?? 0} />
-          <ProductionRow icon={<GiWheat size={14} />} label="Grano" rate={kingdom?.grainProduction ?? 0} />
-        </div>
+        {(() => {
+          const kk = kingdom as Record<string, unknown> | null | undefined
+          const prod = (kk?.energyProduced as number | undefined) ?? 0
+          const cons = (kk?.energyConsumed as number | undefined) ?? 0
+          const deficit = cons > 0 && prod < cons
+          const factor  = cons > 0 ? Math.min(1, prod / cons) : 1
+          return (
+            <>
+              <div className="flex items-center justify-between mb-3">
+                <span className="section-heading mb-0">Producción por hora</span>
+                {deficit && (
+                  <span className="flex items-center gap-1 font-ui text-[0.6rem] text-crimson font-semibold uppercase tracking-wide">
+                    <Zap size={9} />
+                    Energía al {Math.round(factor * 100)}% — minas reducidas
+                  </span>
+                )}
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                <ProductionRow icon={<GiWoodPile size={14} />} label="Madera" rate={kingdom?.woodProduction ?? 0} deficit={deficit} />
+                <ProductionRow icon={<GiStoneBlock size={14} />} label="Piedra" rate={kingdom?.stoneProduction ?? 0} deficit={deficit} />
+                <ProductionRow icon={<GiWheat size={14} />} label="Grano" rate={kingdom?.grainProduction ?? 0} deficit={deficit} />
+              </div>
+            </>
+          )
+        })()}
       </section>
 
       {/* ── Stats + missions in a horizontal layout ── */}
@@ -205,8 +222,8 @@ export function OverviewPage() {
 // ── Sub-components ────────────────────────────────────────────────────────────
 
 function ProductionRow({
-  icon, label, rate,
-}: { icon: ReactNode; label: string; rate: number }) {
+  icon, label, rate, deficit,
+}: { icon: ReactNode; label: string; rate: number; deficit?: boolean }) {
   return (
     <Card className="p-3">
       <div className="flex items-center gap-1.5 mb-2">
@@ -215,12 +232,12 @@ function ProductionRow({
           {label}
         </span>
       </div>
-      <p className="font-ui text-lg tabular-nums font-semibold text-ink leading-none">
+      <p className={`font-ui text-lg tabular-nums font-semibold leading-none ${deficit ? 'text-crimson' : 'text-ink'}`}>
         {formatResource(rate)}
       </p>
-      <p className="flex items-center gap-0.5 mt-1 text-forest-light text-[0.6rem]">
+      <p className={`flex items-center gap-0.5 mt-1 text-[0.6rem] ${deficit ? 'text-crimson/60' : 'text-forest-light'}`}>
         <TrendingUp size={8} />
-        <span>/h</span>
+        <span>/h · neto</span>
       </p>
     </Card>
   )
