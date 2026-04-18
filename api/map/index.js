@@ -2,11 +2,11 @@ import { eq, and, inArray } from 'drizzle-orm'
 import { db, kingdoms, users, debrisFields, research } from '../_db.js'
 import { getSessionUserId } from '../lib/handler.js'
 import { calcPoints } from '../lib/points.js'
+import { UNIVERSE } from '../lib/config.js'
 
-// ── Universe constants ────────────────────────────────────────────────────────
-const MAX_REALM  = 3
-const MAX_REGION = 10
-const MAX_SLOT   = 15
+const MAX_REALM  = UNIVERSE.maxRealm
+const MAX_REGION = UNIVERSE.maxRegion
+const MAX_SLOT   = UNIVERSE.maxSlot
 
 // ── Deterministic NPC generator (no DB, seeded by position) ──────────────────
 const NPC_FIRST = [

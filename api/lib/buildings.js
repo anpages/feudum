@@ -112,7 +112,9 @@ export function buildCost(woodBase, stoneBase, factor, level, grainBase = 0) {
 // ── Build time (seconds) ──────────────────────────────────────────────────────
 // (wood + stone) / (2500 * max(4 - nextLevel/2, 1) * (1 + workshop) * speed * 2^engineersGuild) * 3600
 
-export function buildTime(wood, stone, nextLevel, workshopLevel, engineersGuildLevel, speed = 1) {
+import { ECONOMY_SPEED } from './config.js'
+
+export function buildTime(wood, stone, nextLevel, workshopLevel, engineersGuildLevel, speed = ECONOMY_SPEED) {
   const levelFactor = Math.max(4 - nextLevel / 2, 1)
   const divisor = 2500 * levelFactor * (1 + workshopLevel) * speed * Math.pow(2, engineersGuildLevel)
   return Math.max(1, Math.round(((wood + stone) / divisor) * 3600))

@@ -31,6 +31,15 @@ export function useMarkAllRead() {
   })
 }
 
+export function useSendMessage() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (params: { to: string; subject: string; body: string }) =>
+      api.post<{ ok: boolean }>('/messages/send', params),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['messages'] }),
+  })
+}
+
 export function useUnreadCount() {
   const { data } = useMessages()
   return data?.messages.filter(m => !m.viewed).length ?? 0
