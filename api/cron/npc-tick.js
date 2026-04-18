@@ -41,80 +41,66 @@ function npcClass(kingdom) {
 // military: barracks early, then enough production to sustain army
 // balanced: steady mix
 
-const BUILD_PRIORITY = {
-  economy:  ['windmill', 'sawmill', 'quarry', 'grainFarm', 'sawmill', 'quarry', 'workshop', 'barracks', 'engineersGuild'],
-  military: ['windmill', 'sawmill', 'barracks', 'quarry', 'sawmill', 'workshop', 'grainFarm', 'barracks', 'quarry'],
-  balanced: ['windmill', 'sawmill', 'grainFarm', 'quarry', 'barracks', 'workshop', 'sawmill', 'quarry', 'engineersGuild'],
+// ── Building weights per personality ─────────────────────────────────────────
+// Higher weight = higher priority. NPCs always upgrade the building most
+// "behind" relative to its weight (score = currentLevel / weight → lowest wins).
+// No ceiling — growth is infinite and exponential.
+const BUILD_WEIGHTS = {
+  economy: {
+    sawmill: 1.0, quarry: 0.85, grainFarm: 0.70, windmill: 0.60,
+    cathedral: 0.50, granary: 0.55, stonehouse: 0.50, silo: 0.45,
+    workshop: 0.65, barracks: 0.35, academy: 0.25,
+    alchemistTower: 0.40, ambassadorHall: 0.20, armoury: 0.20, engineersGuild: 0.35,
+  },
+  military: {
+    barracks: 1.0, sawmill: 0.75, quarry: 0.65, workshop: 0.60,
+    grainFarm: 0.55, windmill: 0.45, armoury: 0.50, granary: 0.35,
+    stonehouse: 0.35, silo: 0.30, academy: 0.25,
+    alchemistTower: 0.25, ambassadorHall: 0.30, cathedral: 0.20, engineersGuild: 0.25,
+  },
+  balanced: {
+    sawmill: 0.90, barracks: 0.80, quarry: 0.75, grainFarm: 0.65,
+    windmill: 0.55, workshop: 0.60, granary: 0.45, stonehouse: 0.40,
+    silo: 0.35, academy: 0.30, alchemistTower: 0.35,
+    armoury: 0.35, ambassadorHall: 0.25, cathedral: 0.30, engineersGuild: 0.30,
+  },
 }
 
-// ── Building targets per personality × level ──────────────────────────────────
-// [personality][level]
-const BUILDING_TARGETS = {
-  economy: [
-    null,
-    { sawmill: 4,  quarry: 3,  grainFarm: 3, windmill: 2, barracks: 1, workshop: 0 },
-    { sawmill: 8,  quarry: 6,  grainFarm: 5, windmill: 3, barracks: 2, workshop: 2 },
-    { sawmill: 14, quarry: 11, grainFarm: 8, windmill: 5, barracks: 4, workshop: 4, engineersGuild: 2 },
-  ],
-  military: [
-    null,
-    { sawmill: 2,  quarry: 2,  grainFarm: 2, windmill: 1, barracks: 2, workshop: 1 },
-    { sawmill: 5,  quarry: 4,  grainFarm: 3, windmill: 2, barracks: 5, workshop: 3 },
-    { sawmill: 9,  quarry: 8,  grainFarm: 5, windmill: 4, barracks: 8, workshop: 5, engineersGuild: 3 },
-  ],
-  balanced: [
-    null,
-    { sawmill: 3,  quarry: 3,  grainFarm: 2, windmill: 1, barracks: 1, workshop: 0 },
-    { sawmill: 6,  quarry: 5,  grainFarm: 4, windmill: 2, barracks: 3, workshop: 2 },
-    { sawmill: 11, quarry: 9,  grainFarm: 6, windmill: 4, barracks: 6, workshop: 4, engineersGuild: 2 },
-  ],
+// ── Unit training priority per personality (no cap, ordered by preference) ───
+const UNIT_PRIORITY = {
+  economy:  ['archer', 'crossbowman', 'squire', 'mageTower', 'ballista', 'knight', 'paladin', 'warlord', 'grandKnight', 'siegeMaster', 'warMachine', 'dragonKnight'],
+  military: ['squire', 'knight', 'crossbowman', 'archer', 'warlord', 'paladin', 'ballista', 'mageTower', 'grandKnight', 'siegeMaster', 'warMachine', 'dragonKnight'],
+  balanced: ['archer', 'squire', 'knight', 'crossbowman', 'paladin', 'mageTower', 'ballista', 'warlord', 'grandKnight', 'siegeMaster', 'warMachine', 'dragonKnight'],
 }
 
-// ── Unit targets per personality × level ──────────────────────────────────────
-const UNIT_TARGETS = {
-  economy: [
-    null,
-    { squire: 5,  archer: 15 },
-    { squire: 10, archer: 25, crossbowman: 10 },
-    { squire: 15, archer: 35, crossbowman: 20, knight: 10, mageTower: 10 },
-  ],
-  military: [
-    null,
-    { squire: 15, archer: 10, crossbowman: 5 },
-    { squire: 25, knight: 20, archer: 15, crossbowman: 15, ballista: 5 },
-    { knight: 35, paladin: 30, warlord: 15, crossbowman: 25, mageTower: 15, ballista: 10 },
-  ],
-  balanced: [
-    null,
-    { squire: 10, archer: 20 },
-    { squire: 20, knight: 15, archer: 20, crossbowman: 10 },
-    { knight: 25, paladin: 25, warlord: 12, crossbowman: 25, mageTower: 12, archer: 20 },
-  ],
-}
-
-// ── Attack threshold per personality (min army before attacking) ───────────────
+// ── Attack threshold per personality (min army units before attacking) ────────
 const ATTACK_THRESHOLD = {
-  economy:  [0, 30, 55, 75],   // attacks late, only when well-defended
-  military: [0, 15, 30, 45],   // attacks early, aggressive raider
-  balanced: [0, 22, 40, 60],
+  economy:  20,
+  military: 10,
+  balanced: 15,
 }
 
 // ── Minimum barracks level per unit ──────────────────────────────────────────
 const UNIT_BARRACKS_REQ = {
   squire: 1, archer: 1, crossbowman: 2, knight: 3,
   ballista: 4, mageTower: 4, paladin: 5, warlord: 7,
+  grandKnight: 8, siegeMaster: 8, warMachine: 9, dragonKnight: 12,
 }
 
-// ── Unit costs ────────────────────────────────────────────────────────────────
+// ── Unit costs (wood/stone to train one unit) ─────────────────────────────────
 const UNIT_COSTS = {
-  squire:      { wood: 3000,  stone: 1000  },
-  archer:      { wood: 2000,  stone: 0     },
-  crossbowman: { wood: 1500,  stone: 500   },
-  knight:      { wood: 6000,  stone: 4000  },
-  ballista:    { wood: 6000,  stone: 2000  },
-  mageTower:   { wood: 2000,  stone: 6000  },
-  paladin:     { wood: 20000, stone: 7000  },
-  warlord:     { wood: 45000, stone: 15000 },
+  squire:      { wood: 3000,    stone: 1000   },
+  archer:      { wood: 2000,    stone: 0      },
+  crossbowman: { wood: 1500,    stone: 500    },
+  knight:      { wood: 6000,    stone: 4000   },
+  ballista:    { wood: 6000,    stone: 2000   },
+  mageTower:   { wood: 2000,    stone: 6000   },
+  paladin:     { wood: 20000,   stone: 7000   },
+  warlord:     { wood: 45000,   stone: 15000  },
+  grandKnight: { wood: 30000,   stone: 40000  },
+  siegeMaster: { wood: 50000,   stone: 25000  },
+  warMachine:  { wood: 60000,   stone: 50000  },
+  dragonKnight:{ wood: 5000000, stone: 4000000},
 }
 
 const UNIT_KEYS = [
@@ -127,32 +113,37 @@ function totalArmy(k) {
   return UNIT_KEYS.reduce((s, u) => s + (k[u] ?? 0), 0)
 }
 
-// ── Growth AI ─────────────────────────────────────────────────────────────────
+// ── Growth AI — infinite, exponential, no ceiling ────────────────────────────
+// Buildings: always upgrade the building most "behind" its priority weight.
+// Units: always train more of the highest-priority unit the barracks supports.
+// Growth is naturally exponential: more production → more resources → faster builds.
 
 async function growNpc(kingdom, cfg, now) {
-  const npcLevel    = kingdom.npcLevel || 1
   const personality = npcPersonality(kingdom)
   const cls         = npcClass(kingdom)
-  const targets     = BUILDING_TARGETS[personality][npcLevel]
-  const priority    = BUILD_PRIORITY[personality]
+  const weights     = BUILD_WEIGHTS[personality]
   const speed       = parseFloat(cfg.economy_speed ?? ECONOMY_SPEED)
 
-  // Respect build cooldown — same timing as real players
   const buildAvailable = kingdom.npcBuildAvailableAt ?? 0
   const canBuild = now >= buildAvailable
 
   let { wood, stone, grain } = kingdom
   let patch = {}
 
+  // ── Building upgrade ───────────────────────────────────────────────────────
   if (canBuild) {
-    for (const b of priority) {
-      const currentLv = (patch[b] !== undefined ? patch[b] : kingdom[b]) ?? 0
-      const targetLv  = targets?.[b] ?? 0
-      if (currentLv >= targetLv) continue
+    // Score each building: currentLevel / weight → lowest = most behind
+    const candidates = Object.entries(weights)
+      .map(([id, weight]) => {
+        const def = BUILDINGS.find(x => x.id === id)
+        if (!def) return null
+        const currentLv = kingdom[id] ?? 0
+        return { id, def, currentLv, score: currentLv / weight }
+      })
+      .filter(Boolean)
+      .sort((a, b) => a.score - b.score)  // most behind first
 
-      const def = BUILDINGS.find(x => x.id === b)
-      if (!def) continue
-
+    for (const { id, def, currentLv } of candidates) {
       const nextLv = currentLv + 1
       const cost = buildCost(def.woodBase, def.stoneBase, def.factor, nextLv - 1, def.grainBase ?? 0)
 
@@ -160,53 +151,52 @@ async function growNpc(kingdom, cfg, now) {
         wood  -= cost.wood
         stone -= cost.stone
         grain -= (cost.grain ?? 0)
-        const effect = applyBuildingEffect(b, nextLv, { ...kingdom, ...patch })
+
+        const effect = applyBuildingEffect(id, nextLv, { ...kingdom, ...patch })
         Object.assign(patch, effect)
 
-        // Set cooldown using real build time formula (same as player queue)
-        // discoverer class: −25% build time (research-themed advantage)
-        const workshopLv      = (patch.workshop ?? kingdom.workshop) ?? 0
+        const workshopLv       = (patch.workshop       ?? kingdom.workshop)       ?? 0
         const engineersGuildLv = (patch.engineersGuild ?? kingdom.engineersGuild) ?? 0
         const rawTime  = buildTime(cost.wood, cost.stone, nextLv, workshopLv, engineersGuildLv, speed)
         const timeBonus = cls === 'discoverer' ? 0.75 : 1.0
         patch.npcBuildAvailableAt = now + Math.max(30, Math.floor(rawTime * timeBonus))
-        break  // one building per cooldown cycle, just like player queue
+        break
       }
     }
   }
 
-  // Unit training: can happen in parallel with building cooldown
-  // general trains faster (cost −10%, 2 types/tick); others 1 type/tick
-  const unitTargets  = UNIT_TARGETS[personality][npcLevel] ?? {}
+  // ── Unit training ──────────────────────────────────────────────────────────
+  // Train as many as resources allow; general gets -10% cost + 2 unit types/tick
   const barracksLv   = (patch.barracks ?? kingdom.barracks) ?? 0
-  const maxUnitTypes = 1 + (cls === 'general' ? 1 : 0)
+  const maxUnitTypes = cls === 'general' ? 2 : 1
   const costMult     = cls === 'general' ? 0.9 : 1.0
-  let unitTypesThisTick = 0
+  let unitTypesTrained = 0
 
-  for (const [unitId, targetCount] of Object.entries(unitTargets)) {
-    if (unitTypesThisTick >= maxUnitTypes) break
+  for (const unitId of UNIT_PRIORITY[personality]) {
+    if (unitTypesTrained >= maxUnitTypes) break
 
-    const current = kingdom[unitId] ?? 0
-    if (current >= targetCount) continue
     const reqBarracks = UNIT_BARRACKS_REQ[unitId] ?? 1
     if (barracksLv < reqBarracks) continue
 
     const cost = UNIT_COSTS[unitId]
     if (!cost) continue
-    const need     = targetCount - current
+
     const effWood  = Math.ceil(cost.wood  * costMult)
     const effStone = Math.ceil(cost.stone * costMult)
-    const canAff   = Math.min(
-      need,
-      Math.floor(wood / effWood),
-      effStone > 0 ? Math.floor(stone / effStone) : need,
-    )
-    if (canAff <= 0) continue
+    if (effWood > wood && effStone > stone) continue
 
-    wood  -= effWood  * canAff
-    stone -= effStone * canAff
-    patch[unitId] = current + canAff
-    unitTypesThisTick++
+    const canAfford = Math.min(
+      effWood  > 0 ? Math.floor(wood  / effWood)  : Infinity,
+      effStone > 0 ? Math.floor(stone / effStone) : Infinity,
+    )
+    if (canAfford <= 0) continue
+
+    // Cap per tick to avoid buying thousands at once when resources are huge
+    const batch = Math.min(canAfford, 50)
+    wood  -= effWood  * batch
+    stone -= effStone * batch
+    patch[unitId] = (kingdom[unitId] ?? 0) + batch
+    unitTypesTrained++
   }
 
   if (Object.keys(patch).length === 0) return
@@ -224,14 +214,13 @@ async function growNpc(kingdom, cfg, now) {
 async function attackAI(npcKingdom, playerKingdoms, now, cfg) {
   if (NPC_AGGRESSION === 0) return false
 
-  const npcLevel    = npcKingdom.npcLevel || 1
   const personality = npcPersonality(npcKingdom)
   const cls         = npcClass(npcKingdom)
   const armySize    = totalArmy(npcKingdom)
 
-  // general gets -5 threshold (attacks earlier), collector gets +5 (attacks later)
-  const baseThreshold = ATTACK_THRESHOLD[personality][npcLevel]
-  const threshold = baseThreshold + (cls === 'general' ? -5 : cls === 'collector' ? 5 : 0)
+  // general attacks earlier, collector waits longer
+  const baseThreshold = ATTACK_THRESHOLD[personality]
+  const threshold = baseThreshold + (cls === 'general' ? -4 : cls === 'collector' ? 5 : 0)
 
   if (armySize < threshold) return false
 
