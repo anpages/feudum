@@ -10,7 +10,7 @@ export type MissionType =
   | 'deploy'
   | 'expedition'
 
-export type MissionState = 'active' | 'returning' | 'completed'
+export type MissionState = 'active' | 'returning' | 'completed' | 'merchant'
 
 export interface MissionResult {
   type: string
@@ -35,6 +35,12 @@ export interface MissionResult {
   multiplier?: number
   fraction?: number
   destroyed?: boolean
+  // Merchant-specific
+  merchantOffer?: {
+    give: Partial<Resources>
+    receive: Partial<Resources>
+    expiresAt: number
+  }
 }
 
 export interface ArmyMission {

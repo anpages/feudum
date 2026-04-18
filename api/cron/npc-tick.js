@@ -301,7 +301,9 @@ async function attackAI(npcKingdom, playerKingdoms, now, cfg) {
 
   const universeSpeed = parseFloat(cfg.fleet_speed_war ?? 1)
   const dist       = calcDistance(npcKingdom, target)
-  const travelSecs = calcDuration(dist, force, 100, universeSpeed)
+  // general class: +25% army speed (same bonus as player General class via speed.js)
+  const npcCharClass = cls === 'general' ? 'general' : null
+  const travelSecs = calcDuration(dist, force, 100, universeSpeed, {}, npcCharClass)
   const arrivalTime = now + travelSecs
 
   await db.insert(armyMissions).values({
@@ -404,15 +406,12 @@ export default async function handler(req, res) {
   let ticked = 0, grew = 0, attacked = 0
 
   for (const kingdom of npcKingdoms) {
-    // Resource tick — collector class gets +25% on top of what was produced this tick
-    const tickResult = applyResourceTick(kingdom, cfg)
+    // Resource tick — pass npcClass so tick.js applies collector +25% via same path as players
     const cls = npcClass(kingdom)
-    const extraWood  = cls === 'collector' ? Math.floor((tickResult.wood  - kingdom.wood)  * 0.25) : 0
-    const extraStone = cls === 'collector' ? Math.floor((tickResult.stone - kingdom.stone) * 0.25) : 0
-    const extraGrain = cls === 'collector' ? Math.floor((tickResult.grain - kingdom.grain) * 0.25) : 0
-    const finalWood  = Math.min(tickResult.wood  + extraWood,  kingdom.woodCapacity)
-    const finalStone = Math.min(tickResult.stone + extraStone, kingdom.stoneCapacity)
-    const finalGrain = Math.min(tickResult.grain + extraGrain, kingdom.grainCapacity)
+    const tickResult = applyResourceTick(kingdom, cfg, cls === 'collector' ? 'collector' : null)
+    const finalWood  = tickResult.wood
+    const finalStone = tickResult.stone
+    const finalGrain = tickResult.grain
 
     if (
       finalWood  !== kingdom.wood ||

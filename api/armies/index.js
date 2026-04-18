@@ -561,8 +561,18 @@ async function processArrival(mission, myKingdom, now) {
     const [researchRow] = await db.select().from(research)
       .where(eq(research.userId, myKingdom.userId)).limit(1)
 
-    const { outcome, result, unitPatch, returnTimeDelta, etherGained, destroyed } =
-      resolveExpedition(missionUnits, researchRow ?? {}, travelSecs)
+    const { outcome, result, unitPatch, returnTimeDelta, etherGained, destroyed, merchantOffer } =
+      resolveExpedition(missionUnits, researchRow ?? {}, travelSecs, now)
+
+    // Merchant offer — pause mission waiting for player response
+    if (outcome === 'merchant' && merchantOffer) {
+      await db.update(armyMissions).set({
+        state: 'merchant',
+        result: JSON.stringify({ type: 'expedition', outcome: 'merchant', merchantOffer }),
+        updatedAt: new Date(),
+      }).where(eq(armyMissions.id, mission.id))
+      return
+    }
 
     // Black hole or lost combat — units destroyed, no return
     if (destroyed) {
@@ -686,15 +696,57 @@ export default async function handler(req, res) {
     .where(eq(armyMissions.userId, userId))
 
   const now = Math.floor(Date.now() / 1000)
-  const missions = active
-    .filter(m => m.state === 'active' || m.state === 'returning')
+
+  // Auto-expire merchant offers past their deadline
+  for (const m of active) {
+    if (m.state !== 'merchant') continue
+    const parsed = m.result ? JSON.parse(m.result) : null
+    const expiresAt = parsed?.merchantOffer?.expiresAt ?? 0
+    if (now >= expiresAt) {
+      // Decline expired offer — return units with no trade
+      const patch = { updatedAt: new Date() }
+      const mUnits = {}
+      for (const k of UNIT_KEYS) if ((m[k] ?? 0) > 0) mUnits[k] = m[k]
+      const [homeKingdom] = await db.select().from(kingdoms)
+        .where(and(
+          eq(kingdoms.userId, userId),
+          eq(kingdoms.realm, m.startRealm),
+          eq(kingdoms.region, m.startRegion),
+          eq(kingdoms.slot, m.startSlot),
+        )).limit(1)
+      if (homeKingdom) {
+        for (const k of UNIT_KEYS) {
+          const n = m[k] ?? 0
+          if (n > 0) patch[k] = (homeKingdom[k] ?? 0) + n
+        }
+        await db.update(kingdoms).set(patch).where(eq(kingdoms.id, homeKingdom.id))
+      }
+      await db.delete(armyMissions).where(eq(armyMissions.id, m.id))
+      await db.insert(messages).values({
+        userId,
+        type: 'expedition',
+        subject: '🏪 Mercader — oferta expirada',
+        data: JSON.stringify({ type: 'expedition', outcome: 'merchant', expired: true }),
+      })
+    }
+  }
+
+  const freshActive = active.filter(m => m.state !== 'merchant' || (() => {
+    const p = m.result ? JSON.parse(m.result) : null
+    return now < (p?.merchantOffer?.expiresAt ?? 0)
+  })())
+
+  const missions = freshActive
+    .filter(m => m.state === 'active' || m.state === 'returning' || m.state === 'merchant')
     .map(m => {
       const missionUnits = {}
       for (const k of UNIT_KEYS) if ((m[k] ?? 0) > 0) missionUnits[k] = m[k]
 
       const eta = m.state === 'returning'
         ? Math.max(0, (m.returnTime ?? 0) - now)
-        : Math.max(0, m.arrivalTime - now)
+        : m.state === 'merchant'
+          ? 0
+          : Math.max(0, m.arrivalTime - now)
 
       return {
         id: m.id,

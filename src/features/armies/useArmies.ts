@@ -47,3 +47,16 @@ export function useRecallArmy() {
     },
   })
 }
+
+export function useMerchantRespond() {
+  const qc = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ missionId, accept }: { missionId: number; accept: boolean }) =>
+      armiesService.merchantRespond(missionId, accept),
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: ['armies'] })
+      qc.invalidateQueries({ queryKey: ['kingdom'] })
+    },
+  })
+}

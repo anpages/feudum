@@ -17,13 +17,14 @@
 import { buildBattleUnits, runBattle, calcCargoCapacity } from './battle.js'
 
 const OUTCOMES = [
-  { id: 'nothing',    weight: 35 },
-  { id: 'resources',  weight: 25 },
-  { id: 'units',      weight: 15 },
+  { id: 'nothing',    weight: 33 },
+  { id: 'resources',  weight: 24 },
+  { id: 'units',      weight: 14 },
   { id: 'delay',      weight: 10 },
   { id: 'speedup',    weight:  5 },
   { id: 'bandits',    weight:  4 },
   { id: 'demons',     weight:  3 },
+  { id: 'merchant',   weight:  4 },
   { id: 'ether',      weight:  2 },
   { id: 'black_hole', weight:  1 },
 ]
@@ -144,6 +145,27 @@ function etherFound() {
   return Math.floor(5 + Math.random() * 46)
 }
 
+// Merchant offer: trade one resource for another at favorable rates
+// Player gives one resource, receives a different one at 1.3–2.0× ratio
+function generateMerchantOffer(sentUnits, now) {
+  const cargo = calcCargoCapacity(sentUnits)
+  const base  = Math.max(2000, Math.floor(cargo * (0.12 + Math.random() * 0.15)))
+
+  const res  = ['wood', 'stone', 'grain']
+  const gi   = Math.floor(Math.random() * 3)
+  const ri   = (gi + 1 + Math.floor(Math.random() * 2)) % 3
+
+  const giveAmt    = base
+  const ratio      = 1.3 + Math.random() * 0.7   // 1.3–2.0× favorable
+  const receiveAmt = Math.floor(giveAmt * ratio)
+
+  return {
+    give:      { [res[gi]]: giveAmt },
+    receive:   { [res[ri]]: receiveAmt },
+    expiresAt: now + 24 * 3600,   // 24h to respond
+  }
+}
+
 // Delay multipliers: 89% ×2, 10% ×3, 1% ×5
 function delayMultiplier() {
   const r = Math.random() * 100
@@ -159,13 +181,14 @@ function speedupFraction() {
 
 /**
  * Resolve expedition outcome.
- * Returns { outcome, result, unitPatch, returnTimeDelta, etherGained }
+ * Returns { outcome, result, unitPatch, returnTimeDelta, etherGained, merchantOffer? }
  *
  * unitPatch: units to set on the mission row on return (null = no change)
  * returnTimeDelta: seconds to add to returnTime (positive = delay, negative = speedup)
  * etherGained: ether to credit to player
+ * merchantOffer: present only when outcome === 'merchant'
  */
-export function resolveExpedition(sentUnits, playerResearch, travelSecs) {
+export function resolveExpedition(sentUnits, playerResearch, travelSecs, now) {
   const outcome = pickOutcome()
 
   switch (outcome) {
@@ -230,6 +253,18 @@ export function resolveExpedition(sentUnits, playerResearch, travelSecs) {
     case 'ether': {
       const amount = etherFound()
       return { outcome, result: { type: 'ether', amount }, unitPatch: null, returnTimeDelta: 0, etherGained: amount }
+    }
+
+    case 'merchant': {
+      const merchantOffer = generateMerchantOffer(sentUnits, now)
+      return {
+        outcome,
+        result: { type: 'expedition', outcome: 'merchant', merchantOffer },
+        unitPatch: null,
+        returnTimeDelta: 0,
+        etherGained: 0,
+        merchantOffer,
+      }
     }
 
     case 'black_hole':
