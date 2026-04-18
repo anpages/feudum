@@ -16,16 +16,16 @@
 
 - [x] **Sistema de puntos** — `calcPoints` ya lo calcula dinámicamente en rankings. Corregido: `points.js` ahora incluye los 15 edificios (faltaban 7) y suma el coste de grano; mapa ahora muestra puntos reales (antes hardcodeado a 0)
 - [x] **Bonificaciones de investigación en combate** — ya estaban aplicadas: `swordsmanship`→ataque, `armoury`→escudo, `fortification`→casco en `battle.js`
-- [ ] **Investigación afectando producción** — diseño pendiente: decidir si alguna investigación debe afectar tasas de producción
-- [ ] **Gestión de colonias** — si un jugador coloniza, `kingdoms/me` siempre devuelve el primer reino. Necesita: selector de reino activo en ResourceBar, o soporte multi-reino en la API
+- [x] **Investigación afectando producción** — `dragonlore` (plasma_technology) da +1%/+0.66%/+0.33% de producción por nivel; aplicado en `kingdoms/me.js` al calcular el tick y en la respuesta; `_db.js` ahora tiene todos los campos de research (los battle bonuses ya eran correctos)
+- [x] **Gestión de colonias** — `GET /api/kingdoms` lista todos los reinos del usuario; `kingdoms/me?id=X` cambia el reino activo; `KingdomSelector` en ResourceBar (dropdown con todos los reinos, solo visible si hay >1)
 
 ---
 
 ## 🟡 UX / Pulido
 
-- [ ] **Mensajes manuales entre jugadores** — MessagesPage solo muestra mensajes automáticos (batalla, espía). Añadir formulario "Nuevo mensaje" con selector de destinatario (username) y campo de texto
-- [ ] **Revisión layout móvil** — probar en viewport < 768px; sidebar como drawer, header compacto
-- [ ] **Ajustes de servidor** — velocidad de economía y tamaño del universo están hardcoded. Crear tabla `server_settings` o variables de entorno configurables
+- [x] **Mensajes manuales entre jugadores** — ComposePanel + useSendMessage conectados; botón Responder pre-rellena el campo "Para"
+- [x] **Revisión layout móvil** — MapPage: panel detalle sube al top en móvil; SlotRow: gap/padding reducidos; ArmiesPage: selector de misión grid-cols-3 en móvil
+- [x] **Ajustes de servidor** — `api/lib/config.js` expone `ECONOMY_SPEED`, `UNIVERSE.*` via env vars (`ECONOMY_SPEED`, `UNIVERSE_REALMS`, `UNIVERSE_REGIONS`, `UNIVERSE_SLOTS`)
 - [ ] **Importar `Tent` desde lucide vs disponibilidad** — ya verificado que existe, pero confirmar visualmente en producción que el icono de colonize se ve bien en todos los contextos
 
 ---
