@@ -220,6 +220,33 @@ export const DEFENSES = [
       { type: 'research',  id: 'armoury',  level: 6 },
     ],
   },
+  {
+    id: 'moat',         // anti-ballistic missile — passive ditch defense
+    woodBase: 5000, stoneBase: 2000, grainBase: 0,
+    hull: 15000, shield: 500, attack: 50,
+    requires: [
+      { type: 'building', id: 'barracks', level: 3 },
+      { type: 'building', id: 'armoury',  level: 1 },
+    ],
+  },
+  {
+    id: 'catapult',     // interplanetary missile — heavy siege weapon
+    woodBase: 12000, stoneBase: 3000, grainBase: 1000,
+    hull: 50000, shield: 500, attack: 750,
+    requires: [
+      { type: 'building', id: 'barracks',    level: 4 },
+      { type: 'building', id: 'armoury',     level: 2 },
+      { type: 'research', id: 'swordsmanship', level: 2 },
+    ],
+  },
+  {
+    id: 'beacon',       // solar satellite — watchtower, cheap passive defense
+    woodBase: 1000, stoneBase: 0, grainBase: 0,
+    hull: 500, shield: 1, attack: 10,
+    requires: [
+      { type: 'building', id: 'barracks', level: 1 },
+    ],
+  },
 ]
 
 // All units catalog (for lookup)

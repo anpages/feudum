@@ -13,7 +13,7 @@ const UNIT_KEYS = [
 ]
 const DEFENSE_KEYS = [
   'archer','crossbowman','ballista','trebuchet',
-  'mageTower','dragonCannon','palisade','castleWall',
+  'mageTower','dragonCannon','palisade','castleWall','moat','catapult','beacon',
 ]
 const ALL_UNIT_KEYS = [...UNIT_KEYS, ...DEFENSE_KEYS]
 

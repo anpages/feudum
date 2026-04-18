@@ -9,9 +9,10 @@ export interface BuildingInfo {
   level: number
   costWood: number
   costStone: number
+  costGrain: number
   timeSeconds: number
   requiresMet: boolean
-  requires: { building: string; level: number } | null
+  requires: { type: 'building' | 'research'; id: string; level: number }[]
   inQueue: { level: number; finishesAt: number } | null
 }
 

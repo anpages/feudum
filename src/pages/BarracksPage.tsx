@@ -4,10 +4,10 @@ import { type IconType } from 'react-icons'
 import {
   GiLightFighter, GiHeavyFighter, GiMountedKnight, GiKnightBanner,
   GiCrossedSwords, GiSiegeTower, GiBattleMech, GiDragonHead,
-  GiTrade, GiCaravan, GiCampingTent, GiVulture, GiSpyglass,
+  GiTrade, GiCaravan, GiCampingTent, GiVulture, GiSpyglass, GiLighthouse,
   GiArcher, GiCrossbow, GiBallista, GiTrebuchet,
   GiCrystalBall, GiLuciferCannon, GiPalisade, GiDefensiveWall,
-  GiWoodPile, GiStoneBlock, GiWheat,
+  GiWrench, GiCatapult, GiWoodPile, GiStoneBlock, GiWheat,
 } from 'react-icons/gi'
 import { useQueryClient } from '@tanstack/react-query'
 import { Card } from '@/components/ui/Card'
@@ -44,6 +44,9 @@ const UNIT_META: Record<string, { name: string; Icon: IconType; description: str
   dragonCannon: { Icon: GiLuciferCannon, name: 'Cañón de Dragón',      description: 'La defensa más devastadora.' },
   palisade:     { Icon: GiPalisade,      name: 'Empalizada',            description: 'Cúpula de escudo pequeña.' },
   castleWall:   { Icon: GiDefensiveWall, name: 'Muralla del Castillo',  description: 'Cúpula de escudo grande.' },
+  moat:         { Icon: GiWrench,        name: 'Foso',                  description: 'Trinchera alrededor del castillo que ralentiza atacantes.' },
+  catapult:     { Icon: GiCatapult,      name: 'Catapulta',             description: 'Arma de asedio pesada que destruye unidades enemigas.' },
+  beacon:       { Icon: GiLighthouse,    name: 'Atalaya',               description: 'Torre de vigilancia pasiva y defensa ligera.' },
 }
 
 // ── Countdown hook ────────────────────────────────────────────────────────────

@@ -4,7 +4,9 @@ import { type IconType } from 'react-icons'
 import {
   GiLogging, GiMining, GiGranary, GiWindmill,
   GiAnvil, GiGearHammer, GiMedievalBarracks, GiSpellBook,
-  GiWoodPile, GiStoneBlock,
+  GiWoodPile, GiStoneBlock, GiWheat,
+  GiWoodBeam, GiBrickWall, GiGrain, GiChurch,
+  GiMagicGate, GiScrollUnfurled, GiShieldReflect,
 } from 'react-icons/gi'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
@@ -19,14 +21,24 @@ import { RequirementsList } from '@/components/ui/RequirementsList'
 // ── Static metadata ───────────────────────────────────────────────────────────
 
 const BUILDING_META: Record<string, { name: string; description: string; Icon: IconType; produces: string | null }> = {
-  sawmill:        { name: 'Aserradero',           Icon: GiLogging,         produces: 'Madera',    description: 'Tala los bosques del reino para producir madera sin cesar.' },
-  quarry:         { name: 'Cantera',              Icon: GiMining,          produces: 'Piedra',    description: 'Extrae bloques de piedra de las colinas circundantes.' },
-  grainFarm:      { name: 'Granja',               Icon: GiGranary,         produces: 'Grano',     description: 'Cultiva extensos campos de trigo y cebada para la población.' },
-  windmill:       { name: 'Molino de Viento',     Icon: GiWindmill,        produces: 'Población', description: 'Aumenta la capacidad máxima de población del reino.' },
-  workshop:       { name: 'Taller',               Icon: GiAnvil,           produces: null,        description: 'Mecánicos expertos reducen los tiempos de toda construcción.' },
-  engineersGuild: { name: 'Gremio de Ingenieros', Icon: GiGearHammer,      produces: null,        description: 'El pináculo de la ingeniería medieval. Acelera la construcción exponencialmente.' },
-  barracks:       { name: 'Cuartel',              Icon: GiMedievalBarracks,produces: null,        description: 'Entrena guerreros y defensores para proteger el reino.' },
-  academy:        { name: 'Academia',             Icon: GiSpellBook,       produces: null,        description: 'Centro de saber donde se desarrollan nuevas tecnologías.' },
+  // Production
+  sawmill:        { name: 'Aserradero',            Icon: GiLogging,          produces: 'Madera',       description: 'Tala los bosques del reino para producir madera sin cesar.' },
+  quarry:         { name: 'Cantera',               Icon: GiMining,           produces: 'Piedra',       description: 'Extrae bloques de piedra de las colinas circundantes.' },
+  grainFarm:      { name: 'Granja',                Icon: GiGranary,          produces: 'Grano',        description: 'Cultiva extensos campos de trigo y cebada para la población.' },
+  windmill:       { name: 'Molino de Viento',      Icon: GiWindmill,         produces: 'Población',    description: 'Aumenta la capacidad máxima de población del reino.' },
+  cathedral:      { name: 'Catedral',              Icon: GiChurch,           produces: 'Grano extra',  description: 'La bendición de la catedral aumenta las cosechas del reino.' },
+  // Storage
+  granary:        { name: 'Granero de Madera',     Icon: GiWoodBeam,         produces: null,           description: 'Almacena más madera. Cada nivel amplía la capacidad exponencialmente.' },
+  stonehouse:     { name: 'Casa de Piedra',        Icon: GiBrickWall,        produces: null,           description: 'Bóvedas de roca que guardan tu reserva de piedra.' },
+  silo:           { name: 'Silo',                  Icon: GiGrain,            produces: null,           description: 'Almacén de grano que evita la pérdida de cosechas.' },
+  // Utility
+  workshop:       { name: 'Taller',                Icon: GiAnvil,            produces: null,           description: 'Mecánicos expertos reducen los tiempos de toda construcción.' },
+  engineersGuild: { name: 'Gremio de Ingenieros',  Icon: GiGearHammer,       produces: null,           description: 'El pináculo de la ingeniería medieval. Acelera la construcción exponencialmente.' },
+  barracks:       { name: 'Cuartel',               Icon: GiMedievalBarracks, produces: null,           description: 'Entrena guerreros y defensores para proteger el reino.' },
+  academy:        { name: 'Academia',              Icon: GiSpellBook,        produces: null,           description: 'Centro de saber donde se desarrollan nuevas tecnologías.' },
+  alchemistTower: { name: 'Torre del Alquimista',  Icon: GiMagicGate,        produces: 'Piedra extra', description: 'Los alquimistas purifican minerales y aceleran la investigación.' },
+  ambassadorHall: { name: 'Salón de Embajadores',  Icon: GiScrollUnfurled,   produces: null,           description: 'Red diplomática que reducirá los tiempos de desplazamiento de ejércitos.' },
+  armoury:        { name: 'Armería',               Icon: GiShieldReflect,    produces: null,           description: 'Requisito para construir defensas avanzadas.' },
 }
 
 // ── Countdown hook ────────────────────────────────────────────────────────────
@@ -94,7 +106,7 @@ export function BuildingsPage() {
           {buildings.map((b, i) => {
             const meta = BUILDING_META[b.id]
             if (!meta) return null
-            const canAfford = resources.wood >= b.costWood && resources.stone >= b.costStone
+            const canAfford = resources.wood >= b.costWood && resources.stone >= b.costStone && resources.grain >= (b.costGrain ?? 0)
             return (
               <BuildingCard
                 key={b.id}
@@ -167,6 +179,7 @@ function BuildingCard({ building, meta, kingdom, canAfford, isUpgrading, onUpgra
       <div className="flex items-center gap-4 text-xs">
         <CostItem icon={<GiWoodPile size={13} />}   value={building.costWood}  affordable={inQueue || canAfford} />
         <CostItem icon={<GiStoneBlock size={13} />} value={building.costStone} affordable={inQueue || canAfford} />
+        {(building.costGrain ?? 0) > 0 && <CostItem icon={<GiWheat size={13} />} value={building.costGrain} affordable={inQueue || canAfford} />}
         <div className="flex items-center gap-1 ml-auto text-ink-muted/60">
           <Clock size={10} />
           <span className="font-body">{formatDuration(building.timeSeconds)}</span>
@@ -182,7 +195,7 @@ function BuildingCard({ building, meta, kingdom, canAfford, isUpgrading, onUpgra
       ) : !building.requiresMet ? (
         <div className="mt-auto">
           <RequirementsList
-            requires={building.requires ? [{ type: 'building', id: building.requires.building, level: building.requires.level }] : []}
+            requires={building.requires ?? []}
             kingdom={kingdom}
           />
         </div>

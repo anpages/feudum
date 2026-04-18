@@ -22,6 +22,9 @@ export const UNIT_STATS = {
   dragonCannon: { hull: 10000,  shield: 300,   attack: 3000,   type: 'defense' },
   palisade:     { hull: 2000,   shield: 2000,  attack: 1,      type: 'defense' },
   castleWall:   { hull: 5500,   shield: 10000, attack: 1,      type: 'defense' },
+  moat:         { hull: 1500,   shield: 500,   attack: 50,     type: 'defense' },
+  catapult:     { hull: 5000,   shield: 500,   attack: 750,    type: 'defense' },
+  beacon:       { hull: 50,     shield: 1,     attack: 10,     type: 'defense' },
 }
 
 // rapid fire[attacker][defender] = shots guaranteed before re-roll
