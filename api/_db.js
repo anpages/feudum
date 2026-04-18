@@ -52,8 +52,6 @@ export const kingdoms = pgTable('kingdoms', {
   grain:           real('grain').default(500).notNull(),
   grainProduction: real('grain_production').default(0).notNull(),
   grainCapacity:   real('grain_capacity').default(10000).notNull(),
-  populationUsed:  integer('population_used').default(0).notNull(),
-  populationMax:   integer('population_max').default(0).notNull(),
   lastResourceUpdate: integer('last_resource_update').default(0).notNull(),
 
   sawmill:        integer('sawmill').default(0).notNull(),

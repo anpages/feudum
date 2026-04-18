@@ -129,7 +129,6 @@ export default async function handler(req, res) {
     woodProduction:     0,
     stoneProduction:    0,
     grainProduction:    0,
-    populationUsed:     0,
     lastResourceUpdate: now,
   }))
 

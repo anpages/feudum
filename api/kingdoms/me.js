@@ -7,12 +7,6 @@ import {
   sawmillEnergy, quarryEnergy, grainFarmEnergy,
 } from '../lib/buildings.js'
 
-const MOBILE_UNIT_KEYS = [
-  'squire','knight','paladin','warlord','grandKnight',
-  'siegeMaster','warMachine','dragonKnight',
-  'merchant','caravan','colonist','scavenger','scout',
-]
-
 /**
  * Compute hourly production rates applying:
  *   - energy balance (windmill + cathedral vs sawmill + quarry + grainFarm)
@@ -108,10 +102,9 @@ export default async function handler(req, res) {
   ])
   if (!kingdom) return res.status(404).json({ error: 'Reino no encontrado' })
 
-  const eff            = effectiveProduction(kingdom, researchRow, cfg, userRow?.characterClass)
-  const now            = Math.floor(Date.now() / 1000)
-  const elapsed        = Math.max(0, now - kingdom.lastResourceUpdate) / 3600
-  const populationUsed = MOBILE_UNIT_KEYS.reduce((s, k) => s + (kingdom[k] ?? 0), 0)
+  const eff     = effectiveProduction(kingdom, researchRow, cfg, userRow?.characterClass)
+  const now     = Math.floor(Date.now() / 1000)
+  const elapsed = Math.max(0, now - kingdom.lastResourceUpdate) / 3600
 
   if (elapsed > 0) {
     const wood  = Math.min(kingdom.wood  + eff.wood  * elapsed, kingdom.woodCapacity)
@@ -119,7 +112,7 @@ export default async function handler(req, res) {
     const grain = Math.min(kingdom.grain + eff.grain * elapsed, kingdom.grainCapacity)
 
     const [updated] = await db.update(kingdoms)
-      .set({ wood, stone, grain, populationUsed, lastResourceUpdate: now, updatedAt: new Date() })
+      .set({ wood, stone, grain, lastResourceUpdate: now, updatedAt: new Date() })
       .where(eq(kingdoms.id, kingdom.id))
       .returning()
 
@@ -130,15 +123,8 @@ export default async function handler(req, res) {
     })
   }
 
-  if (populationUsed !== kingdom.populationUsed) {
-    await db.update(kingdoms)
-      .set({ populationUsed, updatedAt: new Date() })
-      .where(eq(kingdoms.id, kingdom.id))
-  }
-
   return res.json({
     ...kingdom,
-    populationUsed,
     woodProduction: eff.wood, stoneProduction: eff.stone, grainProduction: eff.grain,
     energyProduced: eff.energyProd, energyConsumed: eff.energyCons,
   })

@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Users, LogOut, Menu, ChevronDown, Castle, UserRound, Zap } from 'lucide-react'
+import { LogOut, Menu, ChevronDown, Castle, UserRound, Zap } from 'lucide-react'
 import { GiWoodPile, GiStoneBlock, GiWheat, GiCastle } from 'react-icons/gi'
 import {
   useKingdom,
@@ -77,14 +77,7 @@ export function ResourceBar({ onMenuToggle }: Props) {
           cap={kingdom?.grainCapacity}
           rate={kingdom?.grainProduction}
         />
-        <div className="hidden md:flex resource-pill items-center gap-1.5">
-          <Users size={11} className="text-ink-muted/70" />
-          <span className="font-ui text-xs tabular-nums text-ink-mid">
-            {formatResource(kingdom?.populationUsed ?? 0)}
-            <span className="text-ink-muted/50 mx-0.5">/</span>
-            {formatResource(kingdom?.populationMax ?? 0)}
-          </span>
-        </div>
+        <EnergyPill kingdom={kingdom as Record<string, unknown> | null | undefined} />
         <div
           className={`hidden lg:flex resource-pill items-center gap-1.5 ${(user?.ether ?? 0) === 0 ? 'opacity-30' : ''}`}
           title="Éter arcano — se obtiene en expediciones y se gasta acelerando colas o cambiando clase"
@@ -190,6 +183,28 @@ function KingdomSelector({ kingdomName }: { kingdomName?: string }) {
           ))}
         </div>
       )}
+    </div>
+  )
+}
+
+// ── Energy pill ───────────────────────────────────────────────────────────────
+
+function EnergyPill({ kingdom }: { kingdom: Record<string, unknown> | null | undefined }) {
+  const produced = (kingdom?.energyProduced as number | undefined) ?? 0
+  const consumed = (kingdom?.energyConsumed as number | undefined) ?? 0
+  if (produced === 0 && consumed === 0) return null
+  const ok = produced >= consumed
+  return (
+    <div
+      className="hidden md:flex resource-pill items-center gap-1.5"
+      title={`Energía: ${formatResource(produced)} producida / ${formatResource(consumed)} consumida${!ok ? ' — déficit: minas reducidas' : ''}`}
+    >
+      <Zap size={11} className={ok ? 'text-forest-light' : 'text-crimson'} />
+      <span className={`font-ui text-xs tabular-nums ${ok ? 'text-forest-light' : 'text-crimson'}`}>
+        {formatResource(produced)}
+        <span className="text-ink-muted/40 mx-0.5">/</span>
+        <span className="text-ink-muted">{formatResource(consumed)}</span>
+      </span>
     </div>
   )
 }
