@@ -329,18 +329,56 @@ Import from `@/components/ui` (barrel export).
 - [x] Colonize: creates new kingdom row at target slot
 - [x] Battle reports + spy reports stored as messages for attacker and defender
 
-### Phase 10 — Rankings & Polish (partial)
-- [x] `GET /api/rankings` — top players sorted by points (sum of resource columns)
+### Phase 10 — Rankings & Polish ✅
+- [x] `GET /api/rankings` — top players sorted by points (calcPoints with all 15 buildings)
 - [x] Rankings page UI
-- [x] Messages system: battle reports, spy reports; MessagesPage with detail panel
+- [x] Messages system: battle reports, spy reports, player-to-player; MessagesPage with detail panel
 - [x] Toast notifications on queue completion (buildings, research, units)
 - [x] 404 page
 - [x] Profile page: username editing, account info (`GET/PATCH /api/users/me`)
 - [x] Debris fields displayed on map slots
-- [ ] **Points system**: points field in kingdoms never updated — needs increment on upgrade/train
-- [ ] **Research combat bonuses**: `weapons`/`shielding`/`armor` levels not applied in `battle.js`
-- [ ] **Colony management UI**: colonized kingdoms not selectable; `kingdoms/me` always returns first kingdom
-- [ ] **Mission result display**: colonize/scavenge result not shown in ArmiesPage MissionRow
-- [ ] **Player-to-player messages**: only automated reports exist, no manual messaging
-- [ ] **Server settings**: economy speed, universe size hardcoded
-- [ ] **Mobile layout pass**: responsive design exists but untested on real devices
+- [x] Research combat bonuses: swordsmanship/armoury/fortification applied in battle.js
+- [x] Colony management: `kingdoms/me?id=X`, `GET /api/kingdoms`, KingdomSelector in ResourceBar
+- [x] Mission result display: colonize/scavenge/pillage shown in ArmiesPage MissionRow
+- [x] Server settings: ECONOMY_SPEED, UNIVERSE.* via env vars in `api/lib/config.js`
+- [x] Mobile layout: MapPage panel order, ArmiesPage mission selector, SlotRow responsive
+
+### Phase 11 — New Missions ✅
+- [x] Pillage mission: NPC-only quick raid, loot via cargo capacity, small casualty rate
+- [x] MapPage: "Saquear" button for NPC slots; Transport hidden vs NPCs
+
+### Phase 12 — Deployment Mission (pending)
+- [ ] **Deployment** (`DeploymentMission` in OGame ref) — move units to own colony, one-way (no return)
+  - Only valid target: own kingdom (different slot)
+  - Units added to destination on arrival, no return trip
+  - Simple: no battle, no loot
+
+### Phase 13 — Expeditions (pending)
+- [ ] **Expedition** (`ExpeditionMission` in OGame ref) — exploration with random encounters
+  - Target: empty slot beyond map edge (special coord e.g. slot 16)
+  - Outcomes: resources found, units found, nothing, pirates attack, trader, dark matter
+  - Scales with fleet size and `exploration` research level
+
+### Phase 14 — Missiles (pending)
+- [ ] **Missile strikes** (`MissileMission` in OGame ref) — interplanetary missiles
+  - Requires `trebuchet` defense (already exists as Trebuchet) as interceptors
+  - New unit type: `ballistic` missile (one-way, no return)
+  - Range: `impulse_drive` equivalent research level × 5 − 1 regions
+  - Targets defenses only, no unit damage
+
+### Phase 15 — Alliances (pending)
+- [ ] **Alliance system** (`AllianceController` in OGame ref)
+  - DB tables: `alliances`, `alliance_members`
+  - Create/join/leave/disband alliance
+  - Alliance tag, description, member list
+  - Alliance rankings (sum of member points)
+  - Alliance chat (message thread per alliance)
+  - ACS Defend mission: send fleet to defend ally kingdom
+
+### Phase 16 — Social & Polish (pending)
+- [ ] **Real-time notifications** — Server-Sent Events for new messages/arrivals
+- [ ] **Buddy system** — add friends, see online status
+- [ ] **Player notes** — private notes per player
+- [ ] **Improved NPC espionage** — varied data (random troops, detection events)
+- [ ] **Research speed bonus** — `horsemanship`/`cartography` applied to travel time calc
+- [ ] **Moon system** — spawn moon on large battles; jump gates between moons (late-game)

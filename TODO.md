@@ -6,52 +6,82 @@
 
 ## 🔴 Bugs activos (rompen funcionalidad)
 
-- [x] **Resultado colonize/scavenge no se muestra en ArmiesPage** — añadidos casos colonize y scavenge en MissionRow; tipo `result` ampliado en useArmies.ts
+- [x] **Resultado colonize/scavenge no se muestra en ArmiesPage** — añadidos casos en MissionRow
 - [x] **Import innecesario en `api/armies/recall.js`** — eliminado import de `kingdoms`
 - [x] **Selector de misión desbalanceado** — cambiado a grid de 5 columnas con texto compacto
+- [x] **Rankings devolvía puntos incorrectos** — `calcPoints` ahora recibe todos los campos del reino (innerJoin con `db.select()`)
 
 ---
 
 ## 🟠 Mecánicas incompletas (afectan gameplay)
 
-- [x] **Sistema de puntos** — `calcPoints` ya lo calcula dinámicamente en rankings. Corregido: `points.js` ahora incluye los 15 edificios (faltaban 7) y suma el coste de grano; mapa ahora muestra puntos reales (antes hardcodeado a 0)
-- [x] **Bonificaciones de investigación en combate** — ya estaban aplicadas: `swordsmanship`→ataque, `armoury`→escudo, `fortification`→casco en `battle.js`
-- [x] **Investigación afectando producción** — `dragonlore` (plasma_technology) da +1%/+0.66%/+0.33% de producción por nivel; aplicado en `kingdoms/me.js` al calcular el tick y en la respuesta; `_db.js` ahora tiene todos los campos de research (los battle bonuses ya eran correctos)
-- [x] **Gestión de colonias** — `GET /api/kingdoms` lista todos los reinos del usuario; `kingdoms/me?id=X` cambia el reino activo; `KingdomSelector` en ResourceBar (dropdown con todos los reinos, solo visible si hay >1)
+- [x] **Sistema de puntos** — `calcPoints` incluye los 15 edificios + coste de grano
+- [x] **Bonificaciones de investigación en combate** — swordsmanship/armoury/fortification en battle.js
+- [x] **Investigación afectando producción** — dragonlore +1%/+0.66%/+0.33% por nivel
+- [x] **Gestión de colonias** — selector en ResourceBar, `kingdoms/me?id=X`, `GET /api/kingdoms`
+- [x] **Pillaje contra NPCs** — misión rápida sin motor de batalla completo, loot por capacidad de carga
+- [ ] **Velocidad de viaje por investigación** — `horsemanship` (velocidad unidades) y `cartography` (reducción distancia) no se aplican en `api/lib/speed.js`
+- [ ] **Reparación de defensas post-batalla** — `repairDefenses()` existe pero no se llama en el caso de derrota del atacante
 
 ---
 
 ## 🟡 UX / Pulido
 
-- [x] **Mensajes manuales entre jugadores** — ComposePanel + useSendMessage conectados; botón Responder pre-rellena el campo "Para"
-- [x] **Revisión layout móvil** — MapPage: panel detalle sube al top en móvil; SlotRow: gap/padding reducidos; ArmiesPage: selector de misión grid-cols-3 en móvil
-- [x] **Ajustes de servidor** — `api/lib/config.js` expone `ECONOMY_SPEED`, `UNIVERSE.*` via env vars (`ECONOMY_SPEED`, `UNIVERSE_REALMS`, `UNIVERSE_REGIONS`, `UNIVERSE_SLOTS`)
-- [ ] **Importar `Tent` desde lucide vs disponibilidad** — ya verificado que existe, pero confirmar visualmente en producción que el icono de colonize se ve bien en todos los contextos
+- [x] **Mensajes manuales entre jugadores** — ComposePanel + useSendMessage; botón Responder pre-rellena "Para"
+- [x] **Revisión layout móvil** — MapPage, SlotRow, ArmiesPage responsivos
+- [x] **Ajustes de servidor** — `api/lib/config.js` expone ECONOMY_SPEED y UNIVERSE.* via env vars
+- [ ] **Confirmar icono Tent en producción** — verificar que el icono de colonize se ve bien
 
 ---
 
-## 🔵 Features nuevas (post-fase 10)
+## 🔵 Features nuevas — Misiones
 
-- [x] **Rankings con puntos reales** — depende de que el sistema de puntos esté implementado
-- [ ] **Notificaciones en tiempo real** — actualmente todo es polling. Considerar Server-Sent Events para mensajes nuevos
-- [ ] **Espionaje contra NPCs mejorado** — ahora es básico (datos fijos por seed); podría ser más variado
-- [x] **Pillar (pillage) misión** — tipo de misión que solo saquea sin batalla completa (para NPCs débiles)
-- [ ] **Alianzas** — tabla `alliances`, miembros, chat de alianza
+- [x] **Pillaje** — misión NPC-only, saqueo rápido sin batalla (fase 11)
+- [ ] **Despliegue** — mover tropas a colonia propia sin retorno; solo válido contra reino propio (fácil)
+- [ ] **Expedición** — exploración con encuentros aleatorios (recursos, tropas, piratas, mercader); escala con `exploration`
+- [ ] **Misiles** — ataque de un solo sentido contra defensas; rango basado en nivel de investigación; requiere nuevo tipo de unidad
+
+---
+
+## 🔵 Features nuevas — Alianzas
+
+- [ ] **Tablas DB** — `alliances`, `alliance_members`
+- [ ] **API** — crear/unirse/salir/disolver alianza; listar miembros; ranking de alianzas
+- [ ] **Chat de alianza** — hilo de mensajes por alianza
+- [ ] **ACS Defend** — misión de defensa coordinada: enviar ejército a defender reino aliado
+- [ ] **UI** — página de alianza, tag visible en rankings y mapa
+
+---
+
+## 🔵 Features nuevas — Social
+
+- [ ] **Notificaciones en tiempo real** — Server-Sent Events para mensajes nuevos / llegada de ejércitos
+- [ ] **Sistema de amigos** — añadir/eliminar amigos, ver estado
+- [ ] **Notas privadas** — notas por jugador (como en OGame)
+- [ ] **Espionaje NPC mejorado** — datos variados por seed (tropas distintas, eventos de detección)
+
+---
+
+## 🔵 Features nuevas — Endgame
+
+- [ ] **Sistema de luna** — probabilidad de spawn al ganar batallas grandes; jump gates entre lunas (complejidad alta)
 
 ---
 
 ## ✅ Completado (referencia rápida)
 
-- Fases 1–9 del roadmap completas (ver CLAUDE.md para detalle)
+- Fases 1–11 del roadmap completas (ver CLAUDE.md para detalle)
 - Auth (login/registro/logout con JWT propio)
 - 15 edificios con colas, costes, requisitos y efectos
-- Investigación completa con árbol de requisitos
-- 13 unidades + 11 defensas con stats OGame
+- Investigación completa (16 techs, árbol de requisitos, efectos de producción y combate)
+- 13 unidades + 11 defensas con stats OGame (rapid-fire, escudos, loot, escombros corregidos)
 - Mapa con NPCs deterministas, escombros por slot, panel de detalle con acciones
-- Misiones: ataque, transporte, espionaje, colonización, recolección, retirada
-- Motor de batalla (rapid-fire, escudos, loot, escombros)
-- Sistema de mensajes (informes de batalla, espionaje)
-- Rankings
+- Misiones: ataque, transporte, espionaje, colonización, recolección, pillaje, retirada
+- Motor de batalla (rapid-fire, escudos, loot, escombros, reparación defensas)
+- Sistema de mensajes (informes de batalla, espionaje, mensajes manuales)
+- Rankings con puntos reales
+- Gestión de colonias (selector de reino activo)
 - Perfil de usuario (edición de username)
 - Toasts de finalización de cola
 - Página 404
+- Ajustes de servidor via env vars
