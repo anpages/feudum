@@ -6,7 +6,7 @@ function getSecret() {
   return new TextEncoder().encode(s)
 }
 
-export async function signToken(userId: number): Promise<string> {
+export async function signToken(userId) {
   return new SignJWT({ sub: String(userId) })
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
@@ -14,7 +14,7 @@ export async function signToken(userId: number): Promise<string> {
     .sign(getSecret())
 }
 
-export async function verifyToken(token: string): Promise<number | null> {
+export async function verifyToken(token) {
   try {
     const { payload } = await jwtVerify(token, getSecret())
     return payload.sub ? parseInt(payload.sub) : null

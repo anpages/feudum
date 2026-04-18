@@ -1,14 +1,13 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { eq } from 'drizzle-orm'
 import { db, users } from '../../../db'
-import { signToken } from '../../lib/jwt'
-import { setSessionCookie } from '../../lib/handler'
+import { signToken } from '../../lib/jwt.js'
+import { setSessionCookie } from '../../lib/handler.js'
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export default async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).end()
 
-  const code        = req.query.code as string
-  const redirectUri = req.query.redirectUri as string
+  const code        = req.query.code
+  const redirectUri = req.query.redirectUri
   if (!code || !redirectUri) return res.status(400).json({ error: 'missing_params' })
 
   console.log('[oauth] exchanging code for token...')
@@ -18,8 +17,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body:    new URLSearchParams({
       code,
-      client_id:     process.env.GOOGLE_CLIENT_ID!,
-      client_secret: process.env.GOOGLE_CLIENT_SECRET!,
+      client_id:     process.env.GOOGLE_CLIENT_ID,
+      client_secret: process.env.GOOGLE_CLIENT_SECRET,
       redirect_uri:  redirectUri,
       grant_type:    'authorization_code',
     }),
@@ -32,7 +31,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(400).json({ error: 'token_exchange' })
   }
 
-  const { access_token } = await tokenRes.json() as { access_token: string }
+  const { access_token } = await tokenRes.json()
 
   const profileRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
     headers: { Authorization: `Bearer ${access_token}` },
@@ -40,9 +39,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   if (!profileRes.ok) return res.status(400).json({ error: 'profile_fetch' })
 
-  const profile = await profileRes.json() as {
-    sub: string; email: string; name: string; picture?: string
-  }
+  const profile = await profileRes.json()
   console.log('[oauth] profile:', profile.email)
 
   let [user] = await db

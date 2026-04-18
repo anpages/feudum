@@ -1,9 +1,8 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { db, users } from '../../db'
 import { eq } from 'drizzle-orm'
-import { getSessionUserId } from '../lib/handler'
+import { getSessionUserId } from '../lib/handler.js'
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export default async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).end()
 
   const userId = await getSessionUserId(req)

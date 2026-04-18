@@ -1,17 +1,16 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { eq } from 'drizzle-orm'
 import { db, users, kingdoms, research } from '../../db'
-import { getSessionUserId } from '../lib/handler'
+import { getSessionUserId } from '../lib/handler.js'
 
 const NICKNAME_RE = /^[a-zA-Z0-9_]{3,20}$/
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end()
 
   const userId = await getSessionUserId(req)
   if (!userId) return res.status(401).json({ error: 'unauthenticated' })
 
-  const { nickname } = req.body as { nickname?: string }
+  const { nickname } = req.body
   console.log('[nickname] body:', req.body, 'nickname:', nickname)
   if (!nickname || !NICKNAME_RE.test(nickname)) {
     console.log('[nickname] invalid_nickname')
@@ -47,7 +46,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .select({ realm: kingdoms.realm, region: kingdoms.region, slot: kingdoms.slot })
       .from(kingdoms)
     const takenSet = new Set(taken.map(p => `${p.realm}:${p.region}:${p.slot}`))
-    let position: { realm: number; region: number; slot: number } | null = null
+    let position = null
     outer: for (let realm = 1; realm <= 5; realm++)
       for (let region = 1; region <= 10; region++)
         for (let slot = 1; slot <= 15; slot++)
