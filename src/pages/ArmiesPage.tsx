@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Send, Shield, Swords, Eye, Package, ChevronLeft, ChevronRight, Loader2, ArrowLeft, Trophy, Skull } from 'lucide-react'
+import { Send, Shield, Swords, Eye, Package, ChevronLeft, ChevronRight, Loader2, ArrowLeft, Trophy, Skull, Pickaxe } from 'lucide-react'
 import { type IconType } from 'react-icons'
 import {
   GiLightFighter, GiHeavyFighter, GiMountedKnight, GiKnightBanner,
   GiCrossedSwords, GiSiegeTower, GiBattleMech, GiDragonHead,
   GiTrade, GiCaravan, GiCampingTent, GiVulture, GiSpyglass,
+  GiWoodPile, GiStoneBlock,
 } from 'react-icons/gi'
 import { useQueryClient } from '@tanstack/react-query'
 import { Card } from '@/components/ui/Card'
@@ -357,35 +358,54 @@ function MissionRow({ mission, onEnd }: { mission: ArmyMission; onEnd: () => voi
         </div>
       )}
 
-      {/* Loot / result */}
+      {/* Battle result */}
       {hasResult && (
-        <div className="flex items-center gap-3 pt-1 border-t border-gold/10">
-          {result?.outcome === 'victory' && (
-            <>
-              <Trophy size={11} className="text-gold shrink-0" />
-              <span className="font-body text-xs text-ink-muted">
-                Botín:&nbsp;
-                {result.lootWood  ? `🪵 ${formatResource(result.lootWood)}  ` : ''}
-                {result.lootStone ? `🪨 ${formatResource(result.lootStone)} ` : ''}
-                {result.lootGrain ? `🌾 ${formatResource(result.lootGrain)}` : ''}
-                {!result.lootWood && !result.lootStone && !result.lootGrain ? 'nada' : ''}
-              </span>
-            </>
-          )}
+        <div className="pt-1 border-t border-gold/10 space-y-1.5">
+          {result?.outcome === 'victory' && (() => {
+            const loot   = result.loot   ?? { wood: 0, stone: 0, grain: 0 }
+            const debris = result.debris ?? { wood: 0, stone: 0 }
+            return (
+              <div className="flex items-center gap-3 flex-wrap">
+                <Trophy size={11} className="text-gold shrink-0" />
+                <span className="font-ui text-xs font-semibold text-gold">Victoria · {result.rounds} rondas</span>
+                {(loot.wood > 0 || loot.stone > 0 || loot.grain > 0) && (
+                  <span className="font-body text-xs text-ink-muted flex items-center gap-2">
+                    {loot.wood  > 0 && <span className="flex items-center gap-0.5"><GiWoodPile  size={11} className="text-ink-muted/60" /> {formatResource(loot.wood)}</span>}
+                    {loot.stone > 0 && <span className="flex items-center gap-0.5"><GiStoneBlock size={11} className="text-ink-muted/60" /> {formatResource(loot.stone)}</span>}
+                    {loot.grain > 0 && <span>🌾 {formatResource(loot.grain)}</span>}
+                  </span>
+                )}
+                {(debris.wood > 0 || debris.stone > 0) && (
+                  <span className="font-body text-xs text-ink-muted/60 flex items-center gap-1">
+                    <Pickaxe size={10} />
+                    {debris.wood  > 0 && <span><GiWoodPile  size={10} className="inline" /> {formatResource(debris.wood)}</span>}
+                    {debris.stone > 0 && <span><GiStoneBlock size={10} className="inline" /> {formatResource(debris.stone)}</span>}
+                    escombros
+                  </span>
+                )}
+              </div>
+            )
+          })()}
           {result?.outcome === 'defeat' && (
-            <>
+            <div className="flex items-center gap-2">
               <Skull size={11} className="text-crimson shrink-0" />
-              <span className="font-body text-xs text-crimson">Ejército destruido</span>
-            </>
+              <span className="font-ui text-xs font-semibold text-crimson">Derrota · {result.rounds} rondas</span>
+            </div>
+          )}
+          {result?.outcome === 'draw' && (
+            <div className="flex items-center gap-2">
+              <Shield size={11} className="text-ink-muted shrink-0" />
+              <span className="font-ui text-xs font-semibold text-ink-muted">Empate · {result.rounds} rondas</span>
+            </div>
           )}
           {result?.delivered === true && (
-            <span className="font-body text-xs text-forest">✓ Recursos entregados</span>
+            <span className="font-body text-xs text-forest">Recursos entregados</span>
           )}
           {result?.delivered === false && (
             <span className="font-body text-xs text-ink-muted">{result.reason ?? 'No entregado'}</span>
           )}
           {result?.type === 'spy' && (
-            <span className="font-body text-xs text-ink-muted">🔍 {result.message}</span>
+            <span className="font-body text-xs text-ink-muted">{result.message}</span>
           )}
         </div>
       )}

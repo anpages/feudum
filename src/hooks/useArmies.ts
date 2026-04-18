@@ -18,9 +18,11 @@ export interface ArmyMission {
   result: {
     type: string
     outcome?: string
-    lootWood?: number
-    lootStone?: number
-    lootGrain?: number
+    rounds?: number
+    loot?: { wood: number; stone: number; grain: number }
+    debris?: { wood: number; stone: number }
+    lostAtk?: Record<string, number>
+    lostDef?: Record<string, number>
     delivered?: boolean
     reason?: string
     message?: string

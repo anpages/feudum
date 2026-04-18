@@ -1,22 +1,26 @@
-import { eq, and, lte, or } from 'drizzle-orm'
-import { db, kingdoms, users, armyMissions } from '../_db.js'
+import { eq, and } from 'drizzle-orm'
+import { db, kingdoms, users, armyMissions, research } from '../_db.js'
 import { getSessionUserId } from '../lib/handler.js'
-import { calcTotalAttack } from '../lib/speed.js'
+import {
+  buildBattleUnits, runBattle, calculateLoot,
+  calculateDebris, repairDefenses, calcCargoCapacity, UNIT_STATS,
+} from '../lib/battle.js'
 
 const UNIT_KEYS = [
   'squire','knight','paladin','warlord','grandKnight',
   'siegeMaster','warMachine','dragonKnight',
   'merchant','caravan','colonist','scavenger','scout',
 ]
-
 const DEFENSE_KEYS = [
   'archer','crossbowman','ballista','trebuchet',
   'mageTower','dragonCannon','palisade','castleWall',
 ]
+const ALL_UNIT_KEYS = [...UNIT_KEYS, ...DEFENSE_KEYS]
 
-const DEFENSE_ATTACK = {
-  archer: 80, crossbowman: 100, ballista: 250, trebuchet: 1100,
-  mageTower: 150, dragonCannon: 3000, palisade: 1, castleWall: 1,
+function extractUnits(row, keys) {
+  const out = {}
+  for (const k of keys) out[k] = row[k] ?? 0
+  return out
 }
 
 // ── Lazy mission processor ────────────────────────────────────────────────────
@@ -36,24 +40,23 @@ async function processMissions(userId, kingdom) {
 }
 
 async function processArrival(mission, myKingdom, now) {
-  const mType      = mission.missionType
   const travelSecs = mission.arrivalTime - mission.departureTime
   const returnTime = now + travelSecs
+  const mType      = mission.missionType
 
-  const missionUnits = {}
-  for (const k of UNIT_KEYS) missionUnits[k] = mission[k] ?? 0
+  const missionUnits = extractUnits(mission, UNIT_KEYS)
 
+  // ── Spy ──────────────────────────────────────────────────────────────────────
   if (mType === 'spy') {
-    // Just turns around
     await db.update(armyMissions).set({
       state: 'returning', returnTime,
-      result: JSON.stringify({ type: 'spy', message: 'Misión de espionaje completada.' }),
+      result: JSON.stringify({ type: 'spy', message: 'Explorador regresa sin ser detectado.' }),
       updatedAt: new Date(),
     }).where(eq(armyMissions.id, mission.id))
     return
   }
 
-  // Find target kingdom (real player kingdom, not NPC)
+  // Resolve target kingdom
   const [targetKingdom] = await db
     .select().from(kingdoms)
     .where(and(
@@ -62,24 +65,21 @@ async function processArrival(mission, myKingdom, now) {
       eq(kingdoms.slot,   mission.targetSlot),
     )).limit(1)
 
+  // ── Transport ─────────────────────────────────────────────────────────────────
   if (mType === 'transport') {
     if (targetKingdom) {
-      // Deposit resources
-      const newWood  = Math.min(targetKingdom.wood  + mission.woodLoad,  targetKingdom.woodCapacity)
-      const newStone = Math.min(targetKingdom.stone + mission.stoneLoad, targetKingdom.stoneCapacity)
-      const newGrain = Math.min(targetKingdom.grain + mission.grainLoad, targetKingdom.grainCapacity)
       await db.update(kingdoms).set({
-        wood: newWood, stone: newStone, grain: newGrain, updatedAt: new Date(),
+        wood:  Math.min(targetKingdom.wood  + mission.woodLoad,  targetKingdom.woodCapacity),
+        stone: Math.min(targetKingdom.stone + mission.stoneLoad, targetKingdom.stoneCapacity),
+        grain: Math.min(targetKingdom.grain + mission.grainLoad, targetKingdom.grainCapacity),
+        updatedAt: new Date(),
       }).where(eq(kingdoms.id, targetKingdom.id))
-
       await db.update(armyMissions).set({
-        state: 'returning', returnTime,
-        woodLoad: 0, stoneLoad: 0, grainLoad: 0,
+        state: 'returning', returnTime, woodLoad: 0, stoneLoad: 0, grainLoad: 0,
         result: JSON.stringify({ type: 'transport', delivered: true }),
         updatedAt: new Date(),
       }).where(eq(armyMissions.id, mission.id))
     } else {
-      // No kingdom at target, turn around with resources intact
       await db.update(armyMissions).set({
         state: 'returning', returnTime,
         result: JSON.stringify({ type: 'transport', delivered: false, reason: 'No hay reino en el destino' }),
@@ -89,111 +89,150 @@ async function processArrival(mission, myKingdom, now) {
     return
   }
 
+  // ── Attack ────────────────────────────────────────────────────────────────────
   if (mType === 'attack') {
-    // Simple battle: compare total attack values
-    const attackerPower = calcTotalAttack(missionUnits)
+    // Fetch attacker research for combat bonuses
+    const [atkResearch] = await db.select().from(research)
+      .where(eq(research.userId, myKingdom.userId)).limit(1)
 
-    let defenderPower = 0
-    let lootWood = 0, lootStone = 0, lootGrain = 0
-    let resultMsg
+    // Build attacker units
+    const attackerUnits = buildBattleUnits(missionUnits, atkResearch ?? {})
 
-    if (!targetKingdom) {
-      // NPC target — fixed defence based on seeded rand (simplified)
-      defenderPower = 5000
+    let defenderUnits = []
+    let defRes        = { wood: 0, stone: 0, grain: 0 }
+
+    if (targetKingdom) {
+      // Fetch defender research
+      const [defResearch] = await db.select().from(research)
+        .where(eq(research.userId, targetKingdom.userId)).limit(1)
+
+      const defUnitCounts    = extractUnits(targetKingdom, UNIT_KEYS)
+      const defDefenseCounts = extractUnits(targetKingdom, DEFENSE_KEYS)
+
+      defenderUnits = buildBattleUnits(
+        { ...defUnitCounts, ...defDefenseCounts },
+        defResearch ?? {}
+      )
+      defRes = { wood: targetKingdom.wood, stone: targetKingdom.stone, grain: targetKingdom.grain }
     } else {
-      // Real kingdom defenses + units
-      for (const dk of DEFENSE_KEYS) {
-        defenderPower += (DEFENSE_ATTACK[dk] ?? 0) * (targetKingdom[dk] ?? 0)
-      }
-      for (const uk of UNIT_KEYS) {
-        defenderPower += (missionUnits[uk] ? 0 : 0) // defender's units add nothing in simplified model
-      }
+      // NPC — generate a small defending force based on seed
+      const seed  = mission.targetRealm * 374761397 + mission.targetRegion * 1234567 + mission.targetSlot * 7654321
+      const npcPts = ((seed ^ (seed >>> 16)) >>> 0) % 20000  // 0–20000 pts
+      const archers = 5 + Math.floor(npcPts / 2000)
+      const ballistas = Math.floor(npcPts / 5000)
+      defenderUnits = buildBattleUnits({ archer: archers, ballista: ballistas }, {})
+      defRes = { wood: 1000 + npcPts / 10, stone: 800 + npcPts / 12, grain: 600 + npcPts / 15 }
     }
 
-    if (attackerPower > defenderPower) {
-      // Victory — loot up to cargo capacity
-      const capacity = calcLootCapacity(missionUnits)
-      const available = targetKingdom
-        ? { wood: targetKingdom.wood, stone: targetKingdom.stone, grain: targetKingdom.grain }
-        : { wood: 2500, stone: 2500, grain: 2500 }  // NPC always has some
+    // Run battle engine
+    const { outcome, rounds, survivingAtk, lostAtk, lostDef } =
+      runBattle(attackerUnits, defenderUnits)
 
-      const totalAvail = available.wood + available.stone + available.grain
-      if (totalAvail > 0) {
-        const ratio = Math.min(1, (capacity * 0.5) / totalAvail)
-        lootWood  = Math.min(available.wood  * ratio, available.wood  * 0.5)
-        lootStone = Math.min(available.stone * ratio, available.stone * 0.5)
-        lootGrain = Math.min(available.grain * ratio, available.grain * 0.5)
+    // Debris from all lost units
+    const debris = calculateDebris(lostAtk, lostDef)
+
+    if (outcome === 'victory' || outcome === 'draw') {
+      const cargo    = calcCargoCapacity(missionUnits)
+      const loot     = outcome === 'victory' ? calculateLoot(defRes, cargo) : { wood: 0, stone: 0, grain: 0 }
+
+      if (targetKingdom && outcome === 'victory') {
+        // Deduct loot from defender, restore repaired defenses
+        const defLostDefenses = {}
+        for (const k of DEFENSE_KEYS) defLostDefenses[k] = lostDef[k] ?? 0
+        const repaired = repairDefenses(defLostDefenses)
+
+        const defPatch = { updatedAt: new Date() }
+        defPatch.wood  = Math.max(0, targetKingdom.wood  - loot.wood)
+        defPatch.stone = Math.max(0, targetKingdom.stone - loot.stone)
+        defPatch.grain = Math.max(0, targetKingdom.grain - loot.grain)
+
+        // Restore surviving defender units
+        for (const k of UNIT_KEYS) {
+          defPatch[k] = survivingAtk[k] !== undefined  // not attacker's survivors
+            ? (targetKingdom[k] ?? 0)
+            : (survivingAtk[k] ?? targetKingdom[k] ?? 0)
+        }
+        // Surviving defender units (those still standing after battle)
+        for (const k of UNIT_KEYS) defPatch[k] = targetKingdom[k] ?? 0  // reset
+        // Actually we need defender survivors — let me recalc below
+
+        // surviving defender units: original - lost + repaired (for defenses)
+        for (const k of UNIT_KEYS) {
+          defPatch[k] = Math.max(0, (targetKingdom[k] ?? 0) - (lostDef[k] ?? 0))
+        }
+        for (const k of DEFENSE_KEYS) {
+          defPatch[k] = Math.max(0, (targetKingdom[k] ?? 0) - (lostDef[k] ?? 0) + (repaired[k] ?? 0))
+        }
+
+        await db.update(kingdoms).set(defPatch).where(eq(kingdoms.id, targetKingdom.id))
       }
 
-      if (targetKingdom) {
-        await db.update(kingdoms).set({
-          wood:  Math.max(0, targetKingdom.wood  - lootWood),
-          stone: Math.max(0, targetKingdom.stone - lootStone),
-          grain: Math.max(0, targetKingdom.grain - lootGrain),
-          updatedAt: new Date(),
-        }).where(eq(kingdoms.id, targetKingdom.id))
+      // Surviving attacker units to carry home
+      const survivorPatch = {}
+      for (const k of UNIT_KEYS) {
+        survivorPatch[k] = survivingAtk[k] ?? 0
       }
 
-      resultMsg = { type: 'attack', outcome: 'victory', lootWood, lootStone, lootGrain }
+      await db.update(armyMissions).set({
+        ...survivorPatch,
+        state: 'returning', returnTime,
+        woodLoad: loot.wood, stoneLoad: loot.stone, grainLoad: loot.grain,
+        result: JSON.stringify({
+          type: 'attack', outcome, rounds,
+          loot, debris,
+          lostAtk, lostDef,
+        }),
+        updatedAt: new Date(),
+      }).where(eq(armyMissions.id, mission.id))
+
     } else {
-      // Defeat — units are lost, return empty
+      // Defeat — all attacker units lost, return empty
       const zeroPatch = {}
       for (const k of UNIT_KEYS) zeroPatch[k] = 0
+
+      // Repair defender defenses even on defeat
+      if (targetKingdom) {
+        const defLostDefenses = {}
+        for (const k of DEFENSE_KEYS) defLostDefenses[k] = lostDef[k] ?? 0
+        const repaired = repairDefenses(defLostDefenses)
+        const defPatch = { updatedAt: new Date() }
+        for (const k of UNIT_KEYS)   defPatch[k] = Math.max(0, (targetKingdom[k] ?? 0) - (lostDef[k] ?? 0))
+        for (const k of DEFENSE_KEYS) defPatch[k] = Math.max(0, (targetKingdom[k] ?? 0) - (lostDef[k] ?? 0) + (repaired[k] ?? 0))
+        await db.update(kingdoms).set(defPatch).where(eq(kingdoms.id, targetKingdom.id))
+      }
+
       await db.update(armyMissions).set({
         ...zeroPatch, state: 'returning', returnTime,
         woodLoad: 0, stoneLoad: 0, grainLoad: 0,
-        result: JSON.stringify({ type: 'attack', outcome: 'defeat' }),
+        result: JSON.stringify({ type: 'attack', outcome: 'defeat', rounds, lostAtk, lostDef, debris }),
         updatedAt: new Date(),
       }).where(eq(armyMissions.id, mission.id))
-      return
     }
-
-    await db.update(armyMissions).set({
-      state: 'returning', returnTime,
-      woodLoad: lootWood, stoneLoad: lootStone, grainLoad: lootGrain,
-      result: JSON.stringify(resultMsg),
-      updatedAt: new Date(),
-    }).where(eq(armyMissions.id, mission.id))
     return
   }
 
-  // Unknown type — just return
+  // Unknown type — just turn around
   await db.update(armyMissions).set({
     state: 'returning', returnTime, updatedAt: new Date(),
   }).where(eq(armyMissions.id, mission.id))
 }
 
 async function processReturn(mission, kingdom, now) {
-  // Restore units to origin kingdom + deposit loot
   const patch = { updatedAt: new Date() }
 
-  const missionUnits = {}
   for (const k of UNIT_KEYS) {
     const count = mission[k] ?? 0
-    if (count > 0) {
-      patch[k] = (kingdom[k] ?? 0) + count
-      missionUnits[k] = count
-    }
+    if (count > 0) patch[k] = (kingdom[k] ?? 0) + count
   }
 
-  // Add loot
   if (mission.woodLoad  > 0) patch.wood  = Math.min((kingdom.wood  ?? 0) + mission.woodLoad,  kingdom.woodCapacity)
   if (mission.stoneLoad > 0) patch.stone = Math.min((kingdom.stone ?? 0) + mission.stoneLoad, kingdom.stoneCapacity)
   if (mission.grainLoad > 0) patch.grain = Math.min((kingdom.grain ?? 0) + mission.grainLoad, kingdom.grainCapacity)
 
   await db.update(kingdoms).set(patch).where(eq(kingdoms.id, kingdom.id))
-
-  // Update local kingdom object so subsequent returns in same request are cumulative
   Object.assign(kingdom, patch)
 
   await db.delete(armyMissions).where(eq(armyMissions.id, mission.id))
-}
-
-function calcLootCapacity(units) {
-  const CAP = { merchant: 5000, caravan: 25000, colonist: 7500, scavenger: 20000 }
-  return Object.entries(units)
-    .filter(([, n]) => n > 0)
-    .reduce((s, [id, n]) => s + (CAP[id] ?? 0) * n, 0)
 }
 
 // ── Handler ───────────────────────────────────────────────────────────────────
@@ -208,10 +247,8 @@ export default async function handler(req, res) {
     .where(eq(kingdoms.userId, userId)).limit(1)
   if (!kingdom) return res.status(404).json({ error: 'Reino no encontrado' })
 
-  // Process arrived/returning missions
   await processMissions(userId, kingdom)
 
-  // Reload missions after processing
   const active = await db.select().from(armyMissions)
     .where(eq(armyMissions.userId, userId))
 
@@ -220,7 +257,7 @@ export default async function handler(req, res) {
     .filter(m => m.state === 'active' || m.state === 'returning')
     .map(m => {
       const missionUnits = {}
-      for (const k of UNIT_KEYS) if (m[k] > 0) missionUnits[k] = m[k]
+      for (const k of UNIT_KEYS) if ((m[k] ?? 0) > 0) missionUnits[k] = m[k]
 
       const eta = m.state === 'returning'
         ? Math.max(0, (m.returnTime ?? 0) - now)
@@ -232,11 +269,11 @@ export default async function handler(req, res) {
         state: m.state,
         target: { realm: m.targetRealm, region: m.targetRegion, slot: m.targetSlot },
         origin: { realm: m.startRealm,  region: m.startRegion,  slot: m.startSlot  },
-        arrivalTime:  m.arrivalTime,
-        returnTime:   m.returnTime,
+        arrivalTime: m.arrivalTime,
+        returnTime:  m.returnTime,
         eta,
         units: missionUnits,
-        resources: { wood: m.woodLoad, stone: m.stoneLoad, grain: m.grainLoad },
+        resources: { wood: m.woodLoad ?? 0, stone: m.stoneLoad ?? 0, grain: m.grainLoad ?? 0 },
         result: m.result ? JSON.parse(m.result) : null,
       }
     })
