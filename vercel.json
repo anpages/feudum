@@ -3,7 +3,7 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "crons": [
-    { "path": "/api/cron/npc-tick", "schedule": "0 * * * *" }
+    { "path": "/api/cron/npc-tick", "schedule": "*/10 * * * *" }
   ],
   "routes": [
     { "src": "/api/(.*)",      "dest": "/api/$1"   },
