@@ -2,7 +2,6 @@ import { eq } from 'drizzle-orm'
 import { db, users, kingdoms } from '../_db.js'
 import { getAdminUserId } from '../lib/admin.js'
 import { UNIVERSE } from '../lib/config.js'
-import { terrainForSlot } from '../lib/terrain.js'
 
 const NPC_FIRST = [
   'Aldric','Berthold','Cedric','Dorian','Edmund','Faolan','Gareth','Hadwin',
@@ -118,7 +117,7 @@ export default async function handler(req, res) {
     userId:             npcUserId,
     name:               npcName(realm, region, slot),
     realm, region, slot,
-    terrain:            terrainForSlot(realm, region, slot),
+    tempAvg:            240 - (slot - 1) * 25,
     isNpc:              true,
     npcLevel:           levels[i],
     wood:               0,
@@ -130,7 +129,6 @@ export default async function handler(req, res) {
     woodProduction:     0,
     stoneProduction:    0,
     grainProduction:    0,
-    populationMax:      0,
     populationUsed:     0,
     lastResourceUpdate: now,
   }))

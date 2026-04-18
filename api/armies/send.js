@@ -156,15 +156,13 @@ export default async function handler(req, res) {
     }
   }
 
-  // ── Calculate travel time (ambassadorHall reduces by 5%/level, max 40%) ──────
+  // ── Calculate travel time ─────────────────────────────────────────────────
   const origin   = { realm: kingdom.realm, region: kingdom.region, slot: kingdom.slot }
   const dest     = { realm: tRealm,        region: tRegion,        slot: tSlot        }
   const isWar        = ['attack', 'pillage', 'spy'].includes(missionType)
   const universeSpeed = isWar ? parseFloat(cfg.fleet_speed_war ?? 1) : parseFloat(cfg.fleet_speed_peaceful ?? 1)
   const distance     = calcDistance(origin, dest)
-  const baseSecs     = calcDuration(distance, units, 100, universeSpeed, researchRow ?? {}, userRow?.characterClass ?? null)
-  const speedBonus   = Math.min(0.40, (kingdom.ambassadorHall ?? 0) * 0.05)
-  const travelSecs   = Math.max(1, Math.round(baseSecs * (1 - speedBonus)))
+  const travelSecs   = calcDuration(distance, units, 100, universeSpeed, researchRow ?? {}, userRow?.characterClass ?? null)
 
   if (travelSecs === 0) {
     return res.status(400).json({ error: 'No se pudo calcular el tiempo de viaje' })

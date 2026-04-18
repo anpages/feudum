@@ -24,12 +24,12 @@ export const BUILDINGS = [
     requires: [],
   },
   {
-    id: 'windmill',        // solar_plant
+    id: 'windmill',        // solar_plant — produces energy
     woodBase: 75, stoneBase: 30, grainBase: 0, factor: 1.5,
     requires: [],
   },
   {
-    id: 'cathedral',       // fusion_reactor — bonus grain production
+    id: 'cathedral',       // fusion_reactor — produces energy (requires alchemy research)
     woodBase: 900, stoneBase: 360, grainBase: 180, factor: 1.8,
     requires: [
       { type: 'building',  id: 'grainFarm', level: 5 },
@@ -76,7 +76,7 @@ export const BUILDINGS = [
     requires: [],
   },
   {
-    id: 'alchemistTower',  // bonus stone production + research speed multiplier
+    id: 'alchemistTower',  // terraformer — increases building field_max (+5/lv + floor(lv/2))
     woodBase: 500, stoneBase: 1000, grainBase: 200, factor: 1.75,
     requires: [
       { type: 'building', id: 'academy', level: 4 },
@@ -84,15 +84,15 @@ export const BUILDINGS = [
     ],
   },
   {
-    id: 'ambassadorHall',  // alliance_depot equivalent — reduces travel time (future)
+    id: 'ambassadorHall',  // alliance_depot — shared resource storage (future alliance feature)
     woodBase: 200, stoneBase: 600, grainBase: 200, factor: 2.0,
     requires: [
       { type: 'building', id: 'academy',       level: 4 },
-      { type: 'building', id: 'alchemistTower',level: 5 },
+      { type: 'building', id: 'alchemistTower', level: 5 },
     ],
   },
   {
-    id: 'armoury',         // missile_silo equivalent — unlocks advanced defenses
+    id: 'armoury',         // missile_silo — unlocks advanced defenses
     woodBase: 200, stoneBase: 400, grainBase: 0, factor: 2.0,
     requires: [{ type: 'building', id: 'barracks', level: 2 }],
   },
@@ -130,20 +130,42 @@ export function stoneProduction(level) {
   return level === 0 ? 0 : 20 * level * Math.pow(1.1, level)
 }
 
-export function grainProduction(level) {
-  return level === 0 ? 0 : 10 * level * Math.pow(1.1, level)
+/**
+ * Grain (deuterium) production including temperature factor.
+ * tempAvg: average temperature for the slot (slot1=240°C, slot15=-110°C).
+ * Cold slots produce significantly more grain — same as OGame deuterium/slot.
+ */
+export function grainProduction(level, tempAvg = 0) {
+  if (level === 0) return 0
+  const tempFactor = Math.max(0.1, 1.44 - 0.004 * tempAvg)
+  return 10 * level * Math.pow(1.1, level) * tempFactor
 }
 
-export function cathedralProduction(level) {
-  return level === 0 ? 0 : 5 * level * Math.pow(1.1, level)
+// ── Energy formulas (per hour at given level) ─────────────────────────────────
+
+/** Windmill (solar_plant): energy production */
+export function windmillEnergy(level) {
+  return level === 0 ? 0 : Math.floor(20 * level * Math.pow(1.1, level))
 }
 
-export function alchemistProduction(level) {
-  return level === 0 ? 0 : 15 * level * Math.pow(1.1, level)
+/** Cathedral (fusion_reactor): energy production; bonus scales with alchemy research */
+export function cathedralEnergy(level, alchemyLevel = 0) {
+  return level === 0 ? 0 : Math.floor(30 * level * Math.pow(1.05 + alchemyLevel * 0.01, level))
 }
 
-export function populationMax(windmillLevel) {
-  return windmillLevel === 0 ? 0 : Math.floor(20 * windmillLevel * Math.pow(1.1, windmillLevel))
+/** Sawmill energy consumption */
+export function sawmillEnergy(level) {
+  return level === 0 ? 0 : Math.floor(10 * level * Math.pow(1.1, level))
+}
+
+/** Quarry energy consumption */
+export function quarryEnergy(level) {
+  return level === 0 ? 0 : Math.floor(10 * level * Math.pow(1.1, level))
+}
+
+/** GrainFarm energy consumption */
+export function grainFarmEnergy(level) {
+  return level === 0 ? 0 : Math.floor(20 * level * Math.pow(1.1, level))
 }
 
 // Storage capacity: 5000 * floor(2.5 * exp(20 * level / 33)) — from OGame reference
@@ -165,27 +187,24 @@ export function buildingRequirementsMet(def, kingdom, research) {
 }
 
 // ── After completing a queue item: apply side-effects to kingdom ──────────────
+// tempAvg required to compute correct grain production with temperature factor
 
 export function applyBuildingEffect(building, newLevel, kingdom = {}) {
   const patch = { [building]: newLevel }
+  const tempAvg = kingdom.tempAvg ?? 0
 
-  // Production recalculated including sibling bonuses
-  const grainFarmLv    = building === 'grainFarm'      ? newLevel : (kingdom.grainFarm      ?? 0)
-  const cathedralLv    = building === 'cathedral'      ? newLevel : (kingdom.cathedral      ?? 0)
-  const quarryLv       = building === 'quarry'         ? newLevel : (kingdom.quarry         ?? 0)
-  const alchemistLv    = building === 'alchemistTower' ? newLevel : (kingdom.alchemistTower ?? 0)
-
-  if (building === 'sawmill')        patch.woodProduction  = woodProduction(newLevel)
-  if (building === 'quarry' || building === 'alchemistTower') {
-    patch.stoneProduction = stoneProduction(quarryLv) + alchemistProduction(alchemistLv)
+  if (building === 'sawmill') {
+    patch.woodProduction = woodProduction(newLevel)
   }
-  if (building === 'grainFarm' || building === 'cathedral') {
-    patch.grainProduction = grainProduction(grainFarmLv) + cathedralProduction(cathedralLv)
+  if (building === 'quarry') {
+    patch.stoneProduction = stoneProduction(newLevel)
   }
-  if (building === 'windmill')       patch.populationMax   = populationMax(newLevel)
-  if (building === 'granary')        patch.woodCapacity    = storageCapacity(newLevel)
-  if (building === 'stonehouse')     patch.stoneCapacity   = storageCapacity(newLevel)
-  if (building === 'silo')           patch.grainCapacity   = storageCapacity(newLevel)
+  if (building === 'grainFarm') {
+    patch.grainProduction = grainProduction(newLevel, tempAvg)
+  }
+  if (building === 'granary')    patch.woodCapacity  = storageCapacity(newLevel)
+  if (building === 'stonehouse') patch.stoneCapacity = storageCapacity(newLevel)
+  if (building === 'silo')       patch.grainCapacity = storageCapacity(newLevel)
 
   return patch
 }

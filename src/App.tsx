@@ -1,9 +1,12 @@
 import { Routes, Route, Navigate, Outlet, useSearchParams } from 'react-router-dom'
 import { GameLayout } from '@/components/layout/GameLayout'
 import { OverviewPage } from '@/features/overview/OverviewPage'
-import { BuildingsPage } from '@/features/buildings/BuildingsPage'
+import { ResourcesPage } from '@/features/resources/ResourcesPage'
+import { ResourceSettingsPage } from '@/features/resources/ResourceSettingsPage'
+import { FacilitiesPage } from '@/features/facilities/FacilitiesPage'
 import { ResearchPage } from '@/features/research/ResearchPage'
 import { BarracksPage } from '@/features/barracks/BarracksPage'
+import { DefensePage } from '@/features/defense/DefensePage'
 import { MapPage } from '@/features/map/MapPage'
 import { ArmiesPage } from '@/features/armies/ArmiesPage'
 import { RankingsPage } from '@/features/rankings/RankingsPage'
@@ -56,9 +59,13 @@ export default function App() {
           <Route element={<GameLayout />}>
             <Route path="/" element={<RootRedirect />} />
             <Route path="/overview" element={<OverviewPage />} />
-            <Route path="/buildings" element={<BuildingsPage />} />
+            <Route path="/resources" element={<ResourcesPage />} />
+            <Route path="/resources/settings" element={<ResourceSettingsPage />} />
+            <Route path="/facilities" element={<FacilitiesPage />} />
+            <Route path="/buildings" element={<Navigate to="/resources" replace />} />
             <Route path="/research" element={<ResearchPage />} />
             <Route path="/barracks" element={<BarracksPage />} />
+            <Route path="/defense" element={<DefensePage />} />
             <Route path="/map" element={<MapPage />} />
             <Route path="/armies" element={<ArmiesPage />} />
             <Route path="/rankings" element={<RankingsPage />} />

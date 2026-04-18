@@ -14,7 +14,7 @@ import { useRankings } from '@/features/rankings/useRankings'
 import { useAuth } from '@/features/auth/useAuth'
 import { formatResource, formatDuration } from '@/lib/format'
 import { label } from '@/lib/labels'
-import { terrainInfo } from '@/lib/terrain'
+import { tempLabel } from '@/lib/terrain'
 import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 
@@ -63,7 +63,7 @@ export function OverviewPage() {
   const activeUnit = allUnits.find(u => !!u.inQueue)
   const hasQueue = !!(activeBuilding || activeResearch || activeUnit)
 
-  const terrain = kingdom ? terrainInfo(kingdom.terrain) : null
+  const tempAvg = (kingdom as Record<string, unknown> | null)?.tempAvg as number | undefined
   const charClass = user?.characterClass ? CLASS_INFO[user.characterClass] : null
 
   if (isLoading) return <OverviewSkeleton />
@@ -91,9 +91,9 @@ export function OverviewPage() {
 
         {/* Tags row */}
         <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-gold/10">
-          {terrain && (
-            <span className={`inline-flex items-center gap-1.5 font-ui text-xs px-2.5 py-1 rounded-full border ${terrain.color} border-current/25 bg-current/5`}>
-              {terrain.emoji} {terrain.label} · {terrain.bonus}
+          {tempAvg !== undefined && (
+            <span className="inline-flex items-center gap-1.5 font-ui text-xs px-2.5 py-1 rounded-full border text-ink-muted/70 border-current/20 bg-current/5">
+              🌡️ {tempLabel(tempAvg)}
             </span>
           )}
           {charClass && (
@@ -118,24 +118,9 @@ export function OverviewPage() {
           <span className="section-heading mb-0">Producción por hora</span>
         </div>
         <div className="grid grid-cols-3 gap-3">
-          <ProductionRow
-            icon={<GiWoodPile size={14} />}
-            label="Madera"
-            rate={kingdom?.woodProduction ?? 0}
-            boosted={terrain?.label === 'Bosque'}
-          />
-          <ProductionRow
-            icon={<GiStoneBlock size={14} />}
-            label="Piedra"
-            rate={kingdom?.stoneProduction ?? 0}
-            boosted={terrain?.label === 'Montaña'}
-          />
-          <ProductionRow
-            icon={<GiWheat size={14} />}
-            label="Grano"
-            rate={kingdom?.grainProduction ?? 0}
-            boosted={terrain?.label === 'Llanura'}
-          />
+          <ProductionRow icon={<GiWoodPile size={14} />} label="Madera" rate={kingdom?.woodProduction ?? 0} />
+          <ProductionRow icon={<GiStoneBlock size={14} />} label="Piedra" rate={kingdom?.stoneProduction ?? 0} />
+          <ProductionRow icon={<GiWheat size={14} />} label="Grano" rate={kingdom?.grainProduction ?? 0} />
         </div>
       </section>
 
@@ -147,7 +132,7 @@ export function OverviewPage() {
           {/* Kingdom stats */}
           <Card className="p-4 space-y-3">
             <p className="font-ui text-[0.6rem] text-ink-muted/60 uppercase tracking-widest">Desarrollo</p>
-            <StatRow icon={<GiAnvil size={13} />} label="Edificios" value={`${buildingCount}`} note="construidos" onClick={() => navigate('/buildings')} />
+            <StatRow icon={<GiAnvil size={13} />} label="Edificios" value={`${buildingCount}`} note="construidos" onClick={() => navigate('/resources')} />
             <StatRow icon={<GiSpellBook size={13} />} label="Investigaciones" value={`${researchCount}`} note="descubiertas" onClick={() => navigate('/research')} />
           </Card>
 
@@ -155,7 +140,7 @@ export function OverviewPage() {
           <Card className="p-4 space-y-3">
             <p className="font-ui text-[0.6rem] text-ink-muted/60 uppercase tracking-widest">Fuerza militar</p>
             <StatRow icon={<GiCrossedSwords size={13} />} label="Combate" value={combatCount.toLocaleString()} note="tropas" onClick={() => navigate('/barracks')} />
-            <StatRow icon={<Shield size={13} />} label="Defensa" value={defenseCount.toLocaleString()} note="unidades" onClick={() => navigate('/barracks')} />
+            <StatRow icon={<Shield size={13} />} label="Defensa" value={defenseCount.toLocaleString()} note="unidades" onClick={() => navigate('/defense')} />
           </Card>
 
           {/* Active missions */}
@@ -220,16 +205,15 @@ export function OverviewPage() {
 // ── Sub-components ────────────────────────────────────────────────────────────
 
 function ProductionRow({
-  icon, label, rate, boosted,
-}: { icon: ReactNode; label: string; rate: number; boosted: boolean }) {
+  icon, label, rate,
+}: { icon: ReactNode; label: string; rate: number }) {
   return (
     <Card className="p-3">
       <div className="flex items-center gap-1.5 mb-2">
-        <span className={boosted ? 'text-gold' : 'text-gold/50'}>{icon}</span>
+        <span className="text-gold/50">{icon}</span>
         <span className="font-ui text-[0.6rem] font-semibold uppercase tracking-wide text-ink-muted truncate">
           {label}
         </span>
-        {boosted && <Badge variant="gold" className="shrink-0 !text-[0.55rem] !px-1 !py-0">+25%</Badge>}
       </div>
       <p className="font-ui text-lg tabular-nums font-semibold text-ink leading-none">
         {formatResource(rate)}

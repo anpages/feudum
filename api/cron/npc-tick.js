@@ -8,7 +8,8 @@ import { db, users, kingdoms, armyMissions, messages, debrisFields } from '../_d
 import { applyResourceTick } from '../lib/tick.js'
 import { BUILDINGS, buildCost, buildTime, applyBuildingEffect } from '../lib/buildings.js'
 import { ECONOMY_SPEED, NPC_AGGRESSION, NPC_ATTACK_INTERVAL_HOURS } from '../lib/config.js'
-import { NPC_BUILD_PRIORITY } from '../lib/terrain.js'
+// NPC build priority: windmill first (energy), then balanced production
+const NPC_BUILD_PRIORITY = ['windmill', 'sawmill', 'grainFarm', 'quarry', 'barracks', 'workshop']
 import { calcDistance, calcDuration } from '../lib/speed.js'
 import {
   buildBattleUnits, runBattle, calculateLoot,
@@ -73,8 +74,7 @@ async function growNpc(kingdom, cfg) {
   const npcLevel = kingdom.npcLevel || 1
   const targets  = BUILDING_TARGETS[npcLevel]
   const speed    = parseFloat(cfg.economy_speed ?? ECONOMY_SPEED)
-  const terrainPriority = NPC_BUILD_PRIORITY[kingdom.terrain] ?? NPC_BUILD_PRIORITY.balanced
-  const buildingPriority = [...terrainPriority, 'windmill', 'barracks', 'workshop']
+  const buildingPriority = NPC_BUILD_PRIORITY
 
   let { wood, stone, grain } = kingdom
   let patch = {}

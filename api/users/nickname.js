@@ -61,6 +61,7 @@ export default async function handler(req, res) {
       realm:              position.realm,
       region:             position.region,
       slot:               position.slot,
+      tempAvg:            240 - (position.slot - 1) * 25,
       lastResourceUpdate: Math.floor(Date.now() / 1000),
     })
     await db.insert(research).values({ userId })

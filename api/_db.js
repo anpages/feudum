@@ -100,7 +100,13 @@ export const kingdoms = pgTable('kingdoms', {
   moat:         integer('moat').default(0).notNull(),
   catapult:     integer('catapult').default(0).notNull(),
 
-  terrain:  varchar('terrain', { length: 20 }).default('balanced').notNull(),
+  tempAvg:          integer('temp_avg').default(0).notNull(),
+  sawmillPercent:   integer('sawmill_percent').default(10).notNull(),
+  quarryPercent:    integer('quarry_percent').default(10).notNull(),
+  grainFarmPercent: integer('grain_farm_percent').default(10).notNull(),
+  windmillPercent:  integer('windmill_percent').default(10).notNull(),
+  cathedralPercent: integer('cathedral_percent').default(10).notNull(),
+
   isNpc:    boolean('is_npc').default(false).notNull(),
   npcLevel: integer('npc_level').default(0).notNull(),
 

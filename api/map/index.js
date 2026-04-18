@@ -65,14 +65,13 @@ export default async function handler(req, res) {
         isPlayer:  k.userId === userId,
         isNpc:     k.isNpc,
         npcLevel:  k.isNpc ? k.npcLevel : undefined,
-        terrain:   k.terrain,
         points,
         isEmpty:   false,
         debris,
       }
     }
 
-    return { slot, kingdomId: null, name: null, username: null, isPlayer: false, isNpc: false, points: 0, terrain: null, isEmpty: true, debris }
+    return { slot, kingdomId: null, name: null, username: null, isPlayer: false, isNpc: false, points: 0, isEmpty: true, debris }
   })
 
   return res.json({

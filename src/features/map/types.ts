@@ -7,7 +7,6 @@ export interface MapSlot {
   isNpc: boolean
   points: number
   isEmpty: boolean
-  terrain: string | null
   debris: { wood: number; stone: number } | null
 }
 

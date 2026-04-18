@@ -76,6 +76,7 @@ interface Props {
   onAccelerate?: () => void
   isAccelerating?: boolean
   dimmed: boolean
+  animClass?: string
 }
 
 export function BuildingCard({
@@ -89,6 +90,7 @@ export function BuildingCard({
   onAccelerate,
   isAccelerating,
   dimmed,
+  animClass = '',
 }: Props) {
   const countdown = useCountdown(building.inQueue?.finishesAt ?? null, onCountdownEnd)
   const inQueue = !!building.inQueue && countdown > 0
@@ -96,7 +98,7 @@ export function BuildingCard({
 
   return (
     <Card
-      className={`p-5 flex flex-col gap-4 transition-opacity ${dimmed ? 'opacity-50 hover:opacity-80' : ''}`}
+      className={`p-5 flex flex-col gap-4 transition-opacity ${dimmed ? 'opacity-50 hover:opacity-80' : ''} ${animClass}`}
     >
       {/* Header */}
       <div className="flex items-start gap-3">

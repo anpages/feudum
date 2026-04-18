@@ -3,7 +3,9 @@ import { X, ShieldAlert } from 'lucide-react'
 import { type IconType } from 'react-icons'
 import {
   GiCastle,
-  GiAnvil,
+  GiFactory,
+  GiVillage,
+  GiShield,
   GiSpellBook,
   GiMedievalBarracks,
   GiCrossedSwords,
@@ -21,14 +23,16 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { to: '/overview', label: 'Reino', Icon: GiCastle },
-  { to: '/buildings', label: 'Construcción', Icon: GiAnvil },
-  { to: '/research', label: 'Academia', Icon: GiSpellBook },
-  { to: '/barracks', label: 'Cuartel', Icon: GiMedievalBarracks },
-  { to: '/armies', label: 'Ejércitos', Icon: GiCrossedSwords },
-  { to: '/map', label: 'Mapa', Icon: GiTreasureMap },
-  { to: '/rankings', label: 'Rankings', Icon: GiTrophy },
-  { to: '/messages', label: 'Mensajes', Icon: GiScrollUnfurled },
+  { to: '/overview',    label: 'Reino',        Icon: GiCastle },
+  { to: '/resources',   label: 'Recursos',     Icon: GiFactory },
+  { to: '/facilities',  label: 'Instalaciones',Icon: GiVillage },
+  { to: '/research',    label: 'Academia',     Icon: GiSpellBook },
+  { to: '/barracks',    label: 'Cuartel',      Icon: GiMedievalBarracks },
+  { to: '/defense',     label: 'Defensa',      Icon: GiShield },
+  { to: '/armies',      label: 'Ejércitos',    Icon: GiCrossedSwords },
+  { to: '/map',         label: 'Mapa',         Icon: GiTreasureMap },
+  { to: '/rankings',    label: 'Rankings',     Icon: GiTrophy },
+  { to: '/messages',    label: 'Mensajes',     Icon: GiScrollUnfurled },
 ]
 
 interface Props {

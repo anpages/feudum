@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback, type ReactNode } from 'react'
-import { Sword, Shield, Heart, Clock, Loader2, Plus, Minus, X, Lightbulb, Zap } from 'lucide-react'
+import { useState, useCallback } from 'react'
+import { X, Lightbulb } from 'lucide-react'
 import { type IconType } from 'react-icons'
 import {
   GiLightFighter,
@@ -15,169 +15,37 @@ import {
   GiCampingTent,
   GiVulture,
   GiSpyglass,
-  GiLighthouse,
-  GiArcher,
-  GiCrossbow,
-  GiBallista,
-  GiTrebuchet,
-  GiCrystalBall,
-  GiLuciferCannon,
-  GiPalisade,
-  GiDefensiveWall,
-  GiWrench,
-  GiCatapult,
-  GiWoodPile,
-  GiStoneBlock,
-  GiWheat,
 } from 'react-icons/gi'
 import { useQueryClient } from '@tanstack/react-query'
 import { Card } from '@/components/ui/Card'
-import { Button } from '@/components/ui/Button'
-import { Badge } from '@/components/ui/Badge'
 import { useBarracks, useTrainUnit, type UnitInfo } from '@/features/barracks/useBarracks'
 import { useAccelerate } from '@/features/queues/useAccelerate'
 import { useKingdom } from '@/features/kingdom/useKingdom'
-import { useResearch, type ResearchInfo } from '@/features/research/useResearch'
+import { useResearch } from '@/features/research/useResearch'
 import { useResourceTicker } from '@/features/kingdom/useResourceTicker'
-import { formatResource, formatDuration } from '@/lib/format'
-import { RequirementsList } from '@/components/ui/RequirementsList'
+import { UnitCard } from '@/features/barracks/components/UnitCard'
 
 // ── Static metadata ───────────────────────────────────────────────────────────
 
 const UNIT_META: Record<string, { name: string; Icon: IconType; description: string }> = {
-  squire: {
-    Icon: GiLightFighter,
-    name: 'Escudero',
-    description: 'Infantería ligera, rápida y económica.',
-  },
-  knight: {
-    Icon: GiHeavyFighter,
-    name: 'Caballero',
-    description: 'Combatiente pesado con armadura reforzada.',
-  },
-  paladin: {
-    Icon: GiMountedKnight,
-    name: 'Paladín',
-    description: 'Caballería de élite, equilibrio entre velocidad y potencia.',
-  },
-  warlord: {
-    Icon: GiKnightBanner,
-    name: 'Señor de la Guerra',
-    description: 'Comandante de la batalla. Destrucción masiva.',
-  },
-  grandKnight: {
-    Icon: GiCrossedSwords,
-    name: 'Gran Caballero',
-    description: 'Interceptor de alta tecnología.',
-  },
-  siegeMaster: {
-    Icon: GiSiegeTower,
-    name: 'Maestro de Asedio',
-    description: 'Especialista en destruir defensas.',
-  },
-  warMachine: {
-    Icon: GiBattleMech,
-    name: 'Máquina de Guerra',
-    description: 'El destructor más poderoso.',
-  },
-  dragonKnight: {
-    Icon: GiDragonHead,
-    name: 'Caballero Dragón',
-    description: 'La unidad definitiva. Capaz de destruir reinos.',
-  },
-  merchant: { Icon: GiTrade, name: 'Mercader', description: 'Transporte ligero de recursos.' },
-  caravan: {
-    Icon: GiCaravan,
-    name: 'Caravana',
-    description: 'Transporte pesado de alta capacidad.',
-  },
-  colonist: {
-    Icon: GiCampingTent,
-    name: 'Colonista',
-    description: 'Funda nuevos reinos en territorios vacíos.',
-  },
-  scavenger: {
-    Icon: GiVulture,
-    name: 'Carroñero',
-    description: 'Recoge los escombros de batallas.',
-  },
-  scout: {
-    Icon: GiSpyglass,
-    name: 'Explorador',
-    description: 'Espía reinos enemigos sin ser detectado.',
-  },
-  archer: { Icon: GiArcher, name: 'Arquero', description: 'Defensa básica de bajo coste.' },
-  crossbowman: {
-    Icon: GiCrossbow,
-    name: 'Ballestero',
-    description: 'Defensa de rango medio con mayor precisión.',
-  },
-  ballista: { Icon: GiBallista, name: 'Ballista', description: 'Defensa pesada de largo alcance.' },
-  trebuchet: {
-    Icon: GiTrebuchet,
-    name: 'Trebuchet',
-    description: 'Cañón de alta potencia de fuego.',
-  },
-  mageTower: {
-    Icon: GiCrystalBall,
-    name: 'Torre Mágica',
-    description: 'Defensa energética con alto escudo.',
-  },
-  dragonCannon: {
-    Icon: GiLuciferCannon,
-    name: 'Cañón de Dragón',
-    description: 'La defensa más devastadora.',
-  },
-  palisade: { Icon: GiPalisade, name: 'Empalizada', description: 'Cúpula de escudo pequeña.' },
-  castleWall: {
-    Icon: GiDefensiveWall,
-    name: 'Muralla del Castillo',
-    description: 'Cúpula de escudo grande.',
-  },
-  moat: {
-    Icon: GiWrench,
-    name: 'Foso',
-    description: 'Trinchera alrededor del castillo que ralentiza atacantes.',
-  },
-  catapult: {
-    Icon: GiCatapult,
-    name: 'Catapulta',
-    description: 'Arma de asedio pesada que destruye unidades enemigas.',
-  },
-  beacon: {
-    Icon: GiLighthouse,
-    name: 'Atalaya',
-    description: 'Torre de vigilancia pasiva y defensa ligera.',
-  },
-}
-
-// ── Countdown hook ────────────────────────────────────────────────────────────
-
-function useCountdown(finishesAt: number | null, onEnd: () => void) {
-  const [secs, setSecs] = useState(() =>
-    finishesAt ? Math.max(0, finishesAt - Math.floor(Date.now() / 1000)) : 0
-  )
-  useEffect(() => {
-    if (!finishesAt) return
-    let fired = false
-    const tick = () => {
-      const rem = Math.max(0, finishesAt - Math.floor(Date.now() / 1000))
-      setSecs(rem)
-      if (rem === 0 && !fired) {
-        fired = true
-        onEnd()
-      }
-    }
-    tick()
-    const id = setInterval(tick, 1000)
-    return () => clearInterval(id)
-  }, [finishesAt, onEnd])
-  return secs
+  squire:      { Icon: GiLightFighter,  name: 'Escudero',            description: 'Infantería ligera, rápida y económica.' },
+  knight:      { Icon: GiHeavyFighter,  name: 'Caballero',           description: 'Combatiente pesado con armadura reforzada.' },
+  paladin:     { Icon: GiMountedKnight, name: 'Paladín',             description: 'Caballería de élite, equilibrio entre velocidad y potencia.' },
+  warlord:     { Icon: GiKnightBanner,  name: 'Señor de la Guerra',  description: 'Comandante de la batalla. Destrucción masiva.' },
+  grandKnight: { Icon: GiCrossedSwords, name: 'Gran Caballero',      description: 'Interceptor de alta tecnología.' },
+  siegeMaster: { Icon: GiSiegeTower,    name: 'Maestro de Asedio',   description: 'Especialista en destruir defensas.' },
+  warMachine:  { Icon: GiBattleMech,    name: 'Máquina de Guerra',   description: 'El destructor más poderoso.' },
+  dragonKnight:{ Icon: GiDragonHead,    name: 'Caballero Dragón',    description: 'La unidad definitiva. Capaz de destruir reinos.' },
+  merchant:    { Icon: GiTrade,         name: 'Mercader',            description: 'Transporte ligero de recursos.' },
+  caravan:     { Icon: GiCaravan,       name: 'Caravana',            description: 'Transporte pesado de alta capacidad.' },
+  colonist:    { Icon: GiCampingTent,   name: 'Colonista',           description: 'Funda nuevos reinos en territorios vacíos.' },
+  scavenger:   { Icon: GiVulture,       name: 'Carroñero',           description: 'Recoge los escombros de batallas.' },
+  scout:       { Icon: GiSpyglass,      name: 'Explorador',          description: 'Espía reinos enemigos sin ser detectado.' },
 }
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
-type Tab = 'units' | 'support' | 'defenses'
+type Tab = 'units' | 'support'
 
 const BARRACKS_GUIDE_KEY = 'barracks_guide_seen'
 
@@ -205,9 +73,8 @@ export function BarracksPage() {
   if (isLoading) return <BarracksSkeleton />
 
   const TAB_ITEMS: Record<Tab, UnitInfo[]> = {
-    units:    data?.units    ?? [],
-    support:  data?.support  ?? [],
-    defenses: data?.defenses ?? [],
+    units:   data?.units   ?? [],
+    support: data?.support ?? [],
   }
 
   return (
@@ -216,7 +83,7 @@ export function BarracksPage() {
         <span className="section-heading">Ejército</span>
         <h1 className="page-title mt-0.5">Cuartel</h1>
         <p className="font-body text-ink-muted text-sm mt-1.5">
-          Entrena unidades de combate, apoyo y defensas para proteger y expandir tu reino.
+          Entrena unidades de combate y apoyo para proteger y expandir tu reino.
         </p>
       </div>
 
@@ -227,7 +94,7 @@ export function BarracksPage() {
           <div className="flex-1 min-w-0 space-y-1">
             <p className="font-ui text-xs font-semibold text-ink">¿Por dónde empezar?</p>
             <p className="font-body text-xs text-ink-muted leading-relaxed">
-              Entrena <strong className="text-ink">Escuderos</strong> (Combate) para tener tropas de defensa baratas.
+              Entrena <strong className="text-ink">Escuderos</strong> (Combate) para tener tropas baratas.
               Luego un <strong className="text-ink">Explorador</strong> (Apoyo) para espiar reinos vecinos antes de atacar.
             </p>
           </div>
@@ -237,10 +104,10 @@ export function BarracksPage() {
         </div>
       )}
 
-      {/* Tabs — sticky below nav */}
+      {/* Tabs */}
       <div className="sticky top-[100px] z-20 -mx-4 px-4 sm:-mx-6 sm:px-6 py-2 bg-parchment/95 backdrop-blur-sm border-b border-gold/10 anim-fade-up-1">
         <div className="flex gap-1 p-1 bg-parchment-warm rounded-md w-fit">
-          {(['units', 'support', 'defenses'] as Tab[]).map(t => (
+          {(['units', 'support'] as Tab[]).map(t => (
             <button
               key={t}
               onClick={() => setTab(t)}
@@ -250,7 +117,7 @@ export function BarracksPage() {
                   : 'text-ink-muted hover:text-ink'
               }`}
             >
-              {t === 'units' ? 'Combate' : t === 'support' ? 'Apoyo' : 'Defensas'}
+              {t === 'units' ? 'Combate' : 'Apoyo'}
             </button>
           ))}
         </div>
@@ -282,221 +149,6 @@ export function BarracksPage() {
   )
 }
 
-// ── Unit card ─────────────────────────────────────────────────────────────────
-
-function UnitCard({
-  unit,
-  meta,
-  resources,
-  kingdom,
-  research,
-  isTraining,
-  onTrain,
-  onCountdownEnd,
-  onAccelerate,
-  isAccelerating,
-  animClass,
-}: {
-  unit: UnitInfo
-  meta: { name: string; Icon: IconType; description: string }
-  resources: { wood: number; stone: number; grain: number }
-  kingdom?: Record<string, unknown> | null
-  research?: ResearchInfo[] | null
-  isTraining: boolean
-  onTrain: (amount: number) => void
-  onCountdownEnd: () => void
-  onAccelerate?: () => void
-  isAccelerating?: boolean
-  animClass: string
-}) {
-  const [amount, setAmount] = useState(1)
-  const countdown = useCountdown(unit.inQueue?.finishesAt ?? null, onCountdownEnd)
-  const inQueue = !!unit.inQueue && countdown > 0
-
-  const totalWood = unit.woodBase * amount
-  const totalStone = unit.stoneBase * amount
-  const totalGrain = unit.grainBase * amount
-  const canAfford =
-    resources.wood >= totalWood && resources.stone >= totalStone && resources.grain >= totalGrain
-  const totalTime = unit.timePerUnit * amount
-
-  const changeAmount = (delta: number) => setAmount(a => Math.max(1, Math.min(a + delta, 9999)))
-
-  const { Icon } = meta
-
-  return (
-    <Card className={`p-5 flex flex-col gap-4 ${animClass}`}>
-      {/* Header */}
-      <div className="flex items-start gap-3">
-        <div className="w-9 h-9 rounded-lg bg-gold-soft border border-gold/20 flex items-center justify-center shrink-0 mt-0.5">
-          <Icon size={20} className="text-gold-dim" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-start justify-between gap-2">
-            <h3 className="font-ui text-sm font-semibold text-ink">{meta.name}</h3>
-            <Badge variant={unit.count > 0 ? 'gold' : 'stone'} className="shrink-0">
-              {unit.count.toLocaleString()}
-            </Badge>
-          </div>
-          <p className="font-body text-xs text-ink-muted mt-1 leading-relaxed">
-            {meta.description}
-          </p>
-        </div>
-      </div>
-
-      {/* Stats */}
-      {(unit.attack > 0 || unit.shield > 0 || unit.hull > 0) && (
-        <div className="flex items-center gap-3 text-xs">
-          {unit.attack > 0 && (
-            <div className="flex items-center gap-1 text-crimson">
-              <Sword size={10} />
-              <span className="font-ui tabular-nums">{formatResource(unit.attack)}</span>
-            </div>
-          )}
-          {unit.shield > 0 && (
-            <div className="flex items-center gap-1 text-gold-dim">
-              <Shield size={10} />
-              <span className="font-ui tabular-nums">{formatResource(unit.shield)}</span>
-            </div>
-          )}
-          {unit.hull > 0 && (
-            <div className="flex items-center gap-1 text-forest">
-              <Heart size={10} />
-              <span className="font-ui tabular-nums">{formatResource(unit.hull)}</span>
-            </div>
-          )}
-        </div>
-      )}
-
-      <div className="divider">◆</div>
-
-      {/* Cost for current amount */}
-      <div className="flex items-center gap-3 text-xs flex-wrap">
-        {totalWood > 0 && (
-          <CostItem
-            icon={<GiWoodPile size={13} />}
-            value={totalWood}
-            affordable={inQueue || canAfford}
-          />
-        )}
-        {totalStone > 0 && (
-          <CostItem
-            icon={<GiStoneBlock size={13} />}
-            value={totalStone}
-            affordable={inQueue || canAfford}
-          />
-        )}
-        {totalGrain > 0 && (
-          <CostItem
-            icon={<GiWheat size={13} />}
-            value={totalGrain}
-            affordable={inQueue || canAfford}
-          />
-        )}
-        <div className="flex items-center gap-1 ml-auto text-ink-muted/60">
-          <Clock size={10} />
-          <span className="font-body">{formatDuration(totalTime)}</span>
-        </div>
-      </div>
-
-      {/* Action */}
-      {inQueue ? (
-        <div className="mt-auto space-y-2">
-          <div className="flex items-center justify-center gap-2 py-2.5 rounded border border-gold/15 bg-gold-soft text-gold-dim font-ui text-xs font-semibold uppercase tracking-wide">
-            <Loader2 size={12} className="animate-spin" />
-            {unit.inQueue!.amount} unidades ·{' '}
-            {countdown > 0 ? formatDuration(countdown) : 'Finalizando…'}
-          </div>
-          {onAccelerate && (
-            <button
-              onClick={onAccelerate}
-              disabled={isAccelerating}
-              className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded border border-gold/20 font-ui text-xs text-gold-dim hover:bg-gold-soft transition-colors disabled:opacity-40"
-            >
-              {isAccelerating ? <Loader2 size={10} className="animate-spin" /> : <Zap size={10} />}
-              Acelerar · {Math.max(1, Math.ceil(countdown / 600))} Éter
-            </button>
-          )}
-        </div>
-      ) : !unit.requiresMet ? (
-        <div className="mt-auto">
-          <RequirementsList
-            requires={unit.requires}
-            kingdom={kingdom}
-            research={research ? Object.fromEntries(research.map(r => [r.id, r.level])) : {}}
-          />
-        </div>
-      ) : (
-        <div className="mt-auto space-y-2">
-          {/* Amount stepper */}
-          <div className="flex items-center gap-1.5">
-            <button
-              onClick={() => changeAmount(-10)}
-              className="hidden sm:block px-1.5 py-1 rounded border border-gold/20 text-ink-muted hover:bg-parchment-warm text-xs font-ui transition-colors shrink-0"
-            >
-              -10
-            </button>
-            <button
-              onClick={() => changeAmount(-1)}
-              className="p-1.5 rounded border border-gold/20 text-ink-muted hover:bg-parchment-warm transition-colors shrink-0"
-            >
-              <Minus size={11} />
-            </button>
-            <input
-              type="number"
-              min={1}
-              max={9999}
-              value={amount}
-              onChange={e => setAmount(Math.max(1, Math.min(parseInt(e.target.value) || 1, 9999)))}
-              className="flex-1 min-w-0 text-center game-input py-1 text-sm tabular-nums"
-            />
-            <button
-              onClick={() => changeAmount(1)}
-              className="p-1.5 rounded border border-gold/20 text-ink-muted hover:bg-parchment-warm transition-colors shrink-0"
-            >
-              <Plus size={11} />
-            </button>
-            <button
-              onClick={() => changeAmount(10)}
-              className="hidden sm:block px-1.5 py-1 rounded border border-gold/20 text-ink-muted hover:bg-parchment-warm text-xs font-ui transition-colors shrink-0"
-            >
-              +10
-            </button>
-          </div>
-          <Button
-            variant="primary"
-            className="w-full"
-            disabled={!canAfford || isTraining}
-            onClick={() => onTrain(amount)}
-          >
-            {isTraining ? <Loader2 size={11} className="animate-spin" /> : <Sword size={11} />}
-            {canAfford ? `Entrenar ×${amount}` : 'Recursos insuficientes'}
-          </Button>
-        </div>
-      )}
-    </Card>
-  )
-}
-
-function CostItem({
-  icon,
-  value,
-  affordable,
-}: {
-  icon: ReactNode
-  value: number
-  affordable: boolean
-}) {
-  return (
-    <div className="flex items-center gap-1.5">
-      <span className="text-ink-muted/70">{icon}</span>
-      <span className={`font-ui tabular-nums ${affordable ? 'text-ink-mid' : 'text-crimson'}`}>
-        {formatResource(value)}
-      </span>
-    </div>
-  )
-}
-
 // ── Skeleton ──────────────────────────────────────────────────────────────────
 
 function BarracksSkeleton() {
@@ -506,7 +158,7 @@ function BarracksSkeleton() {
         <div className="skeleton h-2.5 w-16" />
         <div className="skeleton h-8 w-32" />
       </div>
-      <div className="skeleton h-9 w-56 rounded-md" />
+      <div className="skeleton h-9 w-40 rounded-md" />
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
         {[...Array(6)].map((_, i) => (
           <Card key={i} className="p-5 space-y-4">

@@ -78,8 +78,13 @@ export const kingdoms = pgTable('kingdoms', {
   moat: integer('moat').default(0).notNull(),                   // anti_ballistic_missile
   catapult: integer('catapult').default(0).notNull(),           // interplanetary_missile
 
-  // ── Terrain ──────────────────────────────────────────────────
-  terrain: varchar('terrain', { length: 20 }).default('balanced').notNull(), // forest|mountain|plains|balanced
+  // ── Temperature & resource settings ─────────────────────────────────────────
+  tempAvg:          integer('temp_avg').default(0).notNull(),
+  sawmillPercent:   integer('sawmill_percent').default(10).notNull(),
+  quarryPercent:    integer('quarry_percent').default(10).notNull(),
+  grainFarmPercent: integer('grain_farm_percent').default(10).notNull(),
+  windmillPercent:  integer('windmill_percent').default(10).notNull(),
+  cathedralPercent: integer('cathedral_percent').default(10).notNull(),
 
   // ── NPC flags ────────────────────────────────────────────────
   isNpc: boolean('is_npc').default(false).notNull(),
