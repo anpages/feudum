@@ -27,39 +27,44 @@ export const UNIT_STATS = {
   beacon:       { hull: 50,     shield: 1,     attack: 10,     type: 'defense' },
 }
 
-// rapid fire[attacker][defender] = shots guaranteed before re-roll
-// chance = 100 - (100 / amount)
+// rapid fire[attacker][defender] = guaranteed extra shots (OGame mapping)
+// chance of another shot = 1 - 1/value  (value=5 → 80% chance of extra shot)
 const RAPID_FIRE = {
   squire:       { scout: 5 },
   knight:       { merchant: 3, scout: 5 },
   paladin:      { squire: 6, knight: 3, merchant: 3, caravan: 3, scout: 5 },
   warlord:      { scout: 5 },
-  grandKnight:  { paladin: 3, warlord: 6 },
+  // grandKnight = battlecruiser: heavy_fighter(4), cruiser(4), battle_ship(7), small/large_cargo(3)
+  grandKnight:  { knight: 4, paladin: 4, warlord: 7, merchant: 3, caravan: 3 },
+  // siegeMaster = bomber: all light defenses
   siegeMaster:  { archer: 20, crossbowman: 20, ballista: 10, trebuchet: 5, mageTower: 10 },
-  warMachine:   { grandKnight: 2 },
+  // warMachine = destroyer: light_laser(10), battlecruiser(2)
+  warMachine:   { crossbowman: 10, grandKnight: 2 },
+  // dragonKnight = deathstar: corrected from OGame reference
   dragonKnight: {
-    squire: 200, knight: 100, paladin: 33, warlord: 30, grandKnight: 30,
-    siegeMaster: 30, warMachine: 5, merchant: 250, caravan: 250, colonist: 250,
-    scavenger: 250, scout: 1250, archer: 200, crossbowman: 200, ballista: 100,
+    squire: 200, knight: 100, paladin: 33, warlord: 30, grandKnight: 15,
+    siegeMaster: 25, warMachine: 5, merchant: 250, caravan: 250, colonist: 250,
+    scavenger: 250, scout: 250, archer: 200, crossbowman: 200, ballista: 100,
     trebuchet: 50, mageTower: 100,
   },
 }
 
-// Unit costs for debris calculation (wood, stone)
+// Unit costs for debris calculation (wood + stone only, matching OGame's metal+crystal basis)
+// Values taken directly from units.js woodBase/stoneBase
 const UNIT_COST = {
-  squire:       { wood: 60,   stone: 0    },
-  knight:       { wood: 150,  stone: 100  },
-  paladin:      { wood: 200,  stone: 150  },
-  warlord:      { wood: 450,  stone: 150  },
-  grandKnight:  { wood: 400,  stone: 200  },
-  siegeMaster:  { wood: 500,  stone: 400  },
-  warMachine:   { wood: 1250, stone: 750  },
-  dragonKnight: { wood: 5000, stone: 4000 },
-  merchant:     { wood: 40,   stone: 20   },
-  caravan:      { wood: 60,   stone: 50   },
-  colonist:     { wood: 200,  stone: 100  },
-  scavenger:    { wood: 200,  stone: 0    },
-  scout:        { wood: 0,    stone: 1000 },
+  squire:       { wood: 3000,    stone: 1000    },
+  knight:       { wood: 6000,    stone: 4000    },
+  paladin:      { wood: 20000,   stone: 7000    },
+  warlord:      { wood: 45000,   stone: 15000   },
+  grandKnight:  { wood: 30000,   stone: 40000   },
+  siegeMaster:  { wood: 50000,   stone: 25000   },
+  warMachine:   { wood: 60000,   stone: 50000   },
+  dragonKnight: { wood: 5000000, stone: 4000000 },
+  merchant:     { wood: 2000,    stone: 2000    },
+  caravan:      { wood: 6000,    stone: 6000    },
+  colonist:     { wood: 10000,   stone: 20000   },
+  scavenger:    { wood: 10000,   stone: 6000    },
+  scout:        { wood: 0,       stone: 1000    },
 }
 
 function applyBonus(base, level) {
