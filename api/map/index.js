@@ -19,19 +19,29 @@ const NPC_EPITHET = [
   'Puño de Hierro','Corazón de León','el Antiguo','el Intrépido',
 ]
 
+// Wang hash — mixes bits thoroughly so nearby inputs diverge wildly
+function wangHash(n) {
+  n = (n ^ 61) ^ (n >>> 16)
+  n = Math.imul(n, 9)
+  n = n ^ (n >>> 4)
+  n = Math.imul(n, 0x27d4eb2d)
+  n = n ^ (n >>> 15)
+  return n >>> 0
+}
+
 function seededRand(seed) {
-  // Simple LCG
-  let s = seed
+  let s = wangHash(seed)
   return () => {
-    s = (s * 1664525 + 1013904223) & 0xffffffff
-    return (s >>> 0) / 0xffffffff
+    s = wangHash(s + 1)
+    return s / 0x100000000
   }
 }
 
 function generateNpc(realm, region, slot) {
-  const seed = realm * 100000 + region * 1000 + slot
+  // Multiply by large primes so adjacent slots produce completely different seeds
+  const seed = realm * 374761397 + region * 1234567 + slot * 7654321
   const rand = seededRand(seed)
-  const occupied = rand() > 0.35  // ~65% of slots have NPC kingdoms
+  const occupied = rand() > 0.70  // ~30% of slots have NPC kingdoms
 
   if (!occupied) return null
 
