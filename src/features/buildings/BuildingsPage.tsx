@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { ChevronDown, Sparkles, X } from 'lucide-react'
 import { type IconType } from 'react-icons'
 import {
@@ -28,6 +28,7 @@ import { useResourceTicker } from '@/features/kingdom/useResourceTicker'
 import { useQueryClient } from '@tanstack/react-query'
 import { BuildingCard, type BuildingMeta } from './components/BuildingCard'
 import type { BuildingInfo } from './types'
+import { toast } from '@/lib/toast'
 
 // ── Static metadata ───────────────────────────────────────────────────────────
 
@@ -230,6 +231,19 @@ export function BuildingsPage() {
     setGuideDismissed(true)
     setGuideOpen(false)
   }
+
+  // Auto-complete guide when all steps are done
+  useEffect(() => {
+    if (guideDismissed || !data?.buildings) return
+    const buildingMap = Object.fromEntries(data.buildings.map(b => [b.id, b]))
+    const allDone = GUIDE_STEPS.every(s => (buildingMap[s.id]?.level ?? 0) >= 1)
+    if (allDone) {
+      localStorage.setItem(GUIDE_STORAGE_KEY, '1')
+      setGuideDismissed(true)
+      setGuideOpen(false)
+      toast.success('¡Base inicial completada! Tu reino está listo para crecer.')
+    }
+  }, [data?.buildings, guideDismissed])
 
   if (isLoading) return <BuildingsSkeleton />
 

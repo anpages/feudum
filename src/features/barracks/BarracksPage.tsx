@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, type ReactNode } from 'react'
-import { Sword, Shield, Heart, Clock, Loader2, Plus, Minus } from 'lucide-react'
+import { Sword, Shield, Heart, Clock, Loader2, Plus, Minus, X, Lightbulb } from 'lucide-react'
 import { type IconType } from 'react-icons'
 import {
   GiLightFighter,
@@ -178,8 +178,11 @@ function useCountdown(finishesAt: number | null, onEnd: () => void) {
 
 type Tab = 'units' | 'support' | 'defenses'
 
+const BARRACKS_GUIDE_KEY = 'barracks_guide_seen'
+
 export function BarracksPage() {
   const [tab, setTab] = useState<Tab>('units')
+  const [guideVisible, setGuideVisible] = useState(() => !localStorage.getItem(BARRACKS_GUIDE_KEY))
   const qc = useQueryClient()
   const { data, isLoading, refetch } = useBarracks()
   const { data: kingdom } = useKingdom()
@@ -192,11 +195,16 @@ export function BarracksPage() {
     qc.invalidateQueries({ queryKey: ['kingdom'] })
   }, [refetch, qc])
 
+  function dismissGuide() {
+    localStorage.setItem(BARRACKS_GUIDE_KEY, '1')
+    setGuideVisible(false)
+  }
+
   if (isLoading) return <BarracksSkeleton />
 
   const TAB_ITEMS: Record<Tab, UnitInfo[]> = {
-    units: data?.units ?? [],
-    support: data?.support ?? [],
+    units:    data?.units    ?? [],
+    support:  data?.support  ?? [],
     defenses: data?.defenses ?? [],
   }
 
@@ -210,21 +218,40 @@ export function BarracksPage() {
         </p>
       </div>
 
-      {/* Tabs */}
-      <div className="flex gap-1 p-1 bg-parchment-warm rounded-md w-fit anim-fade-up-1">
-        {(['units', 'support', 'defenses'] as Tab[]).map(t => (
-          <button
-            key={t}
-            onClick={() => setTab(t)}
-            className={`px-4 py-1.5 rounded text-xs font-ui font-semibold uppercase tracking-wide transition-all ${
-              tab === t
-                ? 'bg-white text-gold shadow-sm border border-gold/15'
-                : 'text-ink-muted hover:text-ink'
-            }`}
-          >
-            {t === 'units' ? 'Combate' : t === 'support' ? 'Apoyo' : 'Defensas'}
+      {/* Beginner guide */}
+      {guideVisible && (
+        <div className="anim-fade-up-1 flex items-start gap-3 px-4 py-3.5 rounded-lg border border-gold/20 bg-gold-soft">
+          <Lightbulb size={15} className="text-gold shrink-0 mt-0.5" />
+          <div className="flex-1 min-w-0 space-y-1">
+            <p className="font-ui text-xs font-semibold text-ink">¿Por dónde empezar?</p>
+            <p className="font-body text-xs text-ink-muted leading-relaxed">
+              Entrena <strong className="text-ink">Escuderos</strong> (Combate) para tener tropas de defensa baratas.
+              Luego un <strong className="text-ink">Explorador</strong> (Apoyo) para espiar reinos vecinos antes de atacar.
+            </p>
+          </div>
+          <button onClick={dismissGuide} className="shrink-0 p-1 rounded text-ink-muted hover:text-ink transition-colors">
+            <X size={13} />
           </button>
-        ))}
+        </div>
+      )}
+
+      {/* Tabs — sticky below nav */}
+      <div className="sticky top-[100px] z-20 -mx-4 px-4 sm:-mx-6 sm:px-6 py-2 bg-parchment/95 backdrop-blur-sm border-b border-gold/10 anim-fade-up-1">
+        <div className="flex gap-1 p-1 bg-parchment-warm rounded-md w-fit">
+          {(['units', 'support', 'defenses'] as Tab[]).map(t => (
+            <button
+              key={t}
+              onClick={() => setTab(t)}
+              className={`px-4 py-1.5 rounded text-xs font-ui font-semibold uppercase tracking-wide transition-all ${
+                tab === t
+                  ? 'bg-white text-gold shadow-sm border border-gold/15'
+                  : 'text-ink-muted hover:text-ink'
+              }`}
+            >
+              {t === 'units' ? 'Combate' : t === 'support' ? 'Apoyo' : 'Defensas'}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
