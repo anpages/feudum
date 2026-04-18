@@ -9,7 +9,7 @@ const UNIT_KEYS = [
   'merchant','caravan','colonist','scavenger','scout',
 ]
 
-const MISSION_TYPES = ['attack', 'transport', 'spy', 'colonize', 'scavenge']
+const MISSION_TYPES = ['attack', 'transport', 'spy', 'colonize', 'scavenge', 'pillage']
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end()
@@ -93,6 +93,19 @@ export default async function handler(req, res) {
     }
     if (units.colonist === 0) {
       return res.status(400).json({ error: 'Necesitas al menos un Colonista para colonizar' })
+    }
+  }
+
+  // Pillage missions: combat units only, NPC target only
+  if (missionType === 'pillage') {
+    const [occupant] = await db.select({ id: kingdoms.id }).from(kingdoms)
+      .where(and(
+        eq(kingdoms.realm,  tRealm),
+        eq(kingdoms.region, tRegion),
+        eq(kingdoms.slot,   tSlot),
+      )).limit(1)
+    if (occupant) {
+      return res.status(400).json({ error: 'El pillaje solo puede hacerse contra reinos NPC' })
     }
   }
 

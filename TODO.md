@@ -32,10 +32,10 @@
 
 ## 🔵 Features nuevas (post-fase 10)
 
-- [ ] **Rankings con puntos reales** — depende de que el sistema de puntos esté implementado
+- [x] **Rankings con puntos reales** — depende de que el sistema de puntos esté implementado
 - [ ] **Notificaciones en tiempo real** — actualmente todo es polling. Considerar Server-Sent Events para mensajes nuevos
 - [ ] **Espionaje contra NPCs mejorado** — ahora es básico (datos fijos por seed); podría ser más variado
-- [ ] **Pillar (pillage) misión** — tipo de misión que solo saquea sin batalla completa (para NPCs débiles)
+- [x] **Pillar (pillage) misión** — tipo de misión que solo saquea sin batalla completa (para NPCs débiles)
 - [ ] **Alianzas** — tabla `alliances`, miembros, chat de alianza
 
 ---

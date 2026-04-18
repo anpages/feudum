@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 
-export type MissionType = 'attack' | 'transport' | 'spy' | 'scavenge' | 'colonize'
+export type MissionType = 'attack' | 'transport' | 'spy' | 'scavenge' | 'colonize' | 'pillage'
 export type MissionState = 'active' | 'returning'
 
 export interface ArmyMission {

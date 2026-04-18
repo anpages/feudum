@@ -455,6 +455,51 @@ async function processArrival(mission, myKingdom, now) {
     return
   }
 
+  // ── Pillage (NPC-only quick raid) ─────────────────────────────────────────────
+  if (mType === 'pillage') {
+    const seed   = mission.targetRealm * 374761397 + mission.targetRegion * 1234567 + mission.targetSlot * 7654321
+    const npcPts = ((seed ^ (seed >>> 16)) >>> 0) % 50000  // 0–50000 pts
+    const npcRes = {
+      wood:  Math.floor(1000 + npcPts * 0.5),
+      stone: Math.floor(800  + npcPts * 0.4),
+      grain: Math.floor(600  + npcPts * 0.1),
+    }
+
+    const cargo = calcCargoCapacity(missionUnits)
+    const loot  = calculateLoot(npcRes, cargo)
+
+    // Small casualty chance based on NPC strength
+    const casualtyRate = Math.min(0.15, npcPts / 300000)
+    const survivorPatch = {}
+    for (const k of UNIT_KEYS) {
+      const n = missionUnits[k] ?? 0
+      if (n === 0) { survivorPatch[k] = 0; continue }
+      let survivors = 0
+      for (let i = 0; i < n; i++) {
+        if (Math.random() >= casualtyRate) survivors++
+      }
+      survivorPatch[k] = survivors
+    }
+
+    const result = { type: 'pillage', loot, npcPts, survivorPatch }
+
+    await db.update(armyMissions).set({
+      ...survivorPatch,
+      state: 'returning', returnTime,
+      woodLoad: loot.wood, stoneLoad: loot.stone, grainLoad: loot.grain,
+      result: JSON.stringify(result),
+      updatedAt: new Date(),
+    }).where(eq(armyMissions.id, mission.id))
+
+    await db.insert(messages).values({
+      userId: myKingdom.userId,
+      type:   'battle',
+      subject: `⚔️ Pillaje en R${mission.targetRealm}:${mission.targetRegion}:${mission.targetSlot}`,
+      data:   JSON.stringify(result),
+    })
+    return
+  }
+
   // Unknown type — just turn around
   await db.update(armyMissions).set({
     state: 'returning', returnTime, updatedAt: new Date(),

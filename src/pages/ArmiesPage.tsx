@@ -39,6 +39,7 @@ const ALL_UNIT_META = [...COMBAT_UNITS, ...SUPPORT_UNITS]
 
 const MISSION_META: Record<MissionType, { label: string; Icon: typeof Swords; color: string; desc: string }> = {
   attack:   { label: 'Ataque',       Icon: Swords,   color: 'text-crimson',  desc: 'Atacar y saquear el reino objetivo.' },
+  pillage:  { label: 'Pillaje',      Icon: Skull,    color: 'text-crimson',  desc: 'Saqueo rápido contra NPCs. Sin batalla completa.' },
   transport:{ label: 'Transporte',   Icon: Package,  color: 'text-forest',   desc: 'Transportar recursos al reino objetivo.' },
   spy:      { label: 'Espionaje',    Icon: Eye,      color: 'text-gold-dim', desc: 'Solo Exploradores. Recopila información.' },
   scavenge: { label: 'Recolección',  Icon: Pickaxe,  color: 'text-stone',    desc: 'Envía Carroñeros a recolectar escombros de batalla.' },
@@ -324,7 +325,8 @@ function MissionRow({ mission, onEnd }: { mission: ArmyMission; onEnd: () => voi
     result.outcome !== undefined ||
     result.delivered !== undefined ||
     result.type === 'colonize' ||
-    result.type === 'scavenge'
+    result.type === 'scavenge' ||
+    result.type === 'pillage'
   )
 
   return (
@@ -431,6 +433,20 @@ function MissionRow({ mission, onEnd }: { mission: ArmyMission; onEnd: () => voi
           {result?.type === 'colonize' && result.success === false && (
             <span className="font-body text-xs text-ink-muted">{result.reason ?? 'Colonización fallida'}</span>
           )}
+          {result?.type === 'pillage' && (() => {
+            const loot = result.loot ?? { wood: 0, stone: 0, grain: 0 }
+            return (loot.wood > 0 || loot.stone > 0 || loot.grain > 0)
+              ? (
+                <span className="font-body text-xs text-ink-muted flex items-center gap-2">
+                  <Skull size={10} className="text-crimson" />
+                  <span className="font-semibold text-crimson">Pillaje</span>
+                  {loot.wood  > 0 && <span className="flex items-center gap-0.5"><GiWoodPile  size={10} className="inline" /> {formatResource(loot.wood)}</span>}
+                  {loot.stone > 0 && <span className="flex items-center gap-0.5"><GiStoneBlock size={10} className="inline" /> {formatResource(loot.stone)}</span>}
+                  {loot.grain > 0 && <span className="flex items-center gap-0.5">🌾 {formatResource(loot.grain)}</span>}
+                </span>
+              )
+              : <span className="font-body text-xs text-ink-muted/60">NPC sin recursos</span>
+          })()}
           {result?.type === 'scavenge' && (() => {
             const c = result.collected ?? { wood: 0, stone: 0 }
             return (c.wood > 0 || c.stone > 0)

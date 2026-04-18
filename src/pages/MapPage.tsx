@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ChevronLeft, ChevronRight, Home, Castle, User, Bot, MapPin, X, Swords, Eye, Tent, Pickaxe, Package } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Home, Castle, User, Bot, MapPin, X, Swords, Eye, Tent, Pickaxe, Package, Skull } from 'lucide-react'
 import { GiWoodPile, GiStoneBlock } from 'react-icons/gi'
 import { useMap, type MapSlot } from '@/hooks/useMap'
 import { Badge } from '@/components/ui/Badge'
@@ -178,8 +178,18 @@ export function MapPage() {
                 </Button>
               ) : (
                 <>
+                  {selected.isNpc && (
+                    <Button
+                      variant="primary"
+                      className="w-full"
+                      onClick={() => sendMission('pillage')}
+                    >
+                      <Skull size={12} />
+                      Saquear
+                    </Button>
+                  )}
                   <Button
-                    variant="primary"
+                    variant={selected.isNpc ? 'ghost' : 'primary'}
                     className="w-full"
                     onClick={() => sendMission('attack')}
                   >
@@ -194,14 +204,16 @@ export function MapPage() {
                     <Eye size={12} />
                     Espiar
                   </Button>
-                  <Button
-                    variant="ghost"
-                    className="w-full"
-                    onClick={() => sendMission('transport')}
-                  >
-                    <Package size={12} />
-                    Transportar
-                  </Button>
+                  {!selected.isNpc && (
+                    <Button
+                      variant="ghost"
+                      className="w-full"
+                      onClick={() => sendMission('transport')}
+                    >
+                      <Package size={12} />
+                      Transportar
+                    </Button>
+                  )}
                 </>
               )}
               {selected.debris && (selected.debris.wood > 0 || selected.debris.stone > 0) && (
