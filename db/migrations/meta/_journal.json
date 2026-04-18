@@ -23,5 +23,12 @@
       "tag": "0002_nullable_username",
       "breakpoints": true
     }
+    ,{
+      "idx": 3,
+      "version": "7",
+      "when": 1745193600000,
+      "tag": "0003_army_result_column",
+      "breakpoints": true
+    }
   ]
 }

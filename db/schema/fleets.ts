@@ -1,4 +1,4 @@
-import { pgTable, serial, integer, varchar, real, timestamp } from 'drizzle-orm/pg-core'
+import { pgTable, serial, integer, varchar, real, timestamp, text } from 'drizzle-orm/pg-core'
 import { users } from './users'
 
 // Equivalent to OGame fleet_missions — armies marching between kingdoms
@@ -42,6 +42,8 @@ export const armyMissions = pgTable('army_missions', {
   colonist: integer('colonist').default(0).notNull(),
   scavenger: integer('scavenger').default(0).notNull(),
   scout: integer('scout').default(0).notNull(),
+
+  result: text('result'),
 
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),

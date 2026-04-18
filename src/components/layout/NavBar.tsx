@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom'
-import { Castle, Hammer, BookOpen, Swords, Map, X } from 'lucide-react'
+import { Castle, Hammer, BookOpen, Swords, Map, X, Sword } from 'lucide-react'
 import { type ElementType } from 'react'
 
 interface NavItem {
@@ -13,6 +13,7 @@ const NAV_ITEMS: NavItem[] = [
   { to: '/buildings', label: 'Construcción', Icon: Hammer   },
   { to: '/research',  label: 'Academia',     Icon: BookOpen },
   { to: '/barracks',  label: 'Cuartel',      Icon: Swords   },
+  { to: '/armies',    label: 'Ejércitos',    Icon: Sword    },
   { to: '/map',       label: 'Mapa',         Icon: Map      },
 ]
 

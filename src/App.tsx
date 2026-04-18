@@ -5,6 +5,7 @@ import { BuildingsPage } from '@/pages/BuildingsPage'
 import { ResearchPage } from '@/pages/ResearchPage'
 import { BarracksPage } from '@/pages/BarracksPage'
 import { MapPage } from '@/pages/MapPage'
+import { ArmiesPage } from '@/pages/ArmiesPage'
 import { LoginPage } from '@/pages/LoginPage'
 import { NicknamePage } from '@/pages/NicknamePage'
 import { useAuth } from '@/hooks/useAuth'
@@ -41,6 +42,7 @@ export default function App() {
           <Route path="/research"  element={<ResearchPage />}  />
           <Route path="/barracks"  element={<BarracksPage />}  />
           <Route path="/map"       element={<MapPage />}       />
+          <Route path="/armies"   element={<ArmiesPage />}   />
         </Route>
       </Route>
     </Routes>

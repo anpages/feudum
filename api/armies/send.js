@@ -1,0 +1,161 @@
+import { eq, and } from 'drizzle-orm'
+import { db, kingdoms, armyMissions } from '../_db.js'
+import { getSessionUserId } from '../lib/handler.js'
+import { calcDistance, calcDuration, calcCargoCapacity } from '../lib/speed.js'
+
+const UNIT_KEYS = [
+  'squire','knight','paladin','warlord','grandKnight',
+  'siegeMaster','warMachine','dragonKnight',
+  'merchant','caravan','colonist','scavenger','scout',
+]
+
+const MISSION_TYPES = ['attack', 'transport', 'spy']
+
+export default async function handler(req, res) {
+  if (req.method !== 'POST') return res.status(405).end()
+
+  const userId = await getSessionUserId(req)
+  if (!userId) return res.status(401).json({ error: 'No autenticado' })
+
+  const { missionType, target, units: rawUnits, resources: rawResources } = req.body ?? {}
+
+  // ── Validate mission type ─────────────────────────────────────────────────
+  if (!MISSION_TYPES.includes(missionType)) {
+    return res.status(400).json({ error: 'Tipo de misión inválido' })
+  }
+
+  // ── Validate target ───────────────────────────────────────────────────────
+  const tRealm  = parseInt(target?.realm,  10)
+  const tRegion = parseInt(target?.region, 10)
+  const tSlot   = parseInt(target?.slot,   10)
+
+  if (!tRealm || !tRegion || !tSlot
+    || tRealm < 1 || tRealm > 3
+    || tRegion < 1 || tRegion > 10
+    || tSlot < 1 || tSlot > 15) {
+    return res.status(400).json({ error: 'Coordenadas de destino inválidas' })
+  }
+
+  // ── Load player kingdom ───────────────────────────────────────────────────
+  const [kingdom] = await db.select().from(kingdoms)
+    .where(eq(kingdoms.userId, userId)).limit(1)
+  if (!kingdom) return res.status(404).json({ error: 'Reino no encontrado' })
+
+  // Can't attack yourself
+  if (kingdom.realm === tRealm && kingdom.region === tRegion && kingdom.slot === tSlot) {
+    return res.status(400).json({ error: 'No puedes enviar ejércitos a tu propio reino' })
+  }
+
+  // ── Parse & validate units ────────────────────────────────────────────────
+  const units = {}
+  let totalUnits = 0
+  for (const k of UNIT_KEYS) {
+    const n = parseInt(rawUnits?.[k] ?? 0, 10)
+    if (n < 0) return res.status(400).json({ error: `Cantidad inválida para ${k}` })
+    if (n > (kingdom[k] ?? 0)) {
+      return res.status(400).json({ error: `No tienes suficientes ${k} (tienes ${kingdom[k] ?? 0})` })
+    }
+    units[k] = n
+    totalUnits += n
+  }
+
+  if (totalUnits === 0) {
+    return res.status(400).json({ error: 'Debes enviar al menos una unidad' })
+  }
+
+  // Spy missions: scouts only
+  if (missionType === 'spy') {
+    const nonScouts = UNIT_KEYS.filter(k => k !== 'scout' && units[k] > 0)
+    if (nonScouts.length > 0) {
+      return res.status(400).json({ error: 'Las misiones de espionaje solo permiten Exploradores' })
+    }
+    if (units.scout === 0) {
+      return res.status(400).json({ error: 'Necesitas al menos un Explorador para espiar' })
+    }
+  }
+
+  // ── Resources to carry (transport) ────────────────────────────────────────
+  let woodLoad  = 0
+  let stoneLoad = 0
+  let grainLoad = 0
+
+  if (missionType === 'transport') {
+    woodLoad  = Math.max(0, parseFloat(rawResources?.wood  ?? 0) || 0)
+    stoneLoad = Math.max(0, parseFloat(rawResources?.stone ?? 0) || 0)
+    grainLoad = Math.max(0, parseFloat(rawResources?.grain ?? 0) || 0)
+
+    const capacity = calcCargoCapacity(units)
+    if (woodLoad + stoneLoad + grainLoad > capacity) {
+      return res.status(400).json({
+        error: `La carga supera la capacidad de transporte (${capacity})`,
+        capacity,
+      })
+    }
+    if (woodLoad > kingdom.wood || stoneLoad > kingdom.stone || grainLoad > kingdom.grain) {
+      return res.status(400).json({ error: 'No tienes suficientes recursos para transportar' })
+    }
+  }
+
+  // ── Calculate travel time ─────────────────────────────────────────────────
+  const origin   = { realm: kingdom.realm, region: kingdom.region, slot: kingdom.slot }
+  const dest     = { realm: tRealm,        region: tRegion,        slot: tSlot        }
+  const distance = calcDistance(origin, dest)
+  const travelSecs = calcDuration(distance, units)
+
+  if (travelSecs === 0) {
+    return res.status(400).json({ error: 'No se pudo calcular el tiempo de viaje' })
+  }
+
+  const now        = Math.floor(Date.now() / 1000)
+  const arrivalTime = now + travelSecs
+  const returnTime  = arrivalTime + travelSecs
+
+  // ── Deduct units and resources from kingdom ───────────────────────────────
+  const patch = { updatedAt: new Date() }
+  for (const k of UNIT_KEYS) {
+    if (units[k] > 0) patch[k] = (kingdom[k] ?? 0) - units[k]
+  }
+
+  // Lazy resource tick before deducting resources
+  const elapsed = Math.max(0, now - kingdom.lastResourceUpdate) / 3600
+  let wood  = Math.min(kingdom.wood  + kingdom.woodProduction  * elapsed, kingdom.woodCapacity)
+  let stone = Math.min(kingdom.stone + kingdom.stoneProduction * elapsed, kingdom.stoneCapacity)
+  let grain = Math.min(kingdom.grain + kingdom.grainProduction * elapsed, kingdom.grainCapacity)
+
+  patch.wood  = wood  - woodLoad
+  patch.stone = stone - stoneLoad
+  patch.grain = grain - grainLoad
+  patch.lastResourceUpdate = now
+
+  await db.update(kingdoms).set(patch).where(eq(kingdoms.id, kingdom.id))
+
+  // ── Create mission ────────────────────────────────────────────────────────
+  const missionRow = {
+    userId,
+    missionType,
+    state: 'active',
+    startRealm:  kingdom.realm,
+    startRegion: kingdom.region,
+    startSlot:   kingdom.slot,
+    targetRealm:  tRealm,
+    targetRegion: tRegion,
+    targetSlot:   tSlot,
+    departureTime: now,
+    arrivalTime,
+    returnTime,
+    woodLoad,
+    stoneLoad,
+    grainLoad,
+    ...Object.fromEntries(UNIT_KEYS.map(k => [k, units[k]])),
+  }
+
+  const [inserted] = await db.insert(armyMissions).values(missionRow).returning({ id: armyMissions.id })
+
+  return res.json({
+    ok: true,
+    missionId: inserted.id,
+    arrivalTime,
+    returnTime,
+    travelSeconds: travelSecs,
+  })
+}
