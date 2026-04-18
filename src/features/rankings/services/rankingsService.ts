@@ -1,6 +1,7 @@
 import { http } from '@/shared/services/http'
-import type { RankingsResponse } from '../types'
+import type { RankingCategory, RankingsResponse } from '../types'
 
 export const rankingsService = {
-  getAll: () => http.get<RankingsResponse>('/rankings'),
+  getAll: (category: RankingCategory = 'total') =>
+    http.get<RankingsResponse>(`/rankings?category=${category}`),
 }

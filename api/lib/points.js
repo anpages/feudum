@@ -83,23 +83,39 @@ function researchPoints(def, level) {
   return total
 }
 
-export function calcPoints(kingdom, res = {}) {
-  let raw = 0
+export function calcPointsBreakdown(kingdom, res = {}) {
+  let buildings = 0
+  let researchPts = 0
+  let units = 0
 
   for (const [id, def] of Object.entries(BUILDING_DEFS)) {
     const lv = kingdom[id] ?? 0
-    if (lv > 0) raw += buildingPoints(def, lv)
+    if (lv > 0) buildings += buildingPoints(def, lv)
   }
 
   for (const [id, def] of Object.entries(RESEARCH_DEFS)) {
     const lv = res[id] ?? 0
-    if (lv > 0) raw += researchPoints(def, lv)
+    if (lv > 0) researchPts += researchPoints(def, lv)
   }
 
   for (const [id, cost] of Object.entries(UNIT_COSTS)) {
     const n = kingdom[id] ?? 0
-    if (n > 0) raw += (cost.wood + cost.stone + cost.grain) * n
+    if (n > 0) units += (cost.wood + cost.stone + cost.grain) * n
   }
 
-  return Math.floor(raw / 1000)
+  const economy = Math.floor(
+    ((kingdom.woodProduction ?? 0) + (kingdom.stoneProduction ?? 0) + (kingdom.grainProduction ?? 0)) * 24
+  )
+
+  return {
+    buildings: Math.floor(buildings / 1000),
+    research:  Math.floor(researchPts / 1000),
+    units:     Math.floor(units / 1000),
+    economy:   Math.floor(economy / 1000),
+    total:     Math.floor((buildings + researchPts + units) / 1000),
+  }
+}
+
+export function calcPoints(kingdom, res = {}) {
+  return calcPointsBreakdown(kingdom, res).total
 }

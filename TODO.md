@@ -59,11 +59,11 @@ _(ninguno conocido actualmente)_
 
 ## Fase 14 — Expediciones
 
-17. [ ] **Backend** — misión de expedición: destino slot especial (pos. 16); 10 outcomes ponderados (recursos, unidades, vacío, agujero negro, retraso, aceleración, piratas, aliens, mercader, dark matter)
-18. [ ] **NPCFleetGenerator** — generar flota NPC aleatoria para encuentros de piratas/aliens; resolver con battle engine
-19. [ ] **Merchant mechanic** — propuesta de intercambio de recursos; jugador acepta/rechaza
-20. [ ] **DB** — campo `dark_matter` en tabla `users`; tabla `dark_matter_transactions`
-21. [ ] **Frontend** — botón "Expedición" en MapPage; resultado de expedición en MissionRow con detalle del outcome
+17. [x] **Backend** — misión de expedición: destino slot especial (pos. 16); 9 outcomes ponderados (recursos, unidades, vacío, agujero negro, retraso, aceleración, merodeadores, bestias oscuras, éter)
+18. [x] **NPCFleetGenerator** — generar flota NPC aleatoria para encuentros de merodeadores/bestias; resolver con battle engine
+19. [ ] **Merchant mechanic** — propuesta de intercambio de recursos; jugador acepta/rechaza (pendiente, requiere async multi-step)
+20. [x] **DB** — campo `ether` en tabla `users`; tabla `ether_transactions`
+21. [x] **Frontend** — entrada "Tierras Ignotas" en MapPage; tipo expedición en ArmiesPage; resultado en MissionRow
 
 ---
 

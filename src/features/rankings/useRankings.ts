@@ -1,13 +1,13 @@
 import { useQuery } from '@tanstack/react-query'
 import { rankingsService } from './services/rankingsService'
-import type { RankingEntry, RankingsResponse } from './types'
+import type { RankingCategory, RankingEntry, RankingsResponse } from './types'
 
-export type { RankingEntry, RankingsResponse }
+export type { RankingCategory, RankingEntry, RankingsResponse }
 
-export function useRankings() {
+export function useRankings(category: RankingCategory = 'total') {
   return useQuery({
-    queryKey: ['rankings'],
-    queryFn: rankingsService.getAll,
+    queryKey: ['rankings', category],
+    queryFn: () => rankingsService.getAll(category),
     staleTime: 30_000,
     refetchInterval: 60_000,
   })
