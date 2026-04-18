@@ -8,13 +8,17 @@ const MOBILE_UNIT_KEYS = [
   'merchant','caravan','colonist','scavenger','scout',
 ]
 
+// OGame basic income: 30 wood/h + 15 stone/h regardless of buildings (ref: SettingsService.php basicIncome)
+const BASIC_WOOD  = 30
+const BASIC_STONE = 15
+
 // dragonlore (plasma_technology): +1% wood, +0.66% stone, +0.33% grain per level
 function effectiveProduction(kingdom, res) {
   const dl = res?.dragonlore ?? 0
   return {
-    wood:  kingdom.woodProduction  * (1 + dl * 0.010),
-    stone: kingdom.stoneProduction * (1 + dl * 0.0066),
-    grain: kingdom.grainProduction * (1 + dl * 0.0033),
+    wood:  BASIC_WOOD  + kingdom.woodProduction  * (1 + dl * 0.010),
+    stone: BASIC_STONE + kingdom.stoneProduction * (1 + dl * 0.0066),
+    grain:               kingdom.grainProduction * (1 + dl * 0.0033),
   }
 }
 
