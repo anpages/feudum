@@ -2,6 +2,7 @@ import { eq } from 'drizzle-orm'
 import { db, kingdoms, research as researchTable, researchQueue } from '../_db.js'
 import { getSessionUserId } from '../lib/handler.js'
 import { RESEARCH, researchCost, researchTime, requirementsMet } from '../lib/research.js'
+import { getSettings } from '../lib/settings.js'
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).end()
@@ -9,9 +10,10 @@ export default async function handler(req, res) {
   const userId = await getSessionUserId(req)
   if (!userId) return res.status(401).json({ error: 'No autenticado' })
 
-  const [[kingdom], [resRow]] = await Promise.all([
+  const [[kingdom], [resRow], cfg] = await Promise.all([
     db.select().from(kingdoms).where(eq(kingdoms.userId, userId)).limit(1),
     db.select().from(researchTable).where(eq(researchTable.userId, userId)).limit(1),
+    getSettings(),
   ])
   if (!kingdom) return res.status(404).json({ error: 'Reino no encontrado' })
   if (!resRow)  return res.status(404).json({ error: 'Research no encontrado' })
@@ -48,7 +50,7 @@ export default async function handler(req, res) {
   const result = RESEARCH.map(def => {
     const level = resRow[def.id] ?? 0
     const cost  = researchCost(def, level)
-    const timeSecs = researchTime(cost.wood, cost.stone, academyLevel)
+    const timeSecs = researchTime(cost.wood, cost.stone, academyLevel, cfg.research_speed ?? 1)
     const metReqs  = requirementsMet(def, kingdom, resRow)
     const queueItem = activeQueue.find(q => q.research === def.id)
 

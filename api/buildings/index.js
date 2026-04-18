@@ -2,6 +2,7 @@ import { eq } from 'drizzle-orm'
 import { db, kingdoms, buildingQueue, research } from '../_db.js'
 import { getSessionUserId } from '../lib/handler.js'
 import { BUILDINGS, buildCost, buildTime, applyBuildingEffect, buildingRequirementsMet } from '../lib/buildings.js'
+import { getSettings } from '../lib/settings.js'
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).end()
@@ -9,9 +10,10 @@ export default async function handler(req, res) {
   const userId = await getSessionUserId(req)
   if (!userId) return res.status(401).json({ error: 'No autenticado' })
 
-  const [[kingdom], [researchRow]] = await Promise.all([
+  const [[kingdom], [researchRow], cfg] = await Promise.all([
     db.select().from(kingdoms).where(eq(kingdoms.userId, userId)).limit(1),
     db.select().from(research).where(eq(research.userId, userId)).limit(1),
+    getSettings(),
   ])
   if (!kingdom) return res.status(404).json({ error: 'Reino no encontrado' })
 
@@ -53,7 +55,7 @@ export default async function handler(req, res) {
     const level     = kingdom[def.id] ?? 0
     const nextLevel = level + 1
     const cost      = buildCost(def.woodBase, def.stoneBase, def.factor, level, def.grainBase)
-    const timeSecs  = buildTime(cost.wood, cost.stone, nextLevel, workshopLevel, engineersGuildLevel)
+    const timeSecs  = buildTime(cost.wood, cost.stone, nextLevel, workshopLevel, engineersGuildLevel, cfg.economy_speed ?? 1)
     const queueItem = activeQueue.find(q => q.building === def.id)
 
     const requiresMet = buildingRequirementsMet(def, kingdom, researchRow ?? {})

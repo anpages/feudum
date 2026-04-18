@@ -2,6 +2,7 @@ import { eq } from 'drizzle-orm'
 import { db, kingdoms, research as researchTable, unitQueue } from '../_db.js'
 import { getSessionUserId } from '../lib/handler.js'
 import { UNITS, SUPPORT_UNITS, DEFENSES, unitBuildTime, unitRequirementsMet } from '../lib/units.js'
+import { getSettings } from '../lib/settings.js'
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).end()
@@ -9,9 +10,10 @@ export default async function handler(req, res) {
   const userId = await getSessionUserId(req)
   if (!userId) return res.status(401).json({ error: 'No autenticado' })
 
-  const [[kingdom], [resRow]] = await Promise.all([
+  const [[kingdom], [resRow], cfg] = await Promise.all([
     db.select().from(kingdoms).where(eq(kingdoms.userId, userId)).limit(1),
     db.select().from(researchTable).where(eq(researchTable.userId, userId)).limit(1),
+    getSettings(),
   ])
   if (!kingdom) return res.status(404).json({ error: 'Reino no encontrado' })
   if (!resRow)  return res.status(404).json({ error: 'Research no encontrado' })
@@ -48,7 +50,7 @@ export default async function handler(req, res) {
 
   const mapUnit = def => {
     const count    = kingdom[def.id] ?? 0
-    const timePer  = unitBuildTime(def.hull, barracksLv, egLv, 1)
+    const timePer  = unitBuildTime(def.hull, barracksLv, egLv, 1, cfg.economy_speed ?? 1)
     const metReqs  = unitRequirementsMet(def, kingdom, resRow)
     const queueItem = activeQueue.find(q => q.unit === def.id)
     return {
