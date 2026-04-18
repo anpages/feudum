@@ -20,7 +20,7 @@ export function ResourceBar({ onMenuToggle }: Props) {
   const navigate = useNavigate()
   const { data: kingdom } = useKingdom()
   const resources = useResourceTicker(kingdom)
-  const { user, logout } = useAuth()
+  const { logout } = useAuth()
 
   async function handleLogout() {
     await logout.mutateAsync()
@@ -89,17 +89,8 @@ export function ResourceBar({ onMenuToggle }: Props) {
 
       <div className="header-divider mx-1 hidden sm:block" />
 
-      {/* ── Right: user + logout ── */}
+      {/* ── Right: logout ── */}
       <div className="flex items-center gap-1.5 shrink-0 pl-3">
-        {user?.username && (
-          <button
-            onClick={() => navigate('/profile')}
-            className="hidden md:block font-ui text-xs text-ink-muted hover:text-ink truncate max-w-[96px] transition-colors"
-            title="Ver perfil"
-          >
-            {user.username}
-          </button>
-        )}
         <button
           onClick={handleLogout}
           className="p-1.5 rounded text-ink-muted hover:text-crimson hover:bg-crimson/5 transition-colors"

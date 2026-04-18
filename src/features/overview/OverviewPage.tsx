@@ -105,10 +105,11 @@ export function OverviewPage() {
       <div className="anim-fade-up flex items-start justify-between gap-4 flex-wrap">
         <div>
           <span className="section-heading">Tu reino</span>
-          <h1 className="page-title mt-0.5">{kingdom?.name ?? 'Mi Reino'}</h1>
+          <h1 className="page-title mt-0.5">
+            R{kingdom?.realm ?? '—'} · {kingdom?.region ?? '—'} · {kingdom?.slot ?? '—'}
+          </h1>
           <p className="font-body text-ink-muted text-sm mt-1.5">
-            Reino {kingdom?.realm ?? '—'} · Región {kingdom?.region ?? '—'} · Posición{' '}
-            {kingdom?.slot ?? '—'}
+            {kingdom?.name ?? 'Mi Reino'}
           </p>
         </div>
         <div className="flex items-center gap-2 mt-1">
