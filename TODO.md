@@ -121,12 +121,12 @@ _(ninguno conocido actualmente)_
 
 ## Fase 20 — Clases de Personaje
 
-49. [ ] **DB** — columna `character_class` en `users` (none | collector | general | discoverer)
-50. [ ] **Backend** — clase Collector: +25% producción, +100% velocidad transportes
-51. [ ] **Backend** — clase General: +100% velocidad combate, −50% consumo grano, +2 slots misión
-52. [ ] **Backend** — clase Discoverer: −25% tiempo investigación, +2 slots expedición, −50% enemigos expedición
-53. [ ] **Backend** — unidades exclusivas por clase; cambio de clase con coste Dark Matter
-54. [ ] **Frontend** — selector de clase en ProfilePage; bonificaciones activas visibles
+49. [x] **DB** — columna `character_class` en `users` (none | collector | general | discoverer)
+50. [x] **Backend** — clase Collector: +25% producción, +100% velocidad transportes
+51. [x] **Backend** — clase General: +100% velocidad combate, −50% consumo grano, +2 slots misión
+52. [x] **Backend** — clase Discoverer: −25% tiempo investigación, +2 slots expedición, −50% enemigos expedición
+53. [x] **Backend** — unidades exclusivas por clase; cambio de clase con coste Dark Matter
+54. [x] **Frontend** — selector de clase en ProfilePage; bonificaciones activas visibles
 
 ---
 
