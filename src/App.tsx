@@ -16,14 +16,6 @@ import { NicknamePage } from '@/pages/NicknamePage'
 import { useAuth } from '@/hooks/useAuth'
 import { PWAInstallPrompt } from '@/components/PWAInstallPrompt'
 
-function AdminRoute() {
-  const { user, isAuthenticated, isLoading } = useAuth()
-  if (isLoading) return null
-  if (!isAuthenticated) return <Navigate to="/login" replace />
-  if (!user?.isAdmin) return <Navigate to="/overview" replace />
-  return <AdminPage />
-}
-
 function ProtectedRoute() {
   const { user, isAuthenticated, isLoading } = useAuth()
 
@@ -71,10 +63,9 @@ export default function App() {
           <Route path="/rankings" element={<RankingsPage />} />
           <Route path="/messages" element={<MessagesPage />} />
           <Route path="/profile"  element={<ProfilePage />}  />
+          <Route path="/admin"    element={<AdminPage />}    />
         </Route>
       </Route>
-
-      <Route path="/admin" element={<AdminRoute />} />
 
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
