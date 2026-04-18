@@ -11,11 +11,12 @@ const MOBILE_UNIT_KEYS = [
 
 // dragonlore (plasma_technology): +1% wood, +0.66% stone, +0.33% grain per level
 function effectiveProduction(kingdom, res, cfg) {
-  const dl = res?.dragonlore ?? 0
+  const dl    = res?.dragonlore ?? 0
+  const speed = cfg.economy_speed ?? 1
   return {
-    wood:  cfg.basic_wood  + kingdom.woodProduction  * (1 + dl * 0.010),
-    stone: cfg.basic_stone + kingdom.stoneProduction * (1 + dl * 0.0066),
-    grain:                   kingdom.grainProduction * (1 + dl * 0.0033),
+    wood:  cfg.basic_wood  + kingdom.woodProduction  * (1 + dl * 0.010)  * speed,
+    stone: cfg.basic_stone + kingdom.stoneProduction * (1 + dl * 0.0066) * speed,
+    grain:                   kingdom.grainProduction * (1 + dl * 0.0033) * speed,
   }
 }
 

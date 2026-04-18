@@ -52,9 +52,10 @@ export default async function handler(req, res) {
   let grain = kingdom.grain
 
   if (elapsed > 0) {
-    wood  = Math.min(wood  + kingdom.woodProduction  * elapsed, kingdom.woodCapacity)
-    stone = Math.min(stone + kingdom.stoneProduction * elapsed, kingdom.stoneCapacity)
-    grain = Math.min(grain + kingdom.grainProduction * elapsed, kingdom.grainCapacity)
+    const speed = cfg.economy_speed ?? 1
+    wood  = Math.min(wood  + kingdom.woodProduction  * elapsed * speed, kingdom.woodCapacity)
+    stone = Math.min(stone + kingdom.stoneProduction * elapsed * speed, kingdom.stoneCapacity)
+    grain = Math.min(grain + kingdom.grainProduction * elapsed * speed, kingdom.grainCapacity)
   }
 
   // ── Check sufficient resources ────────────────────────────────────────────

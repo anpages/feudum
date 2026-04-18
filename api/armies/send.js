@@ -172,10 +172,11 @@ export default async function handler(req, res) {
   }
 
   // Lazy resource tick before deducting resources
-  const elapsed = Math.max(0, now - kingdom.lastResourceUpdate) / 3600
-  let wood  = Math.min(kingdom.wood  + kingdom.woodProduction  * elapsed, kingdom.woodCapacity)
-  let stone = Math.min(kingdom.stone + kingdom.stoneProduction * elapsed, kingdom.stoneCapacity)
-  let grain = Math.min(kingdom.grain + kingdom.grainProduction * elapsed, kingdom.grainCapacity)
+  const elapsed   = Math.max(0, now - kingdom.lastResourceUpdate) / 3600
+  const econSpeed = cfg.economy_speed ?? 1
+  let wood  = Math.min(kingdom.wood  + kingdom.woodProduction  * elapsed * econSpeed, kingdom.woodCapacity)
+  let stone = Math.min(kingdom.stone + kingdom.stoneProduction * elapsed * econSpeed, kingdom.stoneCapacity)
+  let grain = Math.min(kingdom.grain + kingdom.grainProduction * elapsed * econSpeed, kingdom.grainCapacity)
 
   patch.wood  = wood  - woodLoad
   patch.stone = stone - stoneLoad
