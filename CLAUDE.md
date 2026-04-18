@@ -420,7 +420,18 @@ Import from `@/components/ui` (barrel export).
   - Simple: no battle, no loot
   - Ref: `app/GameMissions/DeployMission.php`
 
-### Phase 13 — Expeditions (pending)
+### Phase 13 — Active NPCs (pending)
+- [ ] **NPC attack missions** — NPCs on the map periodically launch attack missions against player kingdoms (custom Feudum feature, not in OGame ref)
+  - Scheduler triggered lazily on `GET /api/kingdoms/me` (no persistent cron needed on Vercel serverless)
+  - NPC selects a nearby player kingdom as target based on proximity and inactivity window
+  - NPC army generated procedurally: power scales with kingdom building levels + randomness
+  - Mission runs through existing battle engine (full rapid-fire, loot, debris, battle report)
+  - Battle report sent as message to the defending player
+  - NPC has no return trip — army "dissolves" after battle
+  - Configurable via server settings: `NPC_AGGRESSION` (0 = off, 1 = low, 2 = medium, 3 = high), `NPC_ATTACK_INTERVAL_HOURS`
+  - Purpose: enables fully functional solo play and defensive mechanic testing with zero real players
+
+### Phase 14 — Expeditions (pending)
 - [ ] **Expedition** (`ExpeditionMission` in OGame ref) — exploration with random encounters
   - Target: empty slot beyond map edge (special coord e.g. slot 16)
   - 10 weighted outcomes: resources, units, nothing, black_hole, delay, speedup, pirates, aliens, merchant, dark_matter
