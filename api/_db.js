@@ -10,9 +10,10 @@ export const users = pgTable('users', {
   id:        serial('id').primaryKey(),
   username:  varchar('username',  { length: 50  }).unique(),
   email:     varchar('email',     { length: 255 }).notNull().unique(),
-  googleId:  varchar('google_id', { length: 255 }).notNull().unique(),
+  googleId:  varchar('google_id', { length: 255 }).unique(),
   avatarUrl: varchar('avatar_url',{ length: 500 }),
   isAdmin:   boolean('is_admin').default(false).notNull(),
+  isNpc:     boolean('is_npc').default(false).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 })
@@ -87,6 +88,9 @@ export const kingdoms = pgTable('kingdoms', {
   castleWall:   integer('castle_wall').default(0).notNull(),
   moat:         integer('moat').default(0).notNull(),
   catapult:     integer('catapult').default(0).notNull(),
+
+  isNpc:    boolean('is_npc').default(false).notNull(),
+  npcLevel: integer('npc_level').default(0).notNull(),
 
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),

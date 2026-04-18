@@ -106,20 +106,22 @@ export default async function handler(req, res) {
 
     if (realBySlot[slot]) {
       const { kingdoms: k, users: u } = realBySlot[slot]
-      const points = calcPoints(k, researchByUser[k.userId] ?? {})
+      const points = k.isNpc ? 0 : calcPoints(k, researchByUser[k.userId] ?? {})
       return {
         slot,
         kingdomId: k.id,
         name:      k.name,
-        username:  u.username,
+        username:  k.isNpc ? null : u.username,
         isPlayer:  k.userId === userId,
-        isNpc:     false,
+        isNpc:     k.isNpc,
+        npcLevel:  k.isNpc ? k.npcLevel : undefined,
         points,
         isEmpty:   false,
         debris,
       }
     }
 
+    // Fallback: Wang-hash virtual NPC for slots without a DB row (pre-seeding or edge cases)
     const npc = generateNpc(realm, region, slot)
     if (npc) {
       return { slot, kingdomId: null, ...npc, isPlayer: false, isEmpty: false, debris }

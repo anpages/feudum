@@ -5,6 +5,7 @@ import {
   buildBattleUnits, runBattle, calculateLoot,
   calculateDebris, repairDefenses, calcCargoCapacity, UNIT_STATS,
 } from '../lib/battle.js'
+import { resolveIncomingNpcAttacks } from '../lib/npc-resolve.js'
 
 const UNIT_KEYS = [
   'squire','knight','paladin','warlord','grandKnight',
@@ -123,8 +124,8 @@ async function processArrival(mission, myKingdom, now) {
         detectionChance: Math.round(detectionChance),
       }
 
-      // Notify defender if detected
-      if (detected && target.userId) {
+      // Notify defender if detected (skip NPC defenders)
+      if (detected && target.userId && !target.isNpc) {
         await db.insert(messages).values({
           userId:  target.userId,
           type:    'spy',
@@ -310,7 +311,7 @@ async function processArrival(mission, myKingdom, now) {
         subject: `${outcome === 'victory' ? '⚔️ Victoria' : '🤝 Empate'} contra ${targetName}`,
         data: JSON.stringify(battleResult),
       })
-      if (targetKingdom?.userId) {
+      if (targetKingdom?.userId && !targetKingdom.isNpc) {
         await db.insert(messages).values({
           userId: targetKingdom.userId,
           type: 'battle',
@@ -375,7 +376,7 @@ async function processArrival(mission, myKingdom, now) {
         subject: `💀 Derrota contra ${targetName}`,
         data: JSON.stringify(battleResult),
       })
-      if (targetKingdom?.userId) {
+      if (targetKingdom?.userId && !targetKingdom.isNpc) {
         await db.insert(messages).values({
           userId: targetKingdom.userId,
           type: 'battle',
@@ -492,12 +493,19 @@ async function processArrival(mission, myKingdom, now) {
 
   // ── Pillage (NPC-only quick raid) ─────────────────────────────────────────────
   if (mType === 'pillage') {
-    const seed   = mission.targetRealm * 374761397 + mission.targetRegion * 1234567 + mission.targetSlot * 7654321
-    const npcPts = ((seed ^ (seed >>> 16)) >>> 0) % 50000  // 0–50000 pts
-    const npcRes = {
-      wood:  Math.floor(1000 + npcPts * 0.5),
-      stone: Math.floor(800  + npcPts * 0.4),
-      grain: Math.floor(600  + npcPts * 0.1),
+    let npcRes
+    if (targetKingdom?.isNpc) {
+      // Use real NPC resources from DB
+      npcRes = { wood: targetKingdom.wood, stone: targetKingdom.stone, grain: targetKingdom.grain }
+    } else {
+      // Fallback: Wang hash estimate (pre-seeding)
+      const seed   = mission.targetRealm * 374761397 + mission.targetRegion * 1234567 + mission.targetSlot * 7654321
+      const npcPts = ((seed ^ (seed >>> 16)) >>> 0) % 50000
+      npcRes = {
+        wood:  Math.floor(1000 + npcPts * 0.5),
+        stone: Math.floor(800  + npcPts * 0.4),
+        grain: Math.floor(600  + npcPts * 0.1),
+      }
     }
 
     const cargo = calcCargoCapacity(missionUnits)
@@ -516,7 +524,17 @@ async function processArrival(mission, myKingdom, now) {
       survivorPatch[k] = survivors
     }
 
-    const result = { type: 'pillage', loot, npcPts, survivorPatch }
+    // Deduct loot from real NPC kingdom resources
+    if (targetKingdom?.isNpc && (loot.wood > 0 || loot.stone > 0 || loot.grain > 0)) {
+      await db.update(kingdoms).set({
+        wood:  Math.max(0, targetKingdom.wood  - loot.wood),
+        stone: Math.max(0, targetKingdom.stone - loot.stone),
+        grain: Math.max(0, targetKingdom.grain - loot.grain),
+        updatedAt: new Date(),
+      }).where(eq(kingdoms.id, targetKingdom.id))
+    }
+
+    const result = { type: 'pillage', loot, survivorPatch }
 
     await db.update(armyMissions).set({
       ...survivorPatch,
@@ -572,6 +590,12 @@ export default async function handler(req, res) {
   if (!kingdom) return res.status(404).json({ error: 'Reino no encontrado' })
 
   await processMissions(userId, kingdom)
+
+  // Resolve any arrived NPC attacks targeting this player's kingdoms
+  const playerKingdoms = await db.select().from(kingdoms)
+    .where(eq(kingdoms.userId, userId))
+  const now2 = Math.floor(Date.now() / 1000)
+  await resolveIncomingNpcAttacks(playerKingdoms, now2)
 
   const active = await db.select().from(armyMissions)
     .where(eq(armyMissions.userId, userId))

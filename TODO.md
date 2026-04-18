@@ -24,8 +24,8 @@ _(ninguno conocido actualmente)_
 
 ### Fase 12 — Misión de Despliegue
 
-2. [ ] **Backend** — `POST /api/armies/send` con `missionType: deploy`; destino solo propio reino distinto; unidades llegan y se suman, sin viaje de vuelta
-3. [ ] **Frontend** — botón "Desplegar" en MapPage al seleccionar reino propio; resultado en MissionRow
+2. [x] **Backend** — `POST /api/armies/send` con `missionType: deploy`; destino solo propio reino distinto; unidades llegan y se suman, sin viaje de vuelta
+3. [x] **Frontend** — botón "Desplegar" en MapPage al seleccionar reino propio; resultado en MissionRow
 
 ### Fase 13 — NPCs Activos
 
@@ -33,19 +33,19 @@ _(ninguno conocido actualmente)_
 > un jugador humano. El cron corre cada hora; con ECONOMY_SPEED x4/x8 crecen
 > proporcionalmente más rápido. Los ataques ocurren mientras el jugador duerme.
 
-4. [ ] **DB — schema** — añadir `isNpc boolean` y `npcLevel int` (1=débil, 2=medio, 3=fuerte — define umbral de ataque y ejército objetivo) a tabla `kingdoms`; crear usuario sistema NPC (`id = -1`)
-5. [ ] **DB — seeder** — poblar universo con reinos NPC vacíos (sin edificios, sin tropas, sin recursos) distribuidos aleatoriamente por el mapa; los NPCs crecen desde cero igual que un jugador
-6. [ ] **Backend — recursos NPC** — verificar que el tick de recursos aplica igual a reinos NPC; respeta `ECONOMY_SPEED`
-7. [ ] **Backend — espionaje NPC** — con datos reales en DB, el endpoint devuelve tropas y recursos reales sin ningún caso especial
-8. [ ] **Backend — ataque/pillaje contra NPC** — loot deducido de recursos reales del NPC; unidades destruidas permanentemente; escombros del coste real
-9. [ ] **Vercel Cron — `/api/cron/npc-tick`** — añadir en `vercel.json` (`schedule: "0 * * * *"`); protegido con `CRON_SECRET`; corre cada hora sin depender de actividad de jugadores
-10. [ ] **Backend — IA de crecimiento (cron)** — para cada NPC: si tiene recursos, construir siguiente edificio en cola (misma lógica que jugador); si tiene suficientes recursos y cuartel, entrenar unidades hacia ejército objetivo según `npcLevel`; todo escala con `ECONOMY_SPEED`
-11. [ ] **Backend — IA de ataque (cron)** — si ejército NPC supera umbral de `npcLevel` y ha pasado `NPC_ATTACK_INTERVAL_HOURS`: seleccionar reino jugador con más recursos en radio de 3 slots; deducir 60–80% de unidades; insertar `army_missions` con `arrivalTime` real — el jugador puede estar durmiendo
-12. [ ] **Backend — resolución lazy** — en `GET /api/armies` o `GET /api/messages`: procesar misiones NPC llegadas con battle engine completo; guardar informe; el jugador entra horas después y encuentra el desastre
-13. [ ] **Backend — retorno NPC** — si NPC gana, crea misión de retorno con loot; recursos sumados al reino NPC al llegar; si pierde, unidades perdidas para siempre
-14. [ ] **Backend — config** — `NPC_AGGRESSION` (0=off, 1=bajo/24h, 2=medio/12h, 3=alto/6h), `NPC_ATTACK_INTERVAL_HOURS`, en `api/lib/config.js` y panel de admin
-15. [ ] **Frontend — mapa** — leer reinos NPC desde DB en vez de Wang hash; layout de slots igual
-16. [ ] **Frontend — misiones entrantes** — misiones NPC visibles en ArmiesPage igual que ataques reales (atacante: "NPC — Nivel X")
+4. [x] **DB — schema** — añadir `isNpc boolean` y `npcLevel int` (1=débil, 2=medio, 3=fuerte — define umbral de ataque y ejército objetivo) a tabla `kingdoms`; crear usuario sistema NPC (`id = -1`)
+5. [x] **DB — seeder** — `POST /api/admin/seed-npcs` con botón en panel admin; pobla universo con reinos NPC vacíos distribuidos por Wang hash (~30% ocupación)
+6. [x] **Backend — recursos NPC** — el tick de recursos aplica igual a reinos NPC via `api/lib/tick.js`; respeta `ECONOMY_SPEED`
+7. [x] **Backend — espionaje NPC** — con datos reales en DB, el endpoint devuelve tropas y recursos reales (ruta `if (target)` existente); notificación de detección no se envía a usuario NPC
+8. [x] **Backend — ataque/pillaje contra NPC** — loot deducido de recursos reales del NPC; unidades destruidas permanentemente; pillaje usa recursos reales del NPC en DB
+9. [x] **Vercel Cron — `/api/cron/npc-tick`** — añadido en `vercel.json` (`schedule: "0 * * * *"`); protegido con `CRON_SECRET`; corre cada hora
+10. [x] **Backend — IA de crecimiento (cron)** — por cada NPC: construye edificio siguiente (sawmill→quarry→grainFarm→windmill→barracks→workshop según npcLevel); entrena unidades hacia ejército objetivo
+11. [x] **Backend — IA de ataque (cron)** — si ejército supera umbral según `npcLevel` y no hay misión activa: selecciona reino jugador más rico en la misma región (o ±1 región); deduces 60-80% de tropas; inserta `army_missions` con `arrivalTime` real
+12. [x] **Backend — resolución lazy** — en `GET /api/armies` y `GET /api/messages`: `resolveIncomingNpcAttacks()` procesa misiones NPC llegadas con battle engine; guarda informe en mensajes del jugador
+13. [x] **Backend — retorno NPC** — si NPC gana, misión pasa a `returning`; cron procesa retorno y suma loot al reino NPC; si pierde, misión eliminada
+14. [x] **Backend — config** — `NPC_AGGRESSION` (0=off, 1=bajo/24h, 2=medio/12h, 3=alto/6h) en `api/lib/config.js`
+15. [x] **Frontend — mapa** — reinos NPC en DB aparecen en `realKingdoms` query; Wang hash mantiene como fallback para slots sin fila DB; `isNpc`/`npcLevel` propagados al frontend
+16. [x] **Frontend — misiones entrantes** — misiones NPC visibles en ArmiesPage igual que ataques reales; informe de batalla llega a mensajes del jugador con nombre del NPC agresor
 
 ---
 

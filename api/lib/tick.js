@@ -1,7 +1,9 @@
+import { eq } from 'drizzle-orm'
+import { db, kingdoms } from '../_db.js'
+
 /**
- * Unified lazy resource tick.
- * Returns updated { wood, stone, grain, now } — does NOT write to DB.
- * Call this once per request instead of duplicating the 5-line block everywhere.
+ * Compute ticked resources without writing to DB.
+ * Returns updated { wood, stone, grain, now }.
  */
 export function applyResourceTick(kingdom, cfg) {
   const now     = Math.floor(Date.now() / 1000)
@@ -18,4 +20,24 @@ export function applyResourceTick(kingdom, cfg) {
     grain: Math.min(kingdom.grain + kingdom.grainProduction * elapsed * speed, kingdom.grainCapacity),
     now,
   }
+}
+
+/**
+ * Apply resource tick and persist to DB for NPC kingdoms in the cron.
+ */
+export async function tickAndPersist(kingdom, cfg) {
+  const ticked = applyResourceTick(kingdom, cfg)
+  if (ticked.now === Math.floor(Date.now() / 1000) && ticked.wood === kingdom.wood) return kingdom
+
+  const [updated] = await db.update(kingdoms)
+    .set({
+      wood:               ticked.wood,
+      stone:              ticked.stone,
+      grain:              ticked.grain,
+      lastResourceUpdate: ticked.now,
+      updatedAt:          new Date(),
+    })
+    .where(eq(kingdoms.id, kingdom.id))
+    .returning()
+  return updated
 }

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Navigate } from 'react-router-dom'
-import { Settings, Users, Zap, Swords, Loader2, ChevronDown, Save } from 'lucide-react'
+import { Settings, Users, Zap, Swords, Loader2, ChevronDown, Save, Bot } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
@@ -13,6 +13,7 @@ import {
   useToggleAdmin,
   useDevAction,
   useFastForward,
+  useSeedNpcs,
 } from '@/features/admin/useAdmin'
 import { formatDuration } from '@/lib/format'
 
@@ -231,6 +232,7 @@ const RESEARCH_OPTIONS = [
 function DevTab() {
   const { data } = useAdminUsers()
   const devAction = useDevAction()
+  const seedNpcs  = useSeedNpcs()
 
   const [selectedUserId, setSelectedUserId] = useState<number | ''>('')
   const [wood, setWood] = useState('50000')
@@ -337,6 +339,28 @@ function DevTab() {
           }
         >
           Establecer recursos
+        </Button>
+      </Card>
+
+      {/* Seed NPCs */}
+      <Card className="p-4 flex items-center gap-4">
+        <div className="flex-1">
+          <p className="font-ui text-sm font-semibold text-ink">Poblar NPCs</p>
+          <p className="font-body text-[11px] text-ink-muted/70 mt-0.5">
+            Genera reinos NPC vacíos en todos los slots (~30% ocupación)
+          </p>
+        </div>
+        <Button
+          variant="ghost"
+          size="sm"
+          disabled={seedNpcs.isPending}
+          onClick={async () => {
+            const res = await seedNpcs.mutateAsync()
+            setStatus(`✓ ${res.created} creados, ${res.deleted} eliminados`)
+          }}
+        >
+          {seedNpcs.isPending ? <Loader2 size={12} className="animate-spin" /> : <Bot size={12} />}
+          Seed NPCs
         </Button>
       </Card>
 

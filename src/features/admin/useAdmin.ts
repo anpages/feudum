@@ -62,3 +62,9 @@ export function useFastForward() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['admin', 'fleet'] }),
   })
 }
+
+export function useSeedNpcs() {
+  return useMutation({
+    mutationFn: () => adminService.seedNpcs(),
+  })
+}

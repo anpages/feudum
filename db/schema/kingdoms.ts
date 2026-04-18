@@ -1,4 +1,4 @@
-import { pgTable, serial, integer, varchar, real, timestamp } from 'drizzle-orm/pg-core'
+import { pgTable, serial, integer, varchar, real, timestamp, boolean } from 'drizzle-orm/pg-core'
 import { users } from './users'
 
 // Equivalent to OGame's "planets" table — adapted to medieval theme
@@ -77,6 +77,10 @@ export const kingdoms = pgTable('kingdoms', {
   castleWall: integer('castle_wall').default(0).notNull(),      // large_shield_dome
   moat: integer('moat').default(0).notNull(),                   // anti_ballistic_missile
   catapult: integer('catapult').default(0).notNull(),           // interplanetary_missile
+
+  // ── NPC flags ────────────────────────────────────────────────
+  isNpc: boolean('is_npc').default(false).notNull(),
+  npcLevel: integer('npc_level').default(0).notNull(), // 0=human, 1=weak, 2=medium, 3=strong
 
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),

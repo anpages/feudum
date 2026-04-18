@@ -1,12 +1,17 @@
 import { eq, desc } from 'drizzle-orm'
-import { db, messages } from '../_db.js'
+import { db, kingdoms, messages } from '../_db.js'
 import { getSessionUserId } from '../lib/handler.js'
+import { resolveIncomingNpcAttacks } from '../lib/npc-resolve.js'
 
 export default async function handler(req, res) {
   const userId = await getSessionUserId(req)
   if (!userId) return res.status(401).json({ error: 'No autenticado' })
 
   if (req.method === 'GET') {
+    // Lazy NPC attack resolution so player sees reports even if checking messages first
+    const playerKingdoms = await db.select().from(kingdoms).where(eq(kingdoms.userId, userId))
+    await resolveIncomingNpcAttacks(playerKingdoms, Math.floor(Date.now() / 1000))
+
     const msgs = await db
       .select()
       .from(messages)
