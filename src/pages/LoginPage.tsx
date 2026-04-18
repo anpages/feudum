@@ -3,55 +3,55 @@ import { Shield } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 
 export function LoginPage() {
-  const [searchParams]  = useSearchParams()
-  const oauthError      = searchParams.get('error')
+  const [searchParams]      = useSearchParams()
+  const oauthError          = searchParams.get('error')
   const { signInWithGoogle } = useAuth()
 
   return (
     <div className="bg-login min-h-screen flex items-center justify-center p-4">
 
-      <div className="w-full max-w-sm anim-fade-up">
+      <div className="w-full max-w-[340px] anim-fade-up">
 
-        {/* Logo */}
+        {/* Logo / Brand */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-full mb-4 anim-float bg-gold/8 border border-gold/20">
-            <Shield size={24} className="text-gold" />
+          <div className="inline-flex items-center justify-center w-[3.75rem] h-[3.75rem] rounded-full mb-5 anim-float bg-gold/8 border border-gold/20 shadow-[0_4px_24px_rgba(184,134,11,0.12)]">
+            <Shield size={26} className="text-gold" />
           </div>
-          <h1 className="font-display text-3xl text-ink tracking-[0.16em] uppercase">
+          <h1 className="font-display text-[2rem] text-ink tracking-[0.18em] uppercase leading-none">
             Feudum
           </h1>
-          <p className="font-body text-ink-muted text-sm mt-1.5">
+          <p className="font-body text-ink-muted text-sm mt-2.5 tracking-wide">
             Forja tu legado en piedra y sangre
           </p>
         </div>
 
         {/* Card */}
-        <div className="card-medieval p-6 rounded">
+        <div className="card-medieval p-7 rounded">
           <div className="card-corner-tr" />
           <div className="card-corner-bl" />
 
           {oauthError && (
-            <div className="mb-4 px-3 py-2.5 rounded bg-crimson/5 border border-crimson/15">
-              <p className="font-ui text-xs text-crimson">
+            <div className="mb-5 px-3 py-2.5 rounded-sm bg-crimson/5 border border-crimson/15">
+              <p className="font-ui text-xs text-crimson leading-snug">
                 No fue posible iniciar sesión con Google. Inténtalo de nuevo.
               </p>
             </div>
           )}
 
-          <p className="font-ui text-xs text-ink-muted text-center mb-5 tracking-widest uppercase">
+          <p className="font-ui text-[0.65rem] text-ink-muted/70 text-center mb-5 tracking-[0.18em] uppercase">
             Accede a tu reino
           </p>
 
           <button
             onClick={signInWithGoogle}
-            className="w-full flex items-center justify-center gap-3 py-2.5 px-4 rounded border border-gold/22 bg-parchment hover:bg-gold-soft active:scale-[0.99] transition-all duration-150 font-ui font-semibold text-ink-mid tracking-wide text-sm"
+            className="w-full flex items-center justify-center gap-3 py-2.5 px-4 rounded border border-gold/20 bg-parchment hover:bg-gold-soft active:scale-[0.99] transition-all duration-150 font-ui font-semibold text-ink-mid tracking-wide text-sm shadow-sm hover:shadow-md hover:border-gold/35"
           >
             <GoogleIcon />
             Continuar con Google
           </button>
 
           <div className="divider mt-6 mb-0">◆</div>
-          <p className="text-center font-ui tracking-widest uppercase text-ink-muted/30 text-[0.58rem] mt-3">
+          <p className="text-center font-ui tracking-[0.18em] uppercase text-ink-muted/25 text-[0.55rem] mt-3 select-none">
             Feudum · Anno MMXXVI
           </p>
         </div>

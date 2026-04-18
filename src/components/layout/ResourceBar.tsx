@@ -24,26 +24,26 @@ export function ResourceBar({ onMenuToggle }: Props) {
   return (
     <header className="game-header">
 
-      {/* ── Left: hamburger + logo ── */}
-      <div className="flex items-center gap-2 shrink-0">
+      {/* ── Left: hamburger + brand ── */}
+      <div className="flex items-center gap-2 shrink-0 pr-3">
         <button
           onClick={onMenuToggle}
-          className="lg:hidden p-1.5 rounded-md text-ink-muted hover:text-ink hover:bg-parchment-warm transition-colors"
+          className="lg:hidden p-1.5 rounded text-ink-muted hover:text-ink hover:bg-parchment-warm transition-colors"
           aria-label="Menú"
         >
           <Menu size={18} />
         </button>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 min-w-0">
           <div className="w-7 h-7 rounded-full bg-gold/10 border border-gold/20 flex items-center justify-center shrink-0">
-            <Shield size={13} className="text-gold" />
+            <Shield size={12} className="text-gold" />
           </div>
           <div className="hidden sm:flex flex-col leading-none">
-            <span className="font-display text-[0.65rem] text-gold tracking-[0.18em] uppercase">
+            <span className="font-display text-[0.62rem] text-gold-dim tracking-[0.2em] uppercase">
               Feudum
             </span>
             {kingdom?.name && (
-              <span className="font-ui text-[0.7rem] text-ink-muted truncate max-w-[120px]">
+              <span className="font-ui text-[0.68rem] text-ink-muted truncate max-w-[110px] leading-tight mt-px">
                 {kingdom.name}
               </span>
             )}
@@ -51,8 +51,10 @@ export function ResourceBar({ onMenuToggle }: Props) {
         </div>
       </div>
 
+      <div className="header-divider mx-1 hidden sm:block" />
+
       {/* ── Center: resources ── */}
-      <div className="flex items-center gap-1.5 flex-1 justify-center overflow-x-auto no-scrollbar">
+      <div className="flex items-center gap-1 flex-1 justify-center overflow-x-auto no-scrollbar px-2">
         <ResourcePill
           icon={<TreePine size={11} />}
           label="Madera"
@@ -75,25 +77,27 @@ export function ResourceBar({ onMenuToggle }: Props) {
           rate={kingdom?.grainProduction}
         />
         <div className="hidden md:flex resource-pill items-center gap-1.5">
-          <Users size={11} className="text-ink-muted" />
+          <Users size={11} className="text-ink-muted/70" />
           <span className="font-ui text-xs tabular-nums text-ink-mid">
             {formatResource(kingdom?.populationUsed ?? 0)}
-            <span className="text-ink-muted/60 mx-0.5">/</span>
+            <span className="text-ink-muted/50 mx-0.5">/</span>
             {formatResource(kingdom?.populationMax ?? 0)}
           </span>
         </div>
       </div>
 
+      <div className="header-divider mx-1 hidden sm:block" />
+
       {/* ── Right: user + logout ── */}
-      <div className="flex items-center gap-2 shrink-0">
+      <div className="flex items-center gap-1.5 shrink-0 pl-3">
         {user?.username && (
-          <span className="hidden md:block font-ui text-xs text-ink-muted truncate max-w-[100px]">
+          <span className="hidden md:block font-ui text-xs text-ink-muted truncate max-w-[96px]">
             {user.username}
           </span>
         )}
         <button
           onClick={handleLogout}
-          className="p-1.5 rounded-md text-ink-muted hover:text-crimson hover:bg-crimson/5 transition-colors"
+          className="p-1.5 rounded text-ink-muted hover:text-crimson hover:bg-crimson/5 transition-colors"
           title="Cerrar sesión"
         >
           <LogOut size={15} />
@@ -116,13 +120,13 @@ function ResourcePill({
   const isFull = cap !== undefined && value >= cap
 
   return (
-    <div className="resource-pill" title={label}>
+    <div className="resource-pill" title={`${label}: ${formatResource(value)}${cap ? ` / ${formatResource(cap)}` : ''}${rate ? ` (+${formatResource(rate)}/h)` : ''}`}>
       <span className={isFull ? 'text-crimson' : 'text-gold'}>{icon}</span>
       <span className={`font-ui text-xs tabular-nums font-medium ${isFull ? 'text-crimson' : 'text-ink-mid'}`}>
         {formatResource(value)}
       </span>
       {rate !== undefined && rate > 0 && (
-        <span className="hidden lg:inline font-ui text-[0.62rem] tabular-nums text-forest-light">
+        <span className="hidden lg:inline font-ui text-[0.6rem] tabular-nums text-forest-light">
           +{formatResource(rate)}/h
         </span>
       )}
