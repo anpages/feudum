@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { ArrowUp, Clock, Lock, TrendingUp, Loader2 } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
@@ -7,8 +7,9 @@ import { useBuildings, useUpgradeBuilding, type BuildingInfo } from '@/hooks/use
 import { useKingdom } from '@/hooks/useKingdom'
 import { useResourceTicker } from '@/hooks/useResourceTicker'
 import { formatResource, formatDuration } from '@/lib/format'
+import { useQueryClient } from '@tanstack/react-query'
 
-// ── Static metadata not returned by API ───────────────────────────────────────
+// ── Static metadata ───────────────────────────────────────────────────────────
 
 const BUILDING_META: Record<string, { name: string; description: string; emoji: string; produces: string | null }> = {
   sawmill:        { name: 'Aserradero',           emoji: '🪓', produces: 'Madera',     description: 'Tala los bosques del reino para producir madera sin cesar.' },
@@ -22,17 +23,30 @@ const BUILDING_META: Record<string, { name: string; description: string; emoji: 
 }
 
 // ── Countdown hook ────────────────────────────────────────────────────────────
+// Calls onEnd() once when the countdown reaches zero
 
-function useCountdown(finishesAt: number | null) {
-  const [secs, setSecs] = useState(() => finishesAt ? Math.max(0, finishesAt - Math.floor(Date.now() / 1000)) : 0)
+function useCountdown(finishesAt: number | null, onEnd: () => void) {
+  const [secs, setSecs] = useState(() =>
+    finishesAt ? Math.max(0, finishesAt - Math.floor(Date.now() / 1000)) : 0
+  )
 
   useEffect(() => {
-    if (!finishesAt) return
-    const tick = () => setSecs(Math.max(0, finishesAt - Math.floor(Date.now() / 1000)))
+    if (!finishesAt) { setSecs(0); return }
+
+    let fired = false
+    const tick = () => {
+      const remaining = Math.max(0, finishesAt - Math.floor(Date.now() / 1000))
+      setSecs(remaining)
+      if (remaining === 0 && !fired) {
+        fired = true
+        onEnd()
+      }
+    }
+
     tick()
     const id = setInterval(tick, 1000)
     return () => clearInterval(id)
-  }, [finishesAt])
+  }, [finishesAt, onEnd])
 
   return secs
 }
@@ -40,10 +54,17 @@ function useCountdown(finishesAt: number | null) {
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export function BuildingsPage() {
-  const { data, isLoading } = useBuildings()
-  const { data: kingdom }   = useKingdom()
-  const resources           = useResourceTicker(kingdom)
-  const upgrade             = useUpgradeBuilding()
+  const qc                          = useQueryClient()
+  const { data, isLoading, refetch } = useBuildings()
+  const { data: kingdom }            = useKingdom()
+  const resources                    = useResourceTicker(kingdom)
+  const upgrade                      = useUpgradeBuilding()
+
+  // Called by any card whose countdown hits zero
+  const handleCountdownEnd = useCallback(() => {
+    refetch()
+    qc.invalidateQueries({ queryKey: ['kingdom'] })
+  }, [refetch, qc])
 
   if (isLoading) return <BuildingsSkeleton />
 
@@ -75,6 +96,7 @@ export function BuildingsPage() {
                 canAfford={canAfford}
                 isUpgrading={upgrade.isPending && upgrade.variables === b.id}
                 onUpgrade={() => upgrade.mutate(b.id)}
+                onCountdownEnd={handleCountdownEnd}
                 animClass={`anim-fade-up-${Math.min(i + 1, 5) as 1|2|3|4|5}`}
               />
             )
@@ -88,18 +110,19 @@ export function BuildingsPage() {
 
 // ── Building card ─────────────────────────────────────────────────────────────
 
-function BuildingCard({
-  building, meta, canAfford, isUpgrading, onUpgrade, animClass,
-}: {
+interface CardProps {
   building: BuildingInfo
   meta: { name: string; description: string; emoji: string; produces: string | null }
   canAfford: boolean
   isUpgrading: boolean
   onUpgrade: () => void
+  onCountdownEnd: () => void
   animClass: string
-}) {
-  const countdown = useCountdown(building.inQueue?.finishesAt ?? null)
-  const inQueue   = !!building.inQueue && countdown > 0
+}
+
+function BuildingCard({ building, meta, canAfford, isUpgrading, onUpgrade, onCountdownEnd, animClass }: CardProps) {
+  const countdown = useCountdown(building.inQueue?.finishesAt ?? null, onCountdownEnd)
+  const inQueue   = !!building.inQueue && (countdown > 0 || building.inQueue.finishesAt > Math.floor(Date.now() / 1000))
 
   return (
     <Card className={`p-5 flex flex-col gap-4 ${animClass}`}>
@@ -109,16 +132,12 @@ function BuildingCard({
         <span className="text-2xl leading-none mt-0.5 shrink-0">{meta.emoji}</span>
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-2">
-            <h3 className="font-ui text-sm font-semibold text-ink leading-tight">
-              {meta.name}
-            </h3>
+            <h3 className="font-ui text-sm font-semibold text-ink leading-tight">{meta.name}</h3>
             <Badge variant={building.level > 0 ? 'gold' : 'stone'} className="shrink-0">
               Nv {inQueue ? `${building.level}→${building.inQueue!.level}` : building.level}
             </Badge>
           </div>
-          <p className="font-body text-xs text-ink-muted mt-1 leading-relaxed">
-            {meta.description}
-          </p>
+          <p className="font-body text-xs text-ink-muted mt-1 leading-relaxed">{meta.description}</p>
         </div>
       </div>
 
@@ -126,9 +145,7 @@ function BuildingCard({
       {meta.produces && (
         <div className="flex items-center gap-1.5 text-forest-light text-xs">
           <TrendingUp size={10} />
-          <span className="font-ui font-semibold uppercase tracking-wide">
-            Produce: {meta.produces}
-          </span>
+          <span className="font-ui font-semibold uppercase tracking-wide">Produce: {meta.produces}</span>
         </div>
       )}
 
@@ -136,19 +153,19 @@ function BuildingCard({
 
       {/* Cost row */}
       <div className="flex items-center gap-4 text-xs">
-        <CostItem emoji="🪵" value={building.costWood}  canAfford={canAfford || inQueue} />
-        <CostItem emoji="🪨" value={building.costStone} canAfford={canAfford || inQueue} />
+        <CostItem emoji="🪵" value={building.costWood}  affordable={inQueue || canAfford} />
+        <CostItem emoji="🪨" value={building.costStone} affordable={inQueue || canAfford} />
         <div className="flex items-center gap-1 ml-auto text-ink-muted/60">
           <Clock size={10} />
           <span className="font-body">{formatDuration(building.timeSeconds)}</span>
         </div>
       </div>
 
-      {/* Action button */}
+      {/* Action */}
       {inQueue ? (
-        <div className="mt-auto flex items-center justify-center gap-2 py-2 rounded border border-gold/15 bg-gold-soft text-gold-dim font-ui text-xs font-semibold uppercase tracking-wide">
+        <div className="mt-auto flex items-center justify-center gap-2 py-2.5 rounded border border-gold/15 bg-gold-soft text-gold-dim font-ui text-xs font-semibold uppercase tracking-wide">
           <Loader2 size={12} className="animate-spin" />
-          En construcción — {formatDuration(countdown)}
+          {countdown > 0 ? formatDuration(countdown) : 'Finalizando…'}
         </div>
       ) : !building.requiresMet ? (
         <Button variant="ghost" className="w-full mt-auto" disabled>
@@ -174,11 +191,11 @@ function BuildingCard({
   )
 }
 
-function CostItem({ emoji, value, canAfford }: { emoji: string; value: number; canAfford: boolean }) {
+function CostItem({ emoji, value, affordable }: { emoji: string; value: number; affordable: boolean }) {
   return (
     <div className="flex items-center gap-1.5">
       <span>{emoji}</span>
-      <span className={`font-ui tabular-nums ${canAfford ? 'text-ink-mid' : 'text-crimson'}`}>
+      <span className={`font-ui tabular-nums ${affordable ? 'text-ink-mid' : 'text-crimson'}`}>
         {formatResource(value)}
       </span>
     </div>

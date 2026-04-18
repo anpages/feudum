@@ -17,25 +17,64 @@ export interface BuildingsResponse {
 }
 
 export function useBuildings() {
-  return useQuery({
+  const { data, ...rest } = useQuery({
     queryKey: ['buildings'],
     queryFn:  () => api.get<BuildingsResponse>('/buildings'),
-    refetchInterval: 10_000,
-    staleTime:        5_000,
+    staleTime: 5_000,
+    // Poll aggressively when any building is in queue; otherwise each 10s
+    refetchInterval: (query) => {
+      const buildings = query.state.data?.buildings ?? []
+      const now = Math.floor(Date.now() / 1000)
+      const hasActive = buildings.some(b => b.inQueue && b.inQueue.finishesAt > now)
+      return hasActive ? 3_000 : 10_000
+    },
   })
+
+  return { data, ...rest }
 }
 
 export function useUpgradeBuilding() {
   const qc = useQueryClient()
 
   return useMutation({
-    mutationFn: (building: string) =>
+    mutationFn: (buildingId: string) =>
       api.post<{ ok: boolean; finishesAt: number; timeSeconds: number; cost: { wood: number; stone: number } }>(
         '/buildings/upgrade',
-        { building },
+        { building: buildingId },
       ),
-    onSuccess: () => {
-      // Invalidar buildings y kingdom para reflejar recursos deducidos y cola nueva
+
+    // Optimistic update: show building as queued immediately
+    onMutate: async (buildingId: string) => {
+      await qc.cancelQueries({ queryKey: ['buildings'] })
+
+      const prev = qc.getQueryData<BuildingsResponse>(['buildings'])
+
+      if (prev) {
+        const building = prev.buildings.find(b => b.id === buildingId)
+        if (building) {
+          const finishesAt = Math.floor(Date.now() / 1000) + building.timeSeconds
+          qc.setQueryData<BuildingsResponse>(['buildings'], {
+            buildings: prev.buildings.map(b =>
+              b.id === buildingId
+                ? { ...b, inQueue: { level: b.level + 1, finishesAt } }
+                : b
+            ),
+          })
+        }
+      }
+
+      return { prev }
+    },
+
+    // Roll back on error
+    onError: (_err, _buildingId, context) => {
+      if (context?.prev) {
+        qc.setQueryData<BuildingsResponse>(['buildings'], context.prev)
+      }
+    },
+
+    // Always sync from server and deduct resources from kingdom
+    onSettled: () => {
       qc.invalidateQueries({ queryKey: ['buildings'] })
       qc.invalidateQueries({ queryKey: ['kingdom'] })
     },
