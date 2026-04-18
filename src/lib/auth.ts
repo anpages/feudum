@@ -13,7 +13,7 @@ export const authApi = {
     const redirectUri = `${window.location.origin}/auth/callback`
     console.log('[oauth] redirect_uri:', redirectUri)
     const params = new URLSearchParams({
-      client_id:     import.meta.env.VITE_GOOGLE_CLIENT_ID as string,
+      client_id:     import.meta.env.VITE_GOOGLE_CLIENT_ID ?? '970424961254-50ggo1vi5b3jrvht5uoolkv9gnvsfkvn.apps.googleusercontent.com',
       redirect_uri:  redirectUri,
       response_type: 'code',
       scope:         'openid email profile',
