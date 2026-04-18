@@ -8,6 +8,7 @@ import { MapPage } from '@/pages/MapPage'
 import { ArmiesPage } from '@/pages/ArmiesPage'
 import { RankingsPage } from '@/pages/RankingsPage'
 import { MessagesPage } from '@/pages/MessagesPage'
+import { ProfilePage } from '@/pages/ProfilePage'
 import { NotFoundPage } from '@/pages/NotFoundPage'
 import { LoginPage } from '@/pages/LoginPage'
 import { NicknamePage } from '@/pages/NicknamePage'
@@ -52,6 +53,7 @@ export default function App() {
           <Route path="/armies"    element={<ArmiesPage />}    />
           <Route path="/rankings" element={<RankingsPage />} />
           <Route path="/messages" element={<MessagesPage />} />
+          <Route path="/profile"  element={<ProfilePage />}  />
         </Route>
       </Route>
     </Routes>

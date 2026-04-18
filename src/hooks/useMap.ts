@@ -10,6 +10,7 @@ export interface MapSlot {
   isNpc: boolean
   points: number
   isEmpty: boolean
+  debris: { wood: number; stone: number } | null
 }
 
 export interface MapResponse {

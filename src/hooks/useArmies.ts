@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 
-export type MissionType = 'attack' | 'transport' | 'spy' | 'scavenge'
+export type MissionType = 'attack' | 'transport' | 'spy' | 'scavenge' | 'colonize'
 export type MissionState = 'active' | 'returning'
 
 export interface ArmyMission {
@@ -65,6 +65,19 @@ export function useSendArmy() {
       qc.invalidateQueries({ queryKey: ['armies'] })
       qc.invalidateQueries({ queryKey: ['kingdom'] })
       qc.invalidateQueries({ queryKey: ['barracks'] })
+    },
+  })
+}
+
+export function useRecallArmy() {
+  const qc = useQueryClient()
+
+  return useMutation({
+    mutationFn: (missionId: number) =>
+      api.post<{ ok: boolean; returnTime: number }>('/armies/recall', { missionId }),
+
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: ['armies'] })
     },
   })
 }

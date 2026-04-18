@@ -1,5 +1,5 @@
 import { eq, and } from 'drizzle-orm'
-import { db, kingdoms, users } from '../_db.js'
+import { db, kingdoms, users, debrisFields } from '../_db.js'
 import { getSessionUserId } from '../lib/handler.js'
 
 // ── Universe constants ────────────────────────────────────────────────────────
@@ -69,10 +69,14 @@ export default async function handler(req, res) {
   let realm  = Math.max(1, Math.min(MAX_REALM,  parseInt(req.query.realm  ?? '1', 10) || 1))
   let region = Math.max(1, Math.min(MAX_REGION, parseInt(req.query.region ?? '1', 10) || 1))
 
-  // Get player's own kingdom for highlighting
-  const [myKingdom] = await db
-    .select({ id: kingdoms.id, realm: kingdoms.realm, region: kingdoms.region, slot: kingdoms.slot })
-    .from(kingdoms).where(eq(kingdoms.userId, userId)).limit(1)
+  // Get player's own kingdom for highlighting + debris for this region
+  const [[myKingdom], debrisRows] = await Promise.all([
+    db.select({ id: kingdoms.id, realm: kingdoms.realm, region: kingdoms.region, slot: kingdoms.slot })
+      .from(kingdoms).where(eq(kingdoms.userId, userId)).limit(1),
+    db.select().from(debrisFields)
+      .where(and(eq(debrisFields.realm, realm), eq(debrisFields.region, region))),
+  ])
+  const debrisBySlot = Object.fromEntries(debrisRows.map(d => [d.slot, { wood: d.wood, stone: d.stone }]))
 
   // Get all real kingdoms in this realm+region, joined with their owner's username
   const realKingdoms = await db
@@ -96,6 +100,8 @@ export default async function handler(req, res) {
   const slots = Array.from({ length: MAX_SLOT }, (_, i) => {
     const slot = i + 1
 
+    const debris = debrisBySlot[slot] ?? null
+
     if (realBySlot[slot]) {
       const k = realBySlot[slot]
       return {
@@ -107,15 +113,16 @@ export default async function handler(req, res) {
         isNpc:     false,
         points:    0,
         isEmpty:   false,
+        debris,
       }
     }
 
     const npc = generateNpc(realm, region, slot)
     if (npc) {
-      return { slot, kingdomId: null, ...npc, isPlayer: false, isEmpty: false }
+      return { slot, kingdomId: null, ...npc, isPlayer: false, isEmpty: false, debris }
     }
 
-    return { slot, kingdomId: null, name: null, username: null, isPlayer: false, isNpc: false, points: 0, isEmpty: true }
+    return { slot, kingdomId: null, name: null, username: null, isPlayer: false, isNpc: false, points: 0, isEmpty: true, debris }
   })
 
   return res.json({

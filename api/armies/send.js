@@ -9,7 +9,7 @@ const UNIT_KEYS = [
   'merchant','caravan','colonist','scavenger','scout',
 ]
 
-const MISSION_TYPES = ['attack', 'transport', 'spy']
+const MISSION_TYPES = ['attack', 'transport', 'spy', 'colonize', 'scavenge']
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end()
@@ -74,6 +74,28 @@ export default async function handler(req, res) {
     }
   }
 
+  // Scavenge missions: scavengers only
+  if (missionType === 'scavenge') {
+    const nonScavengers = UNIT_KEYS.filter(k => k !== 'scavenger' && units[k] > 0)
+    if (nonScavengers.length > 0) {
+      return res.status(400).json({ error: 'Las misiones de recolección solo permiten Carroñeros' })
+    }
+    if (units.scavenger === 0) {
+      return res.status(400).json({ error: 'Necesitas al menos un Carroñero para recolectar' })
+    }
+  }
+
+  // Colonize missions: colonists only
+  if (missionType === 'colonize') {
+    const nonColonists = UNIT_KEYS.filter(k => k !== 'colonist' && units[k] > 0)
+    if (nonColonists.length > 0) {
+      return res.status(400).json({ error: 'Las misiones de colonización solo permiten Colonistas' })
+    }
+    if (units.colonist === 0) {
+      return res.status(400).json({ error: 'Necesitas al menos un Colonista para colonizar' })
+    }
+  }
+
   // ── Resources to carry (transport) ────────────────────────────────────────
   let woodLoad  = 0
   let stoneLoad = 0
@@ -96,11 +118,13 @@ export default async function handler(req, res) {
     }
   }
 
-  // ── Calculate travel time ─────────────────────────────────────────────────
+  // ── Calculate travel time (ambassadorHall reduces by 5%/level, max 40%) ──────
   const origin   = { realm: kingdom.realm, region: kingdom.region, slot: kingdom.slot }
   const dest     = { realm: tRealm,        region: tRegion,        slot: tSlot        }
   const distance = calcDistance(origin, dest)
-  const travelSecs = calcDuration(distance, units)
+  const baseSecs = calcDuration(distance, units)
+  const speedBonus = Math.min(0.40, (kingdom.ambassadorHall ?? 0) * 0.05)
+  const travelSecs = Math.max(1, Math.round(baseSecs * (1 - speedBonus)))
 
   if (travelSecs === 0) {
     return res.status(400).json({ error: 'No se pudo calcular el tiempo de viaje' })

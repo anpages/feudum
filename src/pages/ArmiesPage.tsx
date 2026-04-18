@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Send, Shield, Swords, Eye, Package, ChevronLeft, ChevronRight, Loader2, ArrowLeft, Trophy, Skull, Pickaxe } from 'lucide-react'
+import { useSearchParams } from 'react-router-dom'
+import { Send, Shield, Swords, Eye, Package, ChevronLeft, ChevronRight, Loader2, ArrowLeft, Trophy, Skull, Pickaxe, Undo2, Tent } from 'lucide-react'
 import { type IconType } from 'react-icons'
 import {
   GiLightFighter, GiHeavyFighter, GiMountedKnight, GiKnightBanner,
@@ -11,7 +12,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
-import { useArmies, useSendArmy, type MissionType, type ArmyMission } from '@/hooks/useArmies'
+import { useArmies, useSendArmy, useRecallArmy, type MissionType, type ArmyMission } from '@/hooks/useArmies'
 import { useKingdom } from '@/hooks/useKingdom'
 import { formatResource, formatDuration } from '@/lib/format'
 
@@ -37,10 +38,11 @@ const SUPPORT_UNITS: { id: string; name: string; Icon: IconType }[] = [
 const ALL_UNIT_META = [...COMBAT_UNITS, ...SUPPORT_UNITS]
 
 const MISSION_META: Record<MissionType, { label: string; Icon: typeof Swords; color: string; desc: string }> = {
-  attack:   { label: 'Ataque',      Icon: Swords,   color: 'text-crimson',  desc: 'Atacar y saquear el reino objetivo.' },
-  transport:{ label: 'Transporte',  Icon: Package,  color: 'text-forest',   desc: 'Transportar recursos al reino objetivo.' },
-  spy:      { label: 'Espionaje',   Icon: Eye,      color: 'text-gold-dim', desc: 'Solo Exploradores. Recopila información.' },
-  scavenge: { label: 'Recolección', Icon: Pickaxe,  color: 'text-stone',    desc: 'Envía Carroñeros a recolectar escombros de batalla.' },
+  attack:   { label: 'Ataque',       Icon: Swords,   color: 'text-crimson',  desc: 'Atacar y saquear el reino objetivo.' },
+  transport:{ label: 'Transporte',   Icon: Package,  color: 'text-forest',   desc: 'Transportar recursos al reino objetivo.' },
+  spy:      { label: 'Espionaje',    Icon: Eye,      color: 'text-gold-dim', desc: 'Solo Exploradores. Recopila información.' },
+  scavenge: { label: 'Recolección',  Icon: Pickaxe,  color: 'text-stone',    desc: 'Envía Carroñeros a recolectar escombros de batalla.' },
+  colonize: { label: 'Colonización', Icon: Tent,     color: 'text-forest',   desc: 'Envía Colonistas a fundar una nueva colonia.' },
 }
 
 // ── Countdown hook ────────────────────────────────────────────────────────────
@@ -71,11 +73,17 @@ export function ArmiesPage() {
   const { data: armies, isLoading } = useArmies()
   const { data: kingdom }           = useKingdom()
   const send                        = useSendArmy()
+  const [searchParams]              = useSearchParams()
 
-  const [missionType, setMissionType] = useState<MissionType>('attack')
-  const [tRealm,  setTRealm]  = useState(1)
-  const [tRegion, setTRegion] = useState(1)
-  const [tSlot,   setTSlot]   = useState(1)
+  const initRealm  = Math.max(1, parseInt(searchParams.get('realm')  ?? '1', 10) || 1)
+  const initRegion = Math.max(1, parseInt(searchParams.get('region') ?? '1', 10) || 1)
+  const initSlot   = Math.max(1, parseInt(searchParams.get('slot')   ?? '1', 10) || 1)
+  const initType   = (searchParams.get('type') ?? 'attack') as MissionType
+
+  const [missionType, setMissionType] = useState<MissionType>(initType)
+  const [tRealm,  setTRealm]  = useState(initRealm)
+  const [tRegion, setTRegion] = useState(initRegion)
+  const [tSlot,   setTSlot]   = useState(initSlot)
   const [units,   setUnits]   = useState<Record<string, number>>({})
   const [resLoad, setResLoad] = useState({ wood: 0, stone: 0, grain: 0 })
 
@@ -264,6 +272,7 @@ export function ArmiesPage() {
               ))}
             </div>
           )}
+
         </div>
 
       </div>
@@ -300,6 +309,7 @@ function CoordPicker({ label, value, min, max, onChange }: {
 // ── Mission row ───────────────────────────────────────────────────────────────
 
 function MissionRow({ mission, onEnd }: { mission: ArmyMission; onEnd: () => void }) {
+  const recall      = useRecallArmy()
   const isReturning = mission.state === 'returning'
   const target = isReturning ? mission.origin : mission.target
   const targetTime = isReturning ? (mission.returnTime ?? 0) : mission.arrivalTime
@@ -421,6 +431,22 @@ function MissionRow({ mission, onEnd }: { mission: ArmyMission; onEnd: () => voi
           {mission.resources.stone > 0 && <span>🪨 {formatResource(mission.resources.stone)}</span>}
           {mission.resources.grain > 0 && <span>🌾 {formatResource(mission.resources.grain)}</span>}
         </div>
+      )}
+
+      {/* Recall button — only for active outbound missions */}
+      {!isReturning && (
+        <button
+          onClick={() => recall.mutate(mission.id)}
+          disabled={recall.isPending}
+          className="flex items-center gap-1.5 text-xs font-ui text-ink-muted/60 hover:text-ink-muted transition-colors disabled:opacity-40"
+          title="Retirar misión"
+        >
+          {recall.isPending
+            ? <Loader2 size={10} className="animate-spin" />
+            : <Undo2 size={10} />
+          }
+          Retirar
+        </button>
       )}
     </Card>
   )

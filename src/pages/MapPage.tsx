@@ -1,11 +1,18 @@
 import { useState } from 'react'
-import { ChevronLeft, ChevronRight, Home, Castle, User, Bot, MapPin } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { ChevronLeft, ChevronRight, Home, Castle, User, Bot, MapPin, X, Swords, Eye, Tent, Pickaxe, Package } from 'lucide-react'
+import { GiWoodPile, GiStoneBlock } from 'react-icons/gi'
 import { useMap, type MapSlot } from '@/hooks/useMap'
 import { Badge } from '@/components/ui/Badge'
+import { Button } from '@/components/ui/Button'
+import { Card } from '@/components/ui/Card'
+import { formatResource } from '@/lib/format'
 
 export function MapPage() {
+  const navigate = useNavigate()
   const [realm,  setRealm]  = useState(1)
   const [region, setRegion] = useState(1)
+  const [selected, setSelected] = useState<MapSlot | null>(null)
 
   const { data, isLoading } = useMap(realm, region)
 
@@ -16,7 +23,18 @@ export function MapPage() {
     if (data?.myPosition) {
       setRealm(data.myPosition.realm)
       setRegion(data.myPosition.region)
+      setSelected(null)
     }
+  }
+
+  function handleSelectSlot(slot: MapSlot) {
+    if (slot.isPlayer) return
+    setSelected(prev => prev?.slot === slot.slot ? null : slot)
+  }
+
+  function sendMission(type: string) {
+    if (!selected) return
+    navigate(`/armies?realm=${realm}&region=${region}&slot=${selected.slot}&type=${type}`)
   }
 
   return (
@@ -34,17 +52,16 @@ export function MapPage() {
       {/* Navigation bar */}
       <div className="flex items-center gap-3 flex-wrap anim-fade-up-1">
 
-        {/* Realm selector */}
         <div className="flex items-center gap-1.5">
           <span className="section-heading mb-0 mr-1">Reino</span>
           <button
-            onClick={() => setRealm(r => Math.max(1, r - 1))}
+            onClick={() => { setRealm(r => Math.max(1, r - 1)); setSelected(null) }}
             disabled={realm <= 1}
             className="p-1 rounded border border-gold/20 text-ink-muted hover:bg-parchment-warm disabled:opacity-30 transition-colors"
           ><ChevronLeft size={14} /></button>
           <span className="font-ui font-semibold text-ink w-6 text-center tabular-nums">{realm}</span>
           <button
-            onClick={() => setRealm(r => Math.min(maxRealm, r + 1))}
+            onClick={() => { setRealm(r => Math.min(maxRealm, r + 1)); setSelected(null) }}
             disabled={realm >= maxRealm}
             className="p-1 rounded border border-gold/20 text-ink-muted hover:bg-parchment-warm disabled:opacity-30 transition-colors"
           ><ChevronRight size={14} /></button>
@@ -52,23 +69,21 @@ export function MapPage() {
 
         <span className="text-ink-muted/30 font-ui">·</span>
 
-        {/* Region selector */}
         <div className="flex items-center gap-1.5">
           <span className="section-heading mb-0 mr-1">Región</span>
           <button
-            onClick={() => setRegion(r => Math.max(1, r - 1))}
+            onClick={() => { setRegion(r => Math.max(1, r - 1)); setSelected(null) }}
             disabled={region <= 1}
             className="p-1 rounded border border-gold/20 text-ink-muted hover:bg-parchment-warm disabled:opacity-30 transition-colors"
           ><ChevronLeft size={14} /></button>
           <span className="font-ui font-semibold text-ink w-6 text-center tabular-nums">{region}</span>
           <button
-            onClick={() => setRegion(r => Math.min(maxRegion, r + 1))}
+            onClick={() => { setRegion(r => Math.min(maxRegion, r + 1)); setSelected(null) }}
             disabled={region >= maxRegion}
             className="p-1 rounded border border-gold/20 text-ink-muted hover:bg-parchment-warm disabled:opacity-30 transition-colors"
           ><ChevronRight size={14} /></button>
         </div>
 
-        {/* Jump to my kingdom */}
         {data?.myPosition && (
           <button
             onClick={goToMyKingdom}
@@ -80,7 +95,6 @@ export function MapPage() {
         )}
       </div>
 
-      {/* Coordinate display */}
       <div className="flex items-center gap-2 font-ui text-xs text-ink-muted anim-fade-up-1">
         <MapPin size={11} className="text-gold" />
         <span>Reino <strong className="text-ink">{realm}</strong> · Región <strong className="text-ink">{region}</strong></span>
@@ -89,43 +103,168 @@ export function MapPage() {
         )}
       </div>
 
-      {/* Slots grid */}
-      {isLoading ? (
-        <MapSkeleton />
-      ) : (
-        <div className="space-y-2 anim-fade-up-2">
-          {(data?.slots ?? []).map(slot => (
-            <SlotRow key={slot.slot} slot={slot} />
-          ))}
-        </div>
-      )}
+      {/* Main content: grid + detail panel */}
+      <div className={`grid gap-4 anim-fade-up-2 ${selected ? 'lg:grid-cols-[1fr_280px]' : ''}`}>
 
+        {/* Slots grid */}
+        {isLoading ? (
+          <MapSkeleton />
+        ) : (
+          <div className="space-y-2">
+            {(data?.slots ?? []).map(slot => (
+              <SlotRow
+                key={slot.slot}
+                slot={slot}
+                isSelected={selected?.slot === slot.slot}
+                onClick={() => handleSelectSlot(slot)}
+              />
+            ))}
+          </div>
+        )}
+
+        {/* Detail panel */}
+        {selected && (
+          <Card className="p-4 space-y-4 h-fit sticky top-20">
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <p className="font-ui text-[0.6rem] text-ink-muted/60 uppercase tracking-widest">
+                  Pos. {selected.slot}
+                </p>
+                <p className="font-ui text-sm font-semibold text-ink leading-tight mt-0.5">
+                  {selected.isEmpty ? 'Posición vacía' : selected.name}
+                </p>
+                {!selected.isEmpty && (
+                  <p className="font-body text-xs text-ink-muted mt-0.5">
+                    {selected.isNpc ? 'NPC' : `@${selected.username}`}
+                  </p>
+                )}
+              </div>
+              <button
+                onClick={() => setSelected(null)}
+                className="p-1 rounded text-ink-muted hover:text-ink hover:bg-parchment-warm transition-colors shrink-0"
+              >
+                <X size={13} />
+              </button>
+            </div>
+
+            {!selected.isEmpty && (
+              <div className="flex items-center gap-1.5">
+                <span className="font-ui text-xs text-ink-muted">Puntos:</span>
+                <span className="font-ui text-xs font-semibold text-ink tabular-nums">
+                  {selected.points.toLocaleString()}
+                </span>
+              </div>
+            )}
+
+            {/* Debris */}
+            {selected.debris && (selected.debris.wood > 0 || selected.debris.stone > 0) && (
+              <div className="rounded border border-gold/15 bg-parchment-warm p-3 space-y-1.5">
+                <p className="font-ui text-[0.6rem] text-ink-muted/70 uppercase tracking-widest flex items-center gap-1">
+                  <Pickaxe size={10} /> Escombros
+                </p>
+                <div className="flex items-center gap-3 text-xs">
+                  {selected.debris.wood > 0 && (
+                    <span className="flex items-center gap-1 font-ui text-ink-mid">
+                      <GiWoodPile size={12} className="text-gold-dim" />
+                      {formatResource(selected.debris.wood)}
+                    </span>
+                  )}
+                  {selected.debris.stone > 0 && (
+                    <span className="flex items-center gap-1 font-ui text-ink-mid">
+                      <GiStoneBlock size={12} className="text-gold-dim" />
+                      {formatResource(selected.debris.stone)}
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
+
+            <div className="divider">◆</div>
+
+            {/* Action buttons */}
+            <div className="space-y-2">
+              {selected.isEmpty ? (
+                <Button
+                  variant="primary"
+                  className="w-full"
+                  onClick={() => sendMission('colonize')}
+                >
+                  <Tent size={12} />
+                  Colonizar
+                </Button>
+              ) : (
+                <>
+                  <Button
+                    variant="primary"
+                    className="w-full"
+                    onClick={() => sendMission('attack')}
+                  >
+                    <Swords size={12} />
+                    Atacar
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    className="w-full"
+                    onClick={() => sendMission('spy')}
+                  >
+                    <Eye size={12} />
+                    Espiar
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    className="w-full"
+                    onClick={() => sendMission('transport')}
+                  >
+                    <Package size={12} />
+                    Transportar
+                  </Button>
+                </>
+              )}
+              {selected.debris && (selected.debris.wood > 0 || selected.debris.stone > 0) && (
+                <Button
+                  variant="ghost"
+                  className="w-full"
+                  onClick={() => sendMission('scavenge')}
+                >
+                  <Pickaxe size={12} />
+                  Recolectar escombros
+                </Button>
+              )}
+            </div>
+          </Card>
+        )}
+
+      </div>
     </div>
   )
 }
 
 // ── Slot row ──────────────────────────────────────────────────────────────────
 
-function SlotRow({ slot }: { slot: MapSlot }) {
+function SlotRow({ slot, isSelected, onClick }: { slot: MapSlot; isSelected: boolean; onClick: () => void }) {
   const isHighlighted = slot.isPlayer
+  const hasDebris = slot.debris && (slot.debris.wood > 0 || slot.debris.stone > 0)
 
   return (
-    <div className={`flex items-center gap-4 px-4 py-3 rounded border transition-colors ${
-      isHighlighted
-        ? 'bg-gold-soft border-gold/30 shadow-sm'
-        : slot.isEmpty
-          ? 'bg-parchment border-gold/5 opacity-50'
-          : 'bg-white border-gold/10 hover:border-gold/20 hover:bg-parchment'
-    }`}>
+    <div
+      onClick={isHighlighted ? undefined : onClick}
+      className={`flex items-center gap-4 px-4 py-3 rounded border transition-colors ${
+        isHighlighted
+          ? 'bg-gold-soft border-gold/30 shadow-sm'
+          : isSelected
+            ? 'bg-parchment border-gold/40 shadow-sm'
+            : slot.isEmpty
+              ? 'bg-parchment border-gold/5 opacity-50 cursor-pointer hover:opacity-70'
+              : 'bg-white border-gold/10 cursor-pointer hover:border-gold/20 hover:bg-parchment'
+      }`}
+    >
 
-      {/* Slot number */}
       <span className={`font-ui text-xs tabular-nums w-5 text-center shrink-0 ${
         isHighlighted ? 'text-gold font-bold' : 'text-ink-muted/50'
       }`}>
         {slot.slot}
       </span>
 
-      {/* Planet icon */}
       <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
         slot.isEmpty
           ? 'bg-parchment-warm border border-gold/10'
@@ -145,7 +284,6 @@ function SlotRow({ slot }: { slot: MapSlot }) {
         }
       </div>
 
-      {/* Kingdom info */}
       <div className="flex-1 min-w-0">
         {slot.isEmpty ? (
           <span className="font-ui text-xs text-ink-muted/35 italic">Posición vacía</span>
@@ -163,7 +301,13 @@ function SlotRow({ slot }: { slot: MapSlot }) {
         )}
       </div>
 
-      {/* Points */}
+      {/* Debris indicator */}
+      {hasDebris && (
+        <div className="shrink-0 flex items-center gap-1 text-ink-muted/50 text-xs" title="Escombros de batalla">
+          <Pickaxe size={11} />
+        </div>
+      )}
+
       {!slot.isEmpty && (
         <div className="shrink-0 text-right">
           <span className="font-ui text-xs text-ink-muted tabular-nums">
@@ -172,10 +316,10 @@ function SlotRow({ slot }: { slot: MapSlot }) {
         </div>
       )}
 
-      {/* Badges */}
       <div className="shrink-0 flex items-center gap-1.5">
         {isHighlighted && <Badge variant="gold">Tú</Badge>}
         {slot.isNpc && !slot.isEmpty && <Badge variant="stone">NPC</Badge>}
+        {isSelected && !isHighlighted && <Badge variant="gold">▶</Badge>}
       </div>
 
     </div>

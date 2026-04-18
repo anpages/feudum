@@ -92,9 +92,13 @@ export function ResourceBar({ onMenuToggle }: Props) {
       {/* ── Right: user + logout ── */}
       <div className="flex items-center gap-1.5 shrink-0 pl-3">
         {user?.username && (
-          <span className="hidden md:block font-ui text-xs text-ink-muted truncate max-w-[96px]">
+          <button
+            onClick={() => navigate('/profile')}
+            className="hidden md:block font-ui text-xs text-ink-muted hover:text-ink truncate max-w-[96px] transition-colors"
+            title="Ver perfil"
+          >
             {user.username}
-          </span>
+          </button>
         )}
         <button
           onClick={handleLogout}
