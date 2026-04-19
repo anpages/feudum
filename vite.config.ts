@@ -6,30 +6,33 @@ import path from 'path'
 
 // Vercel's Supabase integration provisions STORAGE_* env vars; locally we use
 // VITE_*. Resolve once at build-time so the client always finds the URL/key.
-// Use `||` (not `??`) because Vercel may register VITE_* vars as empty strings
-// — we still want to fall through to the STORAGE_* values in that case.
-const SUPABASE_URL =
-  process.env.VITE_SUPABASE_URL ||
-  process.env.STORAGE_VITE_SUPABASE_URL ||
-  process.env.STORAGE_SUPABASE_URL ||
-  ''
-const SUPABASE_ANON_KEY =
-  process.env.VITE_SUPABASE_ANON_KEY ||
-  process.env.STORAGE_VITE_SUPABASE_ANON_KEY ||
-  process.env.STORAGE_SUPABASE_ANON_KEY ||
-  ''
+// Validate values strictly: in Vercel the VITE_* vars were once set to garbage
+// (e.g. literal "y"), and a falsy-only check let that garbage win. Treat any
+// value that doesn't look like a real Supabase URL / JWT as missing.
+const isValidUrl = (v: string | undefined): v is string =>
+  !!v && /^https?:\/\/.+/.test(v)
+const isValidKey = (v: string | undefined): v is string =>
+  !!v && v.length >= 100   // anon JWTs are ~200 chars; anything shorter is bogus
 
-console.log('[vite] supabase env resolution:', {
-  VITE_SUPABASE_URL_len:                 (process.env.VITE_SUPABASE_URL || '').length,
-  STORAGE_VITE_SUPABASE_URL_len:         (process.env.STORAGE_VITE_SUPABASE_URL || '').length,
-  STORAGE_SUPABASE_URL_len:              (process.env.STORAGE_SUPABASE_URL || '').length,
-  VITE_SUPABASE_ANON_KEY_len:            (process.env.VITE_SUPABASE_ANON_KEY || '').length,
-  STORAGE_VITE_SUPABASE_ANON_KEY_len:    (process.env.STORAGE_VITE_SUPABASE_ANON_KEY || '').length,
-  STORAGE_SUPABASE_ANON_KEY_len:         (process.env.STORAGE_SUPABASE_ANON_KEY || '').length,
-  resolved_URL_len:                      SUPABASE_URL.length,
-  resolved_KEY_len:                      SUPABASE_ANON_KEY.length,
-  resolved_URL_starts:                   SUPABASE_URL.slice(0, 12),
-})
+const pickUrl = (...candidates: (string | undefined)[]) =>
+  candidates.find(isValidUrl) ?? ''
+const pickKey = (...candidates: (string | undefined)[]) =>
+  candidates.find(isValidKey) ?? ''
+
+const SUPABASE_URL = pickUrl(
+  process.env.VITE_SUPABASE_URL,
+  process.env.STORAGE_VITE_SUPABASE_URL,
+  process.env.STORAGE_SUPABASE_URL,
+)
+const SUPABASE_ANON_KEY = pickKey(
+  process.env.VITE_SUPABASE_ANON_KEY,
+  process.env.STORAGE_VITE_SUPABASE_ANON_KEY,
+  process.env.STORAGE_SUPABASE_ANON_KEY,
+)
+
+if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+  console.warn('[vite] WARNING: Supabase URL or anon key missing/invalid — bundle will not authenticate')
+}
 
 export default defineConfig({
   envPrefix: ['VITE_'],
