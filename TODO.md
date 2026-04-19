@@ -1,6 +1,6 @@
 # Feudum — Lista de tareas pendientes
 
-> Actualizado: 2026-04-18.
+> Actualizado: 2026-04-19.
 > **Prioridad actual:** llegar al estado jugable en solitario lo antes posible.
 > Tras alcanzar ese hito se hará reset de DB y se empieza la progresión real.
 > El servidor puede correr a x4/x8 para acelerar el crecimiento de NPCs y testear.
@@ -13,10 +13,9 @@ _(ninguno conocido actualmente)_
 
 ---
 
-## 🎯 HITO: Juego jugable en solitario (Fases 12–13)
+## ✅ HITO COMPLETADO: Juego jugable en solitario (Fases 12–13.5)
 
-> Estas tareas son la prioridad absoluta. Cuando estén completas:
-> reset de DB → empezar desde cero → comprobar progresión real.
+> Reset de DB hecho el 2026-04-19. Progresión real en curso a ECONOMY_SPEED x4.
 
 ### Correctivo inmediato
 
@@ -139,7 +138,7 @@ _(ninguno conocido actualmente)_
 59. [ ] **Backend + Frontend** — plantillas de ejército para reutilizar en ArmiesPage
 60. [ ] **Backend + Frontend** — modo vacaciones: protección anti-ataque temporal
 61. [ ] **Backend + Frontend** — chat global en tiempo real
-62. [ ] **Backend** — notificaciones en tiempo real (SSE) para mensajes y llegada de ejércitos
+62. [x] **Backend** — notificaciones push (Web Push/VAPID) para mensajes y llegada de ejércitos — `api/lib/push.js`, `api/push/subscribe.js`, service worker `src/sw.ts`, toggle en ProfilePage
 
 ---
 
@@ -156,7 +155,7 @@ _(ninguno conocido actualmente)_
 ## Fase 23 — Opciones y Pulido Final
 
 68. [ ] **Backend + Frontend** — página de opciones de usuario: privacidad, notificaciones, tema
-69. [ ] **Backend + Frontend** — sistema de logros / rewards con recompensas
+69. [x] **Backend + Frontend** — sistema de logros: 23 achievements en 6 categorías, `api/lib/achievements.js`, `GET /api/achievements`, tabla `user_achievements`
 70. [ ] **Backend** — sistema de bans (admin): temporales/permanentes con razón e historial
 71. [ ] **Admin** — herramientas avanzadas: ajuste de timers de misiones, editor de reglas
 72. [ ] **Backend** — localización / multi-idioma
@@ -165,18 +164,22 @@ _(ninguno conocido actualmente)_
 
 ## ✅ Completado (referencia rápida)
 
-- Fases 1–11 del roadmap completas (ver CLAUDE.md para detalle)
+- Fases 1–13.5 del roadmap completas (ver CLAUDE.md para detalle)
 - Auth (login/registro/logout con JWT propio)
 - **Slot aleatorio al registrarse** (tarea #1 completada)
-- 15 edificios con colas, costes, requisitos y efectos
+- 15 edificios con colas, costes, requisitos y efectos; prereq aserradero lv1 para taller/cuartel/academia/almacenes
 - Investigación completa (16 techs, árbol de requisitos, efectos de producción y combate)
 - 13 unidades + 11 defensas con stats OGame (rapid-fire, escudos, loot, escombros)
-- Mapa con NPCs deterministas, escombros por slot, panel de detalle con acciones
-- Misiones: ataque, transporte, espionaje, colonización, recolección, pillaje, retirada
+- Mapa con NPCs en DB, escombros por slot, panel de detalle con acciones
+- Misiones: ataque, transporte, espionaje, colonización, recolección, pillaje, despliegue, retirada
 - Motor de batalla (rapid-fire, escudos, loot, escombros, reparación defensas)
 - Sistema de mensajes (informes de batalla, espionaje, mensajes manuales)
-- Rankings con puntos reales
+- **NPCs activos**: cron horario, IA de construcción, IA de ataque, resolución lazy
+- **Sistema de temporadas**: boss, SeasonCard en Overview, reset entre temporadas
+- **Logros**: 23 achievements, verificación tras batallas/espionaje/colonización
+- **Push notifications**: Web Push/VAPID, service worker, toggle en perfil
+- Rankings separados jugadores/NPCs con tabs
 - Gestión de colonias (selector de reino activo)
-- Perfil de usuario (edición de username)
+- Perfil de usuario (edición de username, clase de personaje, push toggle)
 - Toasts de finalización de cola, página 404, ajustes de servidor via env vars
 - Arquitectura feature-based con service layer (src/shared/, services/, types.ts por feature)

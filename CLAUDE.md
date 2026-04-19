@@ -413,33 +413,35 @@ Import from `@/components/ui` (barrel export).
 - [x] Pillage mission: NPC-only quick raid, loot via cargo capacity, small casualty rate
 - [x] MapPage: "Saquear" button for NPC slots; Transport hidden vs NPCs
 
-### Phase 12 — Deployment Mission (pending)
-- [ ] **Deployment** (`DeploymentMission` in OGame ref) — move units to own colony, one-way (no return)
+### Phase 12 — Deployment Mission ✅
+- [x] **Deployment** — move units to own colony, one-way (no return)
   - Only valid target: own kingdom (different slot)
   - Units added to destination on arrival, no return trip
-  - Simple: no battle, no loot
-  - Ref: `app/GameMissions/DeployMission.php`
+  - MapPage "Desplegar" button on own kingdoms; result shown in MissionRow
 
-### Phase 13 — Active NPCs (pending)
-- [ ] **NPC kingdoms as real DB rows** — NPCs behave exactly like real players (custom Feudum feature, not in OGame ref)
-  - **DB**: add `isNpc: boolean` + `npcLevel: int` to `kingdoms` table; create one system NPC user (`id = -1`) as owner of all NPC kingdoms
-  - **Seeder**: on first migration / admin action, populate the universe with NPC kingdoms (replace Wang hash map generation with real rows); NPC buildings pre-set per `npcLevel` (1=weak, 2=medium, 3=strong)
-  - **Resources**: NPC kingdoms tick exactly like player kingdoms — they accumulate wood/stone/grain over time and can be looted down to zero
-  - **Units**: NPC kingdoms have real unit counts in their kingdom row — units destroyed in battle are permanently deducted
-  - **Spy**: spying an NPC returns real resource and troop data (same endpoint, no special case)
-  - **Pillage / Attack**: loot deducted from NPC's actual stored resources; debris generated from actual destroyed units
-  - **NPC rebuild AI** (lazy scheduler on `GET /api/kingdoms/me`): if NPC has enough resources, spend them to train units up to a target army size per `npcLevel`
-  - **NPC attack AI** — runs via Vercel Cron Job (`/api/cron/npc-tick`, every hour, defined in `vercel.json`), NOT lazily on player requests. For each NPC above attack threshold with cooldown elapsed: pick target player kingdom with most accumulated resources within range, deduct units from NPC, create `army_missions` row with real future `arrivalTime`. Mission travels in DB while player is offline.
-  - **Battle resolution** — still lazy: on `GET /api/armies` or `GET /api/messages`, arrived NPC missions are processed (battle engine runs, report saved). Player logs in hours later and finds the battle already done, resources stolen, troops dead — exactly like OGame.
-  - **NPC target selection** — player kingdom with most wood+stone+grain within 3-slot radius; if none, expand radius. Prioritises resource-rich targets like a real player would.
-  - **NPC army sent** — 60–80% of available troops (random factor); reserves remainder for defense. Composition weighted toward fastest/strongest units.
-  - **NPC return**: if NPC wins, return mission created with loot; resources added to NPC kingdom on arrival. If NPC loses, units are gone permanently.
-  - **NPC start from zero** — NPCs are seeded as empty kingdoms (no buildings, no units, no resources) and grow organically via the cron exactly like a player would. `npcLevel` controls their target army size and aggression threshold, not a shortcut to pre-built kingdoms. At server speed x4/x8 they grow proportionally faster. This ensures the threat scales naturally with the server age.
-  - **NPC rebuild AI** — also runs in the same hourly cron: if NPC has enough resources, spend them to train units toward target army size per `npcLevel`. Uses existing barracks train logic. Respects `ECONOMY_SPEED` multiplier.
-  - **Battle report**: defender (player) gets full report in messages with real NPC fleet composition. Player may log in hours after the battle happened.
-  - **Configurable**: `NPC_AGGRESSION` (0=off, 1=low, 2=medium, 3=high), `NPC_ATTACK_INTERVAL_HOURS` (default: 24/12/6 per aggression level), `NPC_REBUILD_INTERVAL_HOURS` in `api/lib/config.js` and admin panel
-  - **Vercel Cron**: free tier allows 2 cron jobs; `/api/cron/npc-tick` runs hourly. Secured with `CRON_SECRET` header check.
-  - **Map**: MapPage reads NPC kingdoms from DB instead of generating via Wang hash; existing slot layout preserved
+### Phase 13 — Active NPCs ✅
+- [x] **NPC kingdoms as real DB rows** — NPCs behave exactly like real players
+  - `isNpc`, `isBoss`, `npcLevel`, `npcLastBuildAt`, `npcLastAttackAt` columns on `kingdoms`
+  - System NPC user owns all NPC kingdoms; seeded via `startNewSeason()` at ~50% density (`NPC_DENSITY`)
+  - NPC resources tick identically to player kingdoms; loot deducted from real stored values
+  - Spy returns real NPC resource + troop data (no special case needed)
+  - `GET /api/cron/npc-tick` — Vercel Cron (hourly); secured with `CRON_SECRET`
+    - Growth AI: NPC spends resources to build next building (sawmill→quarry→grainFarm→windmill→barracks→workshop) and trains units toward target army size per `npcLevel`
+    - Attack AI: if army above threshold and cooldown elapsed, selects richest player kingdom within radius, deducts 60–80% troops, inserts `army_missions` with real `arrivalTime`
+  - Battle resolution lazy: `GET /api/armies` + `GET /api/messages` trigger `resolveIncomingNpcAttacks()`; player finds outcome when they log in
+  - NPC return mission: winner NPC gets loot added on arrival; loser units gone permanently
+  - Boss kingdom (`isBoss: true`) seeded at universe center with scaled buildings/units per difficulty
+  - Configurable: `NPC_AGGRESSION`, `NPC_ATTACK_INTERVAL_HOURS`, `NPC_REBUILD_INTERVAL_HOURS` in `api/lib/config.js`
+  - Map reads NPC kingdoms from DB; Wang hash retained as slot-display fallback only
+
+### Phase 13.5 — Season System, Achievements & Push ✅
+- [x] **Season card on Overview** — prominent `<SeasonCard>` on OverviewPage: boss name, lore, army size, difficulty stars, live countdown, "Atacar" CTA linking to /armies with pre-filled coords
+- [x] **Season fixes** — character class resets to null on `resetSeason()`; admin users included in player seeding; random slot placement (not sequential)
+- [x] **Rankings split** — `GET /api/rankings?type=players|npcs`; RankingsPage has Jugadores/NPCs tabs; boss kingdom shown with dragon icon + npcLevel
+- [x] **Achievement system** — `api/lib/achievements.js`: 23 achievements across 6 categories (buildings, research, military, combat, exploration, season); `checkAndUnlock(userId)` called after battles/spy/colonize; `GET /api/achievements`; `user_achievements` DB table (migration 0018)
+- [x] **PWA push notifications** — VAPID Web Push (`web-push` package); `push_subscriptions` DB table; `POST /api/push/subscribe` (subscribe + unsubscribe); `GET /api/push/vapid-public-key`; custom service worker `src/sw.ts` (Workbox precaching + push event handler); `usePushNotifications` hook; toggle card in ProfilePage; push sent to defender on attack and to winner on boss kill
+- [x] **Building prerequisites** — sawmill lv1 required before workshop/barracks/academy/granary; quarry lv1 for stonehouse; grainFarm lv1 for silo — prevents new players from wasting starting resources
+- [x] **Energy pill always visible** — EnergyPill shown even when both produced and consumed are 0 (was hidden at game start)
 
 ### Phase 14 — Expeditions (pending)
 - [ ] **Expedition** (`ExpeditionMission` in OGame ref) — exploration with random encounters
