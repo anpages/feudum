@@ -4,7 +4,6 @@ import { formatResource } from '@/lib/format'
 export function EnergyPill({ kingdom }: { kingdom: Record<string, unknown> | null | undefined }) {
   const produced = (kingdom?.energyProduced as number | undefined) ?? 0
   const consumed = (kingdom?.energyConsumed as number | undefined) ?? 0
-  if (produced === 0 && consumed === 0) return null
   const ok = produced >= consumed
   return (
     <div
