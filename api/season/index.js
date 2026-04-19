@@ -1,17 +1,26 @@
 /**
  * GET /api/season — public endpoint returning current season info.
+ * Also bootstraps season 1 if none exists (lazy init for Hobby plan where
+ * cron jobs are daily-only and can't handle sub-daily schedules).
  */
 import { eq } from 'drizzle-orm'
 import { db, kingdoms, users } from '../_db.js'
 import { getSettings } from '../lib/settings.js'
-import { BOSS_POOL, getBossForSeason } from '../lib/bosses.js'
+import { getBossForSeason } from '../lib/bosses.js'
+import { startNewSeason } from '../lib/season.js'
 
 const COMBAT_UNITS = ['squire','knight','paladin','warlord','grandKnight','siegeMaster','warMachine','dragonKnight']
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).end()
 
-  const cfg = await getSettings()
+  let cfg = await getSettings()
+
+  // Bootstrap season 1 if no season exists yet
+  if (!cfg.season_state || cfg.season_state === '') {
+    await startNewSeason(1, cfg.economy_speed)
+    cfg = await getSettings()
+  }
 
   const seasonNumber    = parseInt(cfg.season_number   ?? '0', 10)
   const seasonState     = cfg.season_state             ?? null
