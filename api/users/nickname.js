@@ -1,6 +1,7 @@
 import { eq } from 'drizzle-orm'
 import { db, users, kingdoms, research } from '../_db.js'
 import { getSessionUserId } from '../lib/handler.js'
+import { UNIVERSE } from '../lib/config.js'
 
 const NICKNAME_RE = /^[a-zA-Z0-9_]{3,20}$/
 
@@ -47,9 +48,9 @@ export default async function handler(req, res) {
       .from(kingdoms)
     const takenSet = new Set(taken.map(p => `${p.realm}:${p.region}:${p.slot}`))
     const all = []
-    for (let realm = 1; realm <= 5; realm++)
-      for (let region = 1; region <= 10; region++)
-        for (let slot = 1; slot <= 15; slot++)
+    for (let realm = 1; realm <= UNIVERSE.maxRealm; realm++)
+      for (let region = 1; region <= UNIVERSE.maxRegion; region++)
+        for (let slot = 1; slot <= UNIVERSE.maxSlot; slot++)
           if (!takenSet.has(`${realm}:${region}:${slot}`)) all.push({ realm, region, slot })
     if (!all.length) return res.status(500).json({ error: 'no_slots' })
     const position = all[Math.floor(Math.random() * all.length)]
