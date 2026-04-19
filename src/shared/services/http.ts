@@ -2,21 +2,21 @@ import { supabase } from '@/lib/supabase'
 
 const BASE = '/api'
 
-// Cache the token — updated reactively via auth state listener
-let _token: string | null = null
-
-supabase.auth.getSession().then(({ data: { session } }) => {
-  _token = session?.access_token ?? null
-})
-
-supabase.auth.onAuthStateChange((_event, session) => {
-  _token = session?.access_token ?? null
-})
+// Read the session per-request instead of caching the token at module load.
+// Caching raced with React Query: the very first /api/auth/me could fire
+// before supabase.auth.getSession() resolved → no Authorization header → 401.
+// getSession() is in-memory (synchronous-ish) once Supabase has hydrated, so
+// the cost is negligible and the token is always fresh (handles refresh too).
+async function authHeader(): Promise<string | null> {
+  const { data: { session } } = await supabase.auth.getSession()
+  return session?.access_token ? `Bearer ${session.access_token}` : null
+}
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const headers = new Headers(init?.headers)
   headers.set('Content-Type', 'application/json')
-  if (_token) headers.set('Authorization', `Bearer ${_token}`)
+  const auth = await authHeader()
+  if (auth) headers.set('Authorization', auth)
 
   const res = await fetch(`${BASE}${path}`, {
     ...init,
