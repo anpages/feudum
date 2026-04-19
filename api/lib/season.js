@@ -168,7 +168,7 @@ export async function startNewSeason(seasonNumber, economySpeed) {
 
   // Fresh kingdom per player
   const playerUsers = await db.select({ id: users.id, username: users.username })
-    .from(users).where(and(eq(users.isNpc, false), eq(users.isAdmin, false)))
+    .from(users).where(eq(users.isNpc, false))
 
   const { maxRealm, maxRegion, maxSlot } = UNIVERSE
   for (const u of playerUsers) {
