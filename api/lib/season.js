@@ -3,10 +3,11 @@
  * resetSeason()    — wipes all game state except user accounts
  * startNewSeason() — reset + seed boss + seed player kingdoms + seed NPCs
  */
-import { eq, and } from 'drizzle-orm'
+import { eq, and, isNotNull } from 'drizzle-orm'
 import {
   db, users, kingdoms, armyMissions, debrisFields,
   research, buildingQueue, researchQueue, unitQueue,
+  userAchievements,
 } from '../_db.js'
 import { ECONOMY_SPEED, NPC_DENSITY, UNIVERSE } from './config.js'
 import { getBossForSeason, getBossPosition } from './bosses.js'
@@ -51,6 +52,7 @@ export async function resetSeason() {
   await db.delete(armyMissions)
   await db.delete(debrisFields)
   await db.delete(kingdoms)
+  await db.delete(userAchievements)
 
   const RESEARCH_ZERO = {
     swordsmanship: 0, armoury: 0, fortification: 0,
@@ -60,6 +62,10 @@ export async function resetSeason() {
     updatedAt: new Date(),
   }
   await db.update(research).set(RESEARCH_ZERO)
+
+  // Reset character class — each season players choose again
+  await db.update(users).set({ characterClass: null, updatedAt: new Date() })
+    .where(eq(users.isNpc, false))
 }
 
 // ── NPC seed ──────────────────────────────────────────────────────────────────

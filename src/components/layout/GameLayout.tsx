@@ -3,7 +3,6 @@ import { Outlet, useLocation } from 'react-router-dom'
 import { ResourceBar } from './ResourceBar'
 import { NavBar } from './NavBar'
 import { ToastContainer } from '@/components/ui/ToastContainer'
-import { SeasonBanner } from '@/features/season/SeasonBanner'
 
 export function GameLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -22,7 +21,6 @@ export function GameLayout() {
       <NavBar isOpen={sidebarOpen} onClose={closeSidebar} />
 
       <main className="game-content">
-        <SeasonBanner />
         <div className="game-content-inner">
           <Outlet />
         </div>

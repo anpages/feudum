@@ -17,6 +17,7 @@ import { label } from '@/lib/labels'
 import { tempLabel } from '@/lib/terrain'
 import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
+import { SeasonCard } from '@/features/season/SeasonCard'
 
 const CLASS_INFO: Record<string, { emoji: string; label: string; color: string }> = {
   collector:  { emoji: '⛏️', label: 'Coleccionista', color: 'text-forest-light' },
@@ -70,6 +71,9 @@ export function OverviewPage() {
 
   return (
     <div className="space-y-6">
+
+      {/* ── Season card ── */}
+      <SeasonCard />
 
       {/* ── Kingdom identity banner ── */}
       <Card className="p-5 anim-fade-up">
