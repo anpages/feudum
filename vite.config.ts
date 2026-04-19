@@ -6,12 +6,17 @@ import path from 'path'
 
 // Vercel's Supabase integration provisions STORAGE_* env vars; locally we use
 // VITE_*. Resolve once at build-time so the client always finds the URL/key.
+// Use `||` (not `??`) because Vercel may register VITE_* vars as empty strings
+// — we still want to fall through to the STORAGE_* values in that case.
 const SUPABASE_URL =
-  process.env.VITE_SUPABASE_URL ?? process.env.STORAGE_SUPABASE_URL ?? ''
+  process.env.VITE_SUPABASE_URL ||
+  process.env.STORAGE_VITE_SUPABASE_URL ||
+  process.env.STORAGE_SUPABASE_URL ||
+  ''
 const SUPABASE_ANON_KEY =
-  process.env.VITE_SUPABASE_ANON_KEY ??
-  process.env.STORAGE_VITE_SUPABASE_ANON_KEY ??
-  process.env.STORAGE_SUPABASE_ANON_KEY ??
+  process.env.VITE_SUPABASE_ANON_KEY ||
+  process.env.STORAGE_VITE_SUPABASE_ANON_KEY ||
+  process.env.STORAGE_SUPABASE_ANON_KEY ||
   ''
 
 export default defineConfig({
