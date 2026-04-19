@@ -19,6 +19,18 @@ const SUPABASE_ANON_KEY =
   process.env.STORAGE_SUPABASE_ANON_KEY ||
   ''
 
+console.log('[vite] supabase env resolution:', {
+  VITE_SUPABASE_URL_len:                 (process.env.VITE_SUPABASE_URL || '').length,
+  STORAGE_VITE_SUPABASE_URL_len:         (process.env.STORAGE_VITE_SUPABASE_URL || '').length,
+  STORAGE_SUPABASE_URL_len:              (process.env.STORAGE_SUPABASE_URL || '').length,
+  VITE_SUPABASE_ANON_KEY_len:            (process.env.VITE_SUPABASE_ANON_KEY || '').length,
+  STORAGE_VITE_SUPABASE_ANON_KEY_len:    (process.env.STORAGE_VITE_SUPABASE_ANON_KEY || '').length,
+  STORAGE_SUPABASE_ANON_KEY_len:         (process.env.STORAGE_SUPABASE_ANON_KEY || '').length,
+  resolved_URL_len:                      SUPABASE_URL.length,
+  resolved_KEY_len:                      SUPABASE_ANON_KEY.length,
+  resolved_URL_starts:                   SUPABASE_URL.slice(0, 12),
+})
+
 export default defineConfig({
   envPrefix: ['VITE_'],
   define: {
