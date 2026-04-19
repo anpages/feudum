@@ -10,3 +10,6 @@ export const UNIVERSE = {
 // NPC aggression: 0=off, 1=low (24h), 2=medium (12h), 3=high (6h)
 export const NPC_AGGRESSION = parseInt(process.env.NPC_AGGRESSION ?? '1', 10)
 export const NPC_ATTACK_INTERVAL_HOURS = [Infinity, 24, 12, 6][NPC_AGGRESSION] ?? 24
+
+// Fraction of universe slots filled with NPCs at season start (0.0–1.0)
+export const NPC_DENSITY = parseFloat(process.env.NPC_DENSITY ?? '0.6')
