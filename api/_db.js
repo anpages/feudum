@@ -106,7 +106,11 @@ export const kingdoms = pgTable('kingdoms', {
   cathedralPercent: integer('cathedral_percent').default(10).notNull(),
 
   isNpc:    boolean('is_npc').default(false).notNull(),
+  isBoss:   boolean('is_boss').default(false).notNull(),
   npcLevel: integer('npc_level').default(0).notNull(),
+
+  npcLastBuildAt:  integer('npc_last_build_at').default(0).notNull(),
+  npcLastAttackAt: integer('npc_last_attack_at').default(0).notNull(),
 
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
@@ -241,7 +245,27 @@ export const messages = pgTable('messages', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
 })
 
+// ── Achievements ──────────────────────────────────────────────────────────────
+
+export const userAchievements = pgTable('user_achievements', {
+  id:            serial('id').primaryKey(),
+  userId:        integer('user_id').notNull().references(() => users.id),
+  achievementId: varchar('achievement_id', { length: 60 }).notNull(),
+  unlockedAt:    timestamp('unlocked_at').defaultNow().notNull(),
+})
+
+// ── Push subscriptions ────────────────────────────────────────────────────────
+
+export const pushSubscriptions = pgTable('push_subscriptions', {
+  id:        serial('id').primaryKey(),
+  userId:    integer('user_id').notNull().references(() => users.id),
+  endpoint:  text('endpoint').notNull().unique(),
+  p256dh:    text('p256dh').notNull(),
+  auth:      text('auth').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
 // ── Connection ────────────────────────────────────────────────────────────────
 
 const sql = neon(process.env.DATABASE_URL)
-export const db = drizzle(sql, { schema: { users, kingdoms, research, researchQueue, buildingQueue, unitQueue, armyMissions, messages, debrisFields, settings } })
+export const db = drizzle(sql, { schema: { users, kingdoms, research, researchQueue, buildingQueue, unitQueue, armyMissions, messages, debrisFields, settings, userAchievements, pushSubscriptions } })

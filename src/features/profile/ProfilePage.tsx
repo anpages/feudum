@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { User, Mail, Calendar, Save, Loader2, Pencil, Trash2, Zap, LogOut } from 'lucide-react'
+import { User, Mail, Calendar, Save, Loader2, Pencil, Trash2, Zap, LogOut, Bell, BellOff } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { GiCastle } from 'react-icons/gi'
 import { Card } from '@/components/ui/Card'
@@ -11,6 +11,7 @@ import {
 } from '@/features/profile/useProfile'
 import { useKingdoms } from '@/features/kingdom/useKingdom'
 import { useAuth } from '@/features/auth/useAuth'
+import { usePushNotifications } from '@/features/push/usePushNotifications'
 
 // ── Character class definitions ───────────────────────────────────────────────
 
@@ -89,6 +90,7 @@ export function ProfilePage() {
     setAbandonConfirm(null)
   }
 
+  const push = usePushNotifications()
   const kingdoms = kingdomsData?.kingdoms ?? []
   const currentClass = user?.characterClass ?? null
   const ether = user?.ether ?? 0
@@ -236,6 +238,38 @@ export function ProfilePage() {
               {update.isPending ? 'Guardando…' : saved ? 'Guardado' : 'Guardar cambios'}
             </Button>
           </Card>
+
+          {/* Push notifications */}
+          {push.state !== 'unsupported' && (
+            <Card className="p-5 space-y-3 anim-fade-up-3">
+              <h2 className="font-ui text-sm font-semibold text-ink uppercase tracking-widest">
+                Notificaciones
+              </h2>
+              <p className="font-body text-xs text-ink-muted/70">
+                {push.state === 'subscribed'
+                  ? 'Recibirás alertas cuando te ataquen, tus colas terminen o empiece una nueva temporada.'
+                  : push.state === 'denied'
+                    ? 'Has bloqueado las notificaciones en tu navegador.'
+                    : 'Activa las notificaciones para no perderte ataques ni finales de temporada.'}
+              </p>
+              {push.state !== 'denied' && (
+                <Button
+                  variant={push.state === 'subscribed' ? 'ghost' : 'primary'}
+                  size="sm"
+                  onClick={push.state === 'subscribed' ? push.unsubscribe : push.subscribe}
+                  disabled={push.state === 'loading'}
+                  className="w-full"
+                >
+                  {push.state === 'loading'
+                    ? <Loader2 size={12} className="animate-spin" />
+                    : push.state === 'subscribed'
+                      ? <BellOff size={12} />
+                      : <Bell size={12} />}
+                  {push.state === 'subscribed' ? 'Desactivar notificaciones' : 'Activar notificaciones'}
+                </Button>
+              )}
+            </Card>
+          )}
 
           {/* Logout */}
           <Card className="p-5 anim-fade-up-4">

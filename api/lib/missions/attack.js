@@ -6,6 +6,7 @@ import {
 } from '../battle.js'
 import { UNIT_KEYS, DEFENSE_KEYS, extractUnits } from './keys.js'
 import { setSetting, getStringSetting } from '../settings.js'
+import { sendPush } from '../push.js'
 
 async function upsertDebris(realm, region, slot, debris) {
   if (debris.wood <= 0 && debris.stone <= 0) return
@@ -101,6 +102,11 @@ export async function processAttack(mission, myKingdom, now, targetKingdom) {
           subject: '🏆 ¡Victoria de Temporada! — El Jefe Final ha caído',
           data: JSON.stringify({ seasonVictory: true, condition: 'boss_defeated', bossName: targetName }),
         })
+        sendPush(myKingdom.userId, {
+          title: '🏆 ¡Campeón de Temporada!',
+          body: `Has derrotado a ${targetName}. ¡La temporada ha terminado!`,
+          url: '/messages',
+        }).catch(() => {})
       }
     }
 
@@ -110,11 +116,17 @@ export async function processAttack(mission, myKingdom, now, targetKingdom) {
       data: JSON.stringify(battleResult),
     })
     if (targetKingdom?.userId && !targetKingdom.isNpc) {
+      const defOutcome = outcome === 'victory' ? 'defeat' : outcome
       await db.insert(messages).values({
         userId: targetKingdom.userId, type: 'battle',
         subject: '🛡️ Tu reino fue atacado',
-        data: JSON.stringify({ ...battleResult, outcome: outcome === 'victory' ? 'defeat' : outcome }),
+        data: JSON.stringify({ ...battleResult, outcome: defOutcome }),
       })
+      sendPush(targetKingdom.userId, {
+        title: defOutcome === 'defeat' ? '💀 Tu reino fue saqueado' : '🛡️ Ataque repelido',
+        body: `${myKingdom.name} te atacó. ${defOutcome === 'defeat' ? 'Has perdido recursos.' : 'El enemigo fue rechazado.'}`,
+        url: '/messages',
+      }).catch(() => {})
     }
   } else {
     // Defeat

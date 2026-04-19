@@ -31,6 +31,7 @@
     "react-router-dom": "^7.14.1",
     "tailwind-merge": "^3.5.0",
     "vite-plugin-pwa": "^1.2.0",
+    "web-push": "^3.6.7",
     "zustand": "^5.0.12"
   },
   "devDependencies": {

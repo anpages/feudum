@@ -1,9 +1,9 @@
 import { useState } from 'react'
-import { Trophy, Medal } from 'lucide-react'
-import { GiLaurelCrown, GiScrollQuill, GiAnvil, GiSpellBook, GiCrossedSwords, GiWheat, GiCastle, GiRobotGolem } from 'react-icons/gi'
+import { Trophy, Medal, Users, Cpu } from 'lucide-react'
+import { GiLaurelCrown, GiScrollQuill, GiAnvil, GiSpellBook, GiCrossedSwords, GiWheat, GiCastle, GiRobotGolem, GiDragonHead } from 'react-icons/gi'
 import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
-import { useRankings, type RankingCategory, type RankingEntry } from '@/features/rankings/useRankings'
+import { useRankings, type RankingCategory, type RankingPlayerType, type RankingEntry } from '@/features/rankings/useRankings'
 import { formatResource } from '@/lib/format'
 
 // ── Category tabs ─────────────────────────────────────────────────────────────
@@ -16,11 +16,17 @@ const CATEGORIES: { id: RankingCategory; label: string; Icon: React.ComponentTyp
   { id: 'economy',   label: 'Economía',      Icon: GiWheat,        unit: 'pts' },
 ]
 
+const PLAYER_TYPES: { id: RankingPlayerType; label: string; Icon: React.ComponentType<{ size?: number; className?: string }> }[] = [
+  { id: 'players', label: 'Jugadores', Icon: Users },
+  { id: 'npcs',    label: 'NPCs',      Icon: Cpu },
+]
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export function RankingsPage() {
-  const [category, setCategory] = useState<RankingCategory>('total')
-  const { data, isLoading } = useRankings(category)
+  const [category, setCategory]     = useState<RankingCategory>('total')
+  const [playerType, setPlayerType] = useState<RankingPlayerType>('players')
+  const { data, isLoading } = useRankings(category, playerType)
 
   const rankings = data?.rankings ?? []
   const top3 = rankings.slice(0, 3)
@@ -35,6 +41,24 @@ export function RankingsPage() {
         <p className="font-body text-ink-muted text-sm mt-1.5">
           Compara tu progreso con el resto de reinos del universo.
         </p>
+      </div>
+
+      {/* Player type tabs */}
+      <div className="anim-fade-up-1 flex gap-1 p-1 bg-obsidian border border-gold/10 rounded-lg w-fit">
+        {PLAYER_TYPES.map(({ id, label, Icon }) => (
+          <button
+            key={id}
+            onClick={() => setPlayerType(id)}
+            className={`flex items-center gap-1.5 px-4 py-1.5 rounded font-ui text-xs font-semibold transition-all ${
+              playerType === id
+                ? 'bg-gold/15 border border-gold/30 text-gold-dim shadow-sm'
+                : 'text-ink-muted hover:text-ink-mid'
+            }`}
+          >
+            <Icon size={12} />
+            {label}
+          </button>
+        ))}
       </div>
 
       {/* Category tabs */}
@@ -110,7 +134,9 @@ function PodiumCard({ entry, unit }: { entry: RankingEntry; unit: string }) {
           {entry.isNpc && <GiRobotGolem size={12} className="text-ink-muted/50" />}
           {entry.name}
         </p>
-        <p className="font-body text-xs text-ink-muted/70">{entry.isNpc ? 'NPC' : `@${entry.username}`}</p>
+        <p className="font-body text-xs text-ink-muted/70">
+          {entry.isBoss ? '⚔ Jefe' : entry.isNpc ? `NPC Nv.${entry.npcLevel ?? 1}` : `@${entry.username}`}
+        </p>
       </div>
       <div className="mt-1">
         <p className="font-ui text-lg font-bold tabular-nums text-gold-dim">
@@ -134,17 +160,23 @@ function RankRow({ entry, unit }: { entry: RankingEntry; unit: string }) {
       <span className="font-ui text-xs tabular-nums text-ink-muted/60 w-6 text-right shrink-0">
         {entry.rank}
       </span>
-      <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 ${entry.isNpc ? 'bg-parchment-warm border border-gold/15' : 'bg-gold/8 border border-gold/20'}`}>
-        {entry.isNpc ? <GiRobotGolem size={13} className="text-ink-muted/50" /> : <GiCastle size={13} className="text-gold-dim" />}
+      <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 ${entry.isBoss ? 'bg-crimson/15 border border-crimson/30' : entry.isNpc ? 'bg-parchment-warm border border-gold/15' : 'bg-gold/8 border border-gold/20'}`}>
+        {entry.isBoss
+          ? <GiDragonHead size={13} className="text-crimson-light" />
+          : entry.isNpc
+            ? <GiRobotGolem size={13} className="text-ink-muted/50" />
+            : <GiCastle size={13} className="text-gold-dim" />}
       </div>
       <div className="flex-1 min-w-0">
         <p className="font-ui text-sm font-medium text-ink truncate">{entry.name}</p>
         <p className="font-body text-xs text-ink-muted/60 truncate">
-          {entry.isNpc ? 'NPC' : `@${entry.username}`} · R{entry.realm} · {entry.region} · {entry.slot}
+          {entry.isBoss ? '⚔ Jefe de temporada' : entry.isNpc ? `NPC Nv.${entry.npcLevel ?? 1}` : `@${entry.username}`}
+          {' '}· R{entry.realm} · {entry.region} · {entry.slot}
         </p>
       </div>
       {entry.isMe && <Badge variant="gold" className="text-[0.6rem] shrink-0">Tú</Badge>}
-      {entry.isNpc && <Badge variant="stone" className="text-[0.6rem] shrink-0">NPC</Badge>}
+      {entry.isBoss && <Badge variant="crimson" className="text-[0.6rem] shrink-0">Jefe</Badge>}
+      {entry.isNpc && !entry.isBoss && <Badge variant="stone" className="text-[0.6rem] shrink-0">NPC</Badge>}
       <span className="font-ui text-sm font-semibold tabular-nums text-ink-mid shrink-0">
         {formatResource(entry.points)} <span className="text-ink-muted/50 text-xs">{unit}</span>
       </span>

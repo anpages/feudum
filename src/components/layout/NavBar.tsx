@@ -10,7 +10,10 @@ import {
   GiMedievalBarracks,
   GiSwordsPower,
   GiTreasureMap,
+  GiAchievement,
+  GiPodiumWinner,
 } from 'react-icons/gi'
+import { MessageSquare } from 'lucide-react'
 import { useAuth } from '@/features/auth/useAuth'
 
 interface NavItem {
@@ -67,6 +70,20 @@ export function NavBar({ isOpen, onClose }: Props) {
             <span className="flex-1">{label}</span>
           </NavLink>
         ))}
+
+        <span className="nav-section-label mt-3">Social</span>
+        <NavLink to="/messages"     onClick={onClose} className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}>
+          <MessageSquare size={15} className="nav-icon shrink-0" />
+          <span className="flex-1">Mensajes</span>
+        </NavLink>
+        <NavLink to="/rankings"     onClick={onClose} className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}>
+          <GiPodiumWinner size={16} className="nav-icon shrink-0" />
+          <span className="flex-1">Rankings</span>
+        </NavLink>
+        <NavLink to="/achievements" onClick={onClose} className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}>
+          <GiAchievement size={16} className="nav-icon shrink-0" />
+          <span className="flex-1">Logros</span>
+        </NavLink>
       </div>
 
       {/* Admin link */}

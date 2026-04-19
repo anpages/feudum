@@ -11,10 +11,14 @@ export default async function handler(req, res) {
   const userId = await getSessionUserId(req)
   if (!userId) return res.status(401).json({ error: 'No autenticado' })
 
-  const category = VALID_CATEGORIES.includes(req.query.category) ? req.query.category : 'total'
+  const category   = VALID_CATEGORIES.includes(req.query.category) ? req.query.category : 'total'
+  const playerType = req.query.type === 'npcs' ? 'npcs' : 'players'
+  const showNpcs   = playerType === 'npcs'
 
   const [allKingdoms, allResearch] = await Promise.all([
-    db.select().from(kingdoms).innerJoin(users, eq(kingdoms.userId, users.id)),
+    db.select().from(kingdoms)
+      .innerJoin(users, eq(kingdoms.userId, users.id))
+      .where(eq(kingdoms.isNpc, showNpcs)),
     db.select().from(research),
   ])
 
@@ -31,6 +35,8 @@ export default async function handler(req, res) {
         region:    k.region,
         slot:      k.slot,
         isNpc:     k.isNpc,
+        isBoss:    k.isBoss,
+        npcLevel:  k.npcLevel,
         points:    breakdown[category],
         breakdown,
         isMe:      k.userId === userId,
@@ -39,5 +45,5 @@ export default async function handler(req, res) {
     .sort((a, b) => b.points - a.points)
     .map((entry, i) => ({ ...entry, rank: i + 1 }))
 
-  return res.json({ rankings: ranked, category })
+  return res.json({ rankings: ranked, category, playerType })
 }

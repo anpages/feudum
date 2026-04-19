@@ -10,6 +10,7 @@ import { DefensePage } from '@/features/defense/DefensePage'
 import { MapPage } from '@/features/map/MapPage'
 import { ArmiesPage } from '@/features/armies/ArmiesPage'
 import { RankingsPage } from '@/features/rankings/RankingsPage'
+import { AchievementsPage } from '@/features/achievements/AchievementsPage'
 import { MessagesPage } from '@/features/messages/MessagesPage'
 import { ProfilePage } from '@/features/profile/ProfilePage'
 import { AdminPage } from '@/features/admin/AdminPage'
@@ -69,6 +70,7 @@ export default function App() {
             <Route path="/map" element={<MapPage />} />
             <Route path="/armies" element={<ArmiesPage />} />
             <Route path="/rankings" element={<RankingsPage />} />
+            <Route path="/achievements" element={<AchievementsPage />} />
             <Route path="/messages" element={<MessagesPage />} />
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/admin" element={<AdminPage />} />

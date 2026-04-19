@@ -9,6 +9,9 @@ export default defineConfig({
     react(),
     tailwindcss(),
     VitePWA({
+      strategies: 'injectManifest',
+      srcDir: 'src',
+      filename: 'sw.ts',
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg', 'apple-touch-icon.png', 'icons/*.png'],
       manifest: {
@@ -33,21 +36,6 @@ export default defineConfig({
           { name: 'Mi Reino',        short_name: 'Reino',    url: '/overview',  icons: [{ src: '/icons/icon-96.png', sizes: '96x96' }] },
           { name: 'Construcción',    short_name: 'Construir',url: '/buildings', icons: [{ src: '/icons/icon-96.png', sizes: '96x96' }] },
           { name: 'Cuartel',         short_name: 'Cuartel',  url: '/barracks',  icons: [{ src: '/icons/icon-96.png', sizes: '96x96' }] },
-        ],
-      },
-      workbox: {
-        // Never intercept /api/* navigations — the OAuth callback is a server
-        // redirect and the SW must let it reach Vercel, not follow it internally.
-        navigateFallbackDenylist: [/^\/api\//],
-        runtimeCaching: [
-          {
-            urlPattern: /\.(js|css|woff2?)$/,
-            handler: 'CacheFirst',
-            options: {
-              cacheName: 'assets-cache',
-              expiration: { maxEntries: 60, maxAgeSeconds: 30 * 24 * 60 * 60 },
-            },
-          },
         ],
       },
       devOptions: { enabled: false },
