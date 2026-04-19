@@ -16,13 +16,13 @@ export function GameLayout() {
   return (
     <div className="game-layout">
       <ResourceBar onMenuToggle={toggleSidebar} />
-      <SeasonBanner />
 
       {sidebarOpen && <div className="sidebar-overlay lg:hidden" onClick={closeSidebar} />}
 
       <NavBar isOpen={sidebarOpen} onClose={closeSidebar} />
 
       <main className="game-content">
+        <SeasonBanner />
         <div className="game-content-inner">
           <Outlet />
         </div>
