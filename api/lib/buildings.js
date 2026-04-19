@@ -41,24 +41,24 @@ export const BUILDINGS = [
   {
     id: 'granary',         // metal_store — increases wood capacity
     woodBase: 1000, stoneBase: 0, grainBase: 0, factor: 2.0,
-    requires: [],
+    requires: [{ type: 'building', id: 'sawmill', level: 1 }],
   },
   {
     id: 'stonehouse',      // crystal_store — increases stone capacity
     woodBase: 1000, stoneBase: 500, grainBase: 0, factor: 2.0,
-    requires: [],
+    requires: [{ type: 'building', id: 'quarry', level: 1 }],
   },
   {
     id: 'silo',            // deuterium_store — increases grain capacity
     woodBase: 1000, stoneBase: 1000, grainBase: 0, factor: 2.0,
-    requires: [],
+    requires: [{ type: 'building', id: 'grainFarm', level: 1 }],
   },
 
   // ── Utility ────────────────────────────────────────────────────────────────
   {
     id: 'workshop',        // robot_factory — reduces build times
     woodBase: 400, stoneBase: 120, grainBase: 0, factor: 2.0,
-    requires: [],
+    requires: [{ type: 'building', id: 'sawmill', level: 1 }],
   },
   {
     id: 'engineersGuild',  // nano_factory — exponential build time reduction
@@ -68,12 +68,12 @@ export const BUILDINGS = [
   {
     id: 'barracks',        // shipyard — required for training units
     woodBase: 400, stoneBase: 200, grainBase: 0, factor: 2.0,
-    requires: [],
+    requires: [{ type: 'building', id: 'sawmill', level: 1 }],
   },
   {
     id: 'academy',         // research_lab — required for research
     woodBase: 200, stoneBase: 400, grainBase: 0, factor: 2.0,
-    requires: [],
+    requires: [{ type: 'building', id: 'sawmill', level: 1 }],
   },
   {
     id: 'alchemistTower',  // terraformer — increases building field_max (+5/lv + floor(lv/2))
