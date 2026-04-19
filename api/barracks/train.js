@@ -1,4 +1,4 @@
-import { eq, and, gte } from 'drizzle-orm'
+import { eq, and } from 'drizzle-orm'
 import { db, kingdoms, research as researchTable, unitQueue, users } from '../_db.js'
 import { getSessionUserId } from '../lib/handler.js'
 import { ALL_UNITS, unitBuildTime, unitRequirementsMet } from '../lib/units.js'
@@ -70,10 +70,10 @@ export default async function handler(req, res) {
     updatedAt: new Date(),
   }).where(and(
     eq(kingdoms.id, kingdom.id),
+    // See api/buildings/upgrade.js: lastResourceUpdate eq is the only correct
+    // concurrency guard — the raw stored wood/stone/grain may legitimately be
+    // below cost when the tick rate puts the player above it.
     eq(kingdoms.lastResourceUpdate, kingdom.lastResourceUpdate),
-    gte(kingdoms.wood,  totalWood),
-    gte(kingdoms.stone, totalStone),
-    gte(kingdoms.grain, totalGrain),
   )).returning({ id: kingdoms.id })
 
   if (updated.length === 0) {

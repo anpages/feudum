@@ -1,4 +1,4 @@
-import { eq, and, gte } from 'drizzle-orm'
+import { eq, and } from 'drizzle-orm'
 import { db, kingdoms, research as researchTable, researchQueue, users } from '../_db.js'
 import { getSessionUserId } from '../lib/handler.js'
 import { RESEARCH, researchCost, researchTime, requirementsMet } from '../lib/research.js'
@@ -68,10 +68,11 @@ export default async function handler(req, res) {
     updatedAt: new Date(),
   }).where(and(
     eq(kingdoms.id, kingdom.id),
+    // See comment in api/buildings/upgrade.js: lastResourceUpdate eq is the
+    // concurrency guard; comparing raw stored resources against cost is wrong
+    // because the tick rate (basic income + dragonlore) can put the player
+    // above cost while the raw DB value is below it.
     eq(kingdoms.lastResourceUpdate, kingdom.lastResourceUpdate),
-    gte(kingdoms.wood,  cost.wood),
-    gte(kingdoms.stone, cost.stone),
-    gte(kingdoms.grain, cost.grain),
   )).returning({ id: kingdoms.id })
 
   if (updated.length === 0) {

@@ -1,4 +1,4 @@
-import { eq, and, gte } from 'drizzle-orm'
+import { eq, and } from 'drizzle-orm'
 import { db, kingdoms, buildingQueue, research, users } from '../_db.js'
 import { getSessionUserId } from '../lib/handler.js'
 import { BUILDINGS, buildCost, buildTime, buildingRequirementsMet } from '../lib/buildings.js'
@@ -68,10 +68,13 @@ export default async function handler(req, res) {
     updatedAt: new Date(),
   }).where(and(
     eq(kingdoms.id, kingdom.id),
+    // Concurrency guard: lastResourceUpdate eq already serializes mutations —
+    // only the first to write wins, a second racing request sees the new
+    // timestamp and its UPDATE affects 0 rows. We deliberately do NOT compare
+    // raw stored wood/stone/grain here: those values may be below cost when
+    // uninterpolated basic income + dragonlore bonus on the tick put the
+    // player above cost. The tick check above is the source of truth.
     eq(kingdoms.lastResourceUpdate, kingdom.lastResourceUpdate),
-    gte(kingdoms.wood,  cost.wood),
-    gte(kingdoms.stone, cost.stone),
-    gte(kingdoms.grain, cost.grain),
   )).returning({ id: kingdoms.id })
 
   if (updated.length === 0) {
