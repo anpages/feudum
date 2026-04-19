@@ -15,7 +15,7 @@ export default async function handler(req, res) {
   const userId = await getSessionUserId(req)
   if (!userId) return res.status(401).json({ error: 'No autenticado' })
 
-  const kingdomId = req.query.id ? parseInt(req.query.id, 10) : null
+  const kingdomId = req.query.id ? String(req.query.id) : null
   const whereK = kingdomId
     ? and(eq(kingdoms.userId, userId), eq(kingdoms.id, kingdomId))
     : eq(kingdoms.userId, userId)

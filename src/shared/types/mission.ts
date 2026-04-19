@@ -51,7 +51,7 @@ export interface MissionResult {
 }
 
 export interface ArmyMission {
-  id: number
+  id: string
   missionType: MissionType
   state: MissionState
   origin: { realm: number; region: number; slot: number }

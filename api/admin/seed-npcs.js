@@ -1,5 +1,5 @@
 import { eq } from 'drizzle-orm'
-import { db, users, kingdoms } from '../_db.js'
+import { db, users, kingdoms, NPC_USER_ID } from '../_db.js'
 import { getAdminUserId } from '../lib/admin.js'
 import { UNIVERSE } from '../lib/config.js'
 
@@ -54,18 +54,19 @@ export default async function handler(req, res) {
   const { action } = req.body
   if (!['seed_npcs', 'reset_npcs'].includes(action)) return res.status(400).json({ error: 'unknown_action' })
 
-  // ── Get or create NPC system user ─────────────────────────────────────────
-  let [npcUser] = await db.select({ id: users.id })
-    .from(users).where(eq(users.isNpc, true)).limit(1)
+  // ── Get or create NPC system user (deterministic UUID) ────────────────────
+  const [npcUser] = await db.select({ id: users.id })
+    .from(users).where(eq(users.id, NPC_USER_ID)).limit(1)
 
   if (!npcUser) {
-    ;[npcUser] = await db.insert(users).values({
-      email:   'npc@feudum.internal',
+    await db.insert(users).values({
+      id:      NPC_USER_ID,
+      email:   'npc@feudum.local',
       isNpc:   true,
       isAdmin: false,
-    }).returning({ id: users.id })
+    })
   }
-  const npcUserId = npcUser.id
+  const npcUserId = NPC_USER_ID
 
   // ── Reset: just delete all NPC kingdoms and return ────────────────────────
   if (action === 'reset_npcs') {

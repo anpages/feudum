@@ -1,6 +1,6 @@
 export interface MapSlot {
   slot: number
-  kingdomId: number | null
+  kingdomId: string | null
   name: string | null
   username: string | null
   isPlayer: boolean

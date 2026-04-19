@@ -1,5 +1,5 @@
 export interface KingdomSummary {
-  id: number
+  id: string
   name: string
   realm: number
   region: number

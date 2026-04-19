@@ -1,9 +1,10 @@
 import { eq, and, gte } from 'drizzle-orm'
-import { db, kingdoms, research as researchTable, unitQueue } from '../_db.js'
+import { db, kingdoms, research as researchTable, unitQueue, users } from '../_db.js'
 import { getSessionUserId } from '../lib/handler.js'
 import { ALL_UNITS, unitBuildTime, unitRequirementsMet } from '../lib/units.js'
 import { getSettings } from '../lib/settings.js'
 import { applyResourceTick } from '../lib/tick.js'
+import { processUserQueues } from '../lib/process-queues.js'
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end()
@@ -21,9 +22,12 @@ export default async function handler(req, res) {
   const def = ALL_UNITS.find(u => u.id === unitId)
   if (!def) return res.status(400).json({ error: 'Unidad desconocida' })
 
-  const [[kingdom], [resRow], cfg] = await Promise.all([
+  await processUserQueues(userId)
+
+  const [[kingdom], [resRow], [userRow], cfg] = await Promise.all([
     db.select().from(kingdoms).where(eq(kingdoms.userId, userId)).limit(1),
     db.select().from(researchTable).where(eq(researchTable.userId, userId)).limit(1),
+    db.select({ characterClass: users.characterClass }).from(users).where(eq(users.id, userId)).limit(1),
     getSettings(),
   ])
   if (!kingdom) return res.status(404).json({ error: 'Reino no encontrado' })
@@ -42,7 +46,7 @@ export default async function handler(req, res) {
   }
 
   // ── Lazy resource tick ────────────────────────────────────────────────────
-  const { wood, stone, grain, now } = applyResourceTick(kingdom, cfg)
+  const { wood, stone, grain, now } = applyResourceTick(kingdom, cfg, userRow?.characterClass ?? null, resRow)
 
   const totalWood  = def.woodBase  * amount
   const totalStone = def.stoneBase * amount

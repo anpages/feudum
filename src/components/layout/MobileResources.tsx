@@ -1,6 +1,5 @@
 import { useState, useRef, useEffect, type ReactNode } from 'react'
-import { ChevronDown, ChevronUp, Zap } from 'lucide-react'
-import { GiWoodPile, GiStoneBlock, GiWheat } from 'react-icons/gi'
+import { ChevronDown, ChevronUp, Zap, TreePine, Mountain, Wheat } from 'lucide-react'
 import { formatResource } from '@/lib/format'
 import type { AuthUser } from '@/shared/types/user'
 
@@ -78,9 +77,9 @@ export function MobileResources({ resources, kingdom, user }: {
         <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 z-50 bg-white border border-gold/20 rounded-xl shadow-xl py-3 px-4 min-w-[220px] space-y-3">
           <div className="space-y-2">
             <p className="font-ui text-[0.6rem] text-ink-muted/60 uppercase tracking-widest">Recursos</p>
-            <DropdownResource icon={<GiWoodPile  style={{ fontSize: 13 }} />} label="Madera" value={resources.wood}  cap={woodCap}  rate={kingdom?.woodProduction  as number | undefined} full={woodFull} />
-            <DropdownResource icon={<GiStoneBlock style={{ fontSize: 13 }} />} label="Piedra" value={resources.stone} cap={stoneCap} rate={kingdom?.stoneProduction as number | undefined} full={stoneFull} />
-            <DropdownResource icon={<GiWheat     style={{ fontSize: 13 }} />} label="Grano"  value={resources.grain} cap={grainCap} rate={kingdom?.grainProduction as number | undefined} full={grainFull} />
+            <DropdownResource icon={<TreePine  size={13} />} label="Madera" value={resources.wood}  cap={woodCap}  rate={kingdom?.woodProduction  as number | undefined} full={woodFull} />
+            <DropdownResource icon={<Mountain size={13} />} label="Piedra" value={resources.stone} cap={stoneCap} rate={kingdom?.stoneProduction as number | undefined} full={stoneFull} />
+            <DropdownResource icon={<Wheat    size={13} />} label="Grano"  value={resources.grain} cap={grainCap} rate={kingdom?.grainProduction as number | undefined} full={grainFull} />
           </div>
 
           {(produced > 0 || consumed > 0) && (

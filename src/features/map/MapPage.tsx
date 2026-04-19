@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ChevronLeft, ChevronRight, Home, MapPin, Compass } from 'lucide-react'
 import { useMap, type MapSlot } from '@/features/map/useMap'
+import { useKingdom } from '@/features/kingdom/useKingdom'
 import { Badge } from '@/components/ui/Badge'
 import { Sheet } from '@/components/ui/Sheet'
 import { SlotRow } from './components/SlotRow'
@@ -9,23 +10,25 @@ import { SlotDetail } from './components/SlotDetail'
 
 export function MapPage() {
   const navigate = useNavigate()
-  const [realm, setRealm] = useState(1)
-  const [region, setRegion] = useState(1)
+  const { data: myKingdom } = useKingdom()
+  const [realm, setRealm]   = useState(() => (myKingdom as { realm?: number } | null)?.realm  ?? 1)
+  const [region, setRegion] = useState(() => (myKingdom as { region?: number } | null)?.region ?? 1)
   const [selected, setSelected] = useState<MapSlot | null>(null)
-  const [centered, setCentered] = useState(false)
+  const [centered, setCentered] = useState(!!myKingdom)
+
+  // Derived state: when myKingdom loads after first render, center on it once.
+  // Setting state during render is the official pattern for derived state.
+  if (!centered && myKingdom) {
+    const k = myKingdom as { realm: number; region: number }
+    setCentered(true)
+    setRealm(k.realm)
+    setRegion(k.region)
+  }
 
   const { data, isLoading } = useMap(realm, region)
 
   const maxRealm  = data?.maxRealm  ?? 3
   const maxRegion = data?.maxRegion ?? 10
-
-  useEffect(() => {
-    if (!centered && data?.myPosition) {
-      setRealm(data.myPosition.realm)
-      setRegion(data.myPosition.region)
-      setCentered(true)
-    }
-  }, [data?.myPosition, centered])
 
   function goToMyKingdom() {
     if (data?.myPosition) {
@@ -35,10 +38,10 @@ export function MapPage() {
     }
   }
 
-  function handleSelectSlot(slot: MapSlot) {
+  const handleSelectSlot = useCallback((slot: MapSlot) => {
     if (slot.isPlayer) return
     setSelected(prev => (prev?.slot === slot.slot ? null : slot))
-  }
+  }, [])
 
   function sendMission(type: string) {
     if (!selected) return
@@ -90,7 +93,7 @@ export function MapPage() {
                 key={slot.slot}
                 slot={slot}
                 isSelected={selected?.slot === slot.slot}
-                onClick={() => handleSelectSlot(slot)}
+                onSelect={handleSelectSlot}
               />
             ))}
             <button

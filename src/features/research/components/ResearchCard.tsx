@@ -1,4 +1,4 @@
-import { useState, useEffect, type ReactNode } from 'react'
+import { useState, useEffect, memo, type ReactNode } from 'react'
 import { ArrowUp, Clock, Loader2, Zap } from 'lucide-react'
 import { GiWoodPile, GiStoneBlock, GiWheat } from 'react-icons/gi'
 import { Card } from '@/components/ui/Card'
@@ -38,20 +38,7 @@ function CostItem({ icon, value, affordable }: { icon: ReactNode; value: number;
   )
 }
 
-export function ResearchCard({
-  item,
-  meta,
-  kingdom,
-  researchLevels,
-  canAfford,
-  globalQueueFull,
-  isUpgrading,
-  onUpgrade,
-  onCountdownEnd,
-  onAccelerate,
-  isAccelerating,
-  animClass,
-}: {
+interface ResearchCardProps {
   item: ResearchInfo
   meta: { name: string; description: string; category: string }
   kingdom?: Record<string, unknown> | null
@@ -64,7 +51,22 @@ export function ResearchCard({
   onAccelerate?: () => void
   isAccelerating?: boolean
   animClass: string
-}) {
+}
+
+function ResearchCardImpl({
+  item,
+  meta,
+  kingdom,
+  researchLevels,
+  canAfford,
+  globalQueueFull,
+  isUpgrading,
+  onUpgrade,
+  onCountdownEnd,
+  onAccelerate,
+  isAccelerating,
+  animClass,
+}: ResearchCardProps) {
   const countdown = useCountdown(item.inQueue?.finishesAt ?? null, onCountdownEnd)
   const inQueue = !!item.inQueue && countdown > 0
 
@@ -126,3 +128,15 @@ export function ResearchCard({
     </Card>
   )
 }
+
+export const ResearchCard = memo(ResearchCardImpl, (prev, next) =>
+  prev.item === next.item &&
+  prev.meta === next.meta &&
+  prev.kingdom === next.kingdom &&
+  prev.researchLevels === next.researchLevels &&
+  prev.canAfford === next.canAfford &&
+  prev.globalQueueFull === next.globalQueueFull &&
+  prev.isUpgrading === next.isUpgrading &&
+  prev.isAccelerating === next.isAccelerating &&
+  prev.animClass === next.animClass
+)

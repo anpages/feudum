@@ -4,6 +4,7 @@ import { ResourceBar } from './ResourceBar'
 import { NavBar } from './NavBar'
 import { ToastContainer } from '@/components/ui/ToastContainer'
 import { useRealtime } from '@/features/realtime/useRealtime'
+import { PageErrorBoundary } from '@/components/ErrorBoundary'
 
 export function GameLayout() {
   useRealtime()
@@ -25,7 +26,9 @@ export function GameLayout() {
 
       <main className="game-content">
         <div className="game-content-inner">
-          <Outlet />
+          <PageErrorBoundary>
+            <Outlet />
+          </PageErrorBoundary>
         </div>
       </main>
 

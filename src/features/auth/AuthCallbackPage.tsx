@@ -1,17 +1,30 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
 
 export function AuthCallbackPage() {
   const navigate = useNavigate()
+  const done = useRef(false)
 
   useEffect(() => {
-    const code = new URLSearchParams(window.location.search).get('code')
-    if (!code) { navigate('/login?error=no_code', { replace: true }); return }
+    if (done.current) return
+    done.current = true
 
-    supabase.auth.exchangeCodeForSession(code).then(({ error }) => {
-      if (error) navigate('/login?error=exchange_failed', { replace: true })
-      else navigate('/?next=overview', { replace: true })
+    // Supabase auto-exchanges the PKCE code via detectSessionInUrl on client init.
+    // We just wait for the session to be ready.
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) { navigate('/', { replace: true }); return }
+
+      // Not ready yet — wait for the auth state change event
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+        if (event === 'SIGNED_IN' && session) {
+          subscription.unsubscribe()
+          navigate('/', { replace: true })
+        } else if (event === 'SIGNED_OUT') {
+          subscription.unsubscribe()
+          navigate('/login?error=exchange_failed', { replace: true })
+        }
+      })
     })
   }, [navigate])
 

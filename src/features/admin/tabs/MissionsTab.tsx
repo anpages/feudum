@@ -2,7 +2,7 @@ import { Zap } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
-import { useAdminFleet, useFastForward } from '@/features/admin/useAdmin'
+import { useAdminFleet, useFastForward, type AdminMission } from '@/features/admin/useAdmin'
 import { formatDuration } from '@/lib/format'
 
 export function MissionsTab() {
@@ -34,7 +34,7 @@ export function MissionsTab() {
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-        {missions.map((m: any) => {
+        {missions.map((m: AdminMission) => {
           const arrival   = m.arrivalTime - now
           const returning = m.returnTime ? m.returnTime - now : null
           return (

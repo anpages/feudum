@@ -13,7 +13,7 @@ export default async function handler(req, res) {
 
   const [mission] = await db.select().from(armyMissions)
     .where(and(
-      eq(armyMissions.id, parseInt(missionId, 10)),
+      eq(armyMissions.id, String(missionId)),
       eq(armyMissions.userId, userId),
     )).limit(1)
 

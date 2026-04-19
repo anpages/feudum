@@ -5,7 +5,7 @@ import { VitePWA } from 'vite-plugin-pwa'
 import path from 'path'
 
 export default defineConfig({
-  envPrefix: ['VITE_', 'STORAGE_VITE_'],
+  envPrefix: ['VITE_'],
   plugins: [
     react(),
     tailwindcss(),
@@ -45,6 +45,12 @@ export default defineConfig({
   server: {
     port: process.env.PORT ? parseInt(process.env.PORT) : 5173,
     strictPort: true,
+  },
+  optimizeDeps: {
+    include: [
+      '@supabase/supabase-js',
+      '@supabase/ssr',
+    ],
   },
   resolve: {
     alias: {

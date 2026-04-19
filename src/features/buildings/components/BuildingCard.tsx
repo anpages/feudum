@@ -1,4 +1,4 @@
-import { useState, useEffect, type ReactNode } from 'react'
+import { useState, useEffect, memo, type ReactNode } from 'react'
 import { ArrowUp, Clock, TrendingUp, Loader2, Zap } from 'lucide-react'
 import { type IconType } from 'react-icons'
 import { GiWoodPile, GiStoneBlock, GiWheat } from 'react-icons/gi'
@@ -79,7 +79,7 @@ interface Props {
   animClass?: string
 }
 
-export function BuildingCard({
+function BuildingCardImpl({
   building,
   meta,
   kingdom,
@@ -199,3 +199,16 @@ export function BuildingCard({
     </Card>
   )
 }
+
+// Skip callback props in equality — parents pass inline arrows but the
+// callbacks are stateless dispatchers; only data props affect what renders.
+export const BuildingCard = memo(BuildingCardImpl, (prev, next) =>
+  prev.building === next.building &&
+  prev.meta === next.meta &&
+  prev.kingdom === next.kingdom &&
+  prev.canAfford === next.canAfford &&
+  prev.isUpgrading === next.isUpgrading &&
+  prev.isAccelerating === next.isAccelerating &&
+  prev.dimmed === next.dimmed &&
+  prev.animClass === next.animClass
+)

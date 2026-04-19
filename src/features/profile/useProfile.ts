@@ -48,7 +48,7 @@ export function useRenameKingdom() {
   const qc = useQueryClient()
 
   return useMutation({
-    mutationFn: ({ name, id }: { name: string; id?: number }) => profileService.renameKingdom(name, id),
+    mutationFn: ({ name, id }: { name: string; id?: string }) => profileService.renameKingdom(name, id),
     onSuccess: data => {
       qc.invalidateQueries({ queryKey: ['kingdom'] })
       qc.invalidateQueries({ queryKey: ['kingdoms'] })
@@ -64,7 +64,7 @@ export function useAbandonKingdom() {
   const qc = useQueryClient()
 
   return useMutation({
-    mutationFn: (id: number) => profileService.abandonKingdom(id),
+    mutationFn: (id: string) => profileService.abandonKingdom(id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['kingdom'] })
       qc.invalidateQueries({ queryKey: ['kingdoms'] })

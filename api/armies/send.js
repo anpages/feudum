@@ -4,6 +4,7 @@ import { getSessionUserId } from '../lib/handler.js'
 import { calcDistance, calcDuration, calcCargoCapacity } from '../lib/speed.js'
 import { getSettings } from '../lib/settings.js'
 import { applyResourceTick } from '../lib/tick.js'
+import { processUserQueues } from '../lib/process-queues.js'
 
 const UNIT_KEYS = [
   'squire','knight','paladin','warlord','grandKnight',
@@ -47,6 +48,8 @@ export default async function handler(req, res) {
 
   const isMissile = missionType === 'missile'
 
+  await processUserQueues(userId)
+
   // ── Load player kingdom + research + class ───────────────────────────────
   const [[kingdom], [researchRow], [userRow], cfg] = await Promise.all([
     db.select().from(kingdoms).where(eq(kingdoms.userId, userId)).limit(1),
@@ -87,7 +90,7 @@ export default async function handler(req, res) {
     const travelSecs = 60 + Math.floor(Math.random() * 60)  // 60–120 s near-instant
     const arrivalTime = now + travelSecs
 
-    const { wood, stone, grain } = applyResourceTick(kingdom, cfg)
+    const { wood, stone, grain } = applyResourceTick(kingdom, cfg, userRow?.characterClass ?? null, researchRow ?? null)
 
     await db.update(kingdoms).set({
       ballistic: (kingdom.ballistic ?? 0) - ballisticCount,
@@ -231,7 +234,7 @@ export default async function handler(req, res) {
   const returnTime  = arrivalTime + travelSecs
 
   // ── Deduct units and resources atomically ────────────────────────────────
-  const { wood, stone, grain } = applyResourceTick(kingdom, cfg)
+  const { wood, stone, grain } = applyResourceTick(kingdom, cfg, userRow?.characterClass ?? null, researchRow ?? null)
 
   const patch = {
     wood:  wood  - woodLoad,

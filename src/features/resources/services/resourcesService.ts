@@ -9,7 +9,7 @@ export interface ResourceSettings {
 }
 
 export const resourcesService = {
-  getSettings:    (id?: number) => http.get<ResourceSettings>(`/resources/settings${id ? `?id=${id}` : ''}`),
-  updateSettings: (patch: Partial<ResourceSettings>, id?: number) =>
+  getSettings:    (id?: string) => http.get<ResourceSettings>(`/resources/settings${id ? `?id=${id}` : ''}`),
+  updateSettings: (patch: Partial<ResourceSettings>, id?: string) =>
     http.patch<ResourceSettings & { ok: boolean }>(`/resources/settings${id ? `?id=${id}` : ''}`, patch),
 }

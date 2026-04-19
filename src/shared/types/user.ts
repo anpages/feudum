@@ -1,5 +1,5 @@
 export interface AuthUser {
-  id: number
+  id: string
   username: string | null
   isAdmin?: boolean
   ether?: number
@@ -7,7 +7,7 @@ export interface AuthUser {
 }
 
 export interface UserProfile {
-  id: number
+  id: string
   username: string | null
   email: string
   avatarUrl: string | null

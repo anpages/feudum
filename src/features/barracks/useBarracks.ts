@@ -1,6 +1,7 @@
 import { useRef, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { barracksService } from './services/barracksService'
+import { getActiveKingdomId } from '@/features/kingdom/useKingdom'
 import { toast } from '@/lib/toast'
 import { UNIT_LABELS } from '@/lib/labels'
 import type { UnitInfo, BarracksResponse } from './types'
@@ -9,21 +10,11 @@ export type { UnitInfo, BarracksResponse }
 
 export function useBarracks() {
   const prevRef = useRef<UnitInfo[] | null>(null)
+  const activeId = getActiveKingdomId()
 
   const result = useQuery({
-    queryKey: ['barracks'],
-    queryFn: barracksService.getAll,
-    staleTime: 5_000,
-    refetchInterval: query => {
-      const now = Math.floor(Date.now() / 1000)
-      const all = [
-        ...(query.state.data?.units ?? []),
-        ...(query.state.data?.support ?? []),
-        ...(query.state.data?.defenses ?? []),
-        ...(query.state.data?.missiles ?? []),
-      ]
-      return all.some(u => u.inQueue && u.inQueue.finishesAt > now) ? 3_000 : 10_000
-    },
+    queryKey: ['barracks', activeId],
+    queryFn: () => barracksService.getAll(activeId),
   })
 
   useEffect(() => {
@@ -45,14 +36,17 @@ export function useBarracks() {
 
 export function useTrainUnit() {
   const qc = useQueryClient()
+  const activeId = getActiveKingdomId()
+  const key = ['barracks', activeId] as const
 
   return useMutation({
+    mutationKey: ['mutate', 'unit'],
     mutationFn: ({ unit, amount }: { unit: string; amount: number }) =>
       barracksService.train(unit, amount),
 
     onMutate: async ({ unit, amount }) => {
-      await qc.cancelQueries({ queryKey: ['barracks'] })
-      const prev = qc.getQueryData<BarracksResponse>(['barracks'])
+      await qc.cancelQueries({ queryKey: key })
+      const prev = qc.getQueryData<BarracksResponse>(key)
 
       if (prev) {
         const findAndUpdate = (list: UnitInfo[]) =>
@@ -63,7 +57,7 @@ export function useTrainUnit() {
             return { ...u, inQueue: { amount, finishesAt } }
           })
 
-        qc.setQueryData<BarracksResponse>(['barracks'], {
+        qc.setQueryData<BarracksResponse>(key, {
           units: findAndUpdate(prev.units),
           support: findAndUpdate(prev.support),
           defenses: findAndUpdate(prev.defenses),
@@ -75,7 +69,7 @@ export function useTrainUnit() {
     },
 
     onError: (_err, _vars, context) => {
-      if (context?.prev) qc.setQueryData<BarracksResponse>(['barracks'], context.prev)
+      if (context?.prev) qc.setQueryData<BarracksResponse>(key, context.prev)
     },
 
     onSettled: () => {

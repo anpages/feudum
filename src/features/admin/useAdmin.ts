@@ -27,7 +27,6 @@ export function useAdminFleet() {
     queryKey: ['admin', 'fleet'],
     queryFn: adminService.getFleet,
     staleTime: 5_000,
-    refetchInterval: 10_000,
     retry: false,
   })
 }
@@ -43,7 +42,7 @@ export function useUpdateSettings() {
 export function useToggleAdmin() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: ({ userId, isAdmin }: { userId: number; isAdmin: boolean }) =>
+    mutationFn: ({ userId, isAdmin }: { userId: string; isAdmin: boolean }) =>
       adminService.toggleAdmin(userId, isAdmin),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['admin', 'users'] }),
   })
@@ -58,7 +57,7 @@ export function useDevAction() {
 export function useFastForward() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (body: { missionId?: number; all?: boolean }) => adminService.fastForward(body),
+    mutationFn: (body: { missionId?: string; all?: boolean }) => adminService.fastForward(body),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['admin', 'fleet'] }),
   })
 }

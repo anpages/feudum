@@ -8,19 +8,19 @@ export interface AdminSettings {
 }
 
 export interface AdminUser {
-  id: number
+  id: string
   username: string | null
   email: string
   isAdmin: boolean
   isNpc: boolean
   createdAt: string
-  kingdomId: number | null
-  kingdom: { id: number; realm: number; region: number; slot: number } | null
+  kingdomId: string | null
+  kingdom: { id: string; realm: number; region: number; slot: number } | null
 }
 
 export interface AdminMission {
-  id: number
-  userId: number
+  id: string
+  userId: string
   username: string | null
   missionType: string
   state: string

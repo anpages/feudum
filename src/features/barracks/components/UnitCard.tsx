@@ -1,4 +1,4 @@
-import { useState, useEffect, type ReactNode } from 'react'
+import { useState, useEffect, memo, type ReactNode } from 'react'
 import { Sword, Shield, Heart, Clock, Loader2, Plus, Minus, Zap } from 'lucide-react'
 import { type IconType } from 'react-icons'
 import { GiWoodPile, GiStoneBlock, GiWheat } from 'react-icons/gi'
@@ -12,7 +12,7 @@ import type { ResearchInfo } from '@/features/research/useResearch'
 
 // ── Countdown hook ────────────────────────────────────────────────────────────
 
-export function useCountdown(finishesAt: number | null, onEnd: () => void) {
+function useCountdown(finishesAt: number | null, onEnd: () => void) {
   const [secs, setSecs] = useState(() =>
     finishesAt ? Math.max(0, finishesAt - Math.floor(Date.now() / 1000)) : 0
   )
@@ -60,7 +60,7 @@ interface Props {
   animClass?: string
 }
 
-export function UnitCard({
+function UnitCardImpl({
   unit, meta, resources, kingdom, research,
   isTraining, onTrain, onCountdownEnd, onAccelerate, isAccelerating,
   animClass = '',
@@ -177,3 +177,16 @@ export function UnitCard({
     </Card>
   )
 }
+
+export const UnitCard = memo(UnitCardImpl, (prev, next) =>
+  prev.unit === next.unit &&
+  prev.meta === next.meta &&
+  prev.kingdom === next.kingdom &&
+  prev.research === next.research &&
+  prev.resources.wood === next.resources.wood &&
+  prev.resources.stone === next.resources.stone &&
+  prev.resources.grain === next.resources.grain &&
+  prev.isTraining === next.isTraining &&
+  prev.isAccelerating === next.isAccelerating &&
+  prev.animClass === next.animClass
+)

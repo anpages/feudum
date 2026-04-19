@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { Shield, RefreshCw, Check } from 'lucide-react'
-import { authApi } from '@/lib/auth'
+import { authService } from '@/features/auth/services/authService'
 
 const PREFIXES = [
   'Hierro',
@@ -78,8 +78,8 @@ export function NicknamePage() {
     setError('')
     setLoading(true)
     try {
-      await authApi.setNickname(nickname)
-      qc.setQueryData(['auth', 'me'], (old: { id: number; username: string | null } | undefined) =>
+      await authService.setNickname(nickname)
+      qc.setQueryData(['auth', 'profile'], (old: { id: string; username: string | null } | undefined) =>
         old ? { ...old, username: nickname } : old
       )
       navigate('/overview', { replace: true })
@@ -89,7 +89,7 @@ export function NicknamePage() {
       if (body.includes('nickname_taken')) {
         setError('Ese nombre ya está en uso. Elige otro.')
       } else if (body.includes('already_set')) {
-        await qc.invalidateQueries({ queryKey: ['auth', 'me'] })
+        await qc.invalidateQueries({ queryKey: ['auth', 'profile'] })
         navigate('/overview', { replace: true })
       } else {
         setError(`Error: ${body}`)

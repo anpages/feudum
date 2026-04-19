@@ -1,6 +1,7 @@
 import { useRef, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { buildingsService } from './services/buildingsService'
+import { getActiveKingdomId } from '@/features/kingdom/useKingdom'
 import { toast } from '@/lib/toast'
 import { BUILDING_LABELS } from '@/lib/labels'
 import type { BuildingInfo, BuildingsResponse } from './types'
@@ -9,16 +10,11 @@ export type { BuildingInfo, BuildingsResponse }
 
 export function useBuildings() {
   const prevRef = useRef<BuildingInfo[] | null>(null)
+  const activeId = getActiveKingdomId()
 
   const { data, ...rest } = useQuery({
-    queryKey: ['buildings'],
-    queryFn: buildingsService.getAll,
-    staleTime: 5_000,
-    refetchInterval: query => {
-      const buildings = query.state.data?.buildings ?? []
-      const now = Math.floor(Date.now() / 1000)
-      return buildings.some(b => b.inQueue && b.inQueue.finishesAt > now) ? 3_000 : 10_000
-    },
+    queryKey: ['buildings', activeId],
+    queryFn: () => buildingsService.getAll(activeId),
   })
 
   useEffect(() => {
@@ -40,19 +36,22 @@ export function useBuildings() {
 
 export function useUpgradeBuilding() {
   const qc = useQueryClient()
+  const activeId = getActiveKingdomId()
+  const key = ['buildings', activeId] as const
 
   return useMutation({
+    mutationKey: ['mutate', 'building'],
     mutationFn: (buildingId: string) => buildingsService.upgrade(buildingId),
 
     onMutate: async (buildingId: string) => {
-      await qc.cancelQueries({ queryKey: ['buildings'] })
-      const prev = qc.getQueryData<BuildingsResponse>(['buildings'])
+      await qc.cancelQueries({ queryKey: key })
+      const prev = qc.getQueryData<BuildingsResponse>(key)
 
       if (prev) {
         const building = prev.buildings.find(b => b.id === buildingId)
         if (building) {
           const finishesAt = Math.floor(Date.now() / 1000) + building.timeSeconds
-          qc.setQueryData<BuildingsResponse>(['buildings'], {
+          qc.setQueryData<BuildingsResponse>(key, {
             buildings: prev.buildings.map(b =>
               b.id === buildingId ? { ...b, inQueue: { level: b.level + 1, finishesAt } } : b
             ),
@@ -64,7 +63,7 @@ export function useUpgradeBuilding() {
     },
 
     onError: (_err, _buildingId, context) => {
-      if (context?.prev) qc.setQueryData<BuildingsResponse>(['buildings'], context.prev)
+      if (context?.prev) qc.setQueryData<BuildingsResponse>(key, context.prev)
     },
 
     onSettled: () => {

@@ -1,7 +1,7 @@
 import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
-import { useAdminUsers, useToggleAdmin } from '@/features/admin/useAdmin'
+import { useAdminUsers, useToggleAdmin, type AdminUser } from '@/features/admin/useAdmin'
 
 export function PlayersTab() {
   const { data, isLoading } = useAdminUsers()
@@ -9,14 +9,14 @@ export function PlayersTab() {
 
   if (isLoading) return <div className="skeleton h-64 rounded-xl" />
 
-  const users = (data?.users ?? []).filter((u: any) => !u.isNpc)
+  const users = (data?.users ?? []).filter((u: AdminUser) => !u.isNpc)
 
   return (
     <Card className="divide-y divide-gold/10">
       {users.length === 0 && (
         <p className="p-5 font-body text-sm text-ink-muted text-center">Sin jugadores</p>
       )}
-      {users.map((u: any) => (
+      {users.map((u: AdminUser) => (
         <div key={u.id} className="flex items-center gap-3 px-4 py-3">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">

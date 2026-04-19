@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Download, X } from 'lucide-react'
-import { GiCastle } from 'react-icons/gi'
+import { Download, X, Castle } from 'lucide-react'
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>
@@ -11,10 +10,10 @@ export function PWAInstallPrompt() {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null)
   const [dismissed, setDismissed] = useState(false)
   const [isIOS] = useState(
-    () => /iphone|ipad|ipod/i.test(navigator.userAgent) && !(window.navigator as any).standalone
+    () => /iphone|ipad|ipod/i.test(navigator.userAgent) && !(window.navigator as Navigator & { standalone?: boolean }).standalone
   )
   const [showIOS, setShowIOS] = useState(
-    () => /iphone|ipad|ipod/i.test(navigator.userAgent) && !(window.navigator as any).standalone
+    () => /iphone|ipad|ipod/i.test(navigator.userAgent) && !(window.navigator as Navigator & { standalone?: boolean }).standalone
   )
 
   useEffect(() => {
@@ -42,7 +41,7 @@ export function PWAInstallPrompt() {
         <div className="bg-white border border-gold/20 rounded-xl shadow-lg p-4 anim-fade-up">
           <div className="flex items-start gap-3">
             <div className="w-8 h-8 rounded-lg bg-gold-soft border border-gold/20 flex items-center justify-center shrink-0">
-              <GiCastle size={16} className="text-gold-dim" />
+              <Castle size={16} className="text-gold-dim" />
             </div>
             <div className="flex-1 min-w-0">
               <p className="font-ui text-xs font-semibold text-ink">Instalar Feudum</p>
@@ -74,7 +73,7 @@ export function PWAInstallPrompt() {
       <div className="bg-white border border-gold/20 rounded-xl shadow-lg p-4 anim-fade-up">
         <div className="flex items-start gap-3">
           <div className="w-8 h-8 rounded-lg bg-gold-soft border border-gold/20 flex items-center justify-center shrink-0">
-            <GiCastle size={16} className="text-gold-dim" />
+            <Castle size={16} className="text-gold-dim" />
           </div>
           <div className="flex-1 min-w-0">
             <p className="font-ui text-xs font-semibold text-ink">Instalar Feudum</p>

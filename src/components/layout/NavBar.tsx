@@ -1,36 +1,26 @@
 import { NavLink } from 'react-router-dom'
-import { X, ShieldAlert } from 'lucide-react'
-import { type IconType } from 'react-icons'
 import {
-  GiCastle,
-  GiFactory,
-  GiVillage,
-  GiShield,
-  GiSpellBook,
-  GiMedievalBarracks,
-  GiSwordsPower,
-  GiTreasureMap,
-  GiAchievement,
-  GiPodiumWinner,
-} from 'react-icons/gi'
-import { MessageSquare } from 'lucide-react'
+  X, ShieldAlert, MessageSquare,
+  Castle, Factory, Building2, BookOpen, Swords, Shield, Navigation, Map, Trophy, BarChart2,
+  type LucideIcon,
+} from 'lucide-react'
 import { useAuth } from '@/features/auth/useAuth'
 
 interface NavItem {
   to: string
   label: string
-  Icon: IconType
+  Icon: LucideIcon
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { to: '/overview',    label: 'Reino',         Icon: GiCastle },
-  { to: '/resources',   label: 'Recursos',      Icon: GiFactory },
-  { to: '/facilities',  label: 'Instalaciones', Icon: GiVillage },
-  { to: '/research',    label: 'Academia',      Icon: GiSpellBook },
-  { to: '/barracks',    label: 'Cuartel',       Icon: GiMedievalBarracks },
-  { to: '/defense',     label: 'Defensa',       Icon: GiShield },
-  { to: '/armies',      label: 'Misiones',      Icon: GiSwordsPower },
-  { to: '/map',         label: 'Mapa',          Icon: GiTreasureMap },
+  { to: '/overview',    label: 'Reino',         Icon: Castle },
+  { to: '/resources',   label: 'Recursos',      Icon: Factory },
+  { to: '/facilities',  label: 'Instalaciones', Icon: Building2 },
+  { to: '/research',    label: 'Academia',      Icon: BookOpen },
+  { to: '/barracks',    label: 'Cuartel',       Icon: Swords },
+  { to: '/defense',     label: 'Defensa',       Icon: Shield },
+  { to: '/armies',      label: 'Misiones',      Icon: Navigation },
+  { to: '/map',         label: 'Mapa',          Icon: Map },
 ]
 
 interface Props {
@@ -77,11 +67,11 @@ export function NavBar({ isOpen, onClose }: Props) {
           <span className="flex-1">Mensajes</span>
         </NavLink>
         <NavLink to="/rankings"     onClick={onClose} className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}>
-          <GiPodiumWinner size={16} className="nav-icon shrink-0" />
+          <BarChart2 size={16} className="nav-icon shrink-0" />
           <span className="flex-1">Rankings</span>
         </NavLink>
         <NavLink to="/achievements" onClick={onClose} className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}>
-          <GiAchievement size={16} className="nav-icon shrink-0" />
+          <Trophy size={16} className="nav-icon shrink-0" />
           <span className="flex-1">Logros</span>
         </NavLink>
       </div>

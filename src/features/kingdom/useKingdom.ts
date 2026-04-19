@@ -8,14 +8,13 @@ export type { Kingdom }
 
 const STORAGE_KEY = 'feudum_active_kingdom'
 
-export function getActiveKingdomId(): number | null {
-  const v = localStorage.getItem(STORAGE_KEY)
-  return v ? parseInt(v, 10) : null
+export function getActiveKingdomId(): string | null {
+  return localStorage.getItem(STORAGE_KEY)
 }
 
-export function setActiveKingdomId(id: number | null) {
+export function setActiveKingdomId(id: string | null) {
   if (id === null) localStorage.removeItem(STORAGE_KEY)
-  else localStorage.setItem(STORAGE_KEY, String(id))
+  else localStorage.setItem(STORAGE_KEY, id)
 }
 
 export function useKingdom() {
@@ -23,8 +22,6 @@ export function useKingdom() {
   return useQuery({
     queryKey: ['kingdom', activeId],
     queryFn: () => kingdomService.getMe(activeId),
-    staleTime: 5_000,
-    refetchInterval: 30_000,
   })
 }
 
@@ -32,13 +29,13 @@ export function useKingdoms() {
   return useQuery({
     queryKey: ['kingdoms'],
     queryFn: kingdomService.getAll,
-    staleTime: 30_000,
+    staleTime: 60_000,
   })
 }
 
 export function useSwitchKingdom() {
   const qc = useQueryClient()
-  return (id: number | null) => {
+  return (id: string | null) => {
     setActiveKingdomId(id)
     qc.invalidateQueries({ queryKey: ['kingdom'] })
   }

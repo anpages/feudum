@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import { ArrowLeft, Package, Loader2, Trophy, Skull, Shield, Pickaxe, Undo2, Rocket } from 'lucide-react'
 import { GiWoodPile, GiStoneBlock } from 'react-icons/gi'
 import { Card } from '@/components/ui/Card'
@@ -15,7 +16,7 @@ interface Props {
   onEnd: () => void
 }
 
-export function MissionRow({ mission, onEnd }: Props) {
+function MissionRowImpl({ mission, onEnd }: Props) {
   const recall      = useRecallArmy()
   const isMerchant  = mission.state === 'merchant'
   const isReturning = mission.state === 'returning'
@@ -130,6 +131,8 @@ export function MissionRow({ mission, onEnd }: Props) {
     </Card>
   )
 }
+
+export const MissionRow = memo(MissionRowImpl, (prev, next) => prev.mission === next.mission)
 
 // ── Inline mission result ────────────────────────────────────────────────────
 

@@ -1,22 +1,23 @@
+import { memo } from 'react'
 import { Castle, User, Bot, Pickaxe } from 'lucide-react'
 import { Badge } from '@/components/ui/Badge'
 import type { MapSlot } from '@/features/map/useMap'
 
-export function SlotRow({
+export const SlotRow = memo(function SlotRow({
   slot,
   isSelected,
-  onClick,
+  onSelect,
 }: {
   slot: MapSlot
   isSelected: boolean
-  onClick: () => void
+  onSelect: (slot: MapSlot) => void
 }) {
   const isHighlighted = slot.isPlayer
   const hasDebris = slot.debris && (slot.debris.wood > 0 || slot.debris.stone > 0)
 
   return (
     <div
-      onClick={isHighlighted ? undefined : onClick}
+      onClick={isHighlighted ? undefined : () => onSelect(slot)}
       className={`flex items-center gap-2 sm:gap-4 px-3 sm:px-4 py-2.5 rounded border transition-colors ${
         isHighlighted
           ? 'bg-gold-soft border-gold/30 shadow-sm'
@@ -93,4 +94,4 @@ export function SlotRow({
       </div>
     </div>
   )
-}
+})

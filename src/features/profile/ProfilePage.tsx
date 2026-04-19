@@ -62,9 +62,9 @@ export function ProfilePage() {
 
   const [username, setUsername] = useState('')
   const [saved, setSaved] = useState(false)
-  const [renamingId, setRenamingId] = useState<number | null>(null)
+  const [renamingId, setRenamingId] = useState<string | null>(null)
   const [renameDraft, setRenameDraft] = useState('')
-  const [abandonConfirm, setAbandonConfirm] = useState<number | null>(null)
+  const [abandonConfirm, setAbandonConfirm] = useState<string | null>(null)
 
   useEffect(() => {
     if (!profile?.username) return
@@ -79,13 +79,13 @@ export function ProfilePage() {
     setTimeout(() => setSaved(false), 2500)
   }
 
-  async function handleRename(id: number) {
+  async function handleRename(id: string) {
     if (!renameDraft.trim()) return
     await rename.mutateAsync({ name: renameDraft.trim(), id })
     setRenamingId(null)
   }
 
-  async function handleAbandon(id: number) {
+  async function handleAbandon(id: string) {
     await abandon.mutateAsync(id)
     setAbandonConfirm(null)
   }

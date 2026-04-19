@@ -1,5 +1,5 @@
 export interface GameMessage {
-  id: number
+  id: string
   type: string
   subject: string
   data: Record<string, unknown>

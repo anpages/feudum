@@ -27,10 +27,10 @@ import {
   GiWatchtower,
   GiMissileLauncher,
 } from 'react-icons/gi'
-import { useQueryClient } from '@tanstack/react-query'
 import { Card } from '@/components/ui/Card'
 import { useBarracks, useTrainUnit, type UnitInfo } from '@/features/barracks/useBarracks'
 import { useAccelerate } from '@/features/queues/useAccelerate'
+import { useQueueSync } from '@/features/queues/useQueueSync'
 import { useKingdom } from '@/features/kingdom/useKingdom'
 import { useResearch } from '@/features/research/useResearch'
 import { useResourceTicker } from '@/features/kingdom/useResourceTicker'
@@ -77,18 +77,18 @@ const BARRACKS_GUIDE_KEY = 'barracks_guide_seen'
 export function BarracksPage() {
   const [tab, setTab] = useState<Tab>('units')
   const [guideVisible, setGuideVisible] = useState(() => !localStorage.getItem(BARRACKS_GUIDE_KEY))
-  const qc = useQueryClient()
   const { data, isLoading, refetch } = useBarracks()
   const { data: kingdom } = useKingdom()
   const { data: researchData } = useResearch()
   const resources = useResourceTicker(kingdom)
   const train = useTrainUnit()
   const accelerate = useAccelerate()
+  const syncQueues = useQueueSync()
 
-  const handleCountdownEnd = useCallback(() => {
+  const handleCountdownEnd = useCallback(async () => {
+    await syncQueues()
     refetch()
-    qc.invalidateQueries({ queryKey: ['kingdom'] })
-  }, [refetch, qc])
+  }, [refetch, syncQueues])
 
   function dismissGuide() {
     localStorage.setItem(BARRACKS_GUIDE_KEY, '1')

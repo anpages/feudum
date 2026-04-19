@@ -5,16 +5,17 @@ import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { useSeason, useAdminStartSeason, useAdminEndSeason } from '@/features/season/useSeason'
 import { formatDuration } from '@/lib/format'
+import { useNow } from '@/lib/useNow'
 
 export function SeasonTab() {
   const { data: season, isLoading } = useSeason()
   const startSeason = useAdminStartSeason()
   const endSeason   = useAdminEndSeason()
   const [confirm, setConfirm] = useState<'start' | 'end' | null>(null)
+  const now = useNow()
 
   if (isLoading) return <div className="skeleton h-48 rounded-xl" />
 
-  const now = Math.floor(Date.now() / 1000)
   const timeLeft = season?.seasonEnd ? Math.max(0, season.seasonEnd - now) : 0
 
   async function handleStart() {

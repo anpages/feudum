@@ -4,6 +4,7 @@ import { getSessionUserId } from '../lib/handler.js'
 import { RESEARCH, researchCost, researchTime, requirementsMet } from '../lib/research.js'
 import { getSettings } from '../lib/settings.js'
 import { applyResourceTick } from '../lib/tick.js'
+import { processUserQueues } from '../lib/process-queues.js'
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end()
@@ -16,6 +17,8 @@ export default async function handler(req, res) {
 
   const def = RESEARCH.find(r => r.id === researchId)
   if (!def) return res.status(400).json({ error: 'Investigación desconocida' })
+
+  await processUserQueues(userId)
 
   const [[kingdom], [resRow], [userRow], cfg] = await Promise.all([
     db.select().from(kingdoms).where(eq(kingdoms.userId, userId)).limit(1),
@@ -48,7 +51,7 @@ export default async function handler(req, res) {
   const timeSecs      = userRow?.characterClass === 'discoverer' ? Math.max(1, Math.floor(baseTime * 0.75)) : baseTime
 
   // ── Lazy resource tick ────────────────────────────────────────────────────
-  const { wood, stone, grain, now } = applyResourceTick(kingdom, cfg)
+  const { wood, stone, grain, now } = applyResourceTick(kingdom, cfg, userRow?.characterClass ?? null, resRow)
 
   // ── Check resources ───────────────────────────────────────────────────────
   if (wood  < cost.wood)  return res.status(400).json({ error: 'Madera insuficiente',  need: cost.wood,  have: Math.floor(wood) })

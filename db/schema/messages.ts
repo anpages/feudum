@@ -1,12 +1,12 @@
-import { pgTable, serial, integer, varchar, text, boolean, timestamp } from 'drizzle-orm/pg-core'
+import { pgTable, uuid, varchar, text, boolean, timestamp } from 'drizzle-orm/pg-core'
 import { users } from './users'
 
 export const messages = pgTable('messages', {
-  id:        serial('id').primaryKey(),
-  userId:    integer('user_id').notNull().references(() => users.id),
-  type:      varchar('type', { length: 20 }).notNull(),   // 'battle' | 'spy' | 'system'
+  id:        uuid('id').primaryKey().defaultRandom(),
+  userId:    uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  type:      varchar('type', { length: 20 }).notNull(),
   subject:   varchar('subject', { length: 255 }).notNull(),
-  data:      text('data').notNull(),                       // JSON payload
+  data:      text('data').notNull(),
   viewed:    boolean('viewed').default(false).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 })

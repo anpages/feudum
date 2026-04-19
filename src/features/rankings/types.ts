@@ -11,7 +11,7 @@ export interface RankingBreakdown {
 
 export interface RankingEntry {
   rank: number
-  kingdomId: number
+  kingdomId: string
   name: string
   username: string | null
   realm: number

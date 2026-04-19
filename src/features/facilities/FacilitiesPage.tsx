@@ -1,9 +1,9 @@
 import { useCallback } from 'react'
 import { GiVillage } from 'react-icons/gi'
-import { useQueryClient } from '@tanstack/react-query'
 import { Card } from '@/components/ui/Card'
 import { useBuildings, useUpgradeBuilding } from '@/features/buildings/useBuildings'
 import { useAccelerate } from '@/features/queues/useAccelerate'
+import { useQueueSync } from '@/features/queues/useQueueSync'
 import { useKingdom } from '@/features/kingdom/useKingdom'
 import { useResourceTicker } from '@/features/kingdom/useResourceTicker'
 import { BuildingCard } from '@/features/buildings/components/BuildingCard'
@@ -11,17 +11,17 @@ import { BUILDING_META, FACILITY_BUILDING_IDS } from '@/features/buildings/build
 import type { BuildingInfo } from '@/features/buildings/types'
 
 export function FacilitiesPage() {
-  const qc = useQueryClient()
   const { data, isLoading, refetch } = useBuildings()
   const { data: kingdom } = useKingdom()
   const resources = useResourceTicker(kingdom)
   const upgrade = useUpgradeBuilding()
   const accelerate = useAccelerate()
+  const syncQueues = useQueueSync()
 
-  const handleCountdownEnd = useCallback(() => {
+  const handleCountdownEnd = useCallback(async () => {
+    await syncQueues()
     refetch()
-    qc.invalidateQueries({ queryKey: ['kingdom'] })
-  }, [refetch, qc])
+  }, [refetch, syncQueues])
 
   if (isLoading) return <FacilitiesSkeleton />
 

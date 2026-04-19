@@ -7,7 +7,7 @@ import { eq, and, isNotNull } from 'drizzle-orm'
 import {
   db, users, kingdoms, armyMissions, debrisFields,
   research, buildingQueue, researchQueue, unitQueue,
-  userAchievements,
+  userAchievements, NPC_USER_ID,
 } from '../_db.js'
 import { ECONOMY_SPEED, NPC_DENSITY, UNIVERSE } from './config.js'
 import { getBossForSeason, getBossPosition } from './bosses.js'
@@ -127,15 +127,15 @@ export async function startNewSeason(seasonNumber, economySpeed) {
   const speed = parseFloat(economySpeed ?? ECONOMY_SPEED)
   const now   = Math.floor(Date.now() / 1000)
 
-  // Ensure NPC user exists
-  let [npcUser] = await db.select({ id: users.id })
-    .from(users).where(eq(users.isNpc, true)).limit(1)
+  // Ensure NPC user exists (deterministic UUID; created in migration 0019)
+  const [npcUser] = await db.select({ id: users.id })
+    .from(users).where(eq(users.id, NPC_USER_ID)).limit(1)
   if (!npcUser) {
-    ;[npcUser] = await db.insert(users).values({
-      email: 'npc@feudum.internal', isNpc: true, isAdmin: false,
-    }).returning({ id: users.id })
+    await db.insert(users).values({
+      id: NPC_USER_ID, email: 'npc@feudum.local', isNpc: true, isAdmin: false,
+    })
   }
-  const npcUserId = npcUser.id
+  const npcUserId = NPC_USER_ID
 
   // Reset (skip on season 1 — nothing to reset)
   if (seasonNumber > 1) await resetSeason()

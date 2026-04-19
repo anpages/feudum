@@ -8,7 +8,7 @@ export interface ArmiesResponse {
 
 export interface SendArmyResponse {
   ok: boolean
-  missionId: number
+  missionId: string
   arrivalTime: number
   returnTime: number
   travelSeconds: number

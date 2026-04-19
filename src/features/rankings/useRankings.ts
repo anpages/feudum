@@ -8,7 +8,6 @@ export function useRankings(category: RankingCategory = 'total', playerType: Ran
   return useQuery({
     queryKey: ['rankings', category, playerType],
     queryFn: () => rankingsService.getAll(category, playerType),
-    staleTime: 30_000,
-    refetchInterval: 60_000,
+    staleTime: 60_000,
   })
 }

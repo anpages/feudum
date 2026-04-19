@@ -1,7 +1,7 @@
-import { pgTable, serial, integer, real, timestamp } from 'drizzle-orm/pg-core'
+import { pgTable, uuid, integer, real, timestamp } from 'drizzle-orm/pg-core'
 
 export const debrisFields = pgTable('debris_fields', {
-  id:        serial('id').primaryKey(),
+  id:        uuid('id').primaryKey().defaultRandom(),
   realm:     integer('realm').notNull(),
   region:    integer('region').notNull(),
   slot:      integer('slot').notNull(),

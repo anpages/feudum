@@ -4,10 +4,10 @@ import {
   GiCrystalBall, GiLuciferCannon, GiPalisade, GiDefensiveWall, GiWrench, GiCatapult,
 } from 'react-icons/gi'
 import { type IconType } from 'react-icons'
-import { useQueryClient } from '@tanstack/react-query'
 import { Card } from '@/components/ui/Card'
 import { useBarracks, useTrainUnit } from '@/features/barracks/useBarracks'
 import { useAccelerate } from '@/features/queues/useAccelerate'
+import { useQueueSync } from '@/features/queues/useQueueSync'
 import { useKingdom } from '@/features/kingdom/useKingdom'
 import { useResearch } from '@/features/research/useResearch'
 import { useResourceTicker } from '@/features/kingdom/useResourceTicker'
@@ -27,18 +27,18 @@ const DEFENSE_META: Record<string, { name: string; Icon: IconType; description: 
 }
 
 export function DefensePage() {
-  const qc = useQueryClient()
   const { data, isLoading, refetch } = useBarracks()
   const { data: kingdom } = useKingdom()
   const { data: researchData } = useResearch()
   const resources = useResourceTicker(kingdom)
   const train = useTrainUnit()
   const accelerate = useAccelerate()
+  const syncQueues = useQueueSync()
 
-  const handleCountdownEnd = useCallback(() => {
+  const handleCountdownEnd = useCallback(async () => {
+    await syncQueues()
     refetch()
-    qc.invalidateQueries({ queryKey: ['kingdom'] })
-  }, [refetch, qc])
+  }, [refetch, syncQueues])
 
   if (isLoading) return <DefenseSkeleton />
 

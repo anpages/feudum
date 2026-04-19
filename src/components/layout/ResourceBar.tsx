@@ -1,6 +1,5 @@
 import { useNavigate } from 'react-router-dom'
-import { Menu, Zap, Bell, UserRound } from 'lucide-react'
-import { GiWoodPile, GiStoneBlock, GiWheat, GiCastle } from 'react-icons/gi'
+import { Menu, Zap, Bell, UserRound, Castle, TreePine, Mountain, Wheat } from 'lucide-react'
 import { useKingdom } from '@/features/kingdom/useKingdom'
 import { useResourceTicker } from '@/features/kingdom/useResourceTicker'
 import { useAuth } from '@/features/auth/useAuth'
@@ -33,7 +32,7 @@ export function ResourceBar({ onMenuToggle }: Props) {
         </button>
         <div className="flex items-center gap-1.5 min-w-0">
           <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-gold/10 border border-gold/20 flex items-center justify-center shrink-0">
-            <GiCastle className="text-gold" style={{ fontSize: 12 }} />
+            <Castle size={12} className="text-gold" />
           </div>
           <div className="hidden sm:flex flex-col leading-none">
             <span className="font-display text-[0.58rem] text-gold-dim tracking-[0.18em] uppercase">Feudum</span>
@@ -49,9 +48,9 @@ export function ResourceBar({ onMenuToggle }: Props) {
       </div>
 
       <div className="hidden md:flex items-center gap-0.5 sm:gap-1 flex-1 justify-center overflow-x-auto no-scrollbar px-1 sm:px-2">
-        <ResourcePill icon={<GiWoodPile  style={{ fontSize: 12 }} />} label="Madera" value={resources.wood}  cap={kingdom?.woodCapacity}  rate={kingdom?.woodProduction} />
-        <ResourcePill icon={<GiStoneBlock style={{ fontSize: 12 }} />} label="Piedra" value={resources.stone} cap={kingdom?.stoneCapacity} rate={kingdom?.stoneProduction} />
-        <ResourcePill icon={<GiWheat     style={{ fontSize: 12 }} />} label="Grano"  value={resources.grain} cap={kingdom?.grainCapacity} rate={kingdom?.grainProduction} />
+        <ResourcePill icon={<TreePine  size={12} />} label="Madera" value={resources.wood}  cap={kingdom?.woodCapacity}  rate={kingdom?.woodProduction} />
+        <ResourcePill icon={<Mountain size={12} />} label="Piedra" value={resources.stone} cap={kingdom?.stoneCapacity} rate={kingdom?.stoneProduction} />
+        <ResourcePill icon={<Wheat    size={12} />} label="Grano"  value={resources.grain} cap={kingdom?.grainCapacity} rate={kingdom?.grainProduction} />
         <EnergyPill kingdom={kingdom as Record<string, unknown> | null | undefined} />
         <div
           className={`hidden xl:flex resource-pill items-center gap-1.5 ${(user?.ether ?? 0) === 0 ? 'opacity-30' : ''}`}

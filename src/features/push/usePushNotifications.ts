@@ -10,23 +10,23 @@ function urlBase64ToUint8Array(base64: string): Uint8Array {
 
 export type PushState = 'unsupported' | 'loading' | 'unsubscribed' | 'subscribed' | 'denied'
 
+function initialPushState(): PushState {
+  if (typeof navigator === 'undefined' || typeof window === 'undefined') return 'loading'
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return 'unsupported'
+  if (Notification.permission === 'denied') return 'denied'
+  return 'loading'
+}
+
 export function usePushNotifications() {
-  const [state, setState] = useState<PushState>('loading')
+  const [state, setState] = useState<PushState>(initialPushState)
 
   useEffect(() => {
-    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-      setState('unsupported')
-      return
-    }
-    const perm = Notification.permission
-    if (perm === 'denied') { setState('denied'); return }
-
-    navigator.serviceWorker.ready.then(reg =>
-      reg.pushManager.getSubscription()
-    ).then(sub => {
-      setState(sub ? 'subscribed' : 'unsubscribed')
-    }).catch(() => setState('unsubscribed'))
-  }, [])
+    if (state !== 'loading') return
+    navigator.serviceWorker.ready
+      .then(reg => reg.pushManager.getSubscription())
+      .then(sub => setState(sub ? 'subscribed' : 'unsubscribed'))
+      .catch(() => setState('unsubscribed'))
+  }, [state])
 
   async function subscribe() {
     setState('loading')

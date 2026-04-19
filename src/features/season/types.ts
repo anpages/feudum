@@ -4,7 +4,7 @@ export interface SeasonBoss {
   difficulty: number
   lore:       string
   kingdom: {
-    id: number; name: string
+    id: string; name: string
     realm: number; region: number; slot: number
     dragonKnight: number
   } | null
@@ -12,7 +12,7 @@ export interface SeasonBoss {
 }
 
 export interface SeasonWinner {
-  id:        number
+  id:        string
   username:  string | null
   condition: string
 }

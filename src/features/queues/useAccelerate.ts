@@ -24,8 +24,8 @@ export function useAccelerate() {
       qc.invalidateQueries({ queryKey: ['auth', 'me'] })
     },
 
-    onError: (err: any) => {
-      toast.error(err?.message ?? 'Error al acelerar')
+    onError: (err: Error) => {
+      toast.error(err.message ?? 'Error al acelerar')
     },
   })
 }

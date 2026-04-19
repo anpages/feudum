@@ -20,27 +20,18 @@ export default async function handler(req, res) {
   const supabaseUser = data.user
   const isAdminEmail = process.env.ADMIN_EMAIL && supabaseUser.email === process.env.ADMIN_EMAIL
 
-  // Find or create internal user row
-  let [user] = await db
+  // public.users row is auto-created by the on_auth_user_created trigger.
+  const [user] = await db
     .select({ id: users.id, username: users.username, isAdmin: users.isAdmin })
     .from(users)
-    .where(eq(users.supabaseUserId, supabaseUser.id))
+    .where(eq(users.id, supabaseUser.id))
     .limit(1)
 
-  let isNew = false
-  if (!user) {
-    isNew = true
-    const [newUser] = await db.insert(users).values({
-      supabaseUserId: supabaseUser.id,
-      email:     supabaseUser.email,
-      avatarUrl: supabaseUser.user_metadata?.avatar_url,
-      isAdmin:   !!isAdminEmail,
-    }).returning({ id: users.id, username: users.username, isAdmin: users.isAdmin })
-    user = newUser
-  } else if (isAdminEmail && !user.isAdmin) {
+  if (user && isAdminEmail && !user.isAdmin) {
     await db.update(users).set({ isAdmin: true, updatedAt: new Date() }).where(eq(users.id, user.id))
   }
 
-  console.log('[oauth] login ok, user:', user.id, isNew ? '(new)' : '')
-  res.redirect(isNew || !user.username ? '/?next=onboarding' : '/?next=overview')
+  const isNew = !user?.username
+  console.log('[oauth] login ok, user:', supabaseUser.id, isNew ? '(new)' : '')
+  res.redirect(isNew ? '/?next=onboarding' : '/?next=overview')
 }

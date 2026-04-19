@@ -8,7 +8,6 @@ export function useMap(realm: number, region: number) {
   return useQuery({
     queryKey: ['map', realm, region],
     queryFn: () => mapService.getRegion(realm, region),
-    staleTime: 30_000,
-    refetchInterval: 60_000,
+    staleTime: 60_000,
   })
 }

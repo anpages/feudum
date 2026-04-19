@@ -1,6 +1,7 @@
 import { useRef, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { researchService } from './services/researchService'
+import { getActiveKingdomId } from '@/features/kingdom/useKingdom'
 import { toast } from '@/lib/toast'
 import { RESEARCH_LABELS } from '@/lib/labels'
 import type { ResearchInfo, ResearchResponse } from './types'
@@ -9,16 +10,11 @@ export type { ResearchInfo, ResearchResponse }
 
 export function useResearch() {
   const prevRef = useRef<ResearchInfo[] | null>(null)
+  const activeId = getActiveKingdomId()
 
   const result = useQuery({
-    queryKey: ['research'],
-    queryFn: researchService.getAll,
-    staleTime: 5_000,
-    refetchInterval: query => {
-      const items = query.state.data?.research ?? []
-      const now = Math.floor(Date.now() / 1000)
-      return items.some(r => r.inQueue && r.inQueue.finishesAt > now) ? 3_000 : 10_000
-    },
+    queryKey: ['research', activeId],
+    queryFn: () => researchService.getAll(activeId),
   })
 
   useEffect(() => {
@@ -40,19 +36,22 @@ export function useResearch() {
 
 export function useUpgradeResearch() {
   const qc = useQueryClient()
+  const activeId = getActiveKingdomId()
+  const key = ['research', activeId] as const
 
   return useMutation({
+    mutationKey: ['mutate', 'research'],
     mutationFn: (researchId: string) => researchService.upgrade(researchId),
 
     onMutate: async (researchId: string) => {
-      await qc.cancelQueries({ queryKey: ['research'] })
-      const prev = qc.getQueryData<ResearchResponse>(['research'])
+      await qc.cancelQueries({ queryKey: key })
+      const prev = qc.getQueryData<ResearchResponse>(key)
 
       if (prev) {
         const item = prev.research.find(r => r.id === researchId)
         if (item) {
           const finishesAt = Math.floor(Date.now() / 1000) + item.timeSeconds
-          qc.setQueryData<ResearchResponse>(['research'], {
+          qc.setQueryData<ResearchResponse>(key, {
             research: prev.research.map(r =>
               r.id === researchId ? { ...r, inQueue: { level: r.level + 1, finishesAt } } : r
             ),
@@ -64,7 +63,7 @@ export function useUpgradeResearch() {
     },
 
     onError: (_err, _id, context) => {
-      if (context?.prev) qc.setQueryData<ResearchResponse>(['research'], context.prev)
+      if (context?.prev) qc.setQueryData<ResearchResponse>(key, context.prev)
     },
 
     onSettled: () => {

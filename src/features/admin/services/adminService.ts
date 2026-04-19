@@ -7,10 +7,10 @@ export const adminService = {
   getFleet: () => http.get<{ missions: AdminMission[]; now: number }>('/admin/fleet'),
   updateSettings: (patch: Partial<AdminSettings>) =>
     http.patch<AdminSettings>('/admin/settings', patch),
-  toggleAdmin: (userId: number, isAdmin: boolean) =>
+  toggleAdmin: (userId: string, isAdmin: boolean) =>
     http.patch<{ ok: boolean }>('/admin/users', { userId, isAdmin }),
   devAction: (body: Record<string, unknown>) => http.post<{ ok: boolean }>('/admin/dev', body),
-  fastForward: (body: { missionId?: number; all?: boolean }) =>
+  fastForward: (body: { missionId?: string; all?: boolean }) =>
     http.post<{ ok: boolean }>('/admin/fleet', body),
   seedNpcs: (params: { level1: number; level2: number; level3: number }) =>
     http.post<{ ok: boolean; created: number; deleted: number; byLevel: Record<string, number> }>(

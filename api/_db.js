@@ -1,17 +1,17 @@
+import './lib/env.js'
 import postgres from 'postgres'
 import { drizzle } from 'drizzle-orm/postgres-js'
 import {
-  pgTable, serial, integer, varchar, real, timestamp, text, boolean, uuid,
+  pgTable, integer, varchar, real, timestamp, text, boolean, uuid,
 } from 'drizzle-orm/pg-core'
 
 // ── Schema (mirrors db/schema/*.ts) ──────────────────────────────────────────
+// All ids are UUID. user.id == auth.users.id (Supabase). FKs cascade on delete.
 
 export const users = pgTable('users', {
-  id:             serial('id').primaryKey(),
-  supabaseUserId: uuid('supabase_user_id').unique(),
+  id:             uuid('id').primaryKey(),
   username:       varchar('username',  { length: 50  }).unique(),
   email:          varchar('email',     { length: 255 }).notNull().unique(),
-  googleId:       varchar('google_id', { length: 255 }).unique(),
   avatarUrl:      varchar('avatar_url',{ length: 500 }),
   isAdmin:        boolean('is_admin').default(false).notNull(),
   isNpc:          boolean('is_npc').default(false).notNull(),
@@ -22,8 +22,8 @@ export const users = pgTable('users', {
 })
 
 export const etherTransactions = pgTable('ether_transactions', {
-  id:        serial('id').primaryKey(),
-  userId:    integer('user_id').notNull().references(() => users.id),
+  id:        uuid('id').primaryKey().defaultRandom(),
+  userId:    uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   type:      text('type').notNull(),
   amount:    integer('amount').notNull(),
   reason:    text('reason'),
@@ -37,8 +37,8 @@ export const settings = pgTable('settings', {
 })
 
 export const kingdoms = pgTable('kingdoms', {
-  id:     serial('id').primaryKey(),
-  userId: integer('user_id').notNull().references(() => users.id),
+  id:     uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   name:   varchar('name', { length: 100 }).notNull(),
   realm:  integer('realm').notNull(),
   region: integer('region').notNull(),
@@ -98,6 +98,7 @@ export const kingdoms = pgTable('kingdoms', {
   castleWall:   integer('castle_wall').default(0).notNull(),
   moat:         integer('moat').default(0).notNull(),
   catapult:     integer('catapult').default(0).notNull(),
+  ballistic:    integer('ballistic').default(0).notNull(),
 
   tempAvg:          integer('temp_avg').default(0).notNull(),
   sawmillPercent:   integer('sawmill_percent').default(10).notNull(),
@@ -110,16 +111,17 @@ export const kingdoms = pgTable('kingdoms', {
   isBoss:   boolean('is_boss').default(false).notNull(),
   npcLevel: integer('npc_level').default(0).notNull(),
 
-  npcLastBuildAt:  integer('npc_last_build_at').default(0).notNull(),
-  npcLastAttackAt: integer('npc_last_attack_at').default(0).notNull(),
+  npcBuildAvailableAt: integer('npc_build_available_at').default(0),
+  npcLastBuildAt:      integer('npc_last_build_at').default(0).notNull(),
+  npcLastAttackAt:     integer('npc_last_attack_at').default(0).notNull(),
 
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 })
 
 export const research = pgTable('research', {
-  id:     serial('id').primaryKey(),
-  userId: integer('user_id').notNull().references(() => users.id).unique(),
+  id:     uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id').notNull().unique().references(() => users.id, { onDelete: 'cascade' }),
 
   // Combat
   swordsmanship: integer('swordsmanship').default(0).notNull(),
@@ -150,8 +152,8 @@ export const research = pgTable('research', {
 })
 
 export const unitQueue = pgTable('unit_queue', {
-  id:         serial('id').primaryKey(),
-  kingdomId:  integer('kingdom_id').notNull().references(() => kingdoms.id),
+  id:         uuid('id').primaryKey().defaultRandom(),
+  kingdomId:  uuid('kingdom_id').notNull().references(() => kingdoms.id, { onDelete: 'cascade' }),
   unit:       varchar('unit', { length: 50 }).notNull(),
   amount:     integer('amount').notNull(),
   startedAt:  integer('started_at').notNull(),
@@ -160,9 +162,9 @@ export const unitQueue = pgTable('unit_queue', {
 })
 
 export const researchQueue = pgTable('research_queue', {
-  id:         serial('id').primaryKey(),
-  userId:     integer('user_id').notNull().references(() => users.id),
-  kingdomId:  integer('kingdom_id').notNull().references(() => kingdoms.id),
+  id:         uuid('id').primaryKey().defaultRandom(),
+  userId:     uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  kingdomId:  uuid('kingdom_id').notNull().references(() => kingdoms.id, { onDelete: 'cascade' }),
   research:   varchar('research', { length: 50 }).notNull(),
   level:      integer('level').notNull(),
   startedAt:  integer('started_at').notNull(),
@@ -171,8 +173,8 @@ export const researchQueue = pgTable('research_queue', {
 })
 
 export const buildingQueue = pgTable('building_queue', {
-  id:         serial('id').primaryKey(),
-  kingdomId:  integer('kingdom_id').notNull().references(() => kingdoms.id),
+  id:         uuid('id').primaryKey().defaultRandom(),
+  kingdomId:  uuid('kingdom_id').notNull().references(() => kingdoms.id, { onDelete: 'cascade' }),
   building:   varchar('building', { length: 50 }).notNull(),
   level:      integer('level').notNull(),
   startedAt:  integer('started_at').notNull(),
@@ -181,8 +183,8 @@ export const buildingQueue = pgTable('building_queue', {
 })
 
 export const armyMissions = pgTable('army_missions', {
-  id:          serial('id').primaryKey(),
-  userId:      integer('user_id').notNull().references(() => users.id),
+  id:          uuid('id').primaryKey().defaultRandom(),
+  userId:      uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   missionType: varchar('mission_type', { length: 20 }).notNull(),
   state:       varchar('state', { length: 10 }).notNull().default('active'),
 
@@ -215,6 +217,7 @@ export const armyMissions = pgTable('army_missions', {
   colonist:     integer('colonist').default(0).notNull(),
   scavenger:    integer('scavenger').default(0).notNull(),
   scout:        integer('scout').default(0).notNull(),
+  ballistic:    integer('ballistic').default(0).notNull(),
 
   result:    text('result'),   // JSON string: battle outcome, spy report, etc.
   createdAt: timestamp('created_at').defaultNow().notNull(),
@@ -224,7 +227,7 @@ export const armyMissions = pgTable('army_missions', {
 // ── Debris fields ─────────────────────────────────────────────────────────────
 
 export const debrisFields = pgTable('debris_fields', {
-  id:        serial('id').primaryKey(),
+  id:        uuid('id').primaryKey().defaultRandom(),
   realm:     integer('realm').notNull(),
   region:    integer('region').notNull(),
   slot:      integer('slot').notNull(),
@@ -237,8 +240,8 @@ export const debrisFields = pgTable('debris_fields', {
 // ── Messages ──────────────────────────────────────────────────────────────────
 
 export const messages = pgTable('messages', {
-  id:        serial('id').primaryKey(),
-  userId:    integer('user_id').notNull().references(() => users.id),
+  id:        uuid('id').primaryKey().defaultRandom(),
+  userId:    uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   type:      varchar('type', { length: 20 }).notNull(),
   subject:   varchar('subject', { length: 255 }).notNull(),
   data:      text('data').notNull(),
@@ -249,8 +252,8 @@ export const messages = pgTable('messages', {
 // ── Achievements ──────────────────────────────────────────────────────────────
 
 export const userAchievements = pgTable('user_achievements', {
-  id:            serial('id').primaryKey(),
-  userId:        integer('user_id').notNull().references(() => users.id),
+  id:            uuid('id').primaryKey().defaultRandom(),
+  userId:        uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   achievementId: varchar('achievement_id', { length: 60 }).notNull(),
   unlockedAt:    timestamp('unlocked_at').defaultNow().notNull(),
 })
@@ -258,16 +261,19 @@ export const userAchievements = pgTable('user_achievements', {
 // ── Push subscriptions ────────────────────────────────────────────────────────
 
 export const pushSubscriptions = pgTable('push_subscriptions', {
-  id:        serial('id').primaryKey(),
-  userId:    integer('user_id').notNull().references(() => users.id),
+  id:        uuid('id').primaryKey().defaultRandom(),
+  userId:    uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   endpoint:  text('endpoint').notNull().unique(),
   p256dh:    text('p256dh').notNull(),
   auth:      text('auth').notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 })
 
+// Deterministic UUID for the system NPC user (no auth.users row backing it)
+export const NPC_USER_ID = '00000000-0000-0000-0000-000000000001'
+
 // ── Connection ────────────────────────────────────────────────────────────────
 
 // prepare: false required for PgBouncer transaction pooling
 const client = postgres(process.env.STORAGE_POSTGRES_URL, { prepare: false })
-export const db = drizzle(client, { schema: { users, kingdoms, research, researchQueue, buildingQueue, unitQueue, armyMissions, messages, debrisFields, settings, userAchievements, pushSubscriptions } })
+export const db = drizzle(client, { schema: { users, kingdoms, research, researchQueue, buildingQueue, unitQueue, armyMissions, messages, debrisFields, settings, userAchievements, pushSubscriptions, etherTransactions } })

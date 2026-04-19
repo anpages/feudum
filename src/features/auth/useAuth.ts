@@ -1,44 +1,77 @@
-import { useEffect } from 'react'
+import { useEffect, useRef, useSyncExternalStore } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
+import type { Session } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
 import { authService } from './services/authService'
 
-const ME_KEY = ['auth', 'me'] as const
+const PROFILE_KEY = ['auth', 'profile'] as const
+
+// ── Session store: a tiny external store that mirrors Supabase auth state ─────
+// Reading from it is synchronous (it pulls from localStorage on init), so
+// `isAuthenticated` is decided immediately on first render — no API roundtrip,
+// no flicker to /login when a network call is slow.
+
+type SessionState = { session: Session | null; ready: boolean }
+
+let state: SessionState = { session: null, ready: false }
+const listeners = new Set<() => void>()
+const notify = () => listeners.forEach(l => l())
+
+// Kick off the initial session read once at module load.
+supabase.auth.getSession().then(({ data: { session } }) => {
+  state = { session, ready: true }
+  notify()
+})
+
+// Keep the store in sync with future auth events (refresh, signout, signin).
+supabase.auth.onAuthStateChange((_event, session) => {
+  state = { session, ready: true }
+  notify()
+})
+
+const subscribe = (cb: () => void) => {
+  listeners.add(cb)
+  return () => { listeners.delete(cb) }
+}
+const getSnapshot = () => state
 
 export function useAuth() {
   const qc = useQueryClient()
+  const { session, ready } = useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
+  const prevUserId = useRef<string | null>(null)
 
-  const { data: user, isLoading } = useQuery({
-    queryKey: ME_KEY,
+  // Profile is fetched only when there is a session. It powers username/admin
+  // checks but does NOT gate isAuthenticated — so a slow API can't kick the
+  // user back to /login.
+  const { data: profile, isLoading: profileLoading } = useQuery({
+    queryKey: PROFILE_KEY,
     queryFn: authService.me,
-    retry: false,
-    staleTime: Infinity,
+    enabled: !!session,
+    retry: 1,
+    staleTime: 5 * 60_000,
     refetchInterval: false,
   })
 
-  // Sync React Query with Supabase auth state changes
+  // When the user changes (login as different account, signout), nuke the cache
+  // so we never render data for the wrong user.
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (event === 'SIGNED_OUT') {
-        qc.setQueryData(ME_KEY, null)
-        qc.clear()
-      } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-        qc.invalidateQueries({ queryKey: ME_KEY })
-      }
-    })
-    return () => subscription.unsubscribe()
-  }, [qc])
+    const uid = session?.user?.id ?? null
+    if (prevUserId.current && prevUserId.current !== uid) {
+      qc.clear()
+    }
+    prevUserId.current = uid
+  }, [session?.user?.id, qc])
 
   const logout = async () => {
-    await authService.logout()
-    qc.setQueryData(ME_KEY, null)
+    await supabase.auth.signOut()
     qc.clear()
   }
 
   return {
-    user,
-    isAuthenticated: !!user,
-    isLoading,
+    session,
+    user: profile,
+    isAuthenticated: !!session,
+    isLoading: !ready || (!!session && profileLoading && !profile),
     signInWithGoogle: authService.signInWithGoogle,
     logout,
   }

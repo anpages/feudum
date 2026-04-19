@@ -52,12 +52,12 @@ export default async function handler(req, res) {
 
   // ── end_season — force-end ────────────────────────────────────────────────
   if (action === 'end_season') {
-    const winnerUserId = parseInt(req.body.winnerUserId ?? '0', 10) || null
+    const winnerUserId = req.body.winnerUserId ? String(req.body.winnerUserId) : null
     const condition    = req.body.condition ?? 'admin_forced'
     await Promise.all([
       setSetting('season_state',              'ended'),
       setSetting('season_end',                String(Math.floor(Date.now() / 1000))),
-      setSetting('season_winner_user_id',     winnerUserId ? String(winnerUserId) : ''),
+      setSetting('season_winner_user_id',     winnerUserId ?? ''),
       setSetting('season_winner_condition',   condition),
     ])
     return res.json({ ok: true })

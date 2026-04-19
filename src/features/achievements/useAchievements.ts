@@ -8,7 +8,6 @@ export function useAchievements() {
   return useQuery({
     queryKey: ['achievements'],
     queryFn: achievementsService.getAll,
-    staleTime: 30_000,
-    refetchInterval: 60_000,
+    staleTime: 60_000,  // Realtime on user_achievements INSERT handles live updates
   })
 }

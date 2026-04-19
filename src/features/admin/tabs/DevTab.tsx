@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Zap, ChevronDown, Bot, Loader2, RotateCcw } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
-import { useAdminUsers, useDevAction, useSeedNpcs, useResetNpcs } from '@/features/admin/useAdmin'
+import { useAdminUsers, useDevAction, useSeedNpcs, useResetNpcs, type AdminUser } from '@/features/admin/useAdmin'
 
 const BUILDING_OPTIONS = [
   { id: 'sawmill',        label: 'Aserradero' },
@@ -91,7 +91,7 @@ export function DevTab() {
   const { data } = useAdminUsers()
   const devAction = useDevAction()
 
-  const [selectedUserId, setSelectedUserId] = useState<number | ''>('')
+  const [selectedUserId, setSelectedUserId] = useState<string>('')
   const [wood,          setWood]          = useState('50000')
   const [stone,         setStone]         = useState('50000')
   const [grain,         setGrain]         = useState('50000')
@@ -101,8 +101,8 @@ export function DevTab() {
   const [techLevel,     setTechLevel]     = useState('5')
   const [status,        setStatus]        = useState<string | null>(null)
 
-  const users        = (data?.users ?? []).filter((u: any) => !u.isNpc)
-  const selectedUser = users.find((u: any) => u.id === selectedUserId) as any
+  const users        = (data?.users ?? []).filter((u: AdminUser) => !u.isNpc)
+  const selectedUser = users.find((u: AdminUser) => u.id === selectedUserId)
   const hasKingdom   = !!selectedUser?.kingdom
 
   function handleStatus(s: string) {
@@ -132,10 +132,10 @@ export function DevTab() {
         <label className="font-ui text-[10px] text-ink-muted uppercase tracking-widest">Jugador objetivo</label>
         <div className="relative">
           <select value={selectedUserId}
-            onChange={e => setSelectedUserId(e.target.value ? parseInt(e.target.value) : '')}
+            onChange={e => setSelectedUserId(e.target.value)}
             className="game-input w-full appearance-none pr-8">
             <option value="">— seleccionar —</option>
-            {users.map((u: any) => (
+            {users.map((u: AdminUser) => (
               <option key={u.id} value={u.id}>
                 {u.username ?? u.email}
                 {u.kingdom ? ` · R${u.kingdom.realm}:${u.kingdom.region}:${u.kingdom.slot}` : ' (sin reino)'}

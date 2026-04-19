@@ -18,7 +18,7 @@ export default async function handler(req, res) {
   const seasonStart     = parseInt(cfg.season_start    ?? '0', 10)
   const seasonEnd       = parseInt(cfg.season_end      ?? '0', 10)
   const bossSlug        = cfg.season_boss_slug         ?? null
-  const winnerUserId    = parseInt(cfg.season_winner_user_id ?? '0', 10) || null
+  const winnerUserId    = cfg.season_winner_user_id || null
   const winnerCondition = cfg.season_winner_condition  ?? null
 
   if (!seasonNumber || !seasonState) {

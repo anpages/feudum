@@ -2,9 +2,9 @@ import { useState } from 'react'
 import { Loader2, Save } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
-import { useAdminSettings, useUpdateSettings } from '@/features/admin/useAdmin'
+import { useAdminSettings, useUpdateSettings, type AdminSettings } from '@/features/admin/useAdmin'
 
-const SETTINGS_META: { key: string; label: string; hint: string; integer?: boolean }[] = [
+const SETTINGS_META: { key: keyof AdminSettings; label: string; hint: string; integer?: boolean }[] = [
   { key: 'economy_speed',        label: 'Velocidad economía',       hint: 'Producción y construcción' },
   { key: 'research_speed',       label: 'Velocidad investigación',  hint: 'Tiempo de laboratorio' },
   { key: 'fleet_speed_war',      label: 'Flota (guerra)',           hint: 'Ataque, pillaje, espionaje' },
@@ -21,18 +21,18 @@ export function ServerTab() {
 
   if (isLoading) return <div className="skeleton h-64 rounded-xl" />
 
-  async function saveField(key: string) {
+  async function saveField(key: keyof AdminSettings) {
     const raw = values[key]
     if (raw === undefined) return
     const num = key === 'basic_wood' || key === 'basic_stone' ? parseInt(raw, 10) : parseFloat(raw)
     if (isNaN(num) || num < 0) return
-    await update.mutateAsync({ [key]: num } as any)
+    await update.mutateAsync({ [key]: num } as Partial<AdminSettings>)
     setSaved(key)
     setTimeout(() => setSaved(null), 2000)
   }
 
-  function getVal(key: string) {
-    return values[key] !== undefined ? values[key] : String((data as any)?.[key] ?? '')
+  function getVal(key: keyof AdminSettings) {
+    return values[key] !== undefined ? values[key] : String(data?.[key] ?? '')
   }
 
   return (

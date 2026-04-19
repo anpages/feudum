@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { Sheet } from '@/components/ui/Sheet'
 import { useArmies, useSendArmy, type MissionType } from '@/features/armies/useArmies'
-import { useKingdom } from '@/features/kingdom/useKingdom'
+import { useKingdom, type Kingdom } from '@/features/kingdom/useKingdom'
 import { ALL_UNIT_META, MISSION_META } from './armiesMeta'
 import { MissionRow } from './components/MissionRow'
 import { CoordPicker } from './components/CoordPicker'
@@ -18,13 +18,13 @@ export function ArmiesPage() {
   const { data: kingdom } = useKingdom()
   const send = useSendArmy()
   const [searchParams, setSearchParams] = useSearchParams()
-  const [sheetOpen, setSheetOpen] = useState(false)
 
   const initRealm  = Math.max(1, parseInt(searchParams.get('realm')  ?? '1', 10) || 1)
   const initRegion = Math.max(1, parseInt(searchParams.get('region') ?? '1', 10) || 1)
   const initSlot   = Math.max(1, parseInt(searchParams.get('slot')   ?? '1', 10) || 1)
   const initType   = (searchParams.get('type') ?? 'attack') as MissionType
 
+  const [sheetOpen, setSheetOpen] = useState(() => searchParams.get('type') !== null)
   const [missionType, setMissionType] = useState<MissionType>(initType)
   const [tRealm,  setTRealm]  = useState(initRealm)
   const [tRegion, setTRegion] = useState(initRegion)
@@ -33,10 +33,7 @@ export function ArmiesPage() {
   const [resLoad, setResLoad] = useState({ wood: 0, stone: 0, grain: 0 })
 
   useEffect(() => {
-    if (searchParams.get('type')) {
-      setSheetOpen(true)
-      setSearchParams({}, { replace: true })
-    }
+    if (searchParams.get('type')) setSearchParams({}, { replace: true })
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -50,7 +47,7 @@ export function ArmiesPage() {
   const isMissile  = missionType === 'missile'
   const totalUnits = Object.values(units).reduce((s, n) => s + n, 0)
   const canSend    = totalUnits > 0 && !send.isPending
-  const hasUnits   = ALL_UNIT_META.some(u => ((kingdom as any)?.[u.id] ?? 0) > 0)
+  const hasUnits   = ALL_UNIT_META.some(u => ((kingdom as unknown as Record<string, number> | null)?.[u.id] ?? 0) > 0)
 
   const handleSend = () => {
     const destSlot = missionType === 'expedition' ? 16 : tSlot
@@ -153,8 +150,9 @@ function MissionForm({
   resLoad: { wood: number; stone: number; grain: number }
   setResLoad: React.Dispatch<React.SetStateAction<{ wood: number; stone: number; grain: number }>>
   isMissile: boolean; totalUnits: number; canSend: boolean; hasUnits: boolean
-  kingdom: any; send: ReturnType<typeof useSendArmy>; onSend: () => void
+  kingdom: Kingdom | null | undefined; send: ReturnType<typeof useSendArmy>; onSend: () => void
 }) {
+  const kingdomUnits = kingdom as unknown as Record<string, number> | null | undefined
   return (
     <div className="p-5 space-y-5">
       {/* Mission type */}
@@ -240,7 +238,7 @@ function MissionForm({
             ) : (
               <div className="space-y-1.5">
                 {ALL_UNIT_META.map(u => {
-                  const available = (kingdom as any)?.[u.id] ?? 0
+                  const available = kingdomUnits?.[u.id] ?? 0
                   if (available === 0) return null
                   return (
                     <div key={u.id} className="flex items-center gap-2">
@@ -291,7 +289,7 @@ function MissionForm({
 
       {send.isError && (
         <p className="font-ui text-xs text-crimson">
-          {(send.error as any)?.message ?? 'Error al enviar la misión'}
+          {(send.error as Error | null)?.message ?? 'Error al enviar la misión'}
         </p>
       )}
 

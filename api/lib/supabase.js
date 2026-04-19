@@ -1,18 +1,42 @@
+import './env.js'
 import { createClient } from '@supabase/supabase-js'
 import { createServerClient, parseCookieHeader, serializeCookieHeader } from '@supabase/ssr'
+import { createRemoteJWKSet, jwtVerify } from 'jose'
 
-const SUPABASE_URL         = process.env.STORAGE_SUPABASE_URL
-const SUPABASE_ANON_KEY    = process.env.STORAGE_VITE_SUPABASE_ANON_KEY
-const SUPABASE_SERVICE_KEY = process.env.STORAGE_SUPABASE_SERVICE_ROLE_KEY
+// JWKS verifier — cached at module level, reused across warm invocations
+let _jwks = null
+function getJWKS() {
+  if (!_jwks) {
+    const { url } = getEnv()
+    _jwks = createRemoteJWKSet(new URL(`${url}/auth/v1/.well-known/jwks.json`))
+  }
+  return _jwks
+}
 
-// Admin client — service role, bypasses RLS, for server-side mutations
-export const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, {
-  auth: { autoRefreshToken: false, persistSession: false },
-})
+function getEnv() {
+  const url     = process.env.STORAGE_SUPABASE_URL
+  const anon    = process.env.STORAGE_VITE_SUPABASE_ANON_KEY ?? process.env.STORAGE_SUPABASE_ANON_KEY
+  const service = process.env.STORAGE_SUPABASE_SERVICE_ROLE_KEY
+  if (!url) throw new Error('STORAGE_SUPABASE_URL not set')
+  return { url, anon, service }
+}
+
+// Admin client — service role, bypasses RLS
+let _admin = null
+export function getSupabaseAdmin() {
+  if (!_admin) {
+    const { url, service } = getEnv()
+    _admin = createClient(url, service, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    })
+  }
+  return _admin
+}
 
 // Per-request server client — manages Supabase session cookies
 export function createSupabaseClient(req, res) {
-  return createServerClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  const { url, anon } = getEnv()
+  return createServerClient(url, anon, {
     cookies: {
       getAll() {
         return parseCookieHeader(req.headers.cookie ?? '')
@@ -28,19 +52,18 @@ export function createSupabaseClient(req, res) {
   })
 }
 
-// Extracts the Supabase access token from cookies without session refresh
 function extractAccessToken(req) {
+  // Prefer Authorization header (localStorage-based auth)
+  const authHeader = req.headers.authorization ?? req.headers.Authorization ?? ''
+  if (authHeader.startsWith('Bearer ')) return authHeader.slice(7)
+
+  // Fallback: parse Supabase session cookies
   const cookies = parseCookieHeader(req.headers.cookie ?? '')
-  // Supabase stores the session as JSON in sb-*-auth-token or chunked sb-*-auth-token.0
   for (const { name, value } of cookies) {
     if (name.startsWith('sb-') && name.endsWith('-auth-token') && !name.includes('.')) {
-      try {
-        const session = JSON.parse(decodeURIComponent(value))
-        return session?.access_token ?? null
-      } catch { /* chunked cookie, handled below */ }
+      try { return JSON.parse(decodeURIComponent(value))?.access_token ?? null } catch {}
     }
   }
-  // Chunked: reassemble sb-*-auth-token.0, .1, ...
   const chunks = {}
   for (const { name, value } of cookies) {
     const m = name.match(/^(sb-.+-auth-token)\.(\d+)$/)
@@ -48,26 +71,25 @@ function extractAccessToken(req) {
   }
   if (Object.keys(chunks).length > 0) {
     const joined = Object.keys(chunks).sort((a,b)=>a-b).map(k=>chunks[k]).join('')
-    try {
-      const session = JSON.parse(decodeURIComponent(joined))
-      return session?.access_token ?? null
-    } catch {}
+    try { return JSON.parse(decodeURIComponent(joined))?.access_token ?? null } catch {}
   }
   return null
 }
 
-// Returns the authenticated Supabase user or null — works without res (no refresh)
 export async function getSupabaseUser(req) {
   const token = extractAccessToken(req)
   if (!token) return null
-  const { data: { user }, error } = await supabaseAdmin.auth.getUser(token)
+
+  // Fast path: verify JWT locally via JWKS (no network round-trip to Supabase Auth)
+  try {
+    const { payload } = await jwtVerify(token, getJWKS())
+    if (payload.sub) return { id: payload.sub, email: payload.email, user_metadata: payload.user_metadata ?? {} }
+  } catch {
+    // Fall through to remote verification (handles key rotation, legacy tokens)
+  }
+
+  // Slow path: remote verification (first call until JWKS warms up, or on key rotation)
+  const { data: { user }, error } = await getSupabaseAdmin().auth.getUser(token)
   if (error || !user) return null
   return user
-}
-
-// Sets session cookies — use after sign-in/sign-out
-export async function handleAuthCallback(req, res) {
-  const supabase = createSupabaseClient(req, res)
-  const { data, error } = await supabase.auth.getSession()
-  return { session: data.session, error }
 }

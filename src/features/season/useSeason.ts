@@ -5,8 +5,7 @@ export function useSeason() {
   return useQuery({
     queryKey: ['season'],
     queryFn:  seasonService.getSeason,
-    staleTime: 30_000,
-    refetchInterval: 60_000,
+    staleTime: 5 * 60_000,  // season data barely changes
   })
 }
 
