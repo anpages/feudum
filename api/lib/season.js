@@ -205,7 +205,7 @@ export async function startNewSeason(seasonNumber, economySpeed) {
   const npcCount = await seedNpcs(npcUserId, takenSlots, now)
 
   // Season settings
-  const durationSecs = Math.round((30 / speed) * 86400)
+  const durationSecs = Math.round((180 / speed) * 86400)
   const seasonEnd    = now + durationSecs
 
   await Promise.all([
