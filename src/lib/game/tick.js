@@ -5,20 +5,26 @@ import {
 
 /**
  * Compute ticked resources without writing to DB.
- * Applies energy balance and mine throttle — same formula as kingdoms/me.js.
+ * Applies basic income, energy balance, mine throttle, dragonlore and class bonus —
+ * same formula as effectiveProduction() in src/lib/game/production.js. Both must
+ * stay in lock-step: divergence causes client "afford" ≠ server check, so buttons
+ * look clickable but the mutation 400s silently.
  * @param {string|null} characterClass — collector gets +25% production
- * @param {Object|null} res — research row (for alchemy level)
+ * @param {Object|null} res — research row (for alchemy + dragonlore)
  */
 export function applyResourceTick(kingdom, cfg, characterClass = null, res = null) {
   const now     = Math.floor(Date.now() / 1000)
   const elapsed = Math.max(0, now - kingdom.lastResourceUpdate) / 3600
-  const speed   = cfg.economy_speed ?? 1
+  const speed      = cfg?.economy_speed ?? 1
+  const basicWood  = cfg?.basic_wood  ?? 0
+  const basicStone = cfg?.basic_stone ?? 0
 
   if (elapsed <= 0) {
     return { wood: kingdom.wood, stone: kingdom.stone, grain: kingdom.grain, now }
   }
 
-  const alchLv     = res?.alchemy ?? 0
+  const alchLv     = res?.alchemy    ?? 0
+  const dl         = res?.dragonlore ?? 0
   const classBonus = characterClass === 'collector' ? 1.25 : 1.0
 
   const sawPct   = (kingdom.sawmillPercent    ?? 10) / 10
@@ -34,10 +40,14 @@ export function applyResourceTick(kingdom, cfg, characterClass = null, res = nul
                    + grainFarmEnergy(kingdom.grainFarm ?? 0) * grainPct
   const energyFactor = energyCons > 0 ? Math.min(1, energyProd / energyCons) : 1.0
 
+  const woodRate  = basicWood  + (kingdom.woodProduction  ?? 0) * sawPct   * energyFactor * (1 + dl * 0.0100) * speed * classBonus
+  const stoneRate = basicStone + (kingdom.stoneProduction ?? 0) * quarPct  * energyFactor * (1 + dl * 0.0066) * speed * classBonus
+  const grainRate =              (kingdom.grainProduction ?? 0) * grainPct * energyFactor * (1 + dl * 0.0033) * speed * classBonus
+
   return {
-    wood:  Math.min(kingdom.wood  + kingdom.woodProduction  * sawPct   * energyFactor * speed * classBonus * elapsed, kingdom.woodCapacity),
-    stone: Math.min(kingdom.stone + kingdom.stoneProduction * quarPct  * energyFactor * speed * classBonus * elapsed, kingdom.stoneCapacity),
-    grain: Math.min(kingdom.grain + kingdom.grainProduction * grainPct * energyFactor * speed * classBonus * elapsed, kingdom.grainCapacity),
+    wood:  Math.min(kingdom.wood  + woodRate  * elapsed, kingdom.woodCapacity),
+    stone: Math.min(kingdom.stone + stoneRate * elapsed, kingdom.stoneCapacity),
+    grain: Math.min(kingdom.grain + grainRate * elapsed, kingdom.grainCapacity),
     now,
   }
 }
