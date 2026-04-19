@@ -2,8 +2,8 @@ import { http } from '@/shared/services/http'
 import type { Season } from '../types'
 
 export const seasonService = {
-  getSeason: () => http.get<Season>('/api/season'),
-  adminStartSeason: () => http.post('/api/admin/season', { action: 'start_season' }),
+  getSeason: () => http.get<Season>('/season'),
+  adminStartSeason: () => http.post('/admin/season', { action: 'start_season' }),
   adminEndSeason: (winnerUserId?: number, condition?: string) =>
-    http.post('/api/admin/season', { action: 'end_season', winnerUserId, condition }),
+    http.post('/admin/season', { action: 'end_season', winnerUserId, condition }),
 }
