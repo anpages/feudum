@@ -281,11 +281,10 @@ export function ProfilePage() {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={async () => { await logout.mutateAsync(); navigate('/login', { replace: true }) }}
-                disabled={logout.isPending}
+                onClick={async () => { await logout(); navigate('/login', { replace: true }) }}
                 className="text-crimson hover:text-crimson hover:bg-crimson/5 shrink-0"
               >
-                {logout.isPending ? <Loader2 size={12} className="animate-spin" /> : <LogOut size={12} />}
+                <LogOut size={12} />
                 Salir
               </Button>
             </div>

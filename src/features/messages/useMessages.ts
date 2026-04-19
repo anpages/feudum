@@ -8,8 +8,8 @@ export function useMessages() {
   return useQuery({
     queryKey: ['messages'],
     queryFn: messagesService.getAll,
-    staleTime: 15_000,
-    refetchInterval: 30_000,
+    staleTime: 30_000,
+    refetchInterval: 60_000,
   })
 }
 

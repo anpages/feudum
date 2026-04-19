@@ -1,23 +1,24 @@
-import { neon } from '@neondatabase/serverless'
-import { drizzle } from 'drizzle-orm/neon-http'
+import postgres from 'postgres'
+import { drizzle } from 'drizzle-orm/postgres-js'
 import {
-  pgTable, serial, integer, varchar, real, timestamp, text, boolean,
+  pgTable, serial, integer, varchar, real, timestamp, text, boolean, uuid,
 } from 'drizzle-orm/pg-core'
 
 // ── Schema (mirrors db/schema/*.ts) ──────────────────────────────────────────
 
 export const users = pgTable('users', {
-  id:        serial('id').primaryKey(),
-  username:  varchar('username',  { length: 50  }).unique(),
-  email:     varchar('email',     { length: 255 }).notNull().unique(),
-  googleId:  varchar('google_id', { length: 255 }).unique(),
-  avatarUrl: varchar('avatar_url',{ length: 500 }),
+  id:             serial('id').primaryKey(),
+  supabaseUserId: uuid('supabase_user_id').unique(),
+  username:       varchar('username',  { length: 50  }).unique(),
+  email:          varchar('email',     { length: 255 }).notNull().unique(),
+  googleId:       varchar('google_id', { length: 255 }).unique(),
+  avatarUrl:      varchar('avatar_url',{ length: 500 }),
   isAdmin:        boolean('is_admin').default(false).notNull(),
   isNpc:          boolean('is_npc').default(false).notNull(),
   ether:          integer('ether').default(0).notNull(),
   characterClass: varchar('character_class', { length: 20 }),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  createdAt:      timestamp('created_at').defaultNow().notNull(),
+  updatedAt:      timestamp('updated_at').defaultNow().notNull(),
 })
 
 export const etherTransactions = pgTable('ether_transactions', {
@@ -267,5 +268,6 @@ export const pushSubscriptions = pgTable('push_subscriptions', {
 
 // ── Connection ────────────────────────────────────────────────────────────────
 
-const sql = neon(process.env.DATABASE_URL)
-export const db = drizzle(sql, { schema: { users, kingdoms, research, researchQueue, buildingQueue, unitQueue, armyMissions, messages, debrisFields, settings, userAchievements, pushSubscriptions } })
+// prepare: false required for PgBouncer transaction pooling
+const client = postgres(process.env.STORAGE_POSTGRES_URL, { prepare: false })
+export const db = drizzle(client, { schema: { users, kingdoms, research, researchQueue, buildingQueue, unitQueue, armyMissions, messages, debrisFields, settings, userAchievements, pushSubscriptions } })

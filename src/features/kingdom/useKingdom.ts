@@ -24,7 +24,7 @@ export function useKingdom() {
     queryKey: ['kingdom', activeId],
     queryFn: () => kingdomService.getMe(activeId),
     staleTime: 5_000,
-    refetchInterval: 10_000,
+    refetchInterval: 30_000,
   })
 }
 

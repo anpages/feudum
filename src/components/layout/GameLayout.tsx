@@ -3,8 +3,11 @@ import { Outlet, useLocation } from 'react-router-dom'
 import { ResourceBar } from './ResourceBar'
 import { NavBar } from './NavBar'
 import { ToastContainer } from '@/components/ui/ToastContainer'
+import { useRealtime } from '@/features/realtime/useRealtime'
 
 export function GameLayout() {
+  useRealtime()
+
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const toggleSidebar = useCallback(() => setSidebarOpen(v => !v), [])
   const closeSidebar = useCallback(() => setSidebarOpen(false), [])

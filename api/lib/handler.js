@@ -1,21 +1,20 @@
-import { verifyToken } from './jwt.js'
+import { eq } from 'drizzle-orm'
+import { db, users } from '../_db.js'
+import { getSupabaseUser } from './supabase.js'
 
-const SESSION_COOKIE = 'feudum_session'
-const COOKIE_OPTS = `Path=/; HttpOnly; SameSite=Lax; Max-Age=${60 * 60 * 24 * 30}`
+// Returns the internal integer user ID from the Supabase session cookie
+export async function getSessionUserId(req) {
+  const supabaseUser = await getSupabaseUser(req)
+  if (!supabaseUser) return null
 
-export function getSessionUserId(req) {
-  const cookieHeader = req.headers.cookie ?? ''
-  const match = cookieHeader.match(new RegExp(`(?:^|;\\s*)${SESSION_COOKIE}=([^;]+)`))
-  const token = match?.[1]
-  if (!token) return Promise.resolve(null)
-  return verifyToken(token)
+  const [user] = await db.select({ id: users.id })
+    .from(users)
+    .where(eq(users.supabaseUserId, supabaseUser.id))
+    .limit(1)
+
+  return user?.id ?? null
 }
 
-export function setSessionCookie(res, token) {
-  const secure = process.env.NODE_ENV === 'production' ? '; Secure' : ''
-  res.setHeader('Set-Cookie', `${SESSION_COOKIE}=${token}; ${COOKIE_OPTS}${secure}`)
-}
-
-export function clearSessionCookie(res) {
-  res.setHeader('Set-Cookie', `${SESSION_COOKIE}=; Path=/; HttpOnly; Max-Age=0`)
-}
+// No-ops — Supabase manages session cookies automatically
+export function setSessionCookie() {}
+export function clearSessionCookie() {}

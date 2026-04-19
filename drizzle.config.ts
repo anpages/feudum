@@ -5,6 +5,7 @@ export default defineConfig({
   out: './db/migrations',
   dialect: 'postgresql',
   dbCredentials: {
-    url: process.env.DATABASE_URL!,
+    // Non-pooling URL required for migrations (PgBouncer doesn't support DDL)
+    url: process.env.STORAGE_POSTGRES_URL_NON_POOLING!,
   },
 })

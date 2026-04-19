@@ -1,7 +1,8 @@
-import { pgTable, serial, timestamp, varchar, boolean, integer, text } from 'drizzle-orm/pg-core'
+import { pgTable, serial, timestamp, varchar, boolean, integer, text, uuid } from 'drizzle-orm/pg-core'
 
 export const users = pgTable('users', {
   id: serial('id').primaryKey(),
+  supabaseUserId: uuid('supabase_user_id').unique(),  // null for NPC user
   username: varchar('username', { length: 50 }).unique(),
   email: varchar('email', { length: 255 }).notNull().unique(),
   googleId: varchar('google_id', { length: 255 }).unique(),

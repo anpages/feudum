@@ -17,6 +17,7 @@ import { AdminPage } from '@/features/admin/AdminPage'
 import { NotFoundPage } from '@/NotFoundPage'
 import { LoginPage } from '@/features/auth/LoginPage'
 import { NicknamePage } from '@/features/auth/NicknamePage'
+import { AuthCallbackPage } from '@/features/auth/AuthCallbackPage'
 import { useAuth } from '@/features/auth/useAuth'
 import { PWAInstallPrompt } from '@/components/PWAInstallPrompt'
 
@@ -54,6 +55,7 @@ export default function App() {
       <PWAInstallPrompt />
       <Routes>
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/auth/callback" element={<AuthCallbackPage />} />
         <Route path="/onboarding" element={<OnboardingRoute />} />
 
         <Route element={<ProtectedRoute />}>
