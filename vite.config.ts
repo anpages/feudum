@@ -22,8 +22,8 @@ const SUPABASE_ANON_KEY =
 export default defineConfig({
   envPrefix: ['VITE_'],
   define: {
-    'import.meta.env.VITE_SUPABASE_URL':      JSON.stringify(SUPABASE_URL),
-    'import.meta.env.VITE_SUPABASE_ANON_KEY': JSON.stringify(SUPABASE_ANON_KEY),
+    __SUPABASE_URL__:      JSON.stringify(SUPABASE_URL),
+    __SUPABASE_ANON_KEY__: JSON.stringify(SUPABASE_ANON_KEY),
   },
   plugins: [
     react(),
