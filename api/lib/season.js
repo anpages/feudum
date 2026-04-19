@@ -70,7 +70,7 @@ export async function resetSeason() {
 
 // ── NPC seed ──────────────────────────────────────────────────────────────────
 
-async function seedNpcs(npcUserId, takenSlots, now) {
+export async function seedNpcs(npcUserId, takenSlots, now) {
   const { maxRealm, maxRegion, maxSlot } = UNIVERSE
   const totalSlots = maxRealm * maxRegion * maxSlot
   const targetNpcs = Math.floor(totalSlots * NPC_DENSITY)
@@ -219,4 +219,32 @@ export async function startNewSeason(seasonNumber, economySpeed) {
   ])
 
   return { npcCount, bossSlot, durationSecs, playerCount: playerUsers.length }
+}
+
+// ── Self-heal: repair an "active" season that has no NPCs ────────────────────
+// Detects the inconsistent state where season_state='active' but the kingdoms
+// table has zero NPCs (e.g. a previous startNewSeason crashed mid-way, or the
+// settings flag was flipped manually). Reseeds NPCs without touching player or
+// boss kingdoms. Returns null if nothing to do.
+export async function repairSeasonNpcsIfMissing(now) {
+  const npcCount = await db.$count(kingdoms, eq(kingdoms.isNpc, true))
+  if (npcCount > 0) return null
+
+  // Make sure NPC user row exists (may be missing if migration 0019 was skipped)
+  const [npcUser] = await db.select({ id: users.id })
+    .from(users).where(eq(users.id, NPC_USER_ID)).limit(1)
+  if (!npcUser) {
+    await db.insert(users).values({
+      id: NPC_USER_ID, email: 'npc@feudum.local', isNpc: true, isAdmin: false,
+    })
+  }
+
+  // Build taken-slots set from existing (player + any pre-existing boss)
+  const existing = await db.select({
+    realm: kingdoms.realm, region: kingdoms.region, slot: kingdoms.slot,
+  }).from(kingdoms)
+  const takenSlots = new Set(existing.map(k => `${k.realm}:${k.region}:${k.slot}`))
+
+  const seeded = await seedNpcs(NPC_USER_ID, takenSlots, now)
+  return { repaired: true, seeded }
 }

@@ -14,7 +14,7 @@ import {
   calculateDebris, repairDefenses, calcCargoCapacity,
 } from '../lib/battle.js'
 import { getSettings, setSetting } from '../lib/settings.js'
-import { startNewSeason } from '../lib/season.js'
+import { startNewSeason, repairSeasonNpcsIfMissing } from '../lib/season.js'
 
 // ── Identity system ───────────────────────────────────────────────────────────
 // Both personality and class are deterministic from position — never change.
@@ -395,10 +395,15 @@ export default async function handler(req, res) {
   // Auto-manage season (bootstrap + transitions)
   const seasonAction = await manageSeason(cfg, now)
 
+  // Self-heal: if season is 'active' but NPC kingdoms are missing
+  // (e.g. a previous startNewSeason crashed mid-way, or the settings flag was
+  // flipped manually), reseed NPCs without touching player or boss kingdoms.
+  const repairAction = await repairSeasonNpcsIfMissing(now)
+
   // Load NPC system user
   const [npcUser] = await db.select({ id: users.id })
     .from(users).where(eq(users.isNpc, true)).limit(1)
-  if (!npcUser) return res.json({ ok: true, skipped: 'no_npc_user' })
+  if (!npcUser) return res.json({ ok: true, skipped: 'no_npc_user', seasonAction, repairAction })
 
   const npcUserId = npcUser.id
 
@@ -406,7 +411,7 @@ export default async function handler(req, res) {
   const npcKingdoms = await db.select().from(kingdoms)
     .where(eq(kingdoms.isNpc, true))
 
-  if (npcKingdoms.length === 0) return res.json({ ok: true, skipped: 'no_npc_kingdoms' })
+  if (npcKingdoms.length === 0) return res.json({ ok: true, skipped: 'no_npc_kingdoms', seasonAction, repairAction })
 
   // Build lookup map by position
   const npcKingdomsById = {}
@@ -471,5 +476,5 @@ export default async function handler(req, res) {
     byClass[npcClass(k)]++
   }
 
-  return res.json({ ok: true, npcCount: npcKingdoms.length, ticked, grew, attacked, byPersonality, byClass, seasonAction })
+  return res.json({ ok: true, npcCount: npcKingdoms.length, ticked, grew, attacked, byPersonality, byClass, seasonAction, repairAction })
 }

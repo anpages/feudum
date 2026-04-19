@@ -21,7 +21,7 @@ export function useAccelerate() {
     onSuccess: (data, queueType) => {
       toast.success(`⚡ Cola acelerada · −${data.etherCost} Éter (te quedan ${data.etherRemaining})`)
       qc.invalidateQueries({ queryKey: [queueType === 'building' ? 'buildings' : queueType === 'research' ? 'research' : 'barracks'] })
-      qc.invalidateQueries({ queryKey: ['auth', 'me'] })
+      qc.invalidateQueries({ queryKey: ['auth', 'profile'] })
     },
 
     onError: (err: Error) => {

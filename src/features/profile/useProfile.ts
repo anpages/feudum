@@ -20,7 +20,7 @@ export function useUpdateProfile() {
     mutationFn: (username: string) => profileService.update(username),
     onSuccess: data => {
       qc.setQueryData(['profile'], data)
-      qc.invalidateQueries({ queryKey: ['auth', 'me'] })
+      qc.invalidateQueries({ queryKey: ['auth', 'profile'] })
     },
   })
 }
@@ -31,7 +31,7 @@ export function useSetClass() {
   return useMutation({
     mutationFn: (characterClass: string) => profileService.setClass(characterClass),
     onSuccess: data => {
-      qc.invalidateQueries({ queryKey: ['auth', 'me'] })
+      qc.invalidateQueries({ queryKey: ['auth', 'profile'] })
       if (data.cost > 0) {
         toast.success(`Clase cambiada · −${data.cost} Éter`)
       } else {
