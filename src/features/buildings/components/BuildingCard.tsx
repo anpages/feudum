@@ -1,5 +1,6 @@
 import { useState, useEffect, memo, type ReactNode } from 'react'
-import { ArrowUp, Clock, TrendingUp, Loader2, Zap, TreePine, Mountain, Wheat } from 'lucide-react'
+import { ArrowUp, Clock, TrendingUp, Loader2, Zap, TreePine, Mountain, Wheat, Warehouse } from 'lucide-react'
+import { storageCapacity } from '@/lib/game/buildings'
 import { type IconType } from 'react-icons'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
@@ -131,6 +132,8 @@ function BuildingCardImpl({
             Produce: {meta.produces}
           </span>
         </div>
+      ) : meta.effect.startsWith('storage:') ? (
+        <StorageEffect level={building.level} resource={meta.effect.split(':')[1] as 'wood' | 'stone' | 'grain'} />
       ) : (
         <p className="font-body text-[0.67rem] text-ink-muted/60 leading-snug italic">
           {meta.effect}
@@ -198,6 +201,37 @@ function BuildingCardImpl({
         </Button>
       )}
     </Card>
+  )
+}
+
+// ── Storage capacity display ──────────────────────────────────────────────────
+
+const STORAGE_ICONS = { wood: TreePine, stone: Mountain, grain: Wheat }
+const STORAGE_COLORS = { wood: 'text-forest-light', stone: 'text-parchment-dim', grain: 'text-gold-dim' }
+const STORAGE_LABELS = { wood: 'madera', stone: 'piedra', grain: 'grano' }
+
+function StorageEffect({ level, resource }: { level: number; resource: 'wood' | 'stone' | 'grain' }) {
+  const color = STORAGE_COLORS[resource]
+  const label = STORAGE_LABELS[resource]
+  const next  = storageCapacity(level + 1)
+  const curr  = storageCapacity(level)
+  return (
+    <div className="flex items-center gap-1.5 text-xs">
+      <Warehouse size={10} className="text-ink-muted/50 shrink-0" />
+      <span className="font-body text-[0.67rem] text-ink-muted/60">
+        Capacidad de {label}:
+      </span>
+      {level > 0 && (
+        <span className={`font-ui tabular-nums text-[0.67rem] ${color}`}>
+          {formatResource(curr)}
+        </span>
+      )}
+      {level > 0 && <span className="text-ink-muted/30 text-[0.6rem]">→</span>}
+      <span className={`font-ui tabular-nums text-[0.67rem] font-semibold ${color}`}>
+        {formatResource(next)}
+      </span>
+      {level === 0 && <span className="font-body text-[0.6rem] text-ink-muted/40">al subir a Nv 1</span>}
+    </div>
   )
 }
 

@@ -38,8 +38,8 @@ export const BUILDING_META: Record<string, BuildingMeta> = {
     Icon: GiGranary,
     produces: 'Grano',
     category: 'production',
-    effect: '+10 × nivel × 1.1^nivel × factor_temperatura grano/h',
-    description: 'Los slots fríos (exteriores) producen mucho más grano. Consume energía.',
+    effect: '+10 × nivel × 1.1^nivel grano/h',
+    description: 'Cultiva grano para alimentar tus ejércitos y sustentar el reino. Consume energía del Molino.',
   },
   windmill: {
     name: 'Molino de Viento',
@@ -47,7 +47,7 @@ export const BUILDING_META: Record<string, BuildingMeta> = {
     produces: 'Energía',
     category: 'production',
     effect: '+20 × nivel × 1.1^nivel energía',
-    description: 'Fuente principal de energía. Sin energía suficiente, las minas producen menos.',
+    description: 'Fuente principal de energía. Sin energía suficiente, la producción de todos los recursos se reduce proporcionalmente.',
   },
   cathedral: {
     name: 'Catedral',
@@ -59,28 +59,28 @@ export const BUILDING_META: Record<string, BuildingMeta> = {
   },
   // ── Almacenamiento ───────────────────────────────────────────────────────────
   granary: {
-    name: 'Granero de Madera',
+    name: 'Leñera',
     Icon: GiWoodBeam,
     produces: null,
     category: 'storage',
-    effect: 'Capacidad madera: 5000 × ⌊2.5 × e^(20n/33)⌋',
-    description: 'Almacena más madera. Sin él los recursos se pierden al llenarse.',
+    effect: 'storage:wood',
+    description: 'Amplia bodega de troncos y tablones. Evita que la madera se pierda al superar el límite.',
   },
   stonehouse: {
-    name: 'Casa de Piedra',
+    name: 'Lapidario',
     Icon: GiBrickWall,
     produces: null,
     category: 'storage',
-    effect: 'Capacidad piedra: misma fórmula',
-    description: 'Bóvedas de roca que guardan tu reserva de piedra.',
+    effect: 'storage:stone',
+    description: 'Cámaras excavadas en roca para almacenar bloques y minerales sin límite de pérdida.',
   },
   silo: {
-    name: 'Silo',
+    name: 'Granero',
     Icon: GiGrain,
     produces: null,
     category: 'storage',
-    effect: 'Capacidad grano: misma fórmula',
-    description: 'Almacén de grano que evita la pérdida de cosechas.',
+    effect: 'storage:grain',
+    description: 'Silo subterráneo que preserva las cosechas frente a plagas y estaciones adversas.',
   },
   // ── Infraestructura / Instalaciones ─────────────────────────────────────────
   workshop: {
