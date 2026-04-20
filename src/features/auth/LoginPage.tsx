@@ -1,38 +1,28 @@
 import { useSearchParams } from 'react-router-dom'
 import { useAuth } from '@/features/auth/useAuth'
 import { FeuduLogo } from '@/components/FeuduLogo'
-import { Castle, FlaskConical, Swords, Map, Shield, ChevronDown } from 'lucide-react'
-
-const STATS = [
-  { value: '2.847', label: 'Reinos activos' },
-  { value: '143',   label: 'Batallas hoy' },
-  { value: '891',   label: 'Ejércitos en marcha' },
-]
+import { Castle, FlaskConical, Swords, Map } from 'lucide-react'
 
 const FEATURES = [
   {
-    num: 'I',
     Icon: Castle,
-    title: 'Construye tu reino',
-    desc: 'Levanta aserraderos, canteras y granjas. Amplía tu producción con talleres, gremios y catedrales. Cada edificio refuerza tu economía de guerra.',
+    title: 'Construye',
+    desc: 'Levanta aserraderos, canteras y granjas. Amplía tu capacidad de almacenamiento y acelera la producción con talleres y gremios.',
   },
   {
-    num: 'II',
     Icon: FlaskConical,
-    title: 'Domina la academia',
-    desc: 'Investiga tecnologías de combate, logística y arcanas. Cada nivel puede marcar la diferencia entre la victoria y el colapso de tu ejército.',
+    title: 'Investiga',
+    desc: 'Desbloquea tecnologías de combate, logística y magia en tu academia. Cada nivel marca la diferencia en el campo de batalla.',
   },
   {
-    num: 'III',
     Icon: Swords,
-    title: 'Forja tus ejércitos',
-    desc: 'Entrena escuderos, caballeros y paladines. Lanza ataques, espionajes y pillajes contra rivales humanos — o contra NPCs que crecen sin descanso.',
+    title: 'Conquista',
+    desc: 'Entrena escuderos, caballeros y paladines. Lanza misiones de ataque, espionaje y pillaje contra reinos rivales.',
   },
   {
-    num: 'IV',
     Icon: Map,
-    title: 'Expande tu dominio',
-    desc: 'Coloniza territorios en el mapa del universo. Coordina múltiples reinos y construye un imperio que trascienda las temporadas.',
+    title: 'Explora',
+    desc: 'Coloniza nuevos territorios en el universo. Gestiona múltiples reinos y coordina tus ejércitos a través del mapa.',
   },
 ]
 
@@ -42,63 +32,38 @@ export function LoginPage() {
   const { signInWithGoogle } = useAuth()
 
   return (
-    <div className="min-h-screen bg-game text-parchment overflow-x-hidden">
+    <div className="min-h-screen bg-game flex flex-col">
 
-      {/* ── HERO ──────────────────────────────────────────────────────── */}
-      <section className="relative min-h-screen flex flex-col items-center justify-center text-center px-6 py-24 overflow-hidden">
+      {/* ── Hero ─────────────────────────────────────────────────────────── */}
+      <div className="flex flex-col items-center justify-center text-center px-6 pt-16 pb-10 flex-1">
 
-        {/* Radial gold glow — pulsing */}
-        <div
-          className="absolute pointer-events-none anim-hero-pulse"
-          style={{
-            top: '12%', left: '50%',
-            width: 760, height: 760,
-            background: 'radial-gradient(circle, rgba(201,162,39,0.11) 0%, transparent 62%)',
-          }}
-        />
-        {/* Bottom gradient fade */}
-        <div
-          className="absolute bottom-0 inset-x-0 h-48 pointer-events-none"
-          style={{ background: 'linear-gradient(to top, #0a0705 0%, transparent 100%)' }}
-        />
+        <FeuduLogo variant="icon" height={60} className="mb-6 anim-float" />
 
-        {/* Corner brackets */}
-        <div className="absolute top-7 left-7 w-10 h-10 border-t border-l border-gold/20 pointer-events-none" />
-        <div className="absolute top-7 right-7 w-10 h-10 border-t border-r border-gold/20 pointer-events-none" />
-        <div className="absolute bottom-7 left-7 w-10 h-10 border-b border-l border-gold/20 pointer-events-none" />
-        <div className="absolute bottom-7 right-7 w-10 h-10 border-b border-r border-gold/20 pointer-events-none" />
+        <p className="font-ui text-[0.58rem] text-gold-dim/60 tracking-[0.28em] uppercase mb-2">
+          Anno MMXXVI
+        </p>
+        <h1 className="font-display text-4xl sm:text-5xl text-gold-light tracking-[0.18em] uppercase leading-none mb-3">
+          Feudum
+        </h1>
+        <p className="font-ui text-[0.65rem] text-parchment-dim/60 tracking-[0.2em] uppercase mb-8">
+          Estrategia medieval multijugador · Navegador · Tiempo real
+        </p>
 
-        {/* Content */}
-        <div className="relative z-10 flex flex-col items-center">
+        <p className="font-body text-parchment-dim text-base sm:text-lg max-w-lg leading-relaxed mb-2">
+          Construye un reino desde cero, investiga tecnologías, entrena ejércitos y
+          compite contra jugadores reales en un universo que nunca se detiene.
+        </p>
+        <p className="font-body text-parchment-dim/70 text-sm max-w-md leading-relaxed mb-10">
+          Inspirado en los grandes juegos de estrategia por navegador de los 2000,
+          reinterpretado con una visión medieval y moderna.
+        </p>
 
-          {/* Logo */}
-          <div className="mb-7 anim-float anim-glow">
-            <FeuduLogo variant="icon" height={96} />
-          </div>
+        {/* ── Login card ──────────────────────────────────────────────────── */}
+        <div className="w-full max-w-[320px]">
+          <div className="card-medieval p-6 rounded">
+            <div className="card-corner-tr" />
+            <div className="card-corner-bl" />
 
-          {/* Eyebrow */}
-          <div className="flex items-center gap-3 mb-5">
-            <div className="h-px w-14 bg-gradient-to-r from-transparent to-gold/30" />
-            <span className="font-ui text-[0.55rem] text-gold-dim/55 tracking-[0.38em] uppercase">Anno MMXXVI</span>
-            <div className="h-px w-14 bg-gradient-to-l from-transparent to-gold/30" />
-          </div>
-
-          {/* Title */}
-          <h1 className="font-display text-[4.5rem] sm:text-[7rem] text-gold-light tracking-[0.18em] uppercase leading-none mb-5">
-            Feudum
-          </h1>
-
-          {/* Description */}
-          <p className="font-body text-parchment-dim text-lg sm:text-xl max-w-lg leading-relaxed mb-2">
-            Estrategia medieval multijugador en tiempo real.
-          </p>
-          <p className="font-body text-parchment-dim/50 text-sm sm:text-base max-w-md leading-relaxed mb-10">
-            Construye tu reino, entrena ejércitos y conquista el universo.
-            El mundo sigue moviéndose — con o sin ti.
-          </p>
-
-          {/* CTA */}
-          <div className="w-full max-w-[300px]">
             {oauthError && (
               <div className="mb-4 px-3 py-2.5 rounded-sm bg-crimson/5 border border-crimson/15">
                 <p className="font-ui text-xs text-crimson leading-snug">
@@ -107,145 +72,81 @@ export function LoginPage() {
               </div>
             )}
 
+            <p className="font-ui text-[0.6rem] text-parchment-dim/50 text-center mb-4 tracking-[0.2em] uppercase">
+              Accede a tu reino
+            </p>
+
             <button
               onClick={signInWithGoogle}
-              className="w-full flex items-center justify-center gap-3 py-3 px-5 rounded border border-gold/25 bg-parchment hover:bg-gold-soft active:scale-[0.99] transition-all duration-150 font-ui font-bold text-ink-mid tracking-wide text-sm shadow-lg hover:shadow-xl hover:border-gold/40"
+              className="w-full flex items-center justify-center gap-3 py-2.5 px-4 rounded border border-gold/20 bg-parchment hover:bg-gold-soft active:scale-[0.99] transition-all duration-150 font-ui font-semibold text-ink-mid tracking-wide text-sm shadow-sm hover:shadow-md hover:border-gold/35"
             >
               <GoogleIcon />
-              Entrar con Google
+              Continuar con Google
             </button>
 
-            <p className="font-ui text-[0.5rem] text-parchment-dim/20 text-center mt-3 tracking-[0.18em] uppercase">
-              Gratis · Sin microtransacciones · Estrategia pura
+            <div className="divider mt-5 mb-0">◆</div>
+            <p className="text-center font-ui tracking-[0.18em] uppercase text-parchment-dim/20 text-[0.5rem] mt-3 select-none">
+              Gratis · Sin microtransacciones
             </p>
-          </div>
-        </div>
-
-        {/* Scroll hint */}
-        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 opacity-20 animate-bounce">
-          <ChevronDown size={18} className="text-gold" />
-        </div>
-      </section>
-
-      {/* ── LIVE UNIVERSE STATS ─────────────────────────────────────── */}
-      <div className="border-y border-gold/10 py-6 glass">
-        <div className="max-w-3xl mx-auto px-6">
-          <div className="flex items-center justify-center gap-2 mb-5">
-            <span className="w-1.5 h-1.5 rounded-full bg-forest-light animate-pulse shrink-0" />
-            <span className="font-ui text-[0.55rem] text-parchment-dim/40 tracking-[0.32em] uppercase">Universo en tiempo real</span>
-          </div>
-          <div className="grid grid-cols-3 divide-x divide-gold/8">
-            {STATS.map(({ value, label }) => (
-              <div key={label} className="text-center px-4">
-                <div className="font-display text-2xl sm:text-3xl text-gold-light tabular-nums">{value}</div>
-                <div className="font-ui text-[0.58rem] text-parchment-dim/40 tracking-wider uppercase mt-1">{label}</div>
-              </div>
-            ))}
           </div>
         </div>
       </div>
 
-      {/* ── FEATURES — Codex style ───────────────────────────────────── */}
-      <section className="py-20 px-6">
-        <div className="max-w-5xl mx-auto">
-
-          <div className="text-center mb-14">
-            <div className="flex items-center justify-center gap-3 mb-3">
-              <div className="h-px flex-1 max-w-[72px] bg-gold/15" />
-              <span className="font-ui text-[0.55rem] text-gold-dim/45 tracking-[0.32em] uppercase">El camino a la victoria</span>
-              <div className="h-px flex-1 max-w-[72px] bg-gold/15" />
-            </div>
-            <h2 className="font-display text-3xl sm:text-4xl text-gold-light tracking-[0.12em] uppercase">
-              Domina cada frente
-            </h2>
+      {/* ── What is it ──────────────────────────────────────────────────── */}
+      <div className="border-t border-gold/10 py-12 px-6">
+        <div className="max-w-3xl mx-auto grid grid-cols-1 sm:grid-cols-3 gap-8 text-center sm:text-left">
+          <div>
+            <p className="font-ui text-[0.6rem] text-gold/60 tracking-[0.22em] uppercase mb-2">¿Qué es?</p>
+            <p className="font-body text-sm text-parchment-dim/80 leading-relaxed">
+              Un juego de estrategia por navegador de gestión de recursos, construcción y conquista en un universo compartido con otros jugadores.
+            </p>
           </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-px bg-gold/8 border border-gold/8">
-            {FEATURES.map(({ num, Icon, title, desc }) => (
-              <div
-                key={title}
-                className="relative bg-obsidian p-8 group hover:bg-tomb transition-colors duration-300 overflow-hidden"
-              >
-                {/* Hover glow */}
-                <div
-                  className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
-                  style={{ background: 'radial-gradient(circle at 20% 20%, rgba(201,162,39,0.05), transparent 55%)' }}
-                />
-                <div className="flex items-start gap-5">
-                  <span className="font-display text-[3.5rem] leading-none text-gold/7 group-hover:text-gold/15 transition-colors duration-300 shrink-0 select-none mt-0.5">
-                    {num}
-                  </span>
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2.5 mb-3">
-                      <Icon size={13} className="text-gold shrink-0" />
-                      <h3 className="font-ui text-xs font-semibold text-parchment tracking-[0.15em] uppercase">{title}</h3>
-                    </div>
-                    <p className="font-body text-sm text-parchment-dim/55 leading-relaxed">{desc}</p>
-                  </div>
-                </div>
-              </div>
-            ))}
+          <div>
+            <p className="font-ui text-[0.6rem] text-gold/60 tracking-[0.22em] uppercase mb-2">¿Cómo se juega?</p>
+            <p className="font-body text-sm text-parchment-dim/80 leading-relaxed">
+              Construyes, investigas y entrenas tropas mientras gestionas recursos en tiempo real. Las acciones tienen consecuencias aunque estés desconectado.
+            </p>
+          </div>
+          <div>
+            <p className="font-ui text-[0.6rem] text-gold/60 tracking-[0.22em] uppercase mb-2">¿Por qué Feudum?</p>
+            <p className="font-body text-sm text-parchment-dim/80 leading-relaxed">
+              Sin anuncios, sin pay-to-win. Estrategia pura inspirada en los clásicos del género, con mecánicas actualizadas para 2026.
+            </p>
           </div>
         </div>
-      </section>
+      </div>
 
-      {/* ── COMBAT — Dark warning ────────────────────────────────────── */}
-      <section className="relative py-16 px-6 border-y border-gold/8 overflow-hidden">
-        <div
-          className="absolute inset-0 pointer-events-none"
-          style={{ background: 'radial-gradient(ellipse at 50% 60%, rgba(139,26,26,0.09) 0%, transparent 65%)' }}
-        />
-        <div className="max-w-2xl mx-auto text-center relative z-10">
-          <Shield size={18} className="text-crimson-light mx-auto mb-5 opacity-40" />
-          <h2 className="font-display text-3xl sm:text-4xl text-parchment tracking-[0.1em] uppercase mb-5 leading-tight">
-            El campo de batalla<br className="hidden sm:block" /> no perdona
-          </h2>
-          <p className="font-body text-parchment-dim/65 text-base sm:text-lg leading-relaxed mb-4">
-            Motor de combate por rondas con escudos, blindaje y fuego de supresión.
-            Cada unidad tiene estadísticas únicas. Los errores estratégicos se pagan con sangre.
-          </p>
-          <p className="font-body text-parchment-dim/30 text-sm leading-relaxed">
-            Los NPCs crecen y atacan aunque no estés conectado.
-            Los mejores jugadores arrebatan el trono al Jefe Dragón cada temporada.
-          </p>
-        </div>
-      </section>
-
-      {/* ── FINAL CTA ─────────────────────────────────────────────────── */}
-      <section className="py-20 px-6 text-center">
-        <div className="max-w-xs mx-auto">
-          <FeuduLogo variant="icon" height={44} className="mx-auto mb-6 opacity-40" />
-          <h2 className="font-display text-2xl text-gold-light tracking-[0.18em] uppercase mb-2">
-            ¿Estás listo?
-          </h2>
-          <p className="font-body text-parchment-dim/40 text-sm mb-8">
-            Miles de reinos ya luchan. El tuyo te espera.
-          </p>
-          <button
-            onClick={signInWithGoogle}
-            className="w-full flex items-center justify-center gap-3 py-3 px-5 rounded border border-gold/25 bg-parchment hover:bg-gold-soft active:scale-[0.99] transition-all duration-150 font-ui font-bold text-ink-mid tracking-wide text-sm shadow-lg hover:border-gold/40"
+      {/* ── Feature cards ─────────────────────────────────────────────────── */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 border-t border-gold/8">
+        {FEATURES.map(({ Icon, title, desc }, i) => (
+          <div
+            key={title}
+            className={`p-5 sm:p-6 flex flex-col gap-2
+              ${i < 3 ? 'border-r border-gold/8' : ''}
+              ${i < 2 ? 'border-b border-gold/8 sm:border-b-0' : ''}`}
           >
-            <GoogleIcon />
-            Forja tu reino
-          </button>
-          <div className="divider mt-7 mb-3">◆</div>
-          <p className="font-ui text-[0.48rem] text-parchment-dim/15 tracking-[0.22em] uppercase select-none">
-            Feudum · Anno MMXXVI
-          </p>
-          <p className="font-ui text-[0.45rem] text-parchment-dim/10 tracking-[0.12em] mt-2 select-none leading-relaxed">
-            Inspirado en{' '}
-            <a
-              href="https://github.com/lanedirt/OGameX"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hover:text-parchment-dim/25 transition-colors underline underline-offset-2"
-            >
-              OGameX
-            </a>
-            {' '}(GPL) · Reimplementado con visión medieval y moderna
-          </p>
-        </div>
-      </section>
+            <Icon size={16} className="text-gold mb-1" />
+            <span className="font-ui text-xs font-semibold text-parchment tracking-wide uppercase">{title}</span>
+            <p className="font-body text-[0.7rem] text-parchment-dim/70 leading-relaxed">{desc}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* ── Credits ───────────────────────────────────────────────────────── */}
+      <div className="border-t border-gold/8 py-4 px-6 text-center">
+        <p className="font-ui text-[0.5rem] text-parchment-dim/25 tracking-[0.12em]">
+          Inspirado en{' '}
+          <a
+            href="https://github.com/lanedirt/OGameX"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:text-parchment-dim/50 transition-colors underline underline-offset-2"
+          >
+            OGameX
+          </a>
+          {' '}(GPL) · Reimplementado con visión medieval y moderna
+        </p>
+      </div>
 
     </div>
   )
