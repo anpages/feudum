@@ -1,8 +1,17 @@
-export type AchievementCategory = 'buildings' | 'research' | 'military' | 'combat' | 'explore' | 'season'
+export type AchievementCategory =
+  | 'inicio'
+  | 'economia'
+  | 'infraestructura'
+  | 'investigacion'
+  | 'ejercito'
+  | 'combate'
+  | 'expansion'
+  | 'temporada'
 
 export interface Achievement {
   id: string
   cat: AchievementCategory
+  order: number
   name: string
   desc: string
   icon: string
@@ -10,7 +19,7 @@ export interface Achievement {
   unlocked:   boolean
   unlockedAt: string | null
   claimedAt:  string | null
-  pending:    boolean  // unlocked + has reward + not yet claimed
+  pending:    boolean
 }
 
 export interface AchievementsResponse {

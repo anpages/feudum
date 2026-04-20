@@ -64,7 +64,7 @@ export function SlotDetail({
               <Eye size={12} /> Espiar
             </Button>
             <Button variant="ghost" className="w-full" onClick={() => onMission('missile')}>
-              <Rocket size={12} /> Bombardeo Alquímico
+              <Rocket size={12} /> Bombardeo
             </Button>
             {!slot.isNpc && !slot.isPlayer && (
               <Button variant="ghost" className="w-full" onClick={() => onMission('transport')}>

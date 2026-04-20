@@ -1,24 +1,30 @@
-/**
- * Achievement DB-backed unlocker. Catalog + pure conditions live in
- * src/lib/game/achievements.js so the client can render the full list and
- * compare against unlocked ones.
- */
-import { eq, and } from 'drizzle-orm'
-import { db, kingdoms, research, messages, userAchievements } from '../_db.js'
+import { eq, and, inArray } from 'drizzle-orm'
+import { db, kingdoms, research, messages, armyMissions, userAchievements } from '../_db.js'
 import { ACHIEVEMENTS, ACH_BY_ID, checkConditions } from '../../src/lib/game/achievements.js'
 
 export { ACHIEVEMENTS, ACH_BY_ID }
 
 export async function checkAndUnlock(userId) {
-  const [allKingdoms, [resRow], battleMsgs, spyMsgs, seasonMsgs, alreadyUnlocked] = await Promise.all([
+  const [
+    allKingdoms,
+    [resRow],
+    battleMsgs,
+    spyMsgs,
+    seasonMsgs,
+    missionCounts,
+    alreadyUnlocked,
+  ] = await Promise.all([
     db.select().from(kingdoms).where(and(eq(kingdoms.userId, userId), eq(kingdoms.isNpc, false))),
     db.select().from(research).where(eq(research.userId, userId)).limit(1),
     db.select({ data: messages.data }).from(messages)
       .where(and(eq(messages.userId, userId), eq(messages.type, 'battle'))),
     db.select({ id: messages.id }).from(messages)
       .where(and(eq(messages.userId, userId), eq(messages.type, 'spy'))),
-    db.select({ id: messages.id, data: messages.data }).from(messages)
+    db.select({ data: messages.data }).from(messages)
       .where(and(eq(messages.userId, userId), eq(messages.type, 'season'))),
+    db.select({ missionType: armyMissions.missionType })
+      .from(armyMissions)
+      .where(eq(armyMissions.userId, userId)),
     db.select({ achievementId: userAchievements.achievementId })
       .from(userAchievements).where(eq(userAchievements.userId, userId)),
   ])
@@ -26,31 +32,50 @@ export async function checkAndUnlock(userId) {
   const unlockedSet = new Set(alreadyUnlocked.map(a => a.achievementId))
   const k = allKingdoms[0] ?? {}
 
+  // Battle stats
   let winCount = 0
-  let bigLoot = false
+  let loot10k  = false
+  let bigLoot  = false
   for (const m of battleMsgs) {
     try {
       const d = JSON.parse(m.data)
       if (d.outcome === 'victory') {
         winCount++
-        const loot = (d.loot?.wood ?? 0) + (d.loot?.stone ?? 0) + (d.loot?.grain ?? 0)
-        if (loot >= 50000) bigLoot = true
+        const total = (d.loot?.wood ?? 0) + (d.loot?.stone ?? 0) + (d.loot?.grain ?? 0)
+        if (total >= 10000) loot10k = true
+        if (total >= 50000) bigLoot = true
       }
     } catch { /* ignore malformed */ }
   }
 
-  const bossKilled = seasonMsgs.some(m => {
-    try { return !!JSON.parse(m.data ?? '{}').seasonVictory } catch { return false }
-  })
+  // Season stats
+  const bossKilled   = seasonMsgs.some(m => { try { return !!JSON.parse(m.data ?? '{}').seasonVictory } catch { return false } })
+  const bossSpy      = seasonMsgs.some(m => { try { return !!JSON.parse(m.data ?? '{}').bossSpied     } catch { return false } })
+  const bossAttacked = seasonMsgs.some(m => { try { return !!JSON.parse(m.data ?? '{}').bossAttacked  } catch { return false } })
+
+  // Mission counts by type
+  const missionsByType = {}
+  for (const { missionType } of missionCounts) {
+    missionsByType[missionType] = (missionsByType[missionType] ?? 0) + 1
+  }
 
   const data = {
     k,
-    res: resRow ?? null,
+    res:             resRow ?? null,
     winCount,
-    spyCount: spyMsgs.length,
-    colonyCount: Math.max(0, allKingdoms.length - 1),
+    loot10k,
     bigLoot,
+    spyCount:        spyMsgs.length,
+    colonyCount:     Math.max(0, allKingdoms.length - 1),
     bossKilled,
+    bossSpy,
+    bossAttacked,
+    attackCount:     missionsByType['attack']     ?? 0,
+    transportCount:  missionsByType['transport']  ?? 0,
+    expeditionCount: missionsByType['expedition'] ?? 0,
+    scavengeCount:   missionsByType['scavenge']   ?? 0,
+    missileCount:    missionsByType['missile']    ?? 0,
+    deployCount:     missionsByType['deploy']     ?? 0,
   }
 
   const earned = checkConditions(data).filter(id => !unlockedSet.has(id))
@@ -61,6 +86,5 @@ export async function checkAndUnlock(userId) {
     earned.map(achievementId => ({ userId, achievementId }))
   ).onConflictDoNothing()
 
-  // Rewards are NOT auto-delivered — player must claim them manually
   return earned.map(id => ACH_BY_ID[id]).filter(Boolean)
 }

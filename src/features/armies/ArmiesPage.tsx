@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { Send, Shield, Loader2, Plus, Rocket } from 'lucide-react'
+import { Shield, Loader2, Plus, Rocket } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
@@ -92,11 +92,7 @@ export function ArmiesPage() {
         ) : totalMissions === 0 ? (
           <Card className="p-10 text-center">
             <Shield size={28} className="text-ink-muted/25 mx-auto mb-3" />
-            <p className="font-body text-sm text-ink-muted/50 mb-4">No hay misiones en curso</p>
-            <Button variant="ghost" size="sm" onClick={() => setSheetOpen(true)}>
-              <Send size={12} />
-              Enviar primera misión
-            </Button>
+            <p className="font-body text-sm text-ink-muted/50">No hay misiones en curso</p>
           </Card>
         ) : (
           <>
