@@ -32,10 +32,11 @@ export function ResourceBar({ onMenuToggle }: Props) {
           <Menu size={18} />
         </button>
         <div className="flex items-center gap-1.5 min-w-0">
-          {/* Mobile: icon only */}
-          <FeuduLogo variant="icon" height={28} className="sm:hidden shrink-0" />
-          {/* Desktop: full logo */}
-          <FeuduLogo variant="full" height={30} className="hidden sm:block shrink-0" />
+          <FeuduLogo variant="icon" height={26} className="shrink-0" />
+          <div className="hidden sm:flex flex-col leading-none gap-0.5">
+            <span className="font-display text-sm text-gold-dim tracking-[0.18em] uppercase leading-none">Feudum</span>
+            <span className="font-ui text-[0.5rem] text-gold-dim/50 tracking-[0.15em] uppercase">Anno MMXXVI</span>
+          </div>
           <KingdomSelector kingdomName={kingdom?.name} />
         </div>
       </div>
