@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { User, Mail, Calendar, Save, Loader2, Pencil, Trash2, Zap, LogOut, Bell, BellOff } from 'lucide-react'
+import { User, Mail, Calendar, Save, Loader2, Trash2, Zap, LogOut, Bell, BellOff } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { GiCastle } from 'react-icons/gi'
 import { Card } from '@/components/ui/Card'
@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import {
   useProfile, useUpdateProfile,
-  useSetClass, useRenameKingdom, useAbandonKingdom,
+  useSetClass, useAbandonKingdom,
 } from '@/features/profile/useProfile'
 import { useKingdoms } from '@/features/kingdom/useKingdom'
 import { useAuth } from '@/features/auth/useAuth'
@@ -57,13 +57,10 @@ export function ProfilePage() {
   const { user, logout } = useAuth()
   const update = useUpdateProfile()
   const setClass = useSetClass()
-  const rename = useRenameKingdom()
   const abandon = useAbandonKingdom()
 
   const [username, setUsername] = useState('')
   const [saved, setSaved] = useState(false)
-  const [renamingId, setRenamingId] = useState<string | null>(null)
-  const [renameDraft, setRenameDraft] = useState('')
   const [abandonConfirm, setAbandonConfirm] = useState<string | null>(null)
 
   useEffect(() => {
@@ -79,12 +76,6 @@ export function ProfilePage() {
     setTimeout(() => setSaved(false), 2500)
   }
 
-  async function handleRename(id: string) {
-    if (!renameDraft.trim()) return
-    await rename.mutateAsync({ name: renameDraft.trim(), id })
-    setRenamingId(null)
-  }
-
   async function handleAbandon(id: string) {
     await abandon.mutateAsync(id)
     setAbandonConfirm(null)
@@ -94,6 +85,7 @@ export function ProfilePage() {
   const kingdoms = kingdomsData?.kingdoms ?? []
   const currentClass = user?.characterClass ?? null
   const ether = user?.ether ?? 0
+
 
   if (isLoading) return <ProfileSkeleton />
 
@@ -122,7 +114,6 @@ export function ProfilePage() {
           <section className="space-y-3 anim-fade-up-1">
             <h2 className="section-heading">Mis Reinos</h2>
             {kingdoms.map((k, i) => {
-              const isRenaming = renamingId === k.id
               const isConfirming = abandonConfirm === k.id
               const isMain = i === 0
               return (
@@ -132,19 +123,7 @@ export function ProfilePage() {
                       <GiCastle size={20} className="text-gold-dim" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      {isRenaming ? (
-                        <input
-                          type="text"
-                          value={renameDraft}
-                          onChange={e => setRenameDraft(e.target.value)}
-                          onKeyDown={e => { if (e.key === 'Enter') handleRename(k.id); if (e.key === 'Escape') setRenamingId(null) }}
-                          maxLength={50}
-                          autoFocus
-                          className="game-input w-full text-sm"
-                        />
-                      ) : (
-                        <p className="font-ui text-sm font-semibold text-ink truncate">{k.name}</p>
-                      )}
+                      <p className="font-ui text-sm font-semibold text-ink truncate">{k.name}</p>
                       <p className="font-body text-xs text-ink-muted mt-0.5">
                         R{k.realm} · Región {k.region} · Pos. {k.slot}
                       </p>
@@ -154,15 +133,7 @@ export function ProfilePage() {
                     </div>
                   </div>
 
-                  {isRenaming ? (
-                    <div className="flex gap-2">
-                      <Button variant="primary" size="sm" onClick={() => handleRename(k.id)} disabled={rename.isPending} className="flex-1">
-                        {rename.isPending ? <Loader2 size={11} className="animate-spin" /> : <Save size={11} />}
-                        Guardar
-                      </Button>
-                      <Button variant="ghost" size="sm" onClick={() => setRenamingId(null)}>Cancelar</Button>
-                    </div>
-                  ) : isConfirming ? (
+                  {isConfirming ? (
                     <div className="space-y-2">
                       <p className="font-body text-xs text-crimson">¿Abandonar esta colonia? Perderás todos los recursos, edificios y tropas.</p>
                       <div className="flex gap-2">
@@ -173,18 +144,13 @@ export function ProfilePage() {
                         <Button variant="ghost" size="sm" onClick={() => setAbandonConfirm(null)}>Cancelar</Button>
                       </div>
                     </div>
-                  ) : (
+                  ) : !isMain && kingdoms.length > 1 ? (
                     <div className="flex gap-2">
-                      <Button variant="ghost" size="sm" onClick={() => { setRenamingId(k.id); setRenameDraft(k.name) }}>
-                        <Pencil size={11} />Renombrar
+                      <Button variant="ghost" size="sm" onClick={() => setAbandonConfirm(k.id)} className="text-crimson hover:text-crimson">
+                        <Trash2 size={11} />Abandonar
                       </Button>
-                      {!isMain && kingdoms.length > 1 && (
-                        <Button variant="ghost" size="sm" onClick={() => setAbandonConfirm(k.id)} className="text-crimson hover:text-crimson">
-                          <Trash2 size={11} />Abandonar
-                        </Button>
-                      )}
                     </div>
-                  )}
+                  ) : null}
                 </Card>
               )
             })}
