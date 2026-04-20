@@ -44,19 +44,25 @@ export const barracksService = {
       if (r.key === 'economy_speed') economySpeed = parseFloat(r.value as string)
     }
 
-    const { data: queueRows } = await supabase
-      .from('unit_queue')
-      .select('id, unit, amount, finishes_at')
-      .eq('kingdom_id', kingdomRow.id)
+    const [{ data: queueRows }, { data: buildingQueueRows }] = await Promise.all([
+      supabase.from('unit_queue').select('id, unit, amount, finishes_at').eq('kingdom_id', kingdomRow.id),
+      supabase.from('building_queue').select('building, level, finishes_at').eq('kingdom_id', kingdomRow.id),
+    ])
 
     const queue: QueueRow[] = snakeToCamelArray<QueueRow>(queueRows)
     const now = Math.floor(Date.now() / 1000)
 
-    // Apply finished items locally so counts reflect what the server will persist on next mutation
+    // Apply finished unit queue items so counts are up to date
     const projected = { ...kingdom }
     for (const item of queue) {
       if (item.finishesAt <= now) {
         projected[item.unit] = (projected[item.unit] ?? 0) + item.amount
+      }
+    }
+    // Apply finished building queue items so requirement checks use the correct levels
+    for (const item of snakeToCamelArray<{ building: string; level: number; finishesAt: number }>(buildingQueueRows)) {
+      if (item.finishesAt <= now) {
+        projected[item.building] = Math.max(projected[item.building] ?? 0, item.level)
       }
     }
     const activeQueue = queue.filter(q => q.finishesAt > now)
