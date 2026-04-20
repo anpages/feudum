@@ -50,6 +50,17 @@ export default async function handler(req, res) {
     return res.json({ ok: true, seasonNumber: nextNumber, ...result })
   }
 
+  // ── recalculate_end — recompute season_end from season_start + 360/speed ───
+  if (action === 'recalculate_end') {
+    const cfg   = await getSettings()
+    const start = parseInt(cfg.season_start ?? '0', 10)
+    const speed = parseFloat(cfg.economy_speed ?? '1')
+    if (!start) return res.status(400).json({ error: 'no season_start' })
+    const newEnd = start + Math.round((360 / speed) * 86400)
+    await setSetting('season_end', String(newEnd))
+    return res.json({ ok: true, newEnd, newEndDate: new Date(newEnd * 1000).toISOString() })
+  }
+
   // ── end_season — force-end ────────────────────────────────────────────────
   if (action === 'end_season') {
     const winnerUserId = req.body.winnerUserId ? String(req.body.winnerUserId) : null
