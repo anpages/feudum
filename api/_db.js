@@ -278,6 +278,7 @@ export const userAchievements = pgTable('user_achievements', {
   userId:        uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   achievementId: varchar('achievement_id', { length: 60 }).notNull(),
   unlockedAt:    timestamp('unlocked_at').defaultNow().notNull(),
+  claimedAt:     timestamp('claimed_at'),
 })
 
 // ── Push subscriptions ────────────────────────────────────────────────────────
