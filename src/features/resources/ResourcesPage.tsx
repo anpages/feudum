@@ -2,6 +2,7 @@ import { useCallback } from 'react'
 import { Zap, Settings2 } from 'lucide-react'
 import { GiFactory, GiOpenTreasureChest } from 'react-icons/gi'
 import { useNavigate } from 'react-router-dom'
+import { useQueryClient } from '@tanstack/react-query'
 import { Card } from '@/components/ui/Card'
 import { useBuildings, useUpgradeBuilding } from '@/features/buildings/useBuildings'
 import { useAccelerate } from '@/features/queues/useAccelerate'
@@ -33,6 +34,7 @@ const SECTIONS = [
 
 export function ResourcesPage() {
   const navigate = useNavigate()
+  const qc = useQueryClient()
   const { data, isLoading, refetch } = useBuildings()
   const { data: kingdom } = useKingdom()
   const resources = useResourceTicker(kingdom)
@@ -43,7 +45,8 @@ export function ResourcesPage() {
   const handleCountdownEnd = useCallback(async () => {
     await syncQueues()
     refetch()
-  }, [refetch, syncQueues])
+    qc.invalidateQueries({ queryKey: ['kingdom'] })
+  }, [refetch, syncQueues, qc])
 
   if (isLoading) return <ResourcesSkeleton />
 
@@ -56,6 +59,22 @@ export function ResourcesPage() {
   const tempAvg = (kingdom as Record<string, unknown> | null)?.tempAvg as number | undefined
   const energyProduced = (kingdom as Record<string, unknown> | null)?.energyProduced as number | undefined
   const energyConsumed = (kingdom as Record<string, unknown> | null)?.energyConsumed as number | undefined
+
+  // Compute future energy preview when windmill/cathedral is in the build queue
+  const windmillQueued = buildingMap['windmill']?.inQueue
+  const cathedralQueued = buildingMap['cathedral']?.inQueue
+  const energyBuilding = windmillQueued || cathedralQueued
+  const futureEnergyProd = energyBuilding ? (() => {
+    const k = kingdom as Record<string, unknown> | null
+    const windLv   = windmillQueued   ? (windmillQueued.level)   : (k?.windmill   as number ?? 0)
+    const catLv    = cathedralQueued  ? (cathedralQueued.level)  : (k?.cathedral  as number ?? 0)
+    const alchLv   = (k?.alchemy as number) ?? 0
+    const windPct  = ((k?.windmillPercent  as number) ?? 10) / 10
+    const catPct   = ((k?.cathedralPercent as number) ?? 10) / 10
+    const wEnergy  = windLv  === 0 ? 0 : Math.floor(20 * windLv * Math.pow(1.1, windLv))
+    const cEnergy  = catLv   === 0 ? 0 : Math.floor(30 * catLv  * Math.pow(1.05 + alchLv * 0.01, catLv))
+    return wEnergy * windPct + cEnergy * catPct
+  })() : undefined
 
   return (
     <div className="space-y-8">
@@ -92,6 +111,11 @@ export function ResourcesPage() {
           </p>
           {(energyConsumed ?? 0) > 0 && (energyProduced ?? 0) < (energyConsumed ?? 0) && (
             <p className="font-body text-[0.6rem] text-crimson mt-1">⚠ Déficit — producción reducida</p>
+          )}
+          {energyBuilding && futureEnergyProd !== undefined && futureEnergyProd !== (energyProduced ?? 0) && (
+            <p className="font-body text-[0.6rem] text-gold-dim mt-1">
+              🔨 → {formatResource(futureEnergyProd)} al completar
+            </p>
           )}
         </Card>
         {tempAvg !== undefined && (
