@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
 import { GiDragonHead, GiLaurelCrown, GiSwordman } from 'react-icons/gi'
-import { Timer, Trophy, Swords } from 'lucide-react'
+import { Timer, Trophy } from 'lucide-react'
 import { useSeason } from './useSeason'
 
 function useCountdown(targetSecs: number) {
@@ -42,11 +41,6 @@ export function SeasonCard() {
 
   const isEnded  = season.seasonState === 'ended'
   const boss     = season.boss
-  const kingdom  = boss?.kingdom
-
-  const attackUrl = kingdom
-    ? `/armies?realm=${kingdom.realm}&region=${kingdom.region}&slot=${kingdom.slot}`
-    : '/armies'
 
   return (
     <div className={`rounded-lg border anim-fade-up ${
@@ -79,26 +73,18 @@ export function SeasonCard() {
       {/* Row 2 — boss info (only while active) */}
       {!isEnded && boss && (
         <div className="flex items-center gap-3 px-4 pb-2.5 flex-wrap">
-          <span className="font-ui text-[0.65rem] font-semibold text-crimson-light/80 truncate max-w-[200px]">
+          <span className="font-ui text-xs font-semibold text-crimson-light/80 truncate max-w-[220px]">
             {boss.name}
           </span>
-          <span className="font-ui text-[0.6rem] text-gold/70 tracking-wider" title={`Dificultad ${boss.difficulty}`}>
+          <span className="font-ui text-xs text-gold/70 tracking-wider" title={`Dificultad ${boss.difficulty}`}>
             {difficultyStars(boss.difficulty)}
           </span>
           {boss.armySize > 0 && (
-            <span className="flex items-center gap-1 font-ui text-[0.6rem] text-parchment-dim/60">
-              <GiSwordman size={10} />
+            <span className="flex items-center gap-1 font-ui text-xs text-parchment-dim/60">
+              <GiSwordman size={11} />
               {formatArmy(boss.armySize)} tropas
             </span>
           )}
-          <div className="flex-1" />
-          <Link
-            to={attackUrl}
-            className="flex items-center gap-1 px-2.5 py-1 rounded border border-crimson/30 bg-crimson/10 font-ui text-[0.6rem] font-semibold text-crimson-light hover:bg-crimson/20 transition-colors shrink-0"
-          >
-            <Swords size={9} />
-            Atacar
-          </Link>
         </div>
       )}
     </div>
