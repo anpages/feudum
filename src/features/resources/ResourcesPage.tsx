@@ -1,5 +1,5 @@
 import { useCallback } from 'react'
-import { Zap, Settings2, ChevronRight } from 'lucide-react'
+import { Zap, Settings2 } from 'lucide-react'
 import { GiFactory, GiOpenTreasureChest } from 'react-icons/gi'
 import { useNavigate } from 'react-router-dom'
 import { Card } from '@/components/ui/Card'
@@ -59,12 +59,21 @@ export function ResourcesPage() {
 
   return (
     <div className="space-y-8">
-      <div className="anim-fade-up">
-        <span className="section-heading">Economía</span>
-        <h1 className="page-title mt-0.5">Recursos</h1>
-        <p className="font-body text-ink-muted text-sm mt-1.5">
-          Edificios de producción y almacenamiento. La energía del Molino alimenta las minas.
-        </p>
+      <div className="anim-fade-up flex items-start justify-between gap-4">
+        <div>
+          <span className="section-heading">Economía</span>
+          <h1 className="page-title mt-0.5">Recursos</h1>
+          <p className="font-body text-ink-muted text-sm mt-1.5">
+            Edificios de producción y almacenamiento. La energía del Molino alimenta las minas.
+          </p>
+        </div>
+        <button
+          onClick={() => navigate('/resources/settings')}
+          className="mt-1 shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded border border-gold/15 font-ui text-xs text-ink-muted hover:border-gold/30 hover:text-ink-mid transition-colors"
+        >
+          <Settings2 size={13} />
+          Ajustes
+        </button>
       </div>
 
       {/* Energy + temperature status */}
@@ -136,18 +145,6 @@ export function ResourcesPage() {
         )
       })}
 
-      {/* Settings shortcut */}
-      <button
-        onClick={() => navigate('/resources/settings')}
-        className="w-full anim-fade-up-5 flex items-center gap-3 px-4 py-3 rounded-lg border border-gold/15 text-ink-muted hover:text-ink hover:border-gold/30 hover:bg-parchment-warm transition-all"
-      >
-        <Settings2 size={14} className="text-gold-dim shrink-0" />
-        <div className="flex-1 text-left">
-          <p className="font-ui text-xs font-semibold text-ink">Ajustes de producción</p>
-          <p className="font-body text-[0.65rem] text-ink-muted/60">Regula el porcentaje de actividad de cada mina y fuente de energía</p>
-        </div>
-        <ChevronRight size={13} className="shrink-0 text-ink-muted/30" />
-      </button>
     </div>
   )
 }

@@ -41,5 +41,5 @@ export const MISSION_META: Record<MissionType, {
   colonize:   { label: 'Colonización',        Icon: Tent,     color: 'text-forest',   desc: 'Envía Colonistas a fundar una nueva colonia.' },
   deploy:     { label: 'Despliegue',          Icon: Flag,     color: 'text-gold',     desc: 'Mover tropas a una colonia propia. Sin retorno.' },
   expedition: { label: 'Expedición',          Icon: Compass,  color: 'text-gold',     desc: 'Explora las Tierras Ignotas. Destino fijo: slot 16.' },
-  missile:    { label: 'Bombardeo Alquímico', Icon: Rocket,   color: 'text-crimson',  desc: 'Lanza Bombas Alquímicas. Solo daña defensas. Los trebuchets interceptan 1 bomba cada uno.' },
+  missile:    { label: 'Bombardeo',           Icon: Rocket,   color: 'text-crimson',  desc: 'Lanza Bombas Alquímicas. Solo daña defensas. Los trebuchets interceptan 1 bomba cada uno.' },
 }
