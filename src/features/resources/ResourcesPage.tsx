@@ -115,7 +115,6 @@ export function ResourcesPage() {
               {buildings.map(b => {
                 const meta = BUILDING_META[b.id]
                 if (!meta) return null
-                const locked = !b.requiresMet && !b.inQueue
                 return (
                   <BuildingCard
                     key={b.id}
@@ -129,7 +128,6 @@ export function ResourcesPage() {
                     onCountdownEnd={handleCountdownEnd}
                     onAccelerate={b.inQueue ? () => accelerate.mutate('building') : undefined}
                     isAccelerating={accelerate.isPending}
-                    dimmed={locked}
                   />
                 )
               })}

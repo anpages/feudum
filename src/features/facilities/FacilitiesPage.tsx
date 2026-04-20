@@ -60,7 +60,6 @@ export function FacilitiesPage() {
           {buildings.map((b, i) => {
             const meta = BUILDING_META[b.id]
             if (!meta) return null
-            const locked = !b.requiresMet && !b.inQueue
             return (
               <BuildingCard
                 key={b.id}
@@ -74,7 +73,6 @@ export function FacilitiesPage() {
                 onCountdownEnd={handleCountdownEnd}
                 onAccelerate={b.inQueue ? () => accelerate.mutate('building') : undefined}
                 isAccelerating={accelerate.isPending}
-                dimmed={locked}
                 animClass={`anim-fade-up-${Math.min(i + 1, 5) as 1|2|3|4|5}`}
               />
             )
