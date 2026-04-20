@@ -142,4 +142,4 @@ export const BUILDING_META: Record<string, BuildingMeta> = {
 }
 
 export const RESOURCE_BUILDING_IDS = ['sawmill', 'quarry', 'grainFarm', 'windmill', 'cathedral', 'granary', 'stonehouse', 'silo'] as const
-export const FACILITY_BUILDING_IDS = ['workshop', 'engineersGuild', 'barracks', 'academy', 'alchemistTower', 'ambassadorHall', 'armoury'] as const
+export const FACILITY_BUILDING_IDS = ['workshop', 'barracks', 'academy', 'armoury', 'alchemistTower', 'ambassadorHall', 'engineersGuild'] as const

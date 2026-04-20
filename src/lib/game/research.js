@@ -56,6 +56,11 @@ export const RESEARCH = [
 
   // ── Combat ────────────────────────────────────────────────────────────────
   {
+    id: 'fortification',     // armour_technology
+    woodBase: 1000, stoneBase: 0, grainBase: 0, factor: 2,
+    requires: [{ type: 'building', id: 'academy', level: 2 }],
+  },
+  {
     id: 'swordsmanship',     // weapon_technology
     woodBase: 800, stoneBase: 200, grainBase: 0, factor: 2,
     requires: [{ type: 'building', id: 'academy', level: 4 }],
@@ -67,11 +72,6 @@ export const RESEARCH = [
       { type: 'building',  id: 'academy', level: 6 },
       { type: 'research',  id: 'alchemy', level: 3 },
     ],
-  },
-  {
-    id: 'fortification',     // armour_technology
-    woodBase: 1000, stoneBase: 0, grainBase: 0, factor: 2,
-    requires: [{ type: 'building', id: 'academy', level: 2 }],
   },
 
   // ── Logistics / Mobility ──────────────────────────────────────────────────
@@ -102,14 +102,14 @@ export const RESEARCH = [
 
   // ── Intelligence & Expansion ──────────────────────────────────────────────
   {
-    id: 'spycraft',          // espionage_technology
-    woodBase: 200, stoneBase: 1000, grainBase: 200, factor: 2,
-    requires: [{ type: 'building', id: 'academy', level: 3 }],
-  },
-  {
     id: 'logistics',         // computer_technology
     woodBase: 0, stoneBase: 400, grainBase: 600, factor: 2,
     requires: [{ type: 'building', id: 'academy', level: 1 }],
+  },
+  {
+    id: 'spycraft',          // espionage_technology
+    woodBase: 200, stoneBase: 1000, grainBase: 200, factor: 2,
+    requires: [{ type: 'building', id: 'academy', level: 3 }],
   },
   {
     id: 'exploration',       // astrophysics — factor 1.75

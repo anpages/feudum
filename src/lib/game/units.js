@@ -107,12 +107,12 @@ export const SUPPORT_UNITS = [
     ],
   },
   {
-    id: 'caravan',      // large_cargo
-    woodBase: 6000, stoneBase: 6000, grainBase: 0,
-    hull: 12000, shield: 25,  attack: 5,
+    id: 'scout',        // espionage_probe
+    woodBase: 0, stoneBase: 1000, grainBase: 0,
+    hull: 1000, shield: 0, attack: 0,
     requires: [
-      { type: 'building',  id: 'barracks',     level: 4 },
-      { type: 'research',  id: 'horsemanship', level: 6 },
+      { type: 'building',  id: 'barracks', level: 3 },
+      { type: 'research',  id: 'spycraft', level: 2 },
     ],
   },
   {
@@ -125,6 +125,15 @@ export const SUPPORT_UNITS = [
     ],
   },
   {
+    id: 'caravan',      // large_cargo
+    woodBase: 6000, stoneBase: 6000, grainBase: 0,
+    hull: 12000, shield: 25,  attack: 5,
+    requires: [
+      { type: 'building',  id: 'barracks',     level: 4 },
+      { type: 'research',  id: 'horsemanship', level: 6 },
+    ],
+  },
+  {
     id: 'scavenger',    // recycler
     woodBase: 10000, stoneBase: 6000, grainBase: 2000,
     hull: 16000, shield: 10,  attack: 1,
@@ -134,25 +143,33 @@ export const SUPPORT_UNITS = [
       { type: 'research',  id: 'runemastery',  level: 2 },
     ],
   },
-  {
-    id: 'scout',        // espionage_probe
-    woodBase: 0, stoneBase: 1000, grainBase: 0,
-    hull: 1000, shield: 0, attack: 0,
-    requires: [
-      { type: 'building',  id: 'barracks', level: 3 },
-      { type: 'research',  id: 'spycraft', level: 2 },
-    ],
-  },
 ]
 
 // ── Defenses ──────────────────────────────────────────────────────────────────
 
 export const DEFENSES = [
   {
+    id: 'beacon',       // solar satellite — watchtower, cheap passive defense
+    woodBase: 1000, stoneBase: 0, grainBase: 0,
+    hull: 500, shield: 1, attack: 10,
+    requires: [
+      { type: 'building', id: 'barracks', level: 1 },
+    ],
+  },
+  {
     id: 'archer',       // rocket_launcher
     woodBase: 2000, stoneBase: 0, grainBase: 0,
     hull: 2000,   shield: 20,   attack: 80,
     requires: [{ type: 'building', id: 'barracks', level: 1 }],
+  },
+  {
+    id: 'palisade',     // small_shield_dome
+    woodBase: 10000, stoneBase: 10000, grainBase: 0,
+    hull: 20000,  shield: 2000, attack: 1,
+    requires: [
+      { type: 'building',  id: 'barracks', level: 1 },
+      { type: 'research',  id: 'armoury',  level: 2 },
+    ],
   },
   {
     id: 'crossbowman',  // light_laser
@@ -164,6 +181,15 @@ export const DEFENSES = [
     ],
   },
   {
+    id: 'moat',         // anti-ballistic missile — passive ditch defense
+    woodBase: 5000, stoneBase: 2000, grainBase: 0,
+    hull: 15000, shield: 500, attack: 50,
+    requires: [
+      { type: 'building', id: 'barracks', level: 3 },
+      { type: 'building', id: 'armoury',  level: 1 },
+    ],
+  },
+  {
     id: 'ballista',     // heavy_laser
     woodBase: 6000, stoneBase: 2000, grainBase: 0,
     hull: 8000,   shield: 100,  attack: 250,
@@ -171,6 +197,25 @@ export const DEFENSES = [
       { type: 'building',  id: 'barracks',  level: 4 },
       { type: 'research',  id: 'pyromancy', level: 6 },
       { type: 'research',  id: 'alchemy',   level: 3 },
+    ],
+  },
+  {
+    id: 'mageTower',    // ion_cannon
+    woodBase: 2000, stoneBase: 6000, grainBase: 0,
+    hull: 8000,   shield: 500,  attack: 150,
+    requires: [
+      { type: 'building',  id: 'barracks',    level: 4 },
+      { type: 'research',  id: 'runemastery', level: 4 },
+    ],
+  },
+  {
+    id: 'catapult',     // interplanetary missile — heavy siege weapon
+    woodBase: 12000, stoneBase: 3000, grainBase: 1000,
+    hull: 50000, shield: 500, attack: 750,
+    requires: [
+      { type: 'building', id: 'barracks',    level: 4 },
+      { type: 'building', id: 'armoury',     level: 2 },
+      { type: 'research', id: 'swordsmanship', level: 2 },
     ],
   },
   {
@@ -185,33 +230,6 @@ export const DEFENSES = [
     ],
   },
   {
-    id: 'mageTower',    // ion_cannon
-    woodBase: 2000, stoneBase: 6000, grainBase: 0,
-    hull: 8000,   shield: 500,  attack: 150,
-    requires: [
-      { type: 'building',  id: 'barracks',    level: 4 },
-      { type: 'research',  id: 'runemastery', level: 4 },
-    ],
-  },
-  {
-    id: 'dragonCannon', // plasma_turret
-    woodBase: 50000, stoneBase: 50000, grainBase: 30000,
-    hull: 100000, shield: 300,  attack: 3000,
-    requires: [
-      { type: 'building',  id: 'barracks',   level: 8 },
-      { type: 'research',  id: 'dragonlore', level: 7 },
-    ],
-  },
-  {
-    id: 'palisade',     // small_shield_dome
-    woodBase: 10000, stoneBase: 10000, grainBase: 0,
-    hull: 20000,  shield: 2000, attack: 1,
-    requires: [
-      { type: 'building',  id: 'barracks', level: 1 },
-      { type: 'research',  id: 'armoury',  level: 2 },
-    ],
-  },
-  {
     id: 'castleWall',   // large_shield_dome
     woodBase: 50000, stoneBase: 50000, grainBase: 0,
     hull: 100000, shield: 10000, attack: 1,
@@ -221,30 +239,12 @@ export const DEFENSES = [
     ],
   },
   {
-    id: 'moat',         // anti-ballistic missile — passive ditch defense
-    woodBase: 5000, stoneBase: 2000, grainBase: 0,
-    hull: 15000, shield: 500, attack: 50,
+    id: 'dragonCannon', // plasma_turret
+    woodBase: 50000, stoneBase: 50000, grainBase: 30000,
+    hull: 100000, shield: 300,  attack: 3000,
     requires: [
-      { type: 'building', id: 'barracks', level: 3 },
-      { type: 'building', id: 'armoury',  level: 1 },
-    ],
-  },
-  {
-    id: 'catapult',     // interplanetary missile — heavy siege weapon
-    woodBase: 12000, stoneBase: 3000, grainBase: 1000,
-    hull: 50000, shield: 500, attack: 750,
-    requires: [
-      { type: 'building', id: 'barracks',    level: 4 },
-      { type: 'building', id: 'armoury',     level: 2 },
-      { type: 'research', id: 'swordsmanship', level: 2 },
-    ],
-  },
-  {
-    id: 'beacon',       // solar satellite — watchtower, cheap passive defense
-    woodBase: 1000, stoneBase: 0, grainBase: 0,
-    hull: 500, shield: 1, attack: 10,
-    requires: [
-      { type: 'building', id: 'barracks', level: 1 },
+      { type: 'building',  id: 'barracks',   level: 8 },
+      { type: 'research',  id: 'dragonlore', level: 7 },
     ],
   },
 ]
