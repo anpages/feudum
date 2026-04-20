@@ -42,8 +42,7 @@ export const buildingsService = {
     const queue: QueueRow[] = snakeToCamelArray<QueueRow>(queueRows)
     const now = Math.floor(Date.now() / 1000)
 
-    // Apply finished items locally to derive correct levels (server is authoritative
-    // and will persist on the next mutation; we just want the UI to show the right level now).
+    // Apply finished items locally so the UI shows correct levels without waiting for server.
     const projected = { ...kingdom }
     for (const item of queue) {
       if (item.finishesAt <= now) {
@@ -52,29 +51,46 @@ export const buildingsService = {
     }
 
     const activeQueue = queue.filter(q => q.finishesAt > now)
+    const totalQueueCount = activeQueue.length
+
     const workshopLevel       = projected.workshop       ?? 0
     const engineersGuildLevel = projected.engineersGuild ?? 0
 
     const buildings = BUILDINGS.map(def => {
-      const level     = projected[def.id] ?? 0
-      const nextLevel = level + 1
-      const cost      = buildCost(def.woodBase, def.stoneBase, def.factor, level, def.grainBase)
+      const level = projected[def.id] ?? 0
+
+      // All queued items for this building, ordered by finishesAt ascending.
+      const queuedForBuilding = activeQueue
+        .filter(q => q.building === def.id)
+        .sort((a, b) => a.finishesAt - b.finishesAt)
+
+      const queueDepth = queuedForBuilding.length
+      const firstInQueue = queuedForBuilding[0] ?? null
+
+      // Cost and time are computed for the NEXT addition after all queued items.
+      const lastQueuedLevel = queuedForBuilding.length > 0
+        ? queuedForBuilding[queuedForBuilding.length - 1].level
+        : level
+      const nextLevel = lastQueuedLevel + 1
+      const cost      = buildCost(def.woodBase, def.stoneBase, def.factor, lastQueuedLevel, def.grainBase)
       const timeSecs  = buildTime(cost.wood, cost.stone, nextLevel, workshopLevel, engineersGuildLevel, economySpeed)
-      const queueItem = activeQueue.find(q => q.building === def.id)
+
       return {
         id:          def.id,
         level,
+        nextLevel,
         costWood:    cost.wood,
         costStone:   cost.stone,
         costGrain:   cost.grain,
         timeSeconds: timeSecs,
         requiresMet: buildingRequirementsMet(def, projected, research),
         requires:    def.requires as BuildingsResponse['buildings'][number]['requires'],
-        inQueue:     queueItem ? { level: queueItem.level, finishesAt: queueItem.finishesAt } : null,
+        inQueue:     firstInQueue ? { level: firstInQueue.level, finishesAt: firstInQueue.finishesAt } : null,
+        queueDepth,
       }
     })
 
-    return { buildings }
+    return { buildings, totalQueueCount }
   },
 
   upgrade: (buildingId: string) =>

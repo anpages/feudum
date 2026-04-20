@@ -53,6 +53,7 @@ export function ResourcesPage() {
   if (isLoading) return <ResourcesSkeleton />
 
   const buildingMap = Object.fromEntries((data?.buildings ?? []).map(b => [b.id, b]))
+  const queueFull = (data?.totalQueueCount ?? 0) >= 5
 
   function canAfford(b: BuildingInfo) {
     return resources.wood >= b.costWood && resources.stone >= b.costStone && resources.grain >= (b.costGrain ?? 0)
@@ -163,6 +164,7 @@ export function ResourcesPage() {
                     onCountdownEnd={handleCountdownEnd}
                     onAccelerate={b.inQueue ? () => accelerate.mutate('building') : undefined}
                     isAccelerating={accelerate.isPending}
+                    queueFull={queueFull && !b.inQueue}
                   />
                 )
               })}

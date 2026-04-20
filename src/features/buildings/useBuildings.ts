@@ -52,8 +52,16 @@ export function useUpgradeBuilding() {
         if (building) {
           const finishesAt = Math.floor(Date.now() / 1000) + building.timeSeconds
           qc.setQueryData<BuildingsResponse>(key, {
+            ...prev,
+            totalQueueCount: prev.totalQueueCount + 1,
             buildings: prev.buildings.map(b =>
-              b.id === buildingId ? { ...b, inQueue: { level: b.level + 1, finishesAt } } : b
+              b.id === buildingId
+                ? {
+                    ...b,
+                    inQueue: b.inQueue ?? { level: b.nextLevel, finishesAt },
+                    queueDepth: b.queueDepth + 1,
+                  }
+                : b
             ),
           })
         }
