@@ -12,9 +12,7 @@ export function LoginPage() {
       <div className="w-full max-w-[340px] anim-fade-up">
         {/* Logo / Brand */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-[3.75rem] h-[3.75rem] rounded-full mb-5 anim-float bg-gold/8 border border-gold/20 shadow-[0_4px_24px_rgba(184,134,11,0.12)]">
-            <FeuduLogo variant="icon" height={28} />
-          </div>
+          <FeuduLogo variant="icon" height={56} className="mb-5 anim-float" />
           <h1 className="font-display text-[2rem] text-ink tracking-[0.18em] uppercase leading-none">
             Feudum
           </h1>
