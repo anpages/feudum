@@ -7,7 +7,6 @@ import { LoginPage } from '@/features/auth/LoginPage'
 import { AuthCallbackPage } from '@/features/auth/AuthCallbackPage'
 
 // Lazy — shown rarely, no need to block initial render
-const PWAInstallPrompt = lazy(() => import('@/components/PWAInstallPrompt').then(m => ({ default: m.PWAInstallPrompt })))
 const NicknamePage     = lazy(() => import('@/features/auth/NicknamePage').then(m => ({ default: m.NicknamePage })))
 
 // Game pages — lazy loaded (only fetched after login). A single Suspense in
@@ -67,7 +66,6 @@ function RootRedirect() {
 export default function App() {
   return (
     <>
-      <Suspense fallback={null}><PWAInstallPrompt /></Suspense>
       <Suspense fallback={<GameFallback />}>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
