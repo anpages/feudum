@@ -37,20 +37,17 @@ export default async function handler(req, res) {
   // ── Check not already queued + queue limit (max 5, same as OGame-ref) ────────
   const existing = await db.select().from(buildingQueue)
     .where(eq(buildingQueue.kingdomId, kingdom.id))
+  if (existing.some(q => q.building === buildingId)) {
+    return res.status(400).json({ error: 'Este edificio ya está en cola' })
+  }
   if (existing.length >= 5) {
     return res.status(400).json({ error: 'Cola llena (máximo 5 construcciones)' })
   }
 
-  // ── Calculate cost at the correct next level ──────────────────────────────
-  // Account for all same-building items already queued (OGame behavior: you can
-  // queue sawmill 1→2→3→4→5 — each click adds the next level to the queue).
+  // ── Calculate cost ────────────────────────────────────────────────────────
   const currentLevel  = kingdom[buildingId] ?? 0
-  const sameInQueue   = existing.filter(q => q.building === buildingId)
-  const levelAfterQueue = sameInQueue.length > 0
-    ? Math.max(...sameInQueue.map(q => q.level))
-    : currentLevel
-  const nextLevel     = levelAfterQueue + 1
-  const cost          = buildCost(def.woodBase, def.stoneBase, def.factor, levelAfterQueue, def.grainBase)
+  const nextLevel     = currentLevel + 1
+  const cost          = buildCost(def.woodBase, def.stoneBase, def.factor, currentLevel, def.grainBase)
   const workshopLevel = kingdom.workshop       ?? 0
   const egLevel       = kingdom.engineersGuild ?? 0
   const timeSecs      = buildTime(cost.wood, cost.stone, nextLevel, workshopLevel, egLevel, cfg.economy_speed)

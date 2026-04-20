@@ -99,7 +99,6 @@ function BuildingCardImpl({
   const countdown = useCountdown(building.inQueue?.finishesAt ?? null, onCountdownEnd)
   const inQueue = !!building.inQueue && countdown > 0
   const { Icon } = meta
-  const pendingCount = building.queueDepth - 1  // items after the active one
 
   return (
     <Card
@@ -118,9 +117,7 @@ function BuildingCardImpl({
           <div className="flex items-start justify-between gap-2">
             <h3 className="font-ui text-sm font-semibold text-ink leading-tight">{meta.name}</h3>
             <Badge variant={building.level > 0 ? 'gold' : 'stone'} className="shrink-0">
-              {building.queueDepth > 0
-                ? `Nv ${building.level}→${building.nextLevel - 1}`
-                : `Nv ${building.level}`}
+              {inQueue ? `Nv ${building.level}→${building.inQueue!.level}` : `Nv ${building.level}`}
             </Badge>
           </div>
           <p className="font-body text-xs text-ink-muted mt-1 leading-relaxed">
@@ -173,52 +170,42 @@ function BuildingCardImpl({
       </div>
 
       {/* Action */}
-      <div className="mt-auto space-y-2">
-        {inQueue && (
-          <div className="flex items-center gap-2 py-2 rounded border border-gold/15 bg-gold-soft text-gold-dim font-ui text-xs font-semibold uppercase tracking-wide px-3">
-            <Loader2 size={12} className="animate-spin shrink-0" />
-            <span className="flex-1 text-center">
-              {countdown > 0 ? formatDuration(countdown) : 'Finalizando…'}
-            </span>
-            {pendingCount > 0 && (
-              <span className="text-[0.6rem] font-normal text-gold-dim/70 shrink-0">
-                +{pendingCount} en cola
-              </span>
-            )}
+      {inQueue ? (
+        <div className="mt-auto space-y-2">
+          <div className="flex items-center justify-center gap-2 py-2 rounded border border-gold/15 bg-gold-soft text-gold-dim font-ui text-xs font-semibold uppercase tracking-wide">
+            <Loader2 size={12} className="animate-spin" />
+            {countdown > 0 ? formatDuration(countdown) : 'Finalizando…'}
           </div>
-        )}
-        {inQueue && onAccelerate && (
-          <button
-            onClick={onAccelerate}
-            disabled={isAccelerating}
-            className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded border border-gold/20 font-ui text-xs text-gold-dim hover:bg-gold-soft transition-colors disabled:opacity-40"
-          >
-            {isAccelerating ? <Loader2 size={10} className="animate-spin" /> : <Zap size={10} />}
-            Acelerar · {Math.max(1, Math.ceil(countdown / 600))} Éter
-          </button>
-        )}
-        {!building.requiresMet ? (
+          {onAccelerate && (
+            <button
+              onClick={onAccelerate}
+              disabled={isAccelerating}
+              className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded border border-gold/20 font-ui text-xs text-gold-dim hover:bg-gold-soft transition-colors disabled:opacity-40"
+            >
+              {isAccelerating ? <Loader2 size={10} className="animate-spin" /> : <Zap size={10} />}
+              Acelerar · {Math.max(1, Math.ceil(countdown / 600))} Éter
+            </button>
+          )}
+        </div>
+      ) : !building.requiresMet ? (
+        <div className="mt-auto">
           <RequirementsList requires={building.requires ?? []} kingdom={kingdom} />
-        ) : queueFull && !inQueue ? (
-          <div className="w-full py-2 rounded border border-gold/10 font-ui text-xs text-ink-muted/50 text-center">
-            Cola llena (5/5)
-          </div>
-        ) : (
-          <Button
-            variant={inQueue ? 'ghost' : 'primary'}
-            className="w-full"
-            disabled={!canAfford || isUpgrading || queueFull}
-            onClick={onUpgrade}
-          >
-            {isUpgrading ? <Loader2 size={11} className="animate-spin" /> : <ArrowUp size={11} />}
-            {canAfford
-              ? inQueue
-                ? `Añadir Nv ${building.nextLevel} a cola`
-                : `Mejorar a Nv ${building.nextLevel}`
-              : 'Recursos insuficientes'}
-          </Button>
-        )}
-      </div>
+        </div>
+      ) : queueFull ? (
+        <div className="mt-auto w-full py-2 rounded border border-gold/10 font-ui text-xs text-ink-muted/50 text-center">
+          Cola llena (5/5)
+        </div>
+      ) : (
+        <Button
+          variant="primary"
+          className="w-full mt-auto"
+          disabled={!canAfford || isUpgrading}
+          onClick={onUpgrade}
+        >
+          {isUpgrading ? <Loader2 size={11} className="animate-spin" /> : <ArrowUp size={11} />}
+          {canAfford ? `Mejorar a Nv ${building.nextLevel}` : 'Recursos insuficientes'}
+        </Button>
+      )}
     </Card>
   )
 }

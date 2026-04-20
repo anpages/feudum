@@ -57,11 +57,12 @@ export function OverviewPage() {
   const activeMissions = armiesData?.missions.filter(m => m.state === 'active').length ?? 0
   const returningMissions = armiesData?.missions.filter(m => m.state === 'returning').length ?? 0
 
-  const activeBuilding = buildingsData?.buildings.find(b => !!b.inQueue)
+  const queuedBuildings = buildingsData?.buildings.filter(b => !!b.inQueue)
+    .sort((a, b) => a.inQueue!.finishesAt - b.inQueue!.finishesAt) ?? []
   const activeResearch = researchData?.research.find(r => !!r.inQueue)
   const allUnits = [...(barracksData?.units ?? []), ...(barracksData?.support ?? []), ...(barracksData?.defenses ?? [])]
   const activeUnit = allUnits.find(u => !!u.inQueue)
-  const hasQueue = !!(activeBuilding || activeResearch || activeUnit)
+  const hasQueue = !!(queuedBuildings.length || activeResearch || activeUnit)
 
   const tempAvg = (kingdom as Record<string, unknown> | null)?.tempAvg as number | undefined
   const charClass = user?.characterClass ? CLASS_INFO[user.characterClass] : null
@@ -184,14 +185,15 @@ export function OverviewPage() {
         <span className="section-heading">Colas activas</span>
         {hasQueue ? (
           <div className="space-y-2">
-            {activeBuilding && (
+            {queuedBuildings.map(b => (
               <QueueRow
+                key={b.id}
                 icon={<Hammer size={13} />}
-                label={`${label(activeBuilding.id)} → Nv. ${activeBuilding.inQueue!.level}`}
-                finishesAt={activeBuilding.inQueue!.finishesAt}
+                label={`${label(b.id)} → Nv. ${b.inQueue!.level}`}
+                finishesAt={b.inQueue!.finishesAt}
                 color="gold"
               />
-            )}
+            ))}
             {activeResearch && (
               <QueueRow
                 icon={<FlaskConical size={13} />}

@@ -57,23 +57,11 @@ export const buildingsService = {
     const engineersGuildLevel = projected.engineersGuild ?? 0
 
     const buildings = BUILDINGS.map(def => {
-      const level = projected[def.id] ?? 0
-
-      // All queued items for this building, ordered by finishesAt ascending.
-      const queuedForBuilding = activeQueue
-        .filter(q => q.building === def.id)
-        .sort((a, b) => a.finishesAt - b.finishesAt)
-
-      const queueDepth = queuedForBuilding.length
-      const firstInQueue = queuedForBuilding[0] ?? null
-
-      // Cost and time are computed for the NEXT addition after all queued items.
-      const lastQueuedLevel = queuedForBuilding.length > 0
-        ? queuedForBuilding[queuedForBuilding.length - 1].level
-        : level
-      const nextLevel = lastQueuedLevel + 1
-      const cost      = buildCost(def.woodBase, def.stoneBase, def.factor, lastQueuedLevel, def.grainBase)
+      const level     = projected[def.id] ?? 0
+      const nextLevel = level + 1
+      const cost      = buildCost(def.woodBase, def.stoneBase, def.factor, level, def.grainBase)
       const timeSecs  = buildTime(cost.wood, cost.stone, nextLevel, workshopLevel, engineersGuildLevel, economySpeed)
+      const queueItem = activeQueue.find(q => q.building === def.id) ?? null
 
       return {
         id:          def.id,
@@ -85,8 +73,8 @@ export const buildingsService = {
         timeSeconds: timeSecs,
         requiresMet: buildingRequirementsMet(def, projected, research),
         requires:    def.requires as BuildingsResponse['buildings'][number]['requires'],
-        inQueue:     firstInQueue ? { level: firstInQueue.level, finishesAt: firstInQueue.finishesAt } : null,
-        queueDepth,
+        inQueue:     queueItem ? { level: queueItem.level, finishesAt: queueItem.finishesAt } : null,
+        queueDepth:  queueItem ? 1 : 0,
       }
     })
 

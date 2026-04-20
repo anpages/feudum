@@ -56,11 +56,7 @@ export function useUpgradeBuilding() {
             totalQueueCount: prev.totalQueueCount + 1,
             buildings: prev.buildings.map(b =>
               b.id === buildingId
-                ? {
-                    ...b,
-                    inQueue: b.inQueue ?? { level: b.nextLevel, finishesAt },
-                    queueDepth: b.queueDepth + 1,
-                  }
+                ? { ...b, inQueue: { level: b.nextLevel, finishesAt }, queueDepth: 1 }
                 : b
             ),
           })
