@@ -1,24 +1,22 @@
 /// <reference lib="webworker" />
 import { precacheAndRoute, cleanupOutdatedCaches, createHandlerBoundToURL } from 'workbox-precaching'
 import { registerRoute, NavigationRoute } from 'workbox-routing'
-import { CacheFirst } from 'workbox-strategies'
-import { ExpirationPlugin } from 'workbox-expiration'
 
 declare let self: ServiceWorkerGlobalScope & { __WB_MANIFEST: Array<{ url: string; revision: string | null }> }
+
+// Activate new SW immediately instead of waiting for all tabs to close.
+// This ensures stale chunk references (old index.html → old hashes) get replaced fast.
+self.addEventListener('install', () => self.skipWaiting())
+self.addEventListener('activate', (event: ExtendableEvent) =>
+  event.waitUntil(self.clients.claim())
+)
 
 precacheAndRoute(self.__WB_MANIFEST)
 cleanupOutdatedCaches()
 
-// Cache static assets
-registerRoute(
-  ({ request }) => request.destination === 'script' || request.destination === 'style' || request.destination === 'font',
-  new CacheFirst({
-    cacheName: 'assets-cache',
-    plugins: [new ExpirationPlugin({ maxEntries: 60, maxAgeSeconds: 30 * 24 * 60 * 60 })],
-  })
-)
-
 // SPA fallback — skip /api/*
+// Precache already handles JS/CSS assets; a separate CacheFirst for scripts
+// would create stale-hash conflicts on new deploys, so we don't register one.
 const handler = createHandlerBoundToURL('/index.html')
 const navRoute = new NavigationRoute(handler, {
   denylist: [/^\/api\//],

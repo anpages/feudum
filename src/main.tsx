@@ -7,6 +7,10 @@ import './index.css'
 import App from './App.tsx'
 import { RootErrorBoundary } from '@/components/ErrorBoundary'
 
+// When a new deploy removes old JS chunks, dynamic imports fail.
+// Vite fires 'vite:preloadError' — force a hard reload to pick up the new build.
+window.addEventListener('vite:preloadError', () => window.location.reload())
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
