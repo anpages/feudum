@@ -34,7 +34,10 @@ export function ResourceBar({ onMenuToggle }: Props) {
           <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-gold/10 border border-gold/20 flex items-center justify-center shrink-0">
             <Castle size={12} className="text-gold" />
           </div>
-          <span className="hidden sm:block font-display text-sm text-gold-dim tracking-[0.18em] uppercase leading-none">Feudum</span>
+          <div className="hidden sm:flex flex-col leading-none gap-0.5">
+            <span className="font-display text-sm text-gold-dim tracking-[0.18em] uppercase leading-none">Feudum</span>
+            <span className="font-ui text-[0.5rem] text-gold-dim/50 tracking-[0.15em] uppercase">Anno MMXXVI</span>
+          </div>
           <KingdomSelector kingdomName={kingdom?.name} />
         </div>
       </div>
