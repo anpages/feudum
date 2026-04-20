@@ -55,25 +55,6 @@ export function LoginPage() {
   return (
     <div className="min-h-screen" style={{ background: '#faf6ef', color: '#1c1208' }}>
 
-      {/* ── Navbar ────────────────────────────────────────────────────────── */}
-      <nav style={{ background: '#ffffff', borderBottom: '1px solid rgba(184,134,11,0.2)' }}
-        className="sticky top-0 z-50 px-5 sm:px-8 h-14 flex items-center justify-between shadow-sm">
-        <div className="flex items-center gap-2.5">
-          <FeuduLogo variant="icon" height={26} className="shrink-0" />
-          <span className="font-display text-sm tracking-[0.18em] uppercase" style={{ color: '#b8860b' }}>Feudum</span>
-        </div>
-        <button
-          onClick={signInWithGoogle}
-          className="flex items-center gap-2 px-4 py-1.5 rounded font-ui font-semibold text-xs tracking-wide transition-all duration-150 active:scale-[0.98]"
-          style={{ background: '#b8860b', color: '#ffffff', border: 'none' }}
-          onMouseOver={e => (e.currentTarget.style.background = '#9a7010')}
-          onMouseOut={e => (e.currentTarget.style.background = '#b8860b')}
-        >
-          <GoogleIcon />
-          Jugar gratis
-        </button>
-      </nav>
-
       {/* ── Hero ──────────────────────────────────────────────────────────── */}
       <section className="flex flex-col items-center justify-center text-center px-6 py-24 sm:py-32"
         style={{ background: 'linear-gradient(180deg, #faf6ef 0%, #f4ead8 100%)' }}>
@@ -91,11 +72,11 @@ export function LoginPage() {
           Feudum
         </h1>
 
-        <p className="font-body text-lg sm:text-xl max-w-xl leading-relaxed mb-3" style={{ color: '#1c1208' }}>
+        <p className="font-body text-sm sm:text-base max-w-xl leading-relaxed mb-2" style={{ color: '#1c1208' }}>
           Un reino te espera. Construye, investiga y conquista en un universo
           compartido con miles de jugadores — gratis, sin trampa.
         </p>
-        <p className="font-body text-base max-w-lg leading-relaxed mb-10" style={{ color: '#4a3820' }}>
+        <p className="font-body text-sm max-w-lg leading-relaxed mb-10" style={{ color: '#4a3820' }}>
           Inspirado en los grandes juegos de estrategia por navegador de los 2000,
           reinterpretado con mecánicas modernas para 2026.
         </p>
@@ -110,17 +91,14 @@ export function LoginPage() {
         <button
           onClick={signInWithGoogle}
           className="flex items-center gap-3 px-7 py-3.5 rounded font-ui font-bold tracking-wide text-sm transition-all duration-150 active:scale-[0.98] mb-3"
-          style={{ background: '#b8860b', color: '#ffffff', border: 'none', boxShadow: '0 2px 8px rgba(184,134,11,0.35)' }}
-          onMouseOver={e => (e.currentTarget.style.background = '#9a7010')}
-          onMouseOut={e => (e.currentTarget.style.background = '#b8860b')}
+          style={{ background: '#ffffff', color: '#4a3820', border: '1px solid rgba(184,134,11,0.4)', boxShadow: '0 1px 4px rgba(60,40,10,0.1)' }}
+          onMouseOver={e => (e.currentTarget.style.background = '#fef9e7')}
+          onMouseOut={e => (e.currentTarget.style.background = '#ffffff')}
         >
           <GoogleIcon size={18} />
           Jugar gratis con Google
         </button>
 
-        <p className="font-ui text-xs" style={{ color: '#8a7456' }}>
-          Sin tarjeta de crédito · Sin microtransacciones
-        </p>
       </section>
 
       {/* ── Features ──────────────────────────────────────────────────────── */}
