@@ -1,5 +1,4 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { useEffect, useRef } from 'react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { achievementsService } from './services/achievementsService'
 import type { Achievement, AchievementsResponse } from './types'
 import { toast } from '@/lib/toast'
@@ -7,44 +6,40 @@ import { formatResource } from '@/lib/format'
 
 export type { Achievement, AchievementsResponse }
 
-// Module-level set to avoid duplicate toasts across component remounts
-const notifiedIds = new Set<string>()
-
 export function useAchievements() {
-  const qc = useQueryClient()
-  const query = useQuery({
+  return useQuery({
     queryKey: ['achievements'],
-    queryFn: achievementsService.getAll,
+    queryFn:  achievementsService.getAll,
     staleTime: 30_000,
   })
-
-  const prevNewRef = useRef<string[]>([])
-
-  useEffect(() => {
-    const newOnes = query.data?.achievements.filter(a => a.isNew) ?? []
-    for (const a of newOnes) {
-      if (notifiedIds.has(a.id)) continue
-      notifiedIds.add(a.id)
-      const r = a.reward
-      const rewardParts = r ? [
-        r.wood  > 0 ? `${formatResource(r.wood)} madera`  : '',
-        r.stone > 0 ? `${formatResource(r.stone)} piedra` : '',
-        r.grain > 0 ? `${formatResource(r.grain)} grano`  : '',
-      ].filter(Boolean) : []
-      const rewardStr = rewardParts.length ? ` (+${rewardParts.join(', ')})` : ''
-      toast.success(`🏆 Logro desbloqueado: ${a.name}${rewardStr}`)
-    }
-    prevNewRef.current = newOnes.map(a => a.id)
-  }, [query.data])
-
-  return { ...query, qc }
 }
 
-export function useNewAchievementsCount(): number {
+export function useClaimAchievement() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (achievementId: string) => achievementsService.claim(achievementId),
+    onSuccess: (data) => {
+      qc.invalidateQueries({ queryKey: ['achievements'] })
+      qc.invalidateQueries({ queryKey: ['kingdom'] })
+      if (data.reward) {
+        const r = data.reward
+        const parts = [
+          r.wood  > 0 ? formatResource(r.wood)  + ' madera'  : '',
+          r.stone > 0 ? formatResource(r.stone) + ' piedra' : '',
+          r.grain > 0 ? formatResource(r.grain) + ' grano'  : '',
+        ].filter(Boolean)
+        if (parts.length) toast.success('Recompensa recibida: ' + parts.join(', '))
+      }
+    },
+    onError: () => toast.error('No se pudo reclamar el logro'),
+  })
+}
+
+export function usePendingClaimsCount(): number {
   const { data } = useQuery({
     queryKey: ['achievements'],
-    queryFn: achievementsService.getAll,
+    queryFn:  achievementsService.getAll,
     staleTime: 30_000,
   })
-  return data?.achievements.filter(a => a.isNew).length ?? 0
+  return data?.pendingCount ?? 0
 }

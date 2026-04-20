@@ -7,12 +7,13 @@ export interface Achievement {
   desc: string
   icon: string
   reward?: { wood: number; stone: number; grain: number }
-  unlocked: boolean
+  unlocked:   boolean
   unlockedAt: string | null
-  isNew: boolean
+  claimedAt:  string | null
+  pending:    boolean  // unlocked + has reward + not yet claimed
 }
 
 export interface AchievementsResponse {
   achievements: Achievement[]
-  newlyUnlocked: string[]
+  pendingCount: number
 }

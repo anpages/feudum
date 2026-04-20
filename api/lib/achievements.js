@@ -61,24 +61,6 @@ export async function checkAndUnlock(userId) {
     earned.map(achievementId => ({ userId, achievementId }))
   ).onConflictDoNothing()
 
-  // Apply cumulative resource reward to the primary kingdom
-  const earnedAchs = earned.map(id => ACH_BY_ID[id]).filter(Boolean)
-  if (k.id && earnedAchs.some(a => a.reward)) {
-    let totalWood = 0, totalStone = 0, totalGrain = 0
-    for (const a of earnedAchs) {
-      totalWood  += a.reward?.wood  ?? 0
-      totalStone += a.reward?.stone ?? 0
-      totalGrain += a.reward?.grain ?? 0
-    }
-    if (totalWood > 0 || totalStone > 0 || totalGrain > 0) {
-      await db.update(kingdoms).set({
-        wood:  Math.min((k.wood  ?? 0) + totalWood,  k.woodCapacity  ?? 10000),
-        stone: Math.min((k.stone ?? 0) + totalStone, k.stoneCapacity ?? 10000),
-        grain: Math.min((k.grain ?? 0) + totalGrain, k.grainCapacity ?? 10000),
-        updatedAt: new Date(),
-      }).where(eq(kingdoms.id, k.id))
-    }
-  }
-
-  return earnedAchs
+  // Rewards are NOT auto-delivered — player must claim them manually
+  return earned.map(id => ACH_BY_ID[id]).filter(Boolean)
 }

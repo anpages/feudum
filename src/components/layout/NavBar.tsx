@@ -5,7 +5,7 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { useAuth } from '@/features/auth/useAuth'
-import { useNewAchievementsCount } from '@/features/achievements/useAchievements'
+import { usePendingClaimsCount } from '@/features/achievements/useAchievements'
 
 interface NavItem {
   to: string
@@ -31,7 +31,7 @@ interface Props {
 
 export function NavBar({ isOpen, onClose }: Props) {
   const { user } = useAuth()
-  const newAchievements = useNewAchievementsCount()
+  const newAchievements = usePendingClaimsCount()
 
   return (
     <nav className={`game-sidebar ${isOpen ? 'open' : ''}`}>
@@ -76,7 +76,8 @@ export function NavBar({ isOpen, onClose }: Props) {
           <Trophy size={16} className="nav-icon shrink-0" />
           <span className="flex-1">Logros</span>
           {newAchievements > 0 && (
-            <span className="ml-auto min-w-[18px] h-[18px] px-1 rounded-full bg-gold text-obsidian font-ui text-[0.6rem] font-bold flex items-center justify-center">
+            <span className="ml-auto min-w-[18px] h-[18px] px-1 rounded-full font-ui text-[0.6rem] font-bold flex items-center justify-center"
+              style={{ background: '#b8860b', color: '#faf6ef' }}>
               {newAchievements}
             </span>
           )}
