@@ -236,27 +236,31 @@ Research mapping: see `db/schema/research.ts` — each field has an inline comme
 
 ## Design system
 
-**Aesthetic:** Dark Illuminated Manuscript — near-black obsidian surfaces, gold-leaf accents, glass-morphism panels, noise-texture background.
+**Aesthetic:** Illuminated Parchment — warm cream surfaces, dark ink text, gold accents. The game interior is LIGHT themed (not dark).
 
-### Color tokens (`src/index.css` `@theme`)
+> ⚠️ **IMPORTANT:** `bg-game` does NOT exist as a CSS class. Do NOT use it. Set backgrounds explicitly.
+
+### Color tokens (valores reales en `src/index.css` `@theme`)
 
 | Token | Hex | Use |
 |-------|-----|-----|
-| `parchment` | #f5e6c8 | Primary text |
-| `parchment-dark` | #e8d5a3 | Secondary text |
-| `parchment-dim` | #c4b08a | Muted text |
-| `ink` | #2c1810 | Dark text on light bg |
-| `gold` | #c9a227 | Primary accent, borders |
-| `gold-light` | #e8c547 | Headings, active states |
+| `ink` | #1c1208 | Primary text (dark ink on parchment) |
+| `ink-mid` | #4a3820 | Secondary text |
+| `ink-muted` | #8a7456 | Muted/placeholder text |
+| `parchment` | #faf6ef | Primary background surface |
+| `parchment-warm` | #f4ead8 | Warm background variant |
+| `parchment-deep` | #ede3cc | Deep parchment sections |
+| `surface` | #ffffff | White card/header surface |
+| `gold` | #b8860b | Primary accent, borders |
+| `gold-light` | #d4a017 | Brighter gold, headings |
 | `gold-dim` | #8a6e1a | Subtle gold |
-| `crimson` | #8b1a1a | Danger, full resources |
+| `gold-soft` | #fef9e7 | Button hover background |
+| `crimson` | #9b1a1a | Danger, errors |
 | `crimson-light` | #c22b2b | Bright danger |
-| `forest` | #2d4a1e | Positive/production |
-| `forest-light` | #4a7a32 | Bright positive |
-| `void` | #0a0705 | Page background |
-| `obsidian` | #110d08 | Card background |
-| `tomb` | #1a1208 | Elevated surface |
-| `dusk` | #251a0d | Hover surface |
+| `forest` | #1e5414 | Positive/production |
+| `forest-light` | #2a7a1e | Bright positive |
+
+**body CSS:** `background: #faf6ef; color: #1c1208` — all pages inherit this.
 
 ### Typography
 - `font-display` → **Cinzel** serif — reserved for h1/logo only (kingdom name in ResourceBar, LoginPage title)
@@ -269,9 +273,8 @@ Research mapping: see `db/schema/research.ts` — each field has an inline comme
 
 | Class | Purpose |
 |-------|---------|
-| `.bg-game` | Page background with noise texture + radial glows |
-| `.glass` / `.glass-strong` | Glass-morphism panel |
-| `.card-medieval` | Dark card with animated four-corner ornament |
+| `.glass` / `.glass-strong` | Glass-morphism panel (semi-transparent surface) |
+| `.card-medieval` | Parchment card with animated four-corner ornament |
 | `.card-corner-tr` / `.card-corner-bl` | Required child divs for the other two corners |
 | `.btn` + `.btn-primary/ghost/danger` | Button variants |
 | `.badge` + `.badge-gold/crimson/forest/stone` | Badge variants |
