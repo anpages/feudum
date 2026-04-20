@@ -146,6 +146,15 @@ async function growNpc(kingdom, cfg, now) {
       .sort((a, b) => a.score - b.score)
 
     for (const { id, def, currentLv } of candidates) {
+      // Skip if building requirements are not met
+      if (def.requires?.length) {
+        const blocked = def.requires.some(req => {
+          if (req.type !== 'building') return false
+          return ((patch[req.id] ?? kingdom[req.id] ?? 0)) < req.level
+        })
+        if (blocked) continue
+      }
+
       const nextLv = currentLv + 1
       const cost = buildCost(def.woodBase, def.stoneBase, def.factor, nextLv - 1, def.grainBase ?? 0)
 
@@ -187,7 +196,7 @@ async function growNpc(kingdom, cfg, now) {
 
     const effWood  = Math.ceil(cost.wood  * costMult)
     const effStone = Math.ceil(cost.stone * costMult)
-    if (effWood > wood && effStone > stone) continue
+    if (effWood > wood || effStone > stone) continue
 
     const canAfford = Math.min(
       effWood  > 0 ? Math.floor(wood  / effWood)  : Infinity,
