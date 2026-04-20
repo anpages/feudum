@@ -75,7 +75,7 @@ interface Props {
   onCountdownEnd: () => void
   onAccelerate?: () => void
   isAccelerating?: boolean
-  dimmed: boolean
+  dimmed?: boolean
   animClass?: string
 }
 
