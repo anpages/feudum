@@ -232,6 +232,18 @@ export function LoginPage() {
           <p className="font-ui text-[0.48rem] text-parchment-dim/15 tracking-[0.22em] uppercase select-none">
             Feudum · Anno MMXXVI
           </p>
+          <p className="font-ui text-[0.45rem] text-parchment-dim/10 tracking-[0.12em] mt-2 select-none leading-relaxed">
+            Inspirado en{' '}
+            <a
+              href="https://github.com/lanedirt/OGameX"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-parchment-dim/25 transition-colors underline underline-offset-2"
+            >
+              OGameX
+            </a>
+            {' '}(GPL) · Reimplementado con visión medieval y moderna
+          </p>
         </div>
       </section>
 
