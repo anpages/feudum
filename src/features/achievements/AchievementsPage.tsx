@@ -1,9 +1,11 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { TreePine, Mountain, Wheat } from 'lucide-react'
 import { GiScrollQuill, GiAnvil, GiSpellBook, GiCrossedSwords, GiCompass, GiLaurelCrown, GiSwordman } from 'react-icons/gi'
+import { useQueryClient } from '@tanstack/react-query'
 import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { useAchievements, type Achievement } from './useAchievements'
+import { achievementsService } from './services/achievementsService'
 import { formatResource } from '@/lib/format'
 import type { AchievementCategory } from './types'
 
@@ -26,6 +28,13 @@ const CATS: CatConfig[] = [
 export function AchievementsPage() {
   const [cat, setCat] = useState<AchievementCategory | 'all'>('all')
   const { data, isLoading } = useAchievements()
+  const qc = useQueryClient()
+
+  useEffect(() => {
+    achievementsService.markSeen()
+    qc.invalidateQueries({ queryKey: ['achievements'] })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const achievements = data?.achievements ?? []
   const filtered     = cat === 'all' ? achievements : achievements.filter(a => a.cat === cat)
