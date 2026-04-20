@@ -214,7 +214,8 @@ function MissionForm({
                 </span>
                 <input
                   type="number" min={0} max={kingdom?.ballistic ?? 0}
-                  value={units['ballistic'] ?? 0}
+                  value={units['ballistic'] || ''}
+                  placeholder="0"
                   onChange={e => setUnit('ballistic', e.target.value)}
                   className="game-input w-16 py-1 text-sm text-center tabular-nums shrink-0"
                 />
@@ -243,7 +244,8 @@ function MissionForm({
                       <span className="font-ui text-xs text-ink-muted tabular-nums shrink-0">{available.toLocaleString()}</span>
                       <input
                         type="number" min={0} max={available}
-                        value={units[u.id] ?? 0}
+                        value={units[u.id] || ''}
+                        placeholder="0"
                         onChange={e => setUnit(u.id, e.target.value)}
                         className="game-input w-16 py-1 text-sm text-center tabular-nums shrink-0"
                       />
@@ -271,7 +273,8 @@ function MissionForm({
                     <span className="text-base w-5 text-center">{emoji}</span>
                     <span className="font-ui text-xs text-ink flex-1">{label}</span>
                     <input
-                      type="number" min={0} value={resLoad[key]}
+                      type="number" min={0} value={resLoad[key] || ''}
+                      placeholder="0"
                       onChange={e => setResLoad(r => ({ ...r, [key]: Math.max(0, parseInt(e.target.value) || 0) }))}
                       className="game-input w-28 py-1 text-sm text-center tabular-nums"
                     />
