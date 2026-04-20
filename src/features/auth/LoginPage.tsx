@@ -88,7 +88,7 @@ export function LoginPage() {
           Un reino te espera. Construye, investiga y conquista en un universo
           compartido con miles de jugadores — gratis, sin trampa.
         </p>
-        <p className="font-body text-parchment-dim/70 text-sm sm:text-base max-w-lg leading-relaxed mb-10">
+        <p className="font-body text-parchment-dim text-sm sm:text-base max-w-lg leading-relaxed mb-10">
           Inspirado en los grandes juegos de estrategia por navegador,
           reinterpretado con mecánicas modernas para 2026.
         </p>
@@ -109,7 +109,7 @@ export function LoginPage() {
           Jugar gratis con Google
         </button>
 
-        <p className="font-ui text-[0.58rem] text-parchment-dim/40 tracking-[0.18em] uppercase">
+        <p className="font-ui text-[0.58rem] text-parchment-dim/70 tracking-[0.18em] uppercase">
           Sin tarjeta de crédito · Sin microtransacciones
         </p>
       </section>
@@ -131,7 +131,7 @@ export function LoginPage() {
                   <Icon size={16} className="text-gold" />
                 </div>
                 <h3 className="font-ui text-sm font-semibold text-parchment tracking-wide">{title}</h3>
-                <p className="font-body text-sm text-parchment-dim/75 leading-relaxed">{desc}</p>
+                <p className="font-body text-sm text-parchment-dim leading-relaxed">{desc}</p>
               </div>
             ))}
           </div>
@@ -159,7 +159,7 @@ export function LoginPage() {
                 </div>
                 <div>
                   <h3 className="font-ui text-sm font-semibold text-parchment tracking-wide mb-2">{title}</h3>
-                  <p className="font-body text-sm text-parchment-dim/75 leading-relaxed">{desc}</p>
+                  <p className="font-body text-sm text-parchment-dim leading-relaxed">{desc}</p>
                 </div>
               </div>
             ))}
@@ -173,7 +173,7 @@ export function LoginPage() {
           <h2 className="font-display text-3xl sm:text-4xl text-gold-light tracking-[0.12em] uppercase mb-4">
             ¿Listo para gobernar?
           </h2>
-          <p className="font-body text-parchment-dim/80 text-base mb-8 leading-relaxed">
+          <p className="font-body text-parchment-dim text-base mb-8 leading-relaxed">
             Miles de reinos ya luchan por el dominio del universo. El tuyo te espera.
           </p>
           <button
