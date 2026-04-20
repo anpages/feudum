@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="96" fill="#110d08"/>
+  <defs>
+    <linearGradient id="a" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#e8c547"/>
+      <stop offset="100%" stop-color="#8a6e1a"/>
+    </linearGradient>
+    <linearGradient id="b" x1="100%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#e8c547"/>
+      <stop offset="100%" stop-color="#8a6e1a"/>
+    </linearGradient>
+  </defs>
+  <!-- Swords scaled to 70% with padding, centered in 512x512 -->
+  <!-- Original coords 0-100, scaled to ~358px starting at offset 77 -->
+  <g transform="translate(77,77) scale(3.58)">
+    <line x1="18" y1="18" x2="82" y2="82" stroke="url(#a)" stroke-width="7" stroke-linecap="round"/>
+    <polygon points="74,68 88,88 68,76" fill="url(#a)"/>
+    <line x1="32" y1="48" x2="52" y2="28" stroke="url(#a)" stroke-width="6" stroke-linecap="round"/>
+    <circle cx="18" cy="18" r="8" fill="url(#a)"/>
+    <line x1="82" y1="18" x2="18" y2="82" stroke="url(#b)" stroke-width="7" stroke-linecap="round"/>
+    <polygon points="26,68 12,88 32,76" fill="url(#b)"/>
+    <line x1="68" y1="48" x2="48" y2="28" stroke="url(#b)" stroke-width="6" stroke-linecap="round"/>
+    <circle cx="82" cy="18" r="8" fill="url(#b)"/>
+    <circle cx="50" cy="50" r="7" fill="#c9a227" stroke="#e8c547" stroke-width="2"/>
+  </g>
+</svg>
