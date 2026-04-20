@@ -84,11 +84,11 @@ export function LoginPage() {
           Feudum
         </h1>
 
-        <p className="font-body text-parchment-dim text-lg sm:text-xl max-w-xl leading-relaxed mb-2">
+        <p className="font-body text-parchment text-lg sm:text-xl max-w-xl leading-relaxed mb-2">
           Un reino te espera. Construye, investiga y conquista en un universo
           compartido con miles de jugadores — gratis, sin trampa.
         </p>
-        <p className="font-body text-parchment-dim text-sm sm:text-base max-w-lg leading-relaxed mb-10">
+        <p className="font-body text-parchment text-sm sm:text-base max-w-lg leading-relaxed mb-10">
           Inspirado en los grandes juegos de estrategia por navegador,
           reinterpretado con mecánicas modernas para 2026.
         </p>
@@ -173,7 +173,7 @@ export function LoginPage() {
           <h2 className="font-display text-3xl sm:text-4xl text-gold-light tracking-[0.12em] uppercase mb-4">
             ¿Listo para gobernar?
           </h2>
-          <p className="font-body text-parchment-dim text-base mb-8 leading-relaxed">
+          <p className="font-body text-parchment text-base mb-8 leading-relaxed">
             Miles de reinos ya luchan por el dominio del universo. El tuyo te espera.
           </p>
           <button
