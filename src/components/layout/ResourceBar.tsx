@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom'
-import { Menu, Zap, Bell, UserRound, Castle, TreePine, Mountain, Wheat } from 'lucide-react'
+import { Menu, Zap, Bell, UserRound, TreePine, Mountain, Wheat } from 'lucide-react'
 import { useKingdom } from '@/features/kingdom/useKingdom'
 import { useResourceTicker } from '@/features/kingdom/useResourceTicker'
 import { useAuth } from '@/features/auth/useAuth'
@@ -8,6 +8,7 @@ import { KingdomSelector } from './KingdomSelector'
 import { ResourcePill } from './ResourcePill'
 import { EnergyPill } from './EnergyPill'
 import { MobileResources } from './MobileResources'
+import { FeuduLogo } from '@/components/FeuduLogo'
 
 interface Props {
   onMenuToggle: () => void
@@ -31,13 +32,10 @@ export function ResourceBar({ onMenuToggle }: Props) {
           <Menu size={18} />
         </button>
         <div className="flex items-center gap-1.5 min-w-0">
-          <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-gold/10 border border-gold/20 flex items-center justify-center shrink-0">
-            <Castle size={12} className="text-gold" />
-          </div>
-          <div className="hidden sm:flex flex-col leading-none gap-0.5">
-            <span className="font-display text-sm text-gold-dim tracking-[0.18em] uppercase leading-none">Feudum</span>
-            <span className="font-ui text-[0.5rem] text-gold-dim/50 tracking-[0.15em] uppercase">Anno MMXXVI</span>
-          </div>
+          {/* Mobile: icon only */}
+          <FeuduLogo variant="icon" height={28} className="sm:hidden shrink-0" />
+          {/* Desktop: full logo */}
+          <FeuduLogo variant="full" height={30} className="hidden sm:block shrink-0" />
           <KingdomSelector kingdomName={kingdom?.name} />
         </div>
       </div>

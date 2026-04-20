@@ -1,6 +1,6 @@
 import { useSearchParams } from 'react-router-dom'
-import { Shield } from 'lucide-react'
 import { useAuth } from '@/features/auth/useAuth'
+import { FeuduLogo } from '@/components/FeuduLogo'
 
 export function LoginPage() {
   const [searchParams] = useSearchParams()
@@ -11,14 +11,10 @@ export function LoginPage() {
     <div className="bg-login min-h-screen flex items-center justify-center p-4">
       <div className="w-full max-w-[340px] anim-fade-up">
         {/* Logo / Brand */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-[3.75rem] h-[3.75rem] rounded-full mb-5 anim-float bg-gold/8 border border-gold/20 shadow-[0_4px_24px_rgba(184,134,11,0.12)]">
-            <Shield size={26} className="text-gold" />
-          </div>
-          <h1 className="font-display text-[2rem] text-ink tracking-[0.18em] uppercase leading-none">
-            Feudum
-          </h1>
-          <p className="font-body text-ink-muted text-sm mt-2.5 tracking-wide">
+        <div className="flex flex-col items-center mb-8 gap-4">
+          <FeuduLogo variant="icon" height={64} className="anim-float" />
+          <FeuduLogo variant="full" height={34} />
+          <p className="font-body text-ink-muted text-sm tracking-wide">
             Forja tu legado en piedra y sangre
           </p>
         </div>
