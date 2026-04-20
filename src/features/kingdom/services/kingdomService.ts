@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase'
+import { http } from '@/shared/services/http'
 import { snakeToCamel, snakeToCamelArray } from '@/lib/game/caseConvert'
 import { effectiveProduction } from '@/lib/game/production'
 import type { KingdomSummary } from '@/shared/types'
@@ -36,6 +37,11 @@ export const kingdomService = {
   async getMe(id?: string | null): Promise<Kingdom> {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) throw new Error('No autenticado')
+
+    // Process any completed queues (buildings/units/research) before reading state.
+    // This ensures unit counts, building levels, etc. are always up-to-date even
+    // when the user navigates away from a page before its countdown fires.
+    try { await http.post<{ processed: number }>('/queues/sync', {}) } catch { /* non-fatal */ }
 
     // my_kingdom(kid) RPC: returns the caller's kingdom with all private columns
     // (resources, units, buildings). Pass kid=null for the first one.
