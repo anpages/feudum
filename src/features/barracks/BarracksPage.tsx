@@ -28,7 +28,7 @@ import {
   GiMissileLauncher,
 } from 'react-icons/gi'
 import { Card } from '@/components/ui/Card'
-import { useBarracks, useTrainUnit, type UnitInfo } from '@/features/barracks/useBarracks'
+import { useBarracks, useTrainUnit } from '@/features/barracks/useBarracks'
 import { useAccelerate } from '@/features/queues/useAccelerate'
 import { useQueueSync } from '@/features/queues/useQueueSync'
 import { useKingdom } from '@/features/kingdom/useKingdom'
@@ -70,12 +70,9 @@ const UNIT_META: Record<string, { name: string; Icon: IconType; description: str
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
-type Tab = 'units' | 'support' | 'missiles'
-
 const BARRACKS_GUIDE_KEY = 'barracks_guide_seen'
 
 export function BarracksPage() {
-  const [tab, setTab] = useState<Tab>('units')
   const [guideVisible, setGuideVisible] = useState(() => !localStorage.getItem(BARRACKS_GUIDE_KEY))
   const { data, isLoading, refetch } = useBarracks()
   const { data: kingdom } = useKingdom()
@@ -97,14 +94,13 @@ export function BarracksPage() {
 
   if (isLoading) return <BarracksSkeleton />
 
-  const TAB_ITEMS: Record<Tab, UnitInfo[]> = {
-    units:   data?.units   ?? [],
-    support: data?.support ?? [],
-    missiles: data?.missiles ?? [],
-  }
+  const sections = [
+    { label: 'Apoyo',   icon: <GiCaravan size={14} />,       items: data?.support ?? [] },
+    { label: 'Combate', icon: <GiCrossedSwords size={14} />, items: [...(data?.units ?? []), ...(data?.missiles ?? [])] },
+  ]
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div className="anim-fade-up">
         <span className="section-heading">Ejército</span>
         <h1 className="page-title mt-0.5">Cuartel</h1>
@@ -120,8 +116,8 @@ export function BarracksPage() {
           <div className="flex-1 min-w-0 space-y-1">
             <p className="font-ui text-xs font-semibold text-ink">¿Por dónde empezar?</p>
             <p className="font-body text-xs text-ink-muted leading-relaxed">
-              Entrena <strong className="text-ink">Escuderos</strong> (Combate) para tener tropas baratas.
-              Luego un <strong className="text-ink">Explorador</strong> (Apoyo) para espiar reinos vecinos antes de atacar.
+              Entrena un <strong className="text-ink">Explorador</strong> (Apoyo) para espiar reinos vecinos.
+              Luego <strong className="text-ink">Escuderos</strong> (Combate) para tener tropas baratas de ataque.
             </p>
           </div>
           <button onClick={dismissGuide} className="shrink-0 p-1 rounded text-ink-muted hover:text-ink transition-colors">
@@ -130,51 +126,39 @@ export function BarracksPage() {
         </div>
       )}
 
-      {/* Tabs */}
-      <div className="anim-fade-up-1">
-        <div className="flex gap-1 p-1 bg-parchment-warm rounded-md w-fit">
-          {([
-            ['units',    'Combate'],
-            ['support',  'Apoyo'],
-            ['missiles', 'Misiles'],
-          ] as [Tab, string][]).map(([t, label]) => (
-            <button
-              key={t}
-              onClick={() => setTab(t)}
-              className={`px-4 py-1.5 rounded text-xs font-ui font-semibold uppercase tracking-wide transition-all ${
-                tab === t
-                  ? 'bg-white text-gold shadow-sm border border-gold/15'
-                  : 'text-ink-muted hover:text-ink'
-              }`}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-        {TAB_ITEMS[tab].map((u, i) => {
-          const meta = UNIT_META[u.id]
-          if (!meta) return null
-          return (
-            <UnitCard
-              key={u.id}
-              unit={u}
-              meta={meta}
-              resources={resources}
-              kingdom={kingdom}
-              research={researchData?.research}
-              isTraining={train.isPending && train.variables?.unit === u.id}
-              onTrain={amount => train.mutate({ unit: u.id, amount })}
-              onCountdownEnd={handleCountdownEnd}
-              onAccelerate={u.inQueue ? () => accelerate.mutate('unit') : undefined}
-              isAccelerating={accelerate.isPending}
-              animClass={`anim-fade-up-${Math.min(i + 1, 5) as 1 | 2 | 3 | 4 | 5}`}
-            />
-          )
-        })}
-      </div>
+      {sections.map(({ label, icon, items }) => {
+        if (!items.length) return null
+        return (
+          <section key={label}>
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-gold">{icon}</span>
+              <span className="section-heading mb-0">{label}</span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+              {items.map((u, i) => {
+                const meta = UNIT_META[u.id]
+                if (!meta) return null
+                return (
+                  <UnitCard
+                    key={u.id}
+                    unit={u}
+                    meta={meta}
+                    resources={resources}
+                    kingdom={kingdom}
+                    research={researchData?.research}
+                    isTraining={train.isPending && train.variables?.unit === u.id}
+                    onTrain={amount => train.mutate({ unit: u.id, amount })}
+                    onCountdownEnd={handleCountdownEnd}
+                    onAccelerate={u.inQueue ? () => accelerate.mutate('unit') : undefined}
+                    isAccelerating={accelerate.isPending}
+                    animClass={`anim-fade-up-${Math.min(i + 1, 5) as 1 | 2 | 3 | 4 | 5}`}
+                  />
+                )
+              })}
+            </div>
+          </section>
+        )
+      })}
     </div>
   )
 }
