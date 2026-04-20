@@ -7,22 +7,22 @@ const FEATURES = [
   {
     Icon: Castle,
     title: 'Construye tu reino',
-    desc: 'Levanta aserraderos, canteras y granjas. Amplía tu capacidad productiva con talleres, gremios y catedrales que multiplican cada recurso.',
+    desc: 'Levanta aserraderos, canteras y granjas. Amplía tu capacidad productiva con talleres, gremios y catedrales.',
   },
   {
     Icon: FlaskConical,
     title: 'Investiga tecnologías',
-    desc: 'Desbloquea mejoras de combate, logística y magia en tu academia. Cada nivel puede inclinar la balanza en el campo de batalla.',
+    desc: 'Desbloquea mejoras de combate, logística y magia en tu academia. Cada nivel marca la diferencia en batalla.',
   },
   {
     Icon: Swords,
     title: 'Conquista el mapa',
-    desc: 'Entrena escuderos, caballeros y paladines. Ataca reinos rivales, espía sus defensas y saquea sus recursos para financiar tu expansión.',
+    desc: 'Entrena escuderos, caballeros y paladines. Ataca reinos rivales y saquea sus recursos.',
   },
   {
     Icon: Map,
     title: 'Expande tu dominio',
-    desc: 'Coloniza territorios en el universo. Gestiona múltiples reinos simultáneamente y coordina tus ejércitos a través del mapa.',
+    desc: 'Coloniza territorios en el universo. Gestiona múltiples reinos y coordina tus ejércitos.',
   },
 ]
 
@@ -31,19 +31,19 @@ const STEPS = [
     Icon: UserPlus,
     num: '01',
     title: 'Crea tu cuenta',
-    desc: 'Entra con Google en segundos. Sin formularios, sin esperas. Tu reino se genera automáticamente en el universo.',
+    desc: 'Entra con Google en segundos. Tu reino se genera automáticamente en el universo.',
   },
   {
     Icon: Globe,
     num: '02',
     title: 'Construye y crece',
-    desc: 'Extrae recursos, levanta edificios e investiga tecnologías. El universo avanza en tiempo real aunque no estés conectado.',
+    desc: 'Extrae recursos, levanta edificios e investiga tecnologías. El universo avanza en tiempo real.',
   },
   {
     Icon: Trophy,
     num: '03',
     title: 'Compite y conquista',
-    desc: 'Ataca reinos rivales, asciende en el ranking y lidera la temporada. El objetivo final: derrotar al Jefe Dragón y reclamar el trono.',
+    desc: 'Asciende en el ranking y lidera la temporada. El objetivo: derrotar al Jefe Dragón y reclamar el trono.',
   },
 ]
 
@@ -53,17 +53,21 @@ export function LoginPage() {
   const { signInWithGoogle } = useAuth()
 
   return (
-    <div className="min-h-screen bg-game text-parchment">
+    <div className="min-h-screen" style={{ background: '#faf6ef', color: '#1c1208' }}>
 
       {/* ── Navbar ────────────────────────────────────────────────────────── */}
-      <nav className="sticky top-0 z-50 border-b border-gold/10 glass px-5 sm:px-8 h-14 flex items-center justify-between">
+      <nav style={{ background: '#ffffff', borderBottom: '1px solid rgba(184,134,11,0.2)' }}
+        className="sticky top-0 z-50 px-5 sm:px-8 h-14 flex items-center justify-between shadow-sm">
         <div className="flex items-center gap-2.5">
           <FeuduLogo variant="icon" height={26} className="shrink-0" />
-          <span className="font-display text-sm text-gold-dim tracking-[0.18em] uppercase">Feudum</span>
+          <span className="font-display text-sm tracking-[0.18em] uppercase" style={{ color: '#b8860b' }}>Feudum</span>
         </div>
         <button
           onClick={signInWithGoogle}
-          className="flex items-center gap-2 px-4 py-1.5 rounded border border-gold/25 bg-parchment hover:bg-gold-soft active:scale-[0.98] transition-all duration-150 font-ui font-semibold text-ink-mid text-xs tracking-wide shadow-sm"
+          className="flex items-center gap-2 px-4 py-1.5 rounded font-ui font-semibold text-xs tracking-wide transition-all duration-150 active:scale-[0.98]"
+          style={{ background: '#b8860b', color: '#ffffff', border: 'none' }}
+          onMouseOver={e => (e.currentTarget.style.background = '#9a7010')}
+          onMouseOut={e => (e.currentTarget.style.background = '#b8860b')}
         >
           <GoogleIcon />
           Jugar gratis
@@ -71,67 +75,76 @@ export function LoginPage() {
       </nav>
 
       {/* ── Hero ──────────────────────────────────────────────────────────── */}
-      <section className="flex flex-col items-center justify-center text-center px-6 py-24 sm:py-32">
-        <div className="flex items-center gap-3 mb-6">
-          <FeuduLogo variant="icon" height={52} className="anim-float" />
+      <section className="flex flex-col items-center justify-center text-center px-6 py-24 sm:py-32"
+        style={{ background: 'linear-gradient(180deg, #faf6ef 0%, #f4ead8 100%)' }}>
+
+        <div className="mb-6 anim-float">
+          <FeuduLogo variant="icon" height={64} />
         </div>
 
-        <p className="font-ui text-[0.6rem] text-gold/50 tracking-[0.3em] uppercase mb-3">
+        <p className="font-ui text-[0.6rem] tracking-[0.3em] uppercase mb-3" style={{ color: '#8a6e1a' }}>
           Anno MMXXVI · Estrategia medieval multijugador
         </p>
 
-        <h1 className="font-display text-5xl sm:text-6xl text-gold-light tracking-[0.14em] uppercase leading-none mb-5">
+        <h1 className="font-display text-5xl sm:text-6xl tracking-[0.14em] uppercase leading-none mb-5"
+          style={{ color: '#b8860b' }}>
           Feudum
         </h1>
 
-        <p className="font-body text-parchment text-lg sm:text-xl max-w-xl leading-relaxed mb-2">
+        <p className="font-body text-lg sm:text-xl max-w-xl leading-relaxed mb-3" style={{ color: '#1c1208' }}>
           Un reino te espera. Construye, investiga y conquista en un universo
           compartido con miles de jugadores — gratis, sin trampa.
         </p>
-        <p className="font-body text-parchment text-sm sm:text-base max-w-lg leading-relaxed mb-10">
-          Inspirado en los grandes juegos de estrategia por navegador,
+        <p className="font-body text-base max-w-lg leading-relaxed mb-10" style={{ color: '#4a3820' }}>
+          Inspirado en los grandes juegos de estrategia por navegador de los 2000,
           reinterpretado con mecánicas modernas para 2026.
         </p>
 
         {oauthError && (
-          <div className="mb-5 px-4 py-3 rounded border border-crimson/20 bg-crimson/5 max-w-sm w-full text-center">
-            <p className="font-ui text-xs text-crimson">
-              No fue posible iniciar sesión con Google. Inténtalo de nuevo.
-            </p>
+          <div className="mb-5 px-4 py-3 rounded max-w-sm w-full text-center"
+            style={{ background: '#fef2f2', border: '1px solid #9b1a1a', color: '#9b1a1a' }}>
+            <p className="font-ui text-xs">No fue posible iniciar sesión con Google. Inténtalo de nuevo.</p>
           </div>
         )}
 
         <button
           onClick={signInWithGoogle}
-          className="flex items-center gap-3 px-7 py-3.5 rounded border border-gold/30 bg-parchment hover:bg-gold-soft active:scale-[0.98] transition-all duration-150 font-ui font-bold text-ink-mid tracking-wide text-sm shadow-md hover:shadow-lg hover:border-gold/50 mb-3"
+          className="flex items-center gap-3 px-7 py-3.5 rounded font-ui font-bold tracking-wide text-sm transition-all duration-150 active:scale-[0.98] mb-3"
+          style={{ background: '#b8860b', color: '#ffffff', border: 'none', boxShadow: '0 2px 8px rgba(184,134,11,0.35)' }}
+          onMouseOver={e => (e.currentTarget.style.background = '#9a7010')}
+          onMouseOut={e => (e.currentTarget.style.background = '#b8860b')}
         >
           <GoogleIcon size={18} />
           Jugar gratis con Google
         </button>
 
-        <p className="font-ui text-[0.58rem] text-parchment-dim/70 tracking-[0.18em] uppercase">
+        <p className="font-ui text-xs" style={{ color: '#8a7456' }}>
           Sin tarjeta de crédito · Sin microtransacciones
         </p>
       </section>
 
       {/* ── Features ──────────────────────────────────────────────────────── */}
-      <section className="border-t border-gold/10 py-20 px-6">
+      <section className="py-20 px-6" style={{ background: '#ffffff', borderTop: '1px solid rgba(184,134,11,0.15)' }}>
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-14">
-            <p className="font-ui text-[0.6rem] text-gold/55 tracking-[0.28em] uppercase mb-3">Mecánicas de juego</p>
-            <h2 className="font-display text-3xl sm:text-4xl text-parchment tracking-[0.1em] uppercase">
+            <p className="font-ui text-[0.6rem] tracking-[0.28em] uppercase mb-3" style={{ color: '#8a6e1a' }}>
+              Mecánicas de juego
+            </p>
+            <h2 className="font-display text-3xl sm:text-4xl tracking-[0.1em] uppercase" style={{ color: '#1c1208' }}>
               Todo en un universo vivo
             </h2>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
             {FEATURES.map(({ Icon, title, desc }) => (
-              <div key={title} className="glass border border-gold/10 rounded p-6 flex flex-col gap-3 hover:border-gold/20 transition-colors duration-200">
-                <div className="w-9 h-9 rounded flex items-center justify-center border border-gold/15 bg-gold/5">
-                  <Icon size={16} className="text-gold" />
+              <div key={title} className="rounded-lg p-6 flex flex-col gap-3"
+                style={{ background: '#faf6ef', border: '1px solid rgba(184,134,11,0.2)' }}>
+                <div className="w-9 h-9 rounded flex items-center justify-center"
+                  style={{ background: 'rgba(184,134,11,0.1)', border: '1px solid rgba(184,134,11,0.25)' }}>
+                  <Icon size={16} style={{ color: '#b8860b' }} />
                 </div>
-                <h3 className="font-ui text-sm font-semibold text-parchment tracking-wide">{title}</h3>
-                <p className="font-body text-sm text-parchment-dim leading-relaxed">{desc}</p>
+                <h3 className="font-ui text-sm font-semibold tracking-wide" style={{ color: '#1c1208' }}>{title}</h3>
+                <p className="font-body text-sm leading-relaxed" style={{ color: '#4a3820' }}>{desc}</p>
               </div>
             ))}
           </div>
@@ -139,27 +152,30 @@ export function LoginPage() {
       </section>
 
       {/* ── How it works ──────────────────────────────────────────────────── */}
-      <section className="border-t border-gold/10 py-20 px-6">
+      <section className="py-20 px-6" style={{ background: '#f4ead8', borderTop: '1px solid rgba(184,134,11,0.15)' }}>
         <div className="max-w-4xl mx-auto">
           <div className="text-center mb-14">
-            <p className="font-ui text-[0.6rem] text-gold/55 tracking-[0.28em] uppercase mb-3">Cómo funciona</p>
-            <h2 className="font-display text-3xl sm:text-4xl text-parchment tracking-[0.1em] uppercase">
+            <p className="font-ui text-[0.6rem] tracking-[0.28em] uppercase mb-3" style={{ color: '#8a6e1a' }}>
+              Cómo funciona
+            </p>
+            <h2 className="font-display text-3xl sm:text-4xl tracking-[0.1em] uppercase" style={{ color: '#1c1208' }}>
               Empieza en 3 pasos
             </h2>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-8">
             {STEPS.map(({ Icon, num, title, desc }) => (
-              <div key={title} className="flex flex-col items-center text-center sm:items-start sm:text-left gap-4">
+              <div key={title} className="flex flex-col gap-4">
                 <div className="flex items-center gap-3">
-                  <span className="font-display text-3xl text-gold/20 leading-none">{num}</span>
-                  <div className="w-8 h-8 rounded-full border border-gold/20 flex items-center justify-center">
-                    <Icon size={14} className="text-gold" />
+                  <span className="font-display text-3xl leading-none" style={{ color: 'rgba(184,134,11,0.3)' }}>{num}</span>
+                  <div className="w-8 h-8 rounded-full flex items-center justify-center"
+                    style={{ border: '1px solid rgba(184,134,11,0.3)', background: 'rgba(184,134,11,0.08)' }}>
+                    <Icon size={14} style={{ color: '#b8860b' }} />
                   </div>
                 </div>
                 <div>
-                  <h3 className="font-ui text-sm font-semibold text-parchment tracking-wide mb-2">{title}</h3>
-                  <p className="font-body text-sm text-parchment-dim leading-relaxed">{desc}</p>
+                  <h3 className="font-ui text-sm font-semibold tracking-wide mb-2" style={{ color: '#1c1208' }}>{title}</h3>
+                  <p className="font-body text-sm leading-relaxed" style={{ color: '#4a3820' }}>{desc}</p>
                 </div>
               </div>
             ))}
@@ -168,17 +184,20 @@ export function LoginPage() {
       </section>
 
       {/* ── Final CTA ─────────────────────────────────────────────────────── */}
-      <section className="border-t border-gold/10 py-20 px-6 text-center">
+      <section className="py-20 px-6 text-center" style={{ background: '#ffffff', borderTop: '1px solid rgba(184,134,11,0.15)' }}>
         <div className="max-w-lg mx-auto">
-          <h2 className="font-display text-3xl sm:text-4xl text-gold-light tracking-[0.12em] uppercase mb-4">
+          <h2 className="font-display text-3xl sm:text-4xl tracking-[0.12em] uppercase mb-4" style={{ color: '#b8860b' }}>
             ¿Listo para gobernar?
           </h2>
-          <p className="font-body text-parchment text-base mb-8 leading-relaxed">
+          <p className="font-body text-base mb-8 leading-relaxed" style={{ color: '#4a3820' }}>
             Miles de reinos ya luchan por el dominio del universo. El tuyo te espera.
           </p>
           <button
             onClick={signInWithGoogle}
-            className="inline-flex items-center gap-3 px-7 py-3.5 rounded border border-gold/30 bg-parchment hover:bg-gold-soft active:scale-[0.98] transition-all duration-150 font-ui font-bold text-ink-mid tracking-wide text-sm shadow-md hover:shadow-lg hover:border-gold/50"
+            className="inline-flex items-center gap-3 px-7 py-3.5 rounded font-ui font-bold tracking-wide text-sm transition-all duration-150 active:scale-[0.98]"
+            style={{ background: '#b8860b', color: '#ffffff', border: 'none', boxShadow: '0 2px 8px rgba(184,134,11,0.35)' }}
+            onMouseOver={e => (e.currentTarget.style.background = '#9a7010')}
+            onMouseOut={e => (e.currentTarget.style.background = '#b8860b')}
           >
             <GoogleIcon size={18} />
             Jugar gratis con Google
@@ -187,24 +206,18 @@ export function LoginPage() {
       </section>
 
       {/* ── Footer ────────────────────────────────────────────────────────── */}
-      <footer className="border-t border-gold/8 py-6 px-6">
+      <footer className="py-6 px-6" style={{ background: '#faf6ef', borderTop: '1px solid rgba(184,134,11,0.15)' }}>
         <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
           <div className="flex items-center gap-2">
-            <FeuduLogo variant="icon" height={20} className="opacity-40" />
-            <span className="font-ui text-[0.58rem] text-parchment-dim/30 tracking-[0.18em] uppercase">
+            <FeuduLogo variant="icon" height={20} />
+            <span className="font-ui text-xs tracking-[0.18em] uppercase" style={{ color: '#8a7456' }}>
               Feudum · Anno MMXXVI
             </span>
           </div>
-          <p className="font-ui text-[0.52rem] text-parchment-dim/25 tracking-[0.1em] text-center">
+          <p className="font-ui text-xs text-center" style={{ color: '#8a7456' }}>
             Inspirado en{' '}
-            <a
-              href="https://github.com/lanedirt/OGameX"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hover:text-parchment-dim/50 transition-colors underline underline-offset-2"
-            >
-              OGameX
-            </a>
+            <a href="https://github.com/lanedirt/OGameX" target="_blank" rel="noopener noreferrer"
+              style={{ color: '#b8860b' }}>OGameX</a>
             {' '}(GPL) · Reimplementado con visión medieval y moderna para 2026
           </p>
         </div>
