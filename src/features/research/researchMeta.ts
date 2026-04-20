@@ -9,7 +9,7 @@ export const RESEARCH_META: Record<string, { name: string; description: string; 
   fortification:    { category: 'Combate',       name: 'Fortificación',     description: 'Integridad estructural mejorada para todas las defensas.' },
   horsemanship:     { category: 'Logística',     name: 'Equitación',        description: 'Caballos más rápidos y resistentes para tus ejércitos.' },
   cartography:      { category: 'Logística',     name: 'Cartografía',       description: 'Mapas más precisos que aumentan la velocidad de desplazamiento.' },
-  tradeRoutes:      { category: 'Logística',     name: 'Rutas Comerciales', description: 'Redes de comercio que permiten el hiperdesplazamiento de flotas.' },
+  tradeRoutes:      { category: 'Logística',     name: 'Rutas Comerciales', description: 'Red de caminos y posadas que acelera el desplazamiento de los ejércitos.' },
   spycraft:         { category: 'Inteligencia',  name: 'Espionaje',         description: 'Arte de infiltrarse en reinos enemigos sin ser detectado.' },
   logistics:        { category: 'Inteligencia',  name: 'Logística',         description: 'Coordinación de ejércitos que aumenta el número máximo de misiones simultáneas.' },
   exploration:      { category: 'Inteligencia',  name: 'Exploración',       description: 'Permite colonizar nuevos territorios y fundar reinos adicionales.' },

@@ -204,15 +204,15 @@ function MissionForm({
       <div className="space-y-2">
         {isMissile ? (
           <>
-            <p className="font-ui text-xs text-ink-muted uppercase tracking-wider">Misiles a lanzar</p>
+            <p className="font-ui text-xs text-ink-muted uppercase tracking-wider">Bombas a lanzar</p>
             {(kingdom?.ballistic ?? 0) === 0 ? (
               <p className="font-body text-xs text-ink-muted/50 italic py-3 text-center">
-                No tienes misiles balísticos. Fabrípalos en el Cuartel → Misiles.
+                No tienes Bombas Alquímicas. Fábricalas en el Cuartel → Combate.
               </p>
             ) : (
               <div className="flex items-center gap-2">
                 <Rocket size={14} className="text-crimson shrink-0" />
-                <span className="font-ui text-xs text-ink flex-1">Misil Balístico</span>
+                <span className="font-ui text-xs text-ink flex-1">Bomba Alquímica</span>
                 <span className="font-ui text-xs text-ink-muted tabular-nums shrink-0">
                   {(kingdom?.ballistic ?? 0).toLocaleString()} disponibles
                 </span>

@@ -17,13 +17,13 @@ const DEFENSE_META: Record<string, { name: string; Icon: IconType; description: 
   archer:       { Icon: GiArcher,       name: 'Arquero',           description: 'Defensa básica de bajo coste. Rapidez de disparo.' },
   crossbowman:  { Icon: GiCrossbow,     name: 'Ballestero',        description: 'Mayor alcance y penetración que el arquero.' },
   ballista:     { Icon: GiBallista,     name: 'Ballista',          description: 'Defensa pesada de largo alcance.' },
-  trebuchet:    { Icon: GiTrebuchet,    name: 'Trebuchet',         description: 'Cañón de alta potencia. Destruye flotas enemigas.' },
+  trebuchet:    { Icon: GiTrebuchet,    name: 'Trebuchet',         description: 'Arma de asedio de largo alcance. Intercepta bombas alquímicas enemigas (1:1).' },
   mageTower:    { Icon: GiCrystalBall,  name: 'Torre Mágica',      description: 'Defensa energética con escudo poderoso.' },
   dragonCannon: { Icon: GiLuciferCannon, name: 'Cañón de Dragón',  description: 'La defensa más devastadora del reino.' },
   palisade:     { Icon: GiPalisade,     name: 'Empalizada',        description: 'Cúpula de escudo pequeña. Protege todas las demás defensas.' },
   castleWall:   { Icon: GiDefensiveWall, name: 'Muralla del Castillo', description: 'Cúpula de escudo grande. Una sola por reino.' },
-  moat:         { Icon: GiWrench,       name: 'Foso',              description: 'Intercepta misiles balísticos entrantes.' },
-  catapult:     { Icon: GiCatapult,     name: 'Catapulta',         description: 'Misil de largo alcance. Destruye defensas enemigas.' },
+  moat:         { Icon: GiWrench,       name: 'Foso',              description: 'Barrera defensiva que obstaculiza y ralentiza a los ejércitos atacantes.' },
+  catapult:     { Icon: GiCatapult,     name: 'Catapulta',         description: 'Arma de asedio. Destruye defensas estáticas enemigas.' },
 }
 
 export function DefensePage() {

@@ -56,7 +56,7 @@ const UNIT_META: Record<string, { name: string; Icon: IconType; description: str
   archer:      { Icon: GiBowArrow,      name: 'Arquero',             description: 'Defensa ligera. Eficaz contra infantería.' },
   crossbowman: { Icon: GiCrossbow,      name: 'Ballestero',          description: 'Defensa reforzada con alcance mayor.' },
   ballista:    { Icon: GiBallista,      name: 'Ballista',            description: 'Artillería pesada. Destruye unidades acorazadas.' },
-  trebuchet:   { Icon: GiCatapult,      name: 'Trebuchet',           description: 'Cañón de asedio. Intercepta misiles balísticos (1:1).' },
+  trebuchet:   { Icon: GiCatapult,      name: 'Trebuchet',           description: 'Arma de asedio de largo alcance. Intercepta bombas alquímicas enemigas (1:1).' },
   mageTower:   { Icon: GiWizardStaff,   name: 'Torre Maga',          description: 'Defensa arcana con escudo masivo.' },
   dragonCannon:{ Icon: GiDragonBreath,  name: 'Cañón Dragón',        description: 'Turreta de plasma dracónico. Devastadora.' },
   palisade:    { Icon: GiWoodBeam,      name: 'Palizada',            description: 'Escudo pequeño. Protege toda la defensa.' },
@@ -65,7 +65,7 @@ const UNIT_META: Record<string, { name: string; Icon: IconType; description: str
   catapult:    { Icon: GiCatapult,      name: 'Catapulta',           description: 'Arma de asedio. Destruye posiciones enemigas.' },
   beacon:      { Icon: GiWatchtower,    name: 'Faro',                description: 'Torre de vigilancia. Detecta ejércitos enemigos.' },
   // Missiles
-  ballistic:   { Icon: GiMissileLauncher, name: 'Misil Balístico',   description: 'Misil de un solo uso. Daña defensas enemigas a distancia. Los trebuchets lo interceptan.' },
+  ballistic:   { Icon: GiMissileLauncher, name: 'Bomba Alquímica',   description: 'Arma de un solo uso. Daña defensas enemigas a distancia. Los trebuchets la interceptan.' },
 }
 
 // ── Page ──────────────────────────────────────────────────────────────────────

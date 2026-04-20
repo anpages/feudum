@@ -60,7 +60,7 @@ export const UNIT_LABELS: Record<string, string> = {
   castleWall: 'Muralla',
   moat: 'Foso',
   catapult: 'Catapulta',
-  ballistic: 'Misil Balístico',
+  ballistic: 'Bomba Alquímica',
 }
 
 export function label(id: string): string {

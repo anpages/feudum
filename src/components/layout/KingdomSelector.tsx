@@ -23,13 +23,7 @@ export function KingdomSelector({ kingdomName }: { kingdomName?: string }) {
 
   if (!kingdomName) return null
 
-  if (!hasMultiple) {
-    return (
-      <span className="font-ui text-[0.65rem] text-ink-muted truncate max-w-[100px] leading-tight mt-px">
-        {kingdomName}
-      </span>
-    )
-  }
+  if (!hasMultiple) return null
 
   return (
     <div ref={ref} className="relative">
