@@ -1,0 +1,20 @@
+CREATE TABLE "battle_log" (
+  "id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+  "attacker_kingdom_id" uuid,
+  "attacker_name" varchar(100) NOT NULL,
+  "attacker_is_npc" boolean DEFAULT false NOT NULL,
+  "defender_kingdom_id" uuid,
+  "defender_name" varchar(100) NOT NULL,
+  "defender_is_npc" boolean DEFAULT false NOT NULL,
+  "mission_type" varchar(20) NOT NULL,
+  "outcome" varchar(10) NOT NULL,
+  "loot_wood" real DEFAULT 0 NOT NULL,
+  "loot_stone" real DEFAULT 0 NOT NULL,
+  "loot_grain" real DEFAULT 0 NOT NULL,
+  "attacker_losses" integer DEFAULT 0 NOT NULL,
+  "defender_losses" integer DEFAULT 0 NOT NULL,
+  "rounds" integer DEFAULT 0 NOT NULL,
+  "attacker_coord" varchar(30) NOT NULL,
+  "defender_coord" varchar(30) NOT NULL,
+  "created_at" timestamp DEFAULT now() NOT NULL
+);

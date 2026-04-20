@@ -7,6 +7,7 @@ import {
 import { UNIT_KEYS, DEFENSE_KEYS, extractUnits } from './keys.js'
 import { setSetting, getStringSetting } from '../settings.js'
 import { sendPush } from '../push.js'
+import { insertBattleLog, sumLosses } from '../battle_log.js'
 
 async function upsertDebris(realm, region, slot, debris) {
   if (debris.wood <= 0 && debris.stone <= 0) return
@@ -110,6 +111,16 @@ export async function processAttack(mission, myKingdom, now, targetKingdom) {
       }
     }
 
+    insertBattleLog({
+      attackerKingdomId: myKingdom.id,      attackerName: myKingdom.name,    attackerIsNpc: false,
+      defenderKingdomId: targetKingdom?.id, defenderName: targetName,        defenderIsNpc: targetKingdom?.isNpc ?? false,
+      missionType: 'attack', outcome,
+      lootWood: loot.wood, lootStone: loot.stone, lootGrain: loot.grain,
+      attackerLosses: sumLosses(lostAtk), defenderLosses: sumLosses(lostDef), rounds,
+      attackerCoord: `${mission.startRealm}:${mission.startRegion}:${mission.startSlot}`,
+      defenderCoord: `${mission.targetRealm}:${mission.targetRegion}:${mission.targetSlot}`,
+    }).catch(() => {})
+
     await db.insert(messages).values({
       userId: myKingdom.userId, type: 'battle',
       subject: `${outcome === 'victory' ? '⚔️ Victoria' : '🤝 Empate'} contra ${targetName}`,
@@ -148,6 +159,16 @@ export async function processAttack(mission, myKingdom, now, targetKingdom) {
       woodLoad: 0, stoneLoad: 0, grainLoad: 0,
       result: JSON.stringify(battleResult), updatedAt: new Date(),
     }).where(eq(armyMissions.id, mission.id))
+
+    insertBattleLog({
+      attackerKingdomId: myKingdom.id,      attackerName: myKingdom.name, attackerIsNpc: false,
+      defenderKingdomId: targetKingdom?.id, defenderName: targetName,     defenderIsNpc: targetKingdom?.isNpc ?? false,
+      missionType: 'attack', outcome: 'defeat',
+      lootWood: 0, lootStone: 0, lootGrain: 0,
+      attackerLosses: sumLosses(lostAtk), defenderLosses: sumLosses(lostDef), rounds,
+      attackerCoord: `${mission.startRealm}:${mission.startRegion}:${mission.startSlot}`,
+      defenderCoord: `${mission.targetRealm}:${mission.targetRegion}:${mission.targetSlot}`,
+    }).catch(() => {})
 
     await db.insert(messages).values({
       userId: myKingdom.userId, type: 'battle',

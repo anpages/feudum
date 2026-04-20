@@ -1,19 +1,21 @@
 import { useState } from 'react'
 import { Navigate } from 'react-router-dom'
-import { Settings, Users, Zap, Swords, Crown } from 'lucide-react'
+import { Settings, Users, Zap, Swords, Crown, ScrollText } from 'lucide-react'
 import { useAuth } from '@/features/auth/useAuth'
 import { ServerTab }   from './tabs/ServerTab'
 import { PlayersTab }  from './tabs/PlayersTab'
 import { DevTab }      from './tabs/DevTab'
 import { MissionsTab } from './tabs/MissionsTab'
 import { SeasonTab }   from './tabs/SeasonTab'
+import { BattlesTab }  from './tabs/BattlesTab'
 
-type Tab = 'server' | 'players' | 'dev' | 'missions' | 'season'
+type Tab = 'server' | 'players' | 'dev' | 'missions' | 'season' | 'battles'
 
 const TABS: { id: Tab; label: string; Icon: typeof Settings }[] = [
   { id: 'server',   label: 'Servidor',   Icon: Settings },
   { id: 'players',  label: 'Jugadores',  Icon: Users },
   { id: 'season',   label: 'Temporada',  Icon: Crown },
+  { id: 'battles',  label: 'Combates',   Icon: ScrollText },
   { id: 'dev',      label: 'Dev',        Icon: Zap },
   { id: 'missions', label: 'Misiones',   Icon: Swords },
 ]
@@ -52,6 +54,7 @@ export function AdminPage() {
         {tab === 'season'   && <SeasonTab />}
         {tab === 'dev'      && <DevTab />}
         {tab === 'missions' && <MissionsTab />}
+        {tab === 'battles'  && <BattlesTab />}
       </div>
     </div>
   )

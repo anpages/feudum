@@ -18,6 +18,41 @@ export interface AdminUser {
   kingdom: { id: string; realm: number; region: number; slot: number } | null
 }
 
+export interface AdminBattleLog {
+  id: string
+  attackerKingdomId: string | null
+  attackerName: string
+  attackerIsNpc: boolean
+  defenderKingdomId: string | null
+  defenderName: string
+  defenderIsNpc: boolean
+  missionType: string
+  outcome: string
+  lootWood: number
+  lootStone: number
+  lootGrain: number
+  attackerLosses: number
+  defenderLosses: number
+  rounds: number
+  attackerCoord: string
+  defenderCoord: string
+  createdAt: string
+}
+
+export interface AdminBattlesResponse {
+  battles: AdminBattleLog[]
+  metrics: {
+    total24h: number
+    npcVsNpc24h: number
+    npcVsPlayer24h: number
+    playerVsNpc24h: number
+    playerVsPlayer24h: number
+    totalLoot24h: { wood: number; stone: number; grain: number }
+  }
+  page: number
+  limit: number
+}
+
 export interface AdminMission {
   id: string
   userId: string

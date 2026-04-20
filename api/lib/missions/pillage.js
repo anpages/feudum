@@ -2,6 +2,7 @@ import { eq } from 'drizzle-orm'
 import { db, kingdoms, armyMissions, messages } from '../../_db.js'
 import { calcCargoCapacity, calculateLoot } from '../battle.js'
 import { UNIT_KEYS } from './keys.js'
+import { insertBattleLog } from '../battle_log.js'
 
 export async function processPillage(mission, myKingdom, now, targetKingdom) {
   const travelSecs  = mission.arrivalTime - mission.departureTime
@@ -55,6 +56,17 @@ export async function processPillage(mission, myKingdom, now, targetKingdom) {
     result: JSON.stringify(result),
     updatedAt: new Date(),
   }).where(eq(armyMissions.id, mission.id))
+
+  const targetNamePillage = targetKingdom?.name ?? `NPC (R${mission.targetRealm}:${mission.targetRegion}:${mission.targetSlot})`
+  insertBattleLog({
+    attackerKingdomId: myKingdom.id,      attackerName: myKingdom.name,    attackerIsNpc: false,
+    defenderKingdomId: targetKingdom?.id, defenderName: targetNamePillage, defenderIsNpc: targetKingdom?.isNpc ?? true,
+    missionType: 'pillage', outcome: 'victory',
+    lootWood: loot.wood, lootStone: loot.stone, lootGrain: loot.grain,
+    attackerLosses: 0, defenderLosses: 0, rounds: 0,
+    attackerCoord: `${mission.startRealm}:${mission.startRegion}:${mission.startSlot}`,
+    defenderCoord: `${mission.targetRealm}:${mission.targetRegion}:${mission.targetSlot}`,
+  }).catch(() => {})
 
   await db.insert(messages).values({
     userId: myKingdom.userId, type: 'battle',

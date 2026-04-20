@@ -13,3 +13,6 @@ export const NPC_ATTACK_INTERVAL_HOURS = [Infinity, 24, 12, 6][NPC_AGGRESSION] ?
 
 // Fraction of universe slots filled with NPCs at season start (0.0–1.0)
 export const NPC_DENSITY = parseFloat(process.env.NPC_DENSITY ?? '0.5')
+
+// Max times an NPC can attack the same kingdom within 24h before being forced to pick another target
+export const NPC_BASH_LIMIT = parseInt(process.env.NPC_BASH_LIMIT ?? '3', 10)

@@ -3,16 +3,17 @@
  * Called by Vercel Cron: schedule "0 * * * *"
  * Secured with CRON_SECRET header.
  */
-import { eq, and, lte } from 'drizzle-orm'
+import { eq, and, lte, gte } from 'drizzle-orm'
 import { db, users, kingdoms, armyMissions, messages, debrisFields } from '../_db.js'
 import { applyResourceTick } from '../lib/tick.js'
 import { BUILDINGS, buildCost, buildTime, applyBuildingEffect } from '../lib/buildings.js'
-import { ECONOMY_SPEED, NPC_AGGRESSION, NPC_ATTACK_INTERVAL_HOURS } from '../lib/config.js'
+import { ECONOMY_SPEED, NPC_AGGRESSION, NPC_ATTACK_INTERVAL_HOURS, NPC_BASH_LIMIT } from '../lib/config.js'
 import { calcDistance, calcDuration } from '../lib/speed.js'
 import {
   buildBattleUnits, runBattle, calculateLoot,
   calculateDebris, repairDefenses, calcCargoCapacity,
 } from '../lib/battle.js'
+import { insertBattleLog, sumLosses } from '../lib/battle_log.js'
 import { getSettings, setSetting } from '../lib/settings.js'
 import { startNewSeason, repairSeasonNpcsIfMissing } from '../lib/season.js'
 
@@ -223,64 +224,72 @@ async function growNpc(kingdom, cfg, now) {
 
 // ── Attack AI ─────────────────────────────────────────────────────────────────
 
-async function attackAI(npcKingdom, playerKingdoms, now, cfg) {
+async function attackAI(npcKingdom, allKingdoms, bashMap, now, cfg) {
   if (NPC_AGGRESSION === 0) return false
 
   const personality = npcPersonality(npcKingdom)
   const cls         = npcClass(npcKingdom)
   const armySize    = totalArmy(npcKingdom)
 
-  // general attacks earlier, collector waits longer
   const baseThreshold = ATTACK_THRESHOLD[personality]
   const threshold = baseThreshold + (cls === 'general' ? -4 : cls === 'collector' ? 5 : 0)
-
   if (armySize < threshold) return false
 
-  // Skip if NPC already has an active attack mission
-  // general can have 2 simultaneous missions (more aggressive)
+  // Check for active attack missions from THIS specific NPC kingdom (by position)
   const activeMissions = await db.select({ id: armyMissions.id })
     .from(armyMissions)
     .where(and(
-      eq(armyMissions.userId,      npcKingdom.userId),
-      eq(armyMissions.missionType, 'attack'),
-      eq(armyMissions.state,       'active'),
+      eq(armyMissions.missionType,  'attack'),
+      eq(armyMissions.state,        'active'),
+      eq(armyMissions.startRealm,   npcKingdom.realm),
+      eq(armyMissions.startRegion,  npcKingdom.region),
+      eq(armyMissions.startSlot,    npcKingdom.slot),
     ))
   const maxMissions = cls === 'general' ? 2 : 1
   if (activeMissions.length >= maxMissions) return false
 
   // Search radius: discoverer can range further (+1 region)
-  const baseRadius = 1
-  const radius = baseRadius + (cls === 'discoverer' ? 1 : 0)
+  const radius = 1 + (cls === 'discoverer' ? 1 : 0)
 
-  const sameRegion = playerKingdoms.filter(
-    p => p.realm === npcKingdom.realm && p.region === npcKingdom.region
+  // Candidates: all kingdoms (player + NPC) except self and boss
+  const atkCoord = `${npcKingdom.realm}:${npcKingdom.region}:${npcKingdom.slot}`
+  const sameRegion = allKingdoms.filter(
+    p => p.id !== npcKingdom.id &&
+         !p.isBoss &&
+         p.realm === npcKingdom.realm &&
+         p.region === npcKingdom.region
   )
   const candidates = sameRegion.length > 0
     ? sameRegion
-    : playerKingdoms.filter(
-        p => p.realm === npcKingdom.realm && Math.abs(p.region - npcKingdom.region) <= radius
+    : allKingdoms.filter(
+        p => p.id !== npcKingdom.id &&
+             !p.isBoss &&
+             p.realm === npcKingdom.realm &&
+             Math.abs(p.region - npcKingdom.region) <= radius
       )
 
   if (candidates.length === 0) return false
 
-  // Only attack players with comparable development — prevents L3 NPCs farming fresh players.
-  // Gate: player must have accumulated at least 30% of NPC's total resources (proxy for kingdom age).
+  // Min resources gate — avoid farming brand-new kingdoms
   const npcTotal = (npcKingdom.wood ?? 0) + (npcKingdom.stone ?? 0) + (npcKingdom.grain ?? 0)
-  const minPlayerResources = Math.max(2000, npcTotal * 0.3)
-  const eligible = candidates.filter(p => (p.wood + p.stone + p.grain) >= minPlayerResources)
+  const minResources = Math.max(2000, npcTotal * 0.3)
+  const eligible = candidates.filter(p => ((p.wood ?? 0) + (p.stone ?? 0) + (p.grain ?? 0)) >= minResources)
   if (eligible.length === 0) return false
 
-  // Target selection per personality + class:
-  // military → weakest eligible (easy win); others → richest (max loot)
-  let target
-  if (personality === 'military') {
-    target = eligible.reduce((best, p) =>
-      (p.wood + p.stone + p.grain) < (best.wood + best.stone + best.grain) ? p : best
-    )
-  } else {
-    target = eligible.reduce((best, p) =>
-      (p.wood + p.stone + p.grain) > (best.wood + best.stone + best.grain) ? p : best
-    )
+  // Bash limit: skip targets this NPC has attacked too many times in last 24h
+  const withinLimit = eligible.filter(p => {
+    const key = `${atkCoord}→${p.realm}:${p.region}:${p.slot}`
+    return (bashMap[key] ?? 0) < NPC_BASH_LIMIT
+  })
+  if (withinLimit.length === 0) return false
+
+  // Weighted random selection proportional to resources (rich = more likely target)
+  const totalWeight = withinLimit.reduce((s, p) => s + Math.max(1, (p.wood ?? 0) + (p.stone ?? 0) + (p.grain ?? 0)), 0)
+  let rand = Math.random() * totalWeight
+  let target = withinLimit[withinLimit.length - 1]
+  for (const p of withinLimit) {
+    rand -= Math.max(1, (p.wood ?? 0) + (p.stone ?? 0) + (p.grain ?? 0))
+    if (rand <= 0) { target = p; break }
   }
 
   // Compose force:
@@ -328,6 +337,98 @@ async function attackAI(npcKingdom, playerKingdoms, now, cfg) {
     .where(eq(kingdoms.id, npcKingdom.id))
 
   return true
+}
+
+// ── Resolve NPC-vs-NPC battles ────────────────────────────────────────────────
+
+const NPC_UNIT_KEYS = [
+  'squire','knight','paladin','warlord','grandKnight',
+  'siegeMaster','warMachine','dragonKnight',
+  'merchant','caravan','colonist','scavenger','scout',
+]
+const NPC_DEFENSE_KEYS = [
+  'archer','crossbowman','ballista','trebuchet',
+  'mageTower','dragonCannon','palisade','castleWall','moat','catapult','beacon',
+]
+function extractK(row, keys) {
+  const out = {}
+  for (const k of keys) out[k] = row[k] ?? 0
+  return out
+}
+
+async function resolveNpcVsNpcAttacks(npcKingdomsById, now) {
+  let resolved = 0
+  for (const defKingdom of Object.values(npcKingdomsById)) {
+    const arrivedMissions = await db.select().from(armyMissions)
+      .where(and(
+        eq(armyMissions.missionType, 'attack'),
+        eq(armyMissions.state,       'active'),
+        eq(armyMissions.targetRealm,  defKingdom.realm),
+        eq(armyMissions.targetRegion, defKingdom.region),
+        eq(armyMissions.targetSlot,   defKingdom.slot),
+        lte(armyMissions.arrivalTime, now),
+      ))
+
+    for (const m of arrivedMissions) {
+      const atkKey = `${m.startRealm}:${m.startRegion}:${m.startSlot}`
+      const atkKingdom = npcKingdomsById[atkKey]
+      if (!atkKingdom) continue  // player-initiated attack, handled elsewhere
+
+      const missionUnits  = extractK(m, NPC_UNIT_KEYS)
+      const attackerUnits = buildBattleUnits(missionUnits, {})
+      const defenderUnits = buildBattleUnits(
+        { ...extractK(defKingdom, NPC_UNIT_KEYS), ...extractK(defKingdom, NPC_DEFENSE_KEYS) }, {}
+      )
+
+      const { outcome, rounds, survivingAtk, lostAtk, lostDef } = runBattle(attackerUnits, defenderUnits)
+      const cargo = calcCargoCapacity(missionUnits)
+      const loot  = outcome === 'victory'
+        ? calculateLoot({ wood: defKingdom.wood, stone: defKingdom.stone, grain: defKingdom.grain }, cargo)
+        : { wood: 0, stone: 0, grain: 0 }
+
+      const travelSecs = m.arrivalTime - m.departureTime
+      const returnTime = now + travelSecs
+
+      // Update defender NPC
+      const defPatch = { updatedAt: new Date() }
+      if (outcome === 'victory') {
+        defPatch.wood  = Math.max(0, (defKingdom.wood  ?? 0) - loot.wood)
+        defPatch.stone = Math.max(0, (defKingdom.stone ?? 0) - loot.stone)
+        defPatch.grain = Math.max(0, (defKingdom.grain ?? 0) - loot.grain)
+      }
+      const repaired = repairDefenses(Object.fromEntries(NPC_DEFENSE_KEYS.map(k => [k, lostDef[k] ?? 0])))
+      for (const k of NPC_UNIT_KEYS)    defPatch[k] = Math.max(0, (defKingdom[k] ?? 0) - (lostDef[k] ?? 0))
+      for (const k of NPC_DEFENSE_KEYS) defPatch[k] = Math.max(0, (defKingdom[k] ?? 0) - (lostDef[k] ?? 0) + (repaired[k] ?? 0))
+      await db.update(kingdoms).set(defPatch).where(eq(kingdoms.id, defKingdom.id))
+      Object.assign(defKingdom, defPatch)
+
+      // Update attacker mission
+      if (outcome === 'victory') {
+        const survivorPatch = {}
+        for (const k of NPC_UNIT_KEYS) survivorPatch[k] = survivingAtk[k] ?? 0
+        await db.update(armyMissions).set({
+          ...survivorPatch, state: 'returning', returnTime,
+          woodLoad: loot.wood, stoneLoad: loot.stone, grainLoad: loot.grain,
+          updatedAt: new Date(),
+        }).where(eq(armyMissions.id, m.id))
+      } else {
+        await db.delete(armyMissions).where(eq(armyMissions.id, m.id))
+      }
+
+      await insertBattleLog({
+        attackerKingdomId: atkKingdom.id, attackerName: atkKingdom.name, attackerIsNpc: true,
+        defenderKingdomId: defKingdom.id, defenderName: defKingdom.name, defenderIsNpc: true,
+        missionType: 'attack', outcome,
+        lootWood: loot.wood, lootStone: loot.stone, lootGrain: loot.grain,
+        attackerLosses: sumLosses(lostAtk), defenderLosses: sumLosses(lostDef), rounds,
+        attackerCoord: atkKey,
+        defenderCoord: `${m.targetRealm}:${m.targetRegion}:${m.targetSlot}`,
+      })
+
+      resolved++
+    }
+  }
+  return resolved
 }
 
 // ── Process NPC return missions ───────────────────────────────────────────────
@@ -428,13 +529,43 @@ export default async function handler(req, res) {
 
   // Load all player kingdoms for attack target selection
   const playerKingdoms = await db.select({
-    id: kingdoms.id, userId: kingdoms.userId,
+    id: kingdoms.id, userId: kingdoms.userId, name: kingdoms.name,
+    isNpc: kingdoms.isNpc, isBoss: kingdoms.isBoss,
     realm: kingdoms.realm, region: kingdoms.region, slot: kingdoms.slot,
     wood: kingdoms.wood, stone: kingdoms.stone, grain: kingdoms.grain,
   }).from(kingdoms).where(eq(kingdoms.isNpc, false))
 
+  // All kingdoms (player + NPC) as attack targets, excluding the boss
+  const allKingdoms = [
+    ...playerKingdoms,
+    ...npcKingdoms.map(k => ({
+      id: k.id, userId: k.userId, name: k.name,
+      isNpc: true, isBoss: k.isBoss ?? false,
+      realm: k.realm, region: k.region, slot: k.slot,
+      wood: k.wood, stone: k.stone, grain: k.grain,
+    })),
+  ]
+
+  // Bash map: count attacks from each NPC position to each target in last 24h
+  const recentAttacks = await db.select({
+    startRealm: armyMissions.startRealm, startRegion: armyMissions.startRegion, startSlot: armyMissions.startSlot,
+    targetRealm: armyMissions.targetRealm, targetRegion: armyMissions.targetRegion, targetSlot: armyMissions.targetSlot,
+  }).from(armyMissions)
+    .where(and(
+      eq(armyMissions.missionType, 'attack'),
+      gte(armyMissions.createdAt,  new Date(Date.now() - 24 * 3600 * 1000)),
+    ))
+  const bashMap = {}
+  for (const r of recentAttacks) {
+    const key = `${r.startRealm}:${r.startRegion}:${r.startSlot}→${r.targetRealm}:${r.targetRegion}:${r.targetSlot}`
+    bashMap[key] = (bashMap[key] ?? 0) + 1
+  }
+
   // ── Process NPC return missions first ──────────────────────────────────────
   await processNpcReturns(npcUserId, npcKingdomsById, now)
+
+  // ── Resolve arrived NPC-vs-NPC battles ────────────────────────────────────
+  const npcVsNpcResolved = await resolveNpcVsNpcAttacks(npcKingdomsById, now)
 
   // ── Per-NPC tick, growth, and attack ──────────────────────────────────────
   let ticked = 0, grew = 0, attacked = 0
@@ -471,8 +602,8 @@ export default async function handler(req, res) {
     grew++
 
     // Attack AI
-    if (NPC_AGGRESSION > 0 && playerKingdoms.length > 0) {
-      const launched = await attackAI(kingdom, playerKingdoms, now, cfg)
+    if (NPC_AGGRESSION > 0 && allKingdoms.length > 1) {
+      const launched = await attackAI(kingdom, allKingdoms, bashMap, now, cfg)
       if (launched) attacked++
     }
   }
@@ -485,5 +616,5 @@ export default async function handler(req, res) {
     byClass[npcClass(k)]++
   }
 
-  return res.json({ ok: true, npcCount: npcKingdoms.length, ticked, grew, attacked, byPersonality, byClass, seasonAction, repairAction })
+  return res.json({ ok: true, npcCount: npcKingdoms.length, ticked, grew, attacked, npcVsNpcResolved, byPersonality, byClass, seasonAction, repairAction })
 }

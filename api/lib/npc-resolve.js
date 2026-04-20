@@ -8,6 +8,7 @@ import {
   buildBattleUnits, runBattle, calculateLoot,
   calculateDebris, repairDefenses, calcCargoCapacity,
 } from './battle.js'
+import { insertBattleLog, sumLosses } from './battle_log.js'
 
 const UNIT_KEYS = [
   'squire','knight','paladin','warlord','grandKnight',
@@ -111,6 +112,16 @@ export async function resolveIncomingNpcAttacks(playerKingdoms, now) {
         attackerName: npcKingdom.name,
         npcLevel: npcKingdom.npcLevel,
       }
+
+      insertBattleLog({
+        attackerKingdomId: npcKingdom.id, attackerName: npcKingdom.name, attackerIsNpc: true,
+        defenderKingdomId: defKingdom.id, defenderName: defKingdom.name, defenderIsNpc: false,
+        missionType: 'attack', outcome,
+        lootWood: loot.wood, lootStone: loot.stone, lootGrain: loot.grain,
+        attackerLosses: sumLosses(lostAtk), defenderLosses: sumLosses(lostDef), rounds,
+        attackerCoord: `${m.startRealm}:${m.startRegion}:${m.startSlot}`,
+        defenderCoord: `${m.targetRealm}:${m.targetRegion}:${m.targetSlot}`,
+      }).catch(() => {})
 
       await db.insert(messages).values({
         userId:  defKingdom.userId,

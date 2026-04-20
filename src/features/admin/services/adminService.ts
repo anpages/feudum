@@ -1,5 +1,5 @@
 import { http } from '@/shared/services/http'
-import type { AdminSettings, AdminUser, AdminMission } from '../types'
+import type { AdminSettings, AdminUser, AdminMission, AdminBattlesResponse } from '../types'
 
 export const adminService = {
   getSettings: () => http.get<AdminSettings>('/admin/settings'),
@@ -19,4 +19,10 @@ export const adminService = {
     ),
   resetNpcs: () =>
     http.post<{ ok: boolean; deleted: number }>('/admin/seed-npcs', { action: 'reset_npcs' }),
+  getBattles: (params?: { type?: string; page?: number }) => {
+    const qs = new URLSearchParams()
+    if (params?.type)  qs.set('type', params.type)
+    if (params?.page)  qs.set('page', String(params.page))
+    return http.get<AdminBattlesResponse>(`/admin/battles?${qs}`)
+  },
 }
