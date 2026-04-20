@@ -46,6 +46,8 @@ export function ResourcesPage() {
     await syncQueues()
     refetch()
     qc.invalidateQueries({ queryKey: ['kingdom'] })
+    qc.invalidateQueries({ queryKey: ['research'] })
+    qc.invalidateQueries({ queryKey: ['barracks'] })
   }, [refetch, syncQueues, qc])
 
   if (isLoading) return <ResourcesSkeleton />

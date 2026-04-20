@@ -116,6 +116,7 @@ export function useRecallArmy() {
     },
     onSettled: () => {
       qc.invalidateQueries({ queryKey: ['armies'] })
+      qc.invalidateQueries({ queryKey: ['kingdom'] })
     },
   })
 }

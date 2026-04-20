@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { X, Lightbulb } from 'lucide-react'
 import { type IconType } from 'react-icons'
 import {
@@ -73,6 +74,7 @@ const UNIT_META: Record<string, { name: string; Icon: IconType; description: str
 const BARRACKS_GUIDE_KEY = 'barracks_guide_seen'
 
 export function BarracksPage() {
+  const qc = useQueryClient()
   const [guideVisible, setGuideVisible] = useState(() => !localStorage.getItem(BARRACKS_GUIDE_KEY))
   const { data, isLoading, refetch } = useBarracks()
   const { data: kingdom } = useKingdom()
@@ -85,7 +87,8 @@ export function BarracksPage() {
   const handleCountdownEnd = useCallback(async () => {
     await syncQueues()
     refetch()
-  }, [refetch, syncQueues])
+    qc.invalidateQueries({ queryKey: ['armies'] })
+  }, [refetch, syncQueues, qc])
 
   function dismissGuide() {
     localStorage.setItem(BARRACKS_GUIDE_KEY, '1')

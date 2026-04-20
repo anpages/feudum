@@ -1,4 +1,5 @@
 import { useCallback, useMemo } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { GiCauldron, GiCrossedSwords, GiCompass, GiScrollQuill } from 'react-icons/gi'
 import { Card } from '@/components/ui/Card'
 import { useResearch, useUpgradeResearch } from '@/features/research/useResearch'
@@ -17,6 +18,7 @@ const CATEGORY_ICONS: Record<string, React.ReactNode> = {
 }
 
 export function ResearchPage() {
+  const qc = useQueryClient()
   const { data, isLoading, refetch } = useResearch()
   const { data: kingdom } = useKingdom()
   const resources = useResourceTicker(kingdom)
@@ -27,7 +29,9 @@ export function ResearchPage() {
   const handleCountdownEnd = useCallback(async () => {
     await syncQueues()
     refetch()
-  }, [refetch, syncQueues])
+    qc.invalidateQueries({ queryKey: ['buildings'] })
+    qc.invalidateQueries({ queryKey: ['barracks'] })
+  }, [refetch, syncQueues, qc])
 
   const items = useMemo(() => data?.research ?? [], [data])
   const hasInQueue = useMemo(() => items.some(r => !!r.inQueue), [items])
