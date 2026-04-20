@@ -11,6 +11,12 @@ interface QueueRow {
   finishesAt: number
 }
 
+interface BuildingQueueRow {
+  building: string
+  level: number
+  finishesAt: number
+}
+
 export const researchService = {
   async getAll(activeKingdomId?: string | null): Promise<ResearchResponse> {
     const { data: { user } } = await supabase.auth.getUser()
@@ -35,10 +41,10 @@ export const researchService = {
       if (r.key === 'research_speed') researchSpeed = parseFloat(r.value as string)
     }
 
-    const { data: queueRows } = await supabase
-      .from('research_queue')
-      .select('id, research, level, finishes_at')
-      .eq('user_id', user.id)
+    const [{ data: queueRows }, { data: buildingQueueRows }] = await Promise.all([
+      supabase.from('research_queue').select('id, research, level, finishes_at').eq('user_id', user.id),
+      supabase.from('building_queue').select('building, level, finishes_at').eq('kingdom_id', kingdomRow.id),
+    ])
 
     const queue: QueueRow[] = snakeToCamelArray<QueueRow>(queueRows)
     const now = Math.floor(Date.now() / 1000)
@@ -49,7 +55,16 @@ export const researchService = {
     }
 
     const activeQueue = queue.filter(q => q.finishesAt > now)
-    const academyLevel = (kingdomRow.academy as number) ?? 0
+
+    // Project building levels: if a building finished but the server hasn't processed
+    // the queue yet, the DB column is still the old level — apply completed items locally.
+    const buildingQueue: BuildingQueueRow[] = snakeToCamelArray<BuildingQueueRow>(buildingQueueRows)
+    let academyLevel = (kingdomRow.academy as number) ?? 0
+    for (const item of buildingQueue) {
+      if (item.finishesAt <= now && item.building === 'academy') {
+        academyLevel = Math.max(academyLevel, item.level)
+      }
+    }
     const kingdomForReqs = { academy: academyLevel } as Record<string, number>
 
     const result = RESEARCH.map(def => {
