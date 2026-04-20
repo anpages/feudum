@@ -206,7 +206,6 @@ function BuildingCardImpl({
 
 // ── Storage capacity display ──────────────────────────────────────────────────
 
-const STORAGE_ICONS = { wood: TreePine, stone: Mountain, grain: Wheat }
 const STORAGE_COLORS = { wood: 'text-forest-light', stone: 'text-parchment-dim', grain: 'text-gold-dim' }
 const STORAGE_LABELS = { wood: 'madera', stone: 'piedra', grain: 'grano' }
 

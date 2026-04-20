@@ -11,7 +11,7 @@ export const RESEARCH_META: Record<string, { name: string; description: string; 
   cartography:      { category: 'Logística',     name: 'Cartografía',       description: 'Mapas más precisos que aumentan la velocidad de desplazamiento.' },
   tradeRoutes:      { category: 'Logística',     name: 'Rutas Comerciales', description: 'Redes de comercio que permiten el hiperdesplazamiento de flotas.' },
   spycraft:         { category: 'Inteligencia',  name: 'Espionaje',         description: 'Arte de infiltrarse en reinos enemigos sin ser detectado.' },
-  logistics:        { category: 'Inteligencia',  name: 'Logística',         description: 'Gestión de flotas que aumenta el número máximo de misiones.' },
+  logistics:        { category: 'Inteligencia',  name: 'Logística',         description: 'Coordinación de ejércitos que aumenta el número máximo de misiones simultáneas.' },
   exploration:      { category: 'Inteligencia',  name: 'Exploración',       description: 'Permite colonizar nuevos territorios y fundar reinos adicionales.' },
   diplomaticNetwork:{ category: 'Inteligencia',  name: 'Red Diplomática',   description: 'Conecta Academias de todo el reino para acelerar investigaciones.' },
   divineBlessing:   { category: 'Inteligencia',  name: 'Bendición Divina',  description: 'Favor de los dioses. La investigación definitiva.' },
