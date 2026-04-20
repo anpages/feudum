@@ -34,11 +34,14 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Requisitos no cumplidos' })
   }
 
-  // ── Check not already queued ──────────────────────────────────────────────
+  // ── Check not already queued + queue limit (max 5, same as OGame-ref) ────────
   const existing = await db.select().from(buildingQueue)
     .where(eq(buildingQueue.kingdomId, kingdom.id))
   if (existing.some(q => q.building === buildingId)) {
     return res.status(400).json({ error: 'Este edificio ya está en cola' })
+  }
+  if (existing.length >= 5) {
+    return res.status(400).json({ error: 'Cola llena (máximo 5 construcciones)' })
   }
 
   // ── Calculate cost ────────────────────────────────────────────────────────
@@ -58,7 +61,12 @@ export default async function handler(req, res) {
   if (grain < cost.grain) return res.status(400).json({ error: 'Grano insuficiente',   need: cost.grain, have: Math.floor(grain) })
 
   // ── Deduct resources and create queue entry ───────────────────────────────
-  const finishesAt = now + timeSecs
+  // Chain after the last queued item so the queue is processed in series
+  const lastQueuedAt = existing.length > 0
+    ? Math.max(...existing.map(q => q.finishesAt))
+    : now
+  const startAt    = Math.max(now, lastQueuedAt)
+  const finishesAt = startAt + timeSecs
 
   const updated = await db.update(kingdoms).set({
     wood:  wood  - cost.wood,

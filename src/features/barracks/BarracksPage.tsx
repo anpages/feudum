@@ -131,7 +131,7 @@ export function BarracksPage() {
       )}
 
       {/* Tabs */}
-      <div className="sticky top-[100px] z-20 -mx-4 px-4 sm:-mx-6 sm:px-6 py-2 bg-parchment/95 backdrop-blur-sm border-b border-gold/10 anim-fade-up-1">
+      <div className="anim-fade-up-1">
         <div className="flex gap-1 p-1 bg-parchment-warm rounded-md w-fit">
           {([
             ['units',    'Combate'],

@@ -82,7 +82,7 @@ export function ResourcesPage() {
             <span className="text-ink-muted text-sm">{formatResource(energyConsumed ?? 0)}</span>
           </p>
           {(energyConsumed ?? 0) > 0 && (energyProduced ?? 0) < (energyConsumed ?? 0) && (
-            <p className="font-body text-[0.6rem] text-crimson mt-1">⚠ Déficit — minas reducidas</p>
+            <p className="font-body text-[0.6rem] text-crimson mt-1">⚠ Déficit — producción reducida</p>
           )}
         </Card>
         {tempAvg !== undefined && (
@@ -123,6 +123,7 @@ export function ResourcesPage() {
                     meta={meta}
                     kingdom={kingdom}
                     canAfford={canAfford(b)}
+                    resources={resources}
                     isUpgrading={upgrade.isPending && upgrade.variables === b.id}
                     onUpgrade={() => upgrade.mutate(b.id)}
                     onCountdownEnd={handleCountdownEnd}

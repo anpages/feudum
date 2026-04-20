@@ -95,7 +95,7 @@ export function MobileResources({ resources, kingdom, user }: {
               </div>
               {energyDeficit && (
                 <p className="font-ui text-[0.65rem] text-crimson font-semibold mt-1">
-                  Déficit — minas al {Math.round((produced / consumed) * 100)}%
+                  Déficit — producción al {Math.round((produced / consumed) * 100)}%
                 </p>
               )}
             </div>

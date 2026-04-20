@@ -135,7 +135,7 @@ export function ResourceSettingsPage() {
                 <div className="flex items-start gap-2 mt-1 p-2.5 rounded bg-crimson/5 border border-crimson/20">
                   <Zap size={12} className="text-crimson shrink-0 mt-0.5" />
                   <p className="font-body text-xs text-crimson leading-relaxed">
-                    Déficit de energía — las minas producen al {Math.round(energyProduced / energyConsumed * 100)}% de su capacidad.
+                    Déficit de energía — la producción está al {Math.round(energyProduced / energyConsumed * 100)}% de su capacidad.
                   </p>
                 </div>
               )}

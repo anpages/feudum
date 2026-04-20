@@ -74,6 +74,7 @@ export function ResearchPage() {
                     kingdom={kingdom}
                     researchLevels={researchLevels}
                     canAfford={canAfford}
+                    resources={resources}
                     globalQueueFull={hasInQueue && !r.inQueue}
                     isUpgrading={upgrade.isPending && upgrade.variables === r.id}
                     onUpgrade={() => upgrade.mutate(r.id)}

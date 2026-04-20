@@ -68,6 +68,7 @@ export function FacilitiesPage() {
                 meta={meta}
                 kingdom={kingdom}
                 canAfford={canAfford(b)}
+                resources={resources}
                 isUpgrading={upgrade.isPending && upgrade.variables === b.id}
                 onUpgrade={() => upgrade.mutate(b.id)}
                 onCountdownEnd={handleCountdownEnd}

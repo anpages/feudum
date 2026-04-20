@@ -1,6 +1,5 @@
 import { useState, useEffect, memo, type ReactNode } from 'react'
-import { ArrowUp, Clock, Loader2, Zap } from 'lucide-react'
-import { GiWoodPile, GiStoneBlock, GiWheat } from 'react-icons/gi'
+import { ArrowUp, Clock, Loader2, Zap, TreePine, Mountain, Wheat } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
@@ -27,11 +26,11 @@ function useCountdown(finishesAt: number | null, onEnd: () => void) {
   return secs
 }
 
-function CostItem({ icon, value, affordable }: { icon: ReactNode; value: number; affordable: boolean }) {
+function CostItem({ icon, value, hasEnough }: { icon: ReactNode; value: number; hasEnough: boolean }) {
   return (
     <div className="flex items-center gap-1.5">
       <span className="text-ink-muted/70">{icon}</span>
-      <span className={`font-ui tabular-nums ${affordable ? 'text-ink-mid' : 'text-crimson'}`}>
+      <span className={`font-ui tabular-nums ${hasEnough ? 'text-ink-mid' : 'text-crimson'}`}>
         {formatResource(value)}
       </span>
     </div>
@@ -44,6 +43,7 @@ interface ResearchCardProps {
   kingdom?: Record<string, unknown> | null
   researchLevels?: Record<string, number>
   canAfford: boolean
+  resources?: { wood: number; stone: number; grain: number }
   globalQueueFull: boolean
   isUpgrading: boolean
   onUpgrade: () => void
@@ -59,6 +59,7 @@ function ResearchCardImpl({
   kingdom,
   researchLevels,
   canAfford,
+  resources,
   globalQueueFull,
   isUpgrading,
   onUpgrade,
@@ -85,9 +86,9 @@ function ResearchCardImpl({
       <div className="divider">◆</div>
 
       <div className="flex items-center gap-3 text-xs flex-wrap">
-        {item.costWood  > 0 && <CostItem icon={<GiWoodPile  size={13} />} value={item.costWood}  affordable={inQueue || canAfford} />}
-        {item.costStone > 0 && <CostItem icon={<GiStoneBlock size={13} />} value={item.costStone} affordable={inQueue || canAfford} />}
-        {item.costGrain > 0 && <CostItem icon={<GiWheat     size={13} />} value={item.costGrain} affordable={inQueue || canAfford} />}
+        {item.costWood  > 0 && <CostItem icon={<TreePine  size={13} />} value={item.costWood}  hasEnough={inQueue || !resources || resources.wood  >= item.costWood}  />}
+        {item.costStone > 0 && <CostItem icon={<Mountain  size={13} />} value={item.costStone} hasEnough={inQueue || !resources || resources.stone >= item.costStone} />}
+        {item.costGrain > 0 && <CostItem icon={<Wheat     size={13} />} value={item.costGrain} hasEnough={inQueue || !resources || resources.grain >= item.costGrain} />}
         <div className="flex items-center gap-1 ml-auto text-ink-muted/60">
           <Clock size={10} />
           <span className="font-body">{formatDuration(item.timeSeconds)}</span>
@@ -135,6 +136,7 @@ export const ResearchCard = memo(ResearchCardImpl, (prev, next) =>
   prev.kingdom === next.kingdom &&
   prev.researchLevels === next.researchLevels &&
   prev.canAfford === next.canAfford &&
+  prev.resources === next.resources &&
   prev.globalQueueFull === next.globalQueueFull &&
   prev.isUpgrading === next.isUpgrading &&
   prev.isAccelerating === next.isAccelerating &&

@@ -1,7 +1,6 @@
 import { useState, useEffect, memo, type ReactNode } from 'react'
-import { ArrowUp, Clock, TrendingUp, Loader2, Zap } from 'lucide-react'
+import { ArrowUp, Clock, TrendingUp, Loader2, Zap, TreePine, Mountain, Wheat } from 'lucide-react'
 import { type IconType } from 'react-icons'
-import { GiWoodPile, GiStoneBlock, GiWheat } from 'react-icons/gi'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
@@ -47,16 +46,16 @@ function useCountdown(finishesAt: number | null, onEnd: () => void) {
 function CostItem({
   icon,
   value,
-  affordable,
+  hasEnough,
 }: {
   icon: ReactNode
   value: number
-  affordable: boolean
+  hasEnough: boolean
 }) {
   return (
     <div className="flex items-center gap-1.5">
       <span className="text-ink-muted/70">{icon}</span>
-      <span className={`font-ui tabular-nums ${affordable ? 'text-ink-mid' : 'text-crimson'}`}>
+      <span className={`font-ui tabular-nums ${hasEnough ? 'text-ink-mid' : 'text-crimson'}`}>
         {formatResource(value)}
       </span>
     </div>
@@ -70,6 +69,7 @@ interface Props {
   meta: BuildingMeta
   kingdom?: Record<string, unknown> | null
   canAfford: boolean
+  resources?: { wood: number; stone: number; grain: number }
   isUpgrading: boolean
   onUpgrade: () => void
   onCountdownEnd: () => void
@@ -84,6 +84,7 @@ function BuildingCardImpl({
   meta,
   kingdom,
   canAfford,
+  resources,
   isUpgrading,
   onUpgrade,
   onCountdownEnd,
@@ -141,20 +142,20 @@ function BuildingCardImpl({
       {/* Cost row */}
       <div className="flex items-center gap-4 text-xs">
         <CostItem
-          icon={<GiWoodPile size={13} />}
+          icon={<TreePine size={13} />}
           value={building.costWood}
-          affordable={inQueue || canAfford}
+          hasEnough={inQueue || !resources || resources.wood >= building.costWood}
         />
         <CostItem
-          icon={<GiStoneBlock size={13} />}
+          icon={<Mountain size={13} />}
           value={building.costStone}
-          affordable={inQueue || canAfford}
+          hasEnough={inQueue || !resources || resources.stone >= building.costStone}
         />
         {(building.costGrain ?? 0) > 0 && (
           <CostItem
-            icon={<GiWheat size={13} />}
+            icon={<Wheat size={13} />}
             value={building.costGrain}
-            affordable={inQueue || canAfford}
+            hasEnough={inQueue || !resources || resources.grain >= building.costGrain}
           />
         )}
         <div className="flex items-center gap-1 ml-auto text-ink-muted/60">
@@ -207,6 +208,7 @@ export const BuildingCard = memo(BuildingCardImpl, (prev, next) =>
   prev.meta === next.meta &&
   prev.kingdom === next.kingdom &&
   prev.canAfford === next.canAfford &&
+  prev.resources === next.resources &&
   prev.isUpgrading === next.isUpgrading &&
   prev.isAccelerating === next.isAccelerating &&
   prev.dimmed === next.dimmed &&

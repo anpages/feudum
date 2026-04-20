@@ -1,7 +1,6 @@
 import { type ReactNode, useState, useEffect } from 'react'
-import { Clock, TrendingUp, Hammer, FlaskConical, Swords, Send, Shield, ChevronRight, Zap, Trophy, ScrollText } from 'lucide-react'
+import { Clock, TrendingUp, Hammer, FlaskConical, Swords, Send, Shield, ChevronRight, Zap, TreePine, Mountain, Wheat } from 'lucide-react'
 import {
-  GiWoodPile, GiStoneBlock, GiWheat,
   GiAnvil, GiSpellBook, GiCrossedSwords,
 } from 'react-icons/gi'
 import { useNavigate } from 'react-router-dom'
@@ -131,14 +130,14 @@ export function OverviewPage() {
                 {deficit && (
                   <span className="flex items-center gap-1 font-ui text-[0.6rem] text-crimson font-semibold uppercase tracking-wide">
                     <Zap size={9} />
-                    Energía al {Math.round(factor * 100)}% — minas reducidas
+                    Energía al {Math.round(factor * 100)}% — producción reducida
                   </span>
                 )}
               </div>
               <div className="grid grid-cols-3 gap-3">
-                <ProductionRow icon={<GiWoodPile size={14} />} label="Madera" rate={kingdom?.woodProduction ?? 0} deficit={deficit} />
-                <ProductionRow icon={<GiStoneBlock size={14} />} label="Piedra" rate={kingdom?.stoneProduction ?? 0} deficit={deficit} />
-                <ProductionRow icon={<GiWheat size={14} />} label="Grano" rate={kingdom?.grainProduction ?? 0} deficit={deficit} />
+                <ProductionRow icon={<TreePine size={14} />} label="Madera" rate={kingdom?.woodProduction ?? 0} deficit={deficit} />
+                <ProductionRow icon={<Mountain size={14} />} label="Piedra" rate={kingdom?.stoneProduction ?? 0} deficit={deficit} />
+                <ProductionRow icon={<Wheat size={14} />} label="Grano" rate={kingdom?.grainProduction ?? 0} deficit={deficit} />
               </div>
             </>
           )
@@ -177,12 +176,6 @@ export function OverviewPage() {
             </Card>
           )}
 
-          {/* Quick links */}
-          <Card className="p-4 space-y-3 sm:col-span-2">
-            <p className="font-ui text-[0.6rem] text-ink-muted/60 uppercase tracking-widest">Accesos rápidos</p>
-            <StatRow icon={<Trophy size={13} />} label="Clasificación" value={`#${myRanking?.rank ?? '—'}`} note={`${myRanking?.points.toLocaleString() ?? '—'} pts`} onClick={() => navigate('/rankings')} />
-            <StatRow icon={<ScrollText size={13} />} label="Mensajes" value="" note="bandeja de entrada" onClick={() => navigate('/messages')} />
-          </Card>
         </div>
       </section>
 
