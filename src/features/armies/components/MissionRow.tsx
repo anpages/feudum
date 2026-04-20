@@ -38,7 +38,7 @@ function MissionRowImpl({ mission, onEnd }: Props) {
   const hasResult = result && (
     result.outcome !== undefined ||
     result.delivered !== undefined ||
-    ['colonize', 'scavenge', 'pillage', 'deploy', 'expedition', 'missile'].includes(result.type)
+    ['colonize', 'scavenge', 'deploy', 'expedition', 'missile'].includes(result.type)
   )
 
   return (
@@ -194,19 +194,6 @@ function MissionResultInline({ result }: { result: NonNullable<ArmyMission['resu
     return result.success
       ? <span className="font-body text-xs text-gold">Despliegue completado en {result.target}</span>
       : <span className="font-body text-xs text-ink-muted">{result.reason ?? 'Despliegue fallido'}</span>
-  }
-
-  if (result.type === 'pillage') {
-    const loot = result.loot ?? { wood: 0, stone: 0, grain: 0 }
-    return loot.wood > 0 || loot.stone > 0 || loot.grain > 0 ? (
-      <span className="font-body text-xs text-ink-muted flex items-center gap-2">
-        <Skull size={10} className="text-crimson" />
-        <span className="font-semibold text-crimson">Pillaje</span>
-        {loot.wood  > 0 && <span className="flex items-center gap-0.5"><GiWoodPile  size={10} className="inline" /> {formatResource(loot.wood)}</span>}
-        {loot.stone > 0 && <span className="flex items-center gap-0.5"><GiStoneBlock size={10} className="inline" /> {formatResource(loot.stone)}</span>}
-        {loot.grain > 0 && <span>🌾 {formatResource(loot.grain)}</span>}
-      </span>
-    ) : <span className="font-body text-xs text-ink-muted/60">NPC sin recursos</span>
   }
 
   if (result.type === 'scavenge') {

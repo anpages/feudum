@@ -12,7 +12,7 @@ const UNIT_KEYS = [
   'merchant','caravan','colonist','scavenger','scout',
 ]
 
-const MISSION_TYPES = ['attack', 'transport', 'spy', 'colonize', 'scavenge', 'pillage', 'deploy', 'expedition', 'missile']
+const MISSION_TYPES = ['attack', 'transport', 'spy', 'colonize', 'scavenge', 'deploy', 'expedition', 'missile']
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end()
@@ -181,20 +181,7 @@ export default async function handler(req, res) {
     if (target.userId !== userId) return res.status(400).json({ error: 'Solo puedes desplegar a tus propios reinos' })
   }
 
-  // Pillage missions: combat units only, NPC target only
-  if (missionType === 'pillage') {
-    const [occupant] = await db.select({ id: kingdoms.id }).from(kingdoms)
-      .where(and(
-        eq(kingdoms.realm,  tRealm),
-        eq(kingdoms.region, tRegion),
-        eq(kingdoms.slot,   tSlot),
-      )).limit(1)
-    if (occupant) {
-      return res.status(400).json({ error: 'El pillaje solo puede hacerse contra reinos NPC' })
-    }
-  }
-
-  // ── Resources to carry (transport) ────────────────────────────────────────
+// ── Resources to carry (transport) ────────────────────────────────────────
   let woodLoad  = 0
   let stoneLoad = 0
   let grainLoad = 0
@@ -220,7 +207,7 @@ export default async function handler(req, res) {
   // ── Calculate travel time ─────────────────────────────────────────────────
   const origin   = { realm: kingdom.realm, region: kingdom.region, slot: kingdom.slot }
   const dest     = { realm: tRealm,        region: tRegion,        slot: tSlot        }
-  const isWar        = ['attack', 'pillage', 'spy'].includes(missionType)
+  const isWar        = ['attack', 'spy'].includes(missionType)
   const universeSpeed = isWar ? parseFloat(cfg.fleet_speed_war ?? 1) : parseFloat(cfg.fleet_speed_peaceful ?? 1)
   const distance     = calcDistance(origin, dest)
   const travelSecs   = calcDuration(distance, units, 100, universeSpeed, researchRow ?? {}, userRow?.characterClass ?? null)

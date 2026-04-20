@@ -1,4 +1,4 @@
-import { Swords, Eye, Tent, Pickaxe, Package, Skull, Flag, Rocket } from 'lucide-react'
+import { Swords, Eye, Tent, Pickaxe, Package, Flag, Rocket } from 'lucide-react'
 import { GiWoodPile, GiStoneBlock } from 'react-icons/gi'
 import { Button } from '@/components/ui/Button'
 import { formatResource } from '@/lib/format'
@@ -57,19 +57,14 @@ export function SlotDetail({
           </Button>
         ) : (
           <>
-            {slot.isNpc && (
-              <Button variant="primary" className="w-full" onClick={() => onMission('pillage')}>
-                <Skull size={12} /> Saquear
-              </Button>
-            )}
-            <Button variant={slot.isNpc ? 'ghost' : 'primary'} className="w-full" onClick={() => onMission('attack')}>
+            <Button variant="primary" className="w-full" onClick={() => onMission('attack')}>
               <Swords size={12} /> Atacar
             </Button>
             <Button variant="ghost" className="w-full" onClick={() => onMission('spy')}>
               <Eye size={12} /> Espiar
             </Button>
             <Button variant="ghost" className="w-full" onClick={() => onMission('missile')}>
-              <Rocket size={12} /> Bombardear
+              <Rocket size={12} /> Bombardeo Alquímico
             </Button>
             {!slot.isNpc && !slot.isPlayer && (
               <Button variant="ghost" className="w-full" onClick={() => onMission('transport')}>

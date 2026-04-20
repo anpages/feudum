@@ -9,7 +9,7 @@ import { processAttack }     from '../lib/missions/attack.js'
 import { processColonize }   from '../lib/missions/colonize.js'
 import { processScavenge }   from '../lib/missions/scavenge.js'
 import { processDeploy }     from '../lib/missions/deploy.js'
-import { processPillage }    from '../lib/missions/pillage.js'
+
 import { processExpedition } from '../lib/missions/expedition.js'
 import { processMissile }    from '../lib/missions/missile.js'
 
@@ -38,7 +38,7 @@ async function processArrival(mission, myKingdom, now) {
     case 'colonize':   return processColonize(mission,   myKingdom, now, targetKingdom)
     case 'scavenge':   return processScavenge(mission,   myKingdom, now, targetKingdom)
     case 'deploy':     return processDeploy(mission,     myKingdom, now, targetKingdom)
-    case 'pillage':    return processPillage(mission,    myKingdom, now, targetKingdom)
+
     case 'expedition': return processExpedition(mission, myKingdom, now)
     case 'missile':    return processMissile(mission,    myKingdom, now, targetKingdom)
     default:

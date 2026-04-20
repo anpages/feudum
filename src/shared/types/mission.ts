@@ -6,7 +6,6 @@ export type MissionType =
   | 'spy'
   | 'scavenge'
   | 'colonize'
-  | 'pillage'
   | 'deploy'
   | 'expedition'
   | 'missile'
