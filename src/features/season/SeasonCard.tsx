@@ -12,12 +12,15 @@ function useCountdown(targetSecs: number) {
   return left
 }
 
-function formatDays(seconds: number): string {
-  const days = Math.floor(seconds / 86400)
-  const hours = Math.floor((seconds % 86400) / 3600)
-  if (days > 0) return `${days}d ${hours}h`
+function formatTimeLeft(seconds: number): string {
+  const months  = Math.floor(seconds / (30 * 86400))
+  const days    = Math.floor((seconds % (30 * 86400)) / 86400)
+  const hours   = Math.floor((seconds % 86400) / 3600)
   const minutes = Math.floor((seconds % 3600) / 60)
-  return `${hours}h ${minutes}m`
+  if (months > 0) return `${months}M ${days}d ${hours}h`
+  if (days   > 0) return `${days}d ${hours}h`
+  if (hours  > 0) return `${hours}h ${minutes}m`
+  return `${minutes}m`
 }
 
 export function SeasonCard() {
@@ -53,7 +56,7 @@ export function SeasonCard() {
       {!isEnded && timeLeft > 0 && (
         <div className="flex items-center gap-1 text-parchment-dim/60">
           <Timer size={11} />
-          <span className="font-ui text-xs tabular-nums">{formatDays(timeLeft)}</span>
+          <span className="font-ui text-xs tabular-nums">{formatTimeLeft(timeLeft)}</span>
         </div>
       )}
     </div>

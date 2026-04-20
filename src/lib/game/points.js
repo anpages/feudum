@@ -103,9 +103,14 @@ export function calcPointsBreakdown(kingdom, res = {}) {
     if (n > 0) units += (cost.wood + cost.stone + cost.grain) * n
   }
 
-  const economy = Math.floor(
-    ((kingdom.woodProduction ?? 0) + (kingdom.stoneProduction ?? 0) + (kingdom.grainProduction ?? 0)) * 24
-  )
+  // Use stored production if available; derive from building levels for NPCs (stored as 0)
+  const sawmillLv   = kingdom.sawmill   ?? 0
+  const quarryLv    = kingdom.quarry    ?? 0
+  const grainFarmLv = kingdom.grainFarm ?? 0
+  const woodProd  = (kingdom.woodProduction  ?? 0) || (sawmillLv   > 0 ? 30 * sawmillLv   * Math.pow(1.1, sawmillLv)   : 0)
+  const stoneProd = (kingdom.stoneProduction ?? 0) || (quarryLv    > 0 ? 20 * quarryLv    * Math.pow(1.1, quarryLv)    : 0)
+  const grainProd = (kingdom.grainProduction ?? 0) || (grainFarmLv > 0 ? 10 * grainFarmLv * Math.pow(1.1, grainFarmLv) : 0)
+  const economy = Math.floor((woodProd + stoneProd + grainProd) * 24)
 
   return {
     buildings: Math.floor(buildings / 1000),

@@ -72,13 +72,17 @@ async function processMissions(userId, kingdom) {
   const missions = await db.select().from(armyMissions)
     .where(eq(armyMissions.userId, userId))
 
+  let resolved = 0
   for (const m of missions) {
     if (m.state === 'active' && m.arrivalTime <= now) {
       await processArrival(m, kingdom, now)
+      resolved++
     } else if (m.state === 'returning' && m.returnTime && m.returnTime <= now) {
       await processReturn(m, kingdom, now)
+      resolved++
     }
   }
+  return resolved
 }
 
 async function expireMerchantOffers(userId, active, now) {
@@ -123,11 +127,19 @@ export default async function handler(req, res) {
     .where(eq(kingdoms.userId, userId)).limit(1)
   if (!kingdom) return res.status(404).json({ error: 'Reino no encontrado' })
 
-  await processMissions(userId, kingdom)
+  const resolvedMissions = await processMissions(userId, kingdom)
 
   const playerKingdoms = await db.select().from(kingdoms).where(eq(kingdoms.userId, userId))
   const now = Math.floor(Date.now() / 1000)
   await resolveIncomingNpcAttacks(playerKingdoms, now)
+
+  // Check achievements whenever a mission resolves (battle, spy, colonize, etc.)
+  if (resolvedMissions > 0) {
+    try {
+      const { checkAndUnlock } = await import('../lib/achievements.js')
+      await checkAndUnlock(userId)
+    } catch { /* non-fatal */ }
+  }
 
   const active = await db.select().from(armyMissions).where(eq(armyMissions.userId, userId))
   await expireMerchantOffers(userId, active, now)

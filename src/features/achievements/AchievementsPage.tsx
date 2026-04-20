@@ -1,8 +1,10 @@
 import { useState } from 'react'
+import { TreePine, Mountain, Wheat } from 'lucide-react'
 import { GiScrollQuill, GiAnvil, GiSpellBook, GiCrossedSwords, GiCompass, GiLaurelCrown, GiSwordman } from 'react-icons/gi'
 import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { useAchievements, type Achievement } from './useAchievements'
+import { formatResource } from '@/lib/format'
 import type { AchievementCategory } from './types'
 
 // ── Category config ───────────────────────────────────────────────────────────
@@ -87,6 +89,13 @@ function AchievementCard({ achievement: a }: { achievement: Achievement }) {
           {a.isNew && <Badge variant="gold" className="text-[0.55rem]">¡Nuevo!</Badge>}
         </div>
         <p className="font-body text-xs text-ink-muted/70 mt-0.5 leading-relaxed">{a.desc}</p>
+        {a.reward && (
+          <div className="flex items-center gap-2 mt-1.5">
+            {a.reward.wood  > 0 && <span className="flex items-center gap-0.5 font-ui text-[0.6rem] text-forest-light"><TreePine  size={9} />{formatResource(a.reward.wood)}</span>}
+            {a.reward.stone > 0 && <span className="flex items-center gap-0.5 font-ui text-[0.6rem] text-parchment-dim"><Mountain  size={9} />{formatResource(a.reward.stone)}</span>}
+            {a.reward.grain > 0 && <span className="flex items-center gap-0.5 font-ui text-[0.6rem] text-gold-dim"><Wheat      size={9} />{formatResource(a.reward.grain)}</span>}
+          </div>
+        )}
         {a.unlockedAt && (
           <p className="font-body text-[0.6rem] text-ink-muted/40 mt-1">
             {new Date(a.unlockedAt).toLocaleDateString('es-ES')}

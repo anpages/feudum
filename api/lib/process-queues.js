@@ -101,5 +101,12 @@ export async function processUserQueues(userId) {
   for (let i = 0; i < kingdomRows.length; i++) {
     total += await processKingdomQueues(kingdomRows[i].id, i === 0 ? userId : null)
   }
+  // Check achievements whenever a queue item completes
+  if (total > 0 && userId) {
+    try {
+      const { checkAndUnlock } = await import('./achievements.js')
+      await checkAndUnlock(userId)
+    } catch { /* non-fatal */ }
+  }
   return total
 }

@@ -6,6 +6,7 @@ export interface Achievement {
   name: string
   desc: string
   icon: string
+  reward?: { wood: number; stone: number; grain: number }
   unlocked: boolean
   unlockedAt: string | null
   isNew: boolean
