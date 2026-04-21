@@ -60,6 +60,10 @@ interface Props {
   animClass?: string
 }
 
+function applyBonus(base: number, level: number) {
+  return Math.floor(base * (1 + level * 0.1))
+}
+
 function UnitCardImpl({
   unit, meta, resources, kingdom, research,
   isTraining, onTrain, onCountdownEnd, onAccelerate, isAccelerating,
@@ -77,6 +81,15 @@ function UnitCardImpl({
 
   const changeAmount = (delta: number) => setAmount(a => Math.max(1, Math.min(a + delta, 9999)))
   const { Icon } = meta
+
+  const resMap = research ? Object.fromEntries(research.map(r => [r.id, r.level])) : {}
+  const sword = resMap.swordsmanship ?? 0
+  const arm   = resMap.armoury       ?? 0
+  const fort  = resMap.fortification ?? 0
+  const effAttack = applyBonus(unit.attack, sword)
+  const effShield = applyBonus(unit.shield, arm)
+  const effHull   = applyBonus(unit.hull,   fort)
+  const hasCombatBonus = sword > 0 || arm > 0 || fort > 0
 
   return (
     <Card className={`p-5 flex flex-col gap-4 ${animClass}`}>
@@ -96,22 +109,34 @@ function UnitCardImpl({
         </div>
       </div>
 
-      {/* Stats */}
+      {/* Stats — show effective values with base in parentheses if research applies */}
       {(unit.attack > 0 || unit.shield > 0 || unit.hull > 0) && (
-        <div className="flex items-center gap-3 text-xs">
+        <div className="flex items-center gap-3 text-xs flex-wrap">
           {unit.attack > 0 && (
             <div className="flex items-center gap-1 text-crimson">
-              <Sword size={10} /><span className="font-ui tabular-nums">{formatResource(unit.attack)}</span>
+              <Sword size={10} />
+              <span className="font-ui tabular-nums">{formatResource(effAttack)}</span>
+              {hasCombatBonus && sword > 0 && unit.attack !== effAttack && (
+                <span className="text-crimson/40 tabular-nums">({formatResource(unit.attack)})</span>
+              )}
             </div>
           )}
           {unit.shield > 0 && (
             <div className="flex items-center gap-1 text-gold-dim">
-              <Shield size={10} /><span className="font-ui tabular-nums">{formatResource(unit.shield)}</span>
+              <Shield size={10} />
+              <span className="font-ui tabular-nums">{formatResource(effShield)}</span>
+              {hasCombatBonus && arm > 0 && unit.shield !== effShield && (
+                <span className="text-gold-dim/40 tabular-nums">({formatResource(unit.shield)})</span>
+              )}
             </div>
           )}
           {unit.hull > 0 && (
             <div className="flex items-center gap-1 text-forest">
-              <Heart size={10} /><span className="font-ui tabular-nums">{formatResource(unit.hull)}</span>
+              <Heart size={10} />
+              <span className="font-ui tabular-nums">{formatResource(effHull)}</span>
+              {hasCombatBonus && fort > 0 && unit.hull !== effHull && (
+                <span className="text-forest/40 tabular-nums">({formatResource(unit.hull)})</span>
+              )}
             </div>
           )}
         </div>

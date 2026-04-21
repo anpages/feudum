@@ -52,9 +52,14 @@ export function OverviewPage() {
   const researchCount = researchData?.research.filter(r => r.level > 0).length ?? 0
   const researchTotalLevels = researchData?.research.reduce((s, r) => s + r.level, 0) ?? 0
 
+  const resMap = researchData ? Object.fromEntries(researchData.research.map(r => [r.id, r.level])) : {}
+  const sword = resMap.swordsmanship ?? 0
+  const arm   = resMap.armoury       ?? 0
+  const effBonus = (base: number, lvl: number) => Math.floor(base * (1 + lvl * 0.1))
+
   const allBarracksUnits = [...(barracksData?.units ?? []), ...(barracksData?.support ?? []), ...(barracksData?.defenses ?? [])]
-  const totalAttackPower = allBarracksUnits.reduce((s, u) => s + u.count * u.attack, 0)
-  const totalShieldPower = allBarracksUnits.reduce((s, u) => s + u.count * u.shield, 0)
+  const totalAttackPower = allBarracksUnits.reduce((s, u) => s + u.count * effBonus(u.attack, sword), 0)
+  const totalShieldPower = allBarracksUnits.reduce((s, u) => s + u.count * effBonus(u.shield, arm),   0)
   const totalUnitCount   = allBarracksUnits.reduce((s, u) => s + u.count, 0)
   const myRanking = rankingsData?.rankings.find(r => r.isMe)
   const activeMissions = armiesData?.missions.filter(m => m.state === 'active').length ?? 0
