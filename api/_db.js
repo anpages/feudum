@@ -204,6 +204,26 @@ export const buildingQueue = pgTable('building_queue', {
   createdAt:  timestamp('created_at').defaultNow().notNull(),
 })
 
+export const lfBuildingQueue = pgTable('lf_building_queue', {
+  id:         uuid('id').primaryKey().defaultRandom(),
+  kingdomId:  uuid('kingdom_id').notNull().references(() => kingdoms.id, { onDelete: 'cascade' }),
+  building:   varchar('building', { length: 60 }).notNull(),
+  level:      integer('level').notNull(),
+  startedAt:  integer('started_at').notNull(),
+  finishesAt: integer('finishes_at').notNull(),
+  createdAt:  timestamp('created_at').defaultNow().notNull(),
+})
+
+export const lfResearchQueue = pgTable('lf_research_queue', {
+  id:         uuid('id').primaryKey().defaultRandom(),
+  kingdomId:  uuid('kingdom_id').notNull().references(() => kingdoms.id, { onDelete: 'cascade' }),
+  research:   varchar('research', { length: 60 }).notNull(),
+  level:      integer('level').notNull(),
+  startedAt:  integer('started_at').notNull(),
+  finishesAt: integer('finishes_at').notNull(),
+  createdAt:  timestamp('created_at').defaultNow().notNull(),
+})
+
 export const armyMissions = pgTable('army_missions', {
   id:          uuid('id').primaryKey().defaultRandom(),
   userId:      uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
@@ -299,4 +319,4 @@ export const NPC_USER_ID = '00000000-0000-0000-0000-000000000001'
 
 // prepare: false required for PgBouncer transaction pooling
 const client = postgres(process.env.STORAGE_POSTGRES_URL, { prepare: false })
-export const db = drizzle(client, { schema: { users, kingdoms, research, researchQueue, buildingQueue, unitQueue, armyMissions, messages, debrisFields, settings, userAchievements, pushSubscriptions, etherTransactions, battleLog } })
+export const db = drizzle(client, { schema: { users, kingdoms, research, researchQueue, buildingQueue, lfBuildingQueue, lfResearchQueue, unitQueue, armyMissions, messages, debrisFields, settings, userAchievements, pushSubscriptions, etherTransactions, battleLog } })

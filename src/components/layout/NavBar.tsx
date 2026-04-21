@@ -1,7 +1,7 @@
 import { NavLink } from 'react-router-dom'
 import {
   X, ShieldAlert,
-  Castle, Factory, Building2, BookOpen, Swords, Shield, Navigation, Map, Trophy, BarChart2, Users,
+  Castle, Factory, Building2, BookOpen, Swords, Shield, Navigation, Map, Trophy, BarChart2, Users, Landmark,
   type LucideIcon,
 } from 'lucide-react'
 import { useAuth } from '@/features/auth/useAuth'
@@ -23,6 +23,7 @@ const NAV_ITEMS: NavItem[] = [
   { to: '/defense',     label: 'Defensa',       Icon: Shield },
   { to: '/armies',      label: 'Misiones',      Icon: Navigation },
   { to: '/map',         label: 'Mapa',          Icon: Map },
+  { to: '/lifeforms',   label: 'Civilización',  Icon: Landmark },
 ]
 
 interface Props {
