@@ -1,6 +1,6 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { Shield, Loader2, Plus, Rocket } from 'lucide-react'
+import { Shield, Loader2, Plus, Rocket, Clock } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
@@ -12,6 +12,8 @@ import { useResearch } from '@/features/research/useResearch'
 import { ALL_UNIT_META, MISSION_META } from './armiesMeta'
 import { MissionRow } from './components/MissionRow'
 import { CoordPicker } from './components/CoordPicker'
+import { calcDistance, calcDuration } from '@/lib/game/speed'
+import { formatDuration } from '@/lib/format'
 
 export function ArmiesPage() {
   const qc = useQueryClient()
@@ -34,6 +36,7 @@ export function ArmiesPage() {
   const [units,        setUnits]        = useState<Record<string, number>>({})
   const [resLoad,      setResLoad]      = useState({ wood: 0, stone: 0, grain: 0 })
   const [holdingHours, setHoldingHours] = useState(1)
+  const [speedPct,     setSpeedPct]     = useState(100)
 
   useEffect(() => {
     if (searchParams.get('type')) setSearchParams({}, { replace: true })
@@ -57,6 +60,18 @@ export function ArmiesPage() {
   ).length ?? 0
   const expeditionSlotsFull = activeExpeditions >= maxExpeditions
 
+  // Estimate travel time client-side for immediate feedback
+  const travelPreview = useMemo(() => {
+    if (!kingdom || totalUnits === 0) return null
+    const k = kingdom as unknown as Record<string, number>
+    const origin = { realm: k.realm, region: k.region, slot: k.slot }
+    const destSlot = missionType === 'expedition' ? 16 : tSlot
+    const dest = { realm: tRealm, region: tRegion, slot: destSlot }
+    const research = Object.fromEntries(researchData?.research.map(r => [r.id, r.level]) ?? [])
+    const dist = calcDistance(origin, dest)
+    return calcDuration(dist, units, speedPct, 1, research, null)
+  }, [kingdom, totalUnits, tRealm, tRegion, tSlot, missionType, speedPct, units, researchData])
+
   const canSend    = totalUnits > 0 && !send.isPending && !(missionType === 'expedition' && expeditionSlotsFull)
   const hasUnits   = ALL_UNIT_META.some(u => ((kingdom as unknown as Record<string, number> | null)?.[u.id] ?? 0) > 0)
 
@@ -69,12 +84,14 @@ export function ArmiesPage() {
         units,
         resources: (missionType === 'transport' || missionType === 'deploy') ? resLoad : undefined,
         holdingHours: missionType === 'expedition' ? holdingHours : undefined,
+        speedPct,
       },
       {
         onSuccess: () => {
           setUnits({})
           setResLoad({ wood: 0, stone: 0, grain: 0 })
           setHoldingHours(1)
+          setSpeedPct(100)
           setSheetOpen(false)
         },
       }
@@ -134,6 +151,8 @@ export function ArmiesPage() {
           units={units} setUnit={setUnit}
           resLoad={resLoad} setResLoad={setResLoad}
           holdingHours={holdingHours} setHoldingHours={setHoldingHours}
+          speedPct={speedPct} setSpeedPct={setSpeedPct}
+          travelPreview={travelPreview}
           isMissile={isMissile} totalUnits={totalUnits}
           canSend={canSend} hasUnits={hasUnits}
           kingdom={kingdom} send={send}
@@ -155,6 +174,7 @@ function MissionForm({
   tRealm, setTRealm, tRegion, setTRegion, tSlot, setTSlot,
   units, setUnit, resLoad, setResLoad,
   holdingHours, setHoldingHours,
+  speedPct, setSpeedPct, travelPreview,
   isMissile, totalUnits, canSend, hasUnits, kingdom, send, onSend,
   expeditionSlotsFull, activeExpeditions, maxExpeditions, cartographyLevel,
 }: {
@@ -166,6 +186,7 @@ function MissionForm({
   resLoad: { wood: number; stone: number; grain: number }
   setResLoad: React.Dispatch<React.SetStateAction<{ wood: number; stone: number; grain: number }>>
   holdingHours: number; setHoldingHours: (n: number) => void
+  speedPct: number; setSpeedPct: (n: number) => void; travelPreview: number | null
   isMissile: boolean; totalUnits: number; canSend: boolean; hasUnits: boolean
   kingdom: Kingdom | null | undefined; send: ReturnType<typeof useSendArmy>; onSend: () => void
   expeditionSlotsFull: boolean; activeExpeditions: number; maxExpeditions: number; cartographyLevel: number
@@ -328,6 +349,38 @@ function MissionForm({
                 )
               })}
             </div>
+          </div>
+        </>
+      )}
+
+      {/* Speed selector — not shown for missiles (they have fixed travel) */}
+      {!isMissile && (
+        <>
+          <div className="divider">◆</div>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <p className="font-ui text-xs text-ink-muted uppercase tracking-wider">Velocidad de marcha</p>
+              {travelPreview !== null && totalUnits > 0 && (
+                <span className="flex items-center gap-1 font-ui text-xs text-gold-dim">
+                  <Clock size={10} />
+                  {formatDuration(travelPreview)} de viaje
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-3">
+              <input
+                type="range" min={10} max={100} step={5}
+                value={speedPct}
+                onChange={e => setSpeedPct(parseInt(e.target.value, 10))}
+                className="flex-1 accent-gold-dim"
+              />
+              <span className="font-ui text-sm font-semibold text-ink-mid tabular-nums w-12 text-right">
+                {speedPct}%
+              </span>
+            </div>
+            <p className="font-body text-[0.65rem] text-ink-muted/60">
+              10% = más lento (para coordinar tiempos) · 100% = máxima velocidad
+            </p>
           </div>
         </>
       )}

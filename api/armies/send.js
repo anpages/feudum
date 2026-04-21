@@ -20,7 +20,7 @@ export default async function handler(req, res) {
   const userId = await getSessionUserId(req)
   if (!userId) return res.status(401).json({ error: 'No autenticado' })
 
-  const { missionType, target, units: rawUnits, resources: rawResources, holdingHours: rawHoldingHours } = req.body ?? {}
+  const { missionType, target, units: rawUnits, resources: rawResources, holdingHours: rawHoldingHours, speedPct: rawSpeedPct } = req.body ?? {}
 
   // ── Validate mission type ─────────────────────────────────────────────────
   if (!MISSION_TYPES.includes(missionType)) {
@@ -238,10 +238,18 @@ export default async function handler(req, res) {
   // ── Calculate travel time ─────────────────────────────────────────────────
   const origin   = { realm: kingdom.realm, region: kingdom.region, slot: kingdom.slot }
   const dest     = { realm: tRealm,        region: tRegion,        slot: tSlot        }
-  const isWar        = ['attack', 'spy'].includes(missionType)
-  const universeSpeed = isWar ? parseFloat(cfg.fleet_speed_war ?? 1) : parseFloat(cfg.fleet_speed_peaceful ?? 1)
-  const distance     = calcDistance(origin, dest)
-  const travelSecs   = calcDuration(distance, units, 100, universeSpeed, researchRow ?? {}, userRow?.characterClass ?? null)
+  const isWar = ['attack', 'spy'].includes(missionType)
+  let universeSpeed = isWar
+    ? parseFloat(cfg.fleet_speed_war ?? 1)
+    : parseFloat(cfg.fleet_speed_peaceful ?? 1)
+  // Deploy missions travel 10% faster than normal (OGame "holding" fleet speed bonus)
+  if (missionType === 'deploy') universeSpeed *= 1.1
+
+  // speedPct: player-chosen 10–100, default 100 (Feudum has no fuel cost)
+  const speedPct = Math.min(100, Math.max(10, parseInt(rawSpeedPct ?? 100, 10) || 100))
+
+  const distance   = calcDistance(origin, dest)
+  const travelSecs = calcDuration(distance, units, speedPct, universeSpeed, researchRow ?? {}, userRow?.characterClass ?? null)
 
   if (travelSecs === 0) {
     return res.status(400).json({ error: 'No se pudo calcular el tiempo de viaje' })
@@ -314,5 +322,6 @@ export default async function handler(req, res) {
     arrivalTime,
     returnTime,
     travelSeconds: travelSecs,
+    speedPct,
   })
 }

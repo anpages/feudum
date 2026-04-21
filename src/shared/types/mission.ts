@@ -69,4 +69,5 @@ export interface SendArmyParams {
   units: Partial<Record<string, number>>
   resources?: Resources
   holdingHours?: number
+  speedPct?: number
 }
