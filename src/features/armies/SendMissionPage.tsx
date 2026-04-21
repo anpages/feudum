@@ -211,36 +211,15 @@ export function SendMissionPage() {
       <Card className="anim-fade-up-1 p-5 space-y-4">
         <p className="font-ui text-xs text-ink-muted uppercase tracking-wider">Destino</p>
         {missionType === 'expedition' ? (
-          <div className="space-y-4">
+          <div className="space-y-3">
             <div className="py-3 px-4 rounded-lg bg-parchment-deep border border-gold/15">
               <p className="font-ui text-sm font-semibold text-gold-dim">Tierras Ignotas</p>
-              <p className="font-body text-xs text-ink-muted mt-1">Destino automático · slot 16 del reino y región actuales</p>
+              <p className="font-body text-xs text-ink-muted mt-1">Destino fijo · slot 16 del reino y región actuales</p>
             </div>
             <p className={`font-ui text-xs ${expeditionSlotsFull ? 'text-crimson font-semibold' : 'text-ink-muted'}`}>
               Expediciones activas: {activeExpeditions} / {maxExpeditions}
               {cartographyLevel === 0 && ' · Mejora Cartografía para desbloquear más slots'}
             </p>
-            {cartographyLevel > 1 ? (
-              <div className="space-y-2">
-                <p className="font-ui text-xs text-ink-muted uppercase tracking-wider">Duración en destino</p>
-                <div className="flex items-center gap-3">
-                  <input
-                    type="range" min={1} max={cartographyLevel}
-                    value={holdingHours}
-                    onChange={e => setHoldingHours(parseInt(e.target.value, 10))}
-                    className="flex-1 accent-gold-dim"
-                  />
-                  <span className="font-ui text-sm font-semibold text-ink-mid tabular-nums w-12 text-right">{holdingHours}h</span>
-                </div>
-                <p className="font-body text-[0.65rem] text-ink-muted/60">
-                  De 1 a {cartographyLevel} horas · mejora Cartografía para ampliar el tiempo máximo
-                </p>
-              </div>
-            ) : (
-              <p className="font-body text-xs text-ink-muted/70">
-                Duración en destino: <strong className="text-ink-mid">1 hora</strong> · Mejora Cartografía para aumentarla
-              </p>
-            )}
           </div>
         ) : (
           <div className="grid grid-cols-3 gap-4">
@@ -350,30 +329,91 @@ export function SendMissionPage() {
 
       {/* Speed + ETA */}
       {!isMissile && (
-        <Card className="anim-fade-up-3 p-5 space-y-3">
-          <div className="flex items-center justify-between">
-            <p className="font-ui text-xs text-ink-muted uppercase tracking-wider">Velocidad de marcha</p>
-            {travelPreview !== null && (
-              <span className="flex items-center gap-1.5 font-ui text-xs font-semibold text-gold-dim">
-                <Clock size={11} />
-                {formatDuration(travelPreview)} de viaje
-              </span>
-            )}
-          </div>
-          <div className="flex items-center gap-4">
-            <input
-              type="range" min={10} max={100} step={5}
-              value={speedPct}
-              onChange={e => setSpeedPct(parseInt(e.target.value, 10))}
-              className="flex-1 accent-gold-dim"
-            />
-            <span className="font-ui text-lg font-bold text-ink-mid tabular-nums w-14 text-right">
-              {speedPct}%
-            </span>
-          </div>
-          <p className="font-body text-[0.65rem] text-ink-muted/60 leading-relaxed">
-            Al 100% llegas lo antes posible. Reduce la velocidad para coordinar ataques simultáneos con otros jugadores. Al 50% tardas el doble.
-          </p>
+        <Card className="anim-fade-up-3 p-5 space-y-4">
+          {missionType === 'expedition' ? (
+            <>
+              {/* Expedition: show total mission time prominently */}
+              <div className="flex items-center justify-between">
+                <p className="font-ui text-xs text-ink-muted uppercase tracking-wider">Duración de la misión</p>
+                {travelPreview !== null && (
+                  <span className="flex items-center gap-1.5 font-ui text-xs font-semibold text-gold-dim">
+                    <Clock size={11} />
+                    Total: {formatDuration(travelPreview * 2 + holdingHours * 3600)}
+                  </span>
+                )}
+              </div>
+
+              {/* Exploration time (primary control) */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <p className="font-ui text-xs text-ink-muted">Tiempo de exploración</p>
+                  <span className="font-ui text-sm font-bold text-gold-dim tabular-nums">{holdingHours}h</span>
+                </div>
+                {cartographyLevel > 1 ? (
+                  <>
+                    <input
+                      type="range" min={1} max={cartographyLevel}
+                      value={holdingHours}
+                      onChange={e => setHoldingHours(parseInt(e.target.value, 10))}
+                      className="w-full accent-gold-dim"
+                    />
+                    <p className="font-body text-[0.65rem] text-ink-muted/60">
+                      Máximo {cartographyLevel}h según tu nivel de Cartografía · más horas = más posibilidades de hallazgo
+                    </p>
+                  </>
+                ) : (
+                  <p className="font-body text-[0.65rem] text-ink-muted/60">
+                    Fijo en 1 hora · mejora Cartografía para explorar durante más tiempo
+                  </p>
+                )}
+              </div>
+
+              {/* Speed */}
+              <div className="space-y-2 border-t border-gold/10 pt-3">
+                <div className="flex items-center justify-between">
+                  <p className="font-ui text-xs text-ink-muted">Velocidad de marcha</p>
+                  <span className="font-ui text-sm font-bold text-ink-mid tabular-nums">{speedPct}%</span>
+                </div>
+                <input
+                  type="range" min={10} max={100} step={5}
+                  value={speedPct}
+                  onChange={e => setSpeedPct(parseInt(e.target.value, 10))}
+                  className="w-full accent-gold-dim"
+                />
+                {travelPreview !== null && (
+                  <p className="font-body text-[0.65rem] text-ink-muted/60">
+                    Viaje {formatDuration(travelPreview)} · Exploración {holdingHours}h · Regreso {formatDuration(travelPreview)}
+                  </p>
+                )}
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="flex items-center justify-between">
+                <p className="font-ui text-xs text-ink-muted uppercase tracking-wider">Velocidad de marcha</p>
+                {travelPreview !== null && (
+                  <span className="flex items-center gap-1.5 font-ui text-xs font-semibold text-gold-dim">
+                    <Clock size={11} />
+                    {formatDuration(travelPreview)} de viaje
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-4">
+                <input
+                  type="range" min={10} max={100} step={5}
+                  value={speedPct}
+                  onChange={e => setSpeedPct(parseInt(e.target.value, 10))}
+                  className="flex-1 accent-gold-dim"
+                />
+                <span className="font-ui text-lg font-bold text-ink-mid tabular-nums w-14 text-right">
+                  {speedPct}%
+                </span>
+              </div>
+              <p className="font-body text-[0.65rem] text-ink-muted/60 leading-relaxed">
+                Al 100% llegas lo antes posible. Reduce la velocidad para coordinar ataques simultáneos. Al 50% tardas el doble.
+              </p>
+            </>
+          )}
         </Card>
       )}
 
