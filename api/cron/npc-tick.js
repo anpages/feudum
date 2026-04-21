@@ -51,8 +51,8 @@ const BUILD_WEIGHTS = {
   economy: {
     sawmill: 1.0, quarry: 0.85, grainFarm: 0.70, windmill: 0.60,
     cathedral: 0.50, granary: 0.55, stonehouse: 0.50, silo: 0.45,
-    workshop: 0.65, barracks: 0.35, academy: 0.25,
-    alchemistTower: 0.40, ambassadorHall: 0.20, armoury: 0.20, engineersGuild: 0.35,
+    workshop: 0.65, barracks: 0.60, academy: 0.25,
+    alchemistTower: 0.40, ambassadorHall: 0.20, armoury: 0.35, engineersGuild: 0.35,
   },
   military: {
     barracks: 1.0, sawmill: 0.75, quarry: 0.65, workshop: 0.60,
@@ -69,17 +69,19 @@ const BUILD_WEIGHTS = {
 }
 
 // ── Unit training priority per personality (no cap, ordered by preference) ───
+// Mobile units (squire, knight, …) come first so totalArmy() reaches attack
+// threshold. Defenses (archer, crossbowman, …) are still trained but secondary.
 const UNIT_PRIORITY = {
-  economy:  ['archer', 'crossbowman', 'squire', 'mageTower', 'ballista', 'knight', 'paladin', 'warlord', 'grandKnight', 'siegeMaster', 'warMachine', 'dragonKnight'],
-  military: ['squire', 'knight', 'crossbowman', 'archer', 'warlord', 'paladin', 'ballista', 'mageTower', 'grandKnight', 'siegeMaster', 'warMachine', 'dragonKnight'],
-  balanced: ['archer', 'squire', 'knight', 'crossbowman', 'paladin', 'mageTower', 'ballista', 'warlord', 'grandKnight', 'siegeMaster', 'warMachine', 'dragonKnight'],
+  economy:  ['squire', 'archer', 'crossbowman', 'knight', 'mageTower', 'ballista', 'paladin', 'warlord', 'grandKnight', 'siegeMaster', 'warMachine', 'dragonKnight'],
+  military: ['squire', 'knight', 'archer', 'crossbowman', 'paladin', 'warlord', 'ballista', 'mageTower', 'grandKnight', 'siegeMaster', 'warMachine', 'dragonKnight'],
+  balanced: ['squire', 'archer', 'knight', 'crossbowman', 'paladin', 'mageTower', 'ballista', 'warlord', 'grandKnight', 'siegeMaster', 'warMachine', 'dragonKnight'],
 }
 
-// ── Attack threshold per personality (min army units before attacking) ────────
+// ── Attack threshold per personality (min MOBILE army units before attacking) ─
 const ATTACK_THRESHOLD = {
-  economy:  20,
-  military: 10,
-  balanced: 15,
+  economy:  8,
+  military: 5,
+  balanced: 6,
 }
 
 // ── Minimum barracks level per unit ──────────────────────────────────────────
@@ -232,8 +234,13 @@ async function attackAI(npcKingdom, allKingdoms, bashMap, now, cfg) {
   const armySize    = totalArmy(npcKingdom)
 
   const baseThreshold = ATTACK_THRESHOLD[personality]
-  const threshold = baseThreshold + (cls === 'general' ? -4 : cls === 'collector' ? 5 : 0)
+  const threshold = baseThreshold + (cls === 'general' ? -2 : cls === 'collector' ? 3 : 0)
   if (armySize < threshold) return false
+
+  // Cooldown: respect NPC_ATTACK_INTERVAL_HOURS between launches
+  const intervalSecs = NPC_ATTACK_INTERVAL_HOURS * 3600
+  const lastAttack = npcKingdom.npcLastAttackAt ?? 0
+  if (now - lastAttack < intervalSecs) return false
 
   // Check for active attack missions from THIS specific NPC kingdom (by position)
   const activeMissions = await db.select({ id: armyMissions.id })
@@ -330,11 +337,10 @@ async function attackAI(npcKingdom, allKingdoms, bashMap, now, cfg) {
     ...force,
   })
 
-  // Deduct sent units from NPC kingdom
-  const deduct = {}
+  // Deduct sent units and record attack timestamp
+  const deduct = { npcLastAttackAt: now, updatedAt: new Date() }
   for (const [u, n] of Object.entries(force)) deduct[u] = (npcKingdom[u] ?? 0) - n
-  await db.update(kingdoms).set({ ...deduct, updatedAt: new Date() })
-    .where(eq(kingdoms.id, npcKingdom.id))
+  await db.update(kingdoms).set(deduct).where(eq(kingdoms.id, npcKingdom.id))
 
   return true
 }
