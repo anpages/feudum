@@ -11,7 +11,7 @@ export const RESEARCH_META: Record<string, { name: string; description: string; 
   cartography:      { category: 'Logística',     name: 'Cartografía',       description: '+20% velocidad/nivel a Caballeros, Paladines, Colonistas y Maestros de Asedio (impulso).' },
   tradeRoutes:      { category: 'Logística',     name: 'Rutas Comerciales', description: '+30% velocidad/nivel a Señores, Grandes Caballeros, Máquinas de Guerra y Dragones (hiperespacio).' },
   spycraft:         { category: 'Inteligencia',  name: 'Espionaje',         description: 'Arte de infiltrarse en reinos enemigos sin ser detectado.' },
-  logistics:        { category: 'Inteligencia',  name: 'Logística',         description: 'Coordinación de ejércitos que aumenta el número máximo de misiones simultáneas.' },
+  logistics:        { category: 'Inteligencia',  name: 'Logística',         description: '+1 slot de flota por nivel. Sin investigar: 1 misión activa. Nv.1 → 2, Nv.5 → 6. Los misiles no ocupan slot.' },
   exploration:      { category: 'Inteligencia',  name: 'Exploración',       description: 'Permite colonizar nuevos territorios y fundar reinos adicionales.' },
   diplomaticNetwork:{ category: 'Inteligencia',  name: 'Red Diplomática',   description: 'Conecta Academias de todo el reino para acelerar investigaciones.' },
   divineBlessing:   { category: 'Inteligencia',  name: 'Bendición Divina',  description: 'Favor de los dioses. La investigación definitiva.' },

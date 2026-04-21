@@ -73,6 +73,7 @@ export function useSendArmy() {
           result: null,
         }
         qc.setQueryData<ArmiesResponse>(armiesKey, {
+          ...prevArmies,
           missions: [placeholder, ...prevArmies.missions],
         })
       }
@@ -104,6 +105,7 @@ export function useRecallArmy() {
       const prev = qc.getQueryData<ArmiesResponse>(['armies'])
       if (prev) {
         qc.setQueryData<ArmiesResponse>(['armies'], {
+          ...prev,
           missions: prev.missions.map(m =>
             m.id === missionId ? { ...m, state: 'returning' as const } : m
           ),
@@ -133,6 +135,7 @@ export function useMerchantRespond() {
       const prev = qc.getQueryData<ArmiesResponse>(['armies'])
       if (prev) {
         qc.setQueryData<ArmiesResponse>(['armies'], {
+          ...prev,
           missions: prev.missions.filter(m => m.id !== missionId),
         })
       }

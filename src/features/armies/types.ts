@@ -4,6 +4,7 @@ export type { ArmyMission, SendArmyParams }
 
 export interface ArmiesResponse {
   missions: ArmyMission[]
+  fleetSlots: { used: number; max: number }
 }
 
 export interface SendArmyResponse {

@@ -1,6 +1,6 @@
 import { useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Shield, Plus } from 'lucide-react'
+import { Shield, Plus, Swords } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
@@ -31,10 +31,20 @@ export function ArmiesPage() {
           <h1 className="page-title mt-0.5">Misiones</h1>
           <p className="font-body text-ink-muted text-sm mt-1.5">Gestiona tus ejércitos en campaña.</p>
         </div>
-        <Button variant="primary" size="sm" className="mt-1 shrink-0" onClick={() => navigate('/armies/send')}>
-          <Plus size={13} />
-          Enviar misión
-        </Button>
+        <div className="flex flex-col items-end gap-1.5 mt-1 shrink-0">
+          <Button variant="primary" size="sm" onClick={() => navigate('/armies/send')}>
+            <Plus size={13} />
+            Enviar misión
+          </Button>
+          {armies?.fleetSlots && (
+            <span className={`flex items-center gap-1 font-ui text-[0.65rem] tabular-nums ${
+              armies.fleetSlots.used >= armies.fleetSlots.max ? 'text-crimson font-semibold' : 'text-ink-muted'
+            }`}>
+              <Swords size={9} />
+              {armies.fleetSlots.used}/{armies.fleetSlots.max} slots
+            </span>
+          )}
+        </div>
       </div>
 
       <div className="anim-fade-up-1 space-y-3">

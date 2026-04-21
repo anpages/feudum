@@ -1,4 +1,4 @@
-import { eq, and, gte } from 'drizzle-orm'
+import { eq, and, gte, ne } from 'drizzle-orm'
 import { db, kingdoms, armyMissions, research, users } from '../_db.js'
 import { getSessionUserId } from '../lib/handler.js'
 import { calcDistance, calcDuration, calcCargoCapacity } from '../lib/speed.js'
@@ -58,6 +58,22 @@ export default async function handler(req, res) {
     getSettings(),
   ])
   if (!kingdom) return res.status(404).json({ error: 'Reino no encontrado' })
+
+  // ── Fleet slot limit (Logistics research) — missiles don't use slots ──────
+  if (!isMissile) {
+    const logistics = researchRow?.logistics ?? 0
+    const maxSlots  = 1 + logistics
+    const allActive = await db
+      .select({ missionType: armyMissions.missionType })
+      .from(armyMissions)
+      .where(and(eq(armyMissions.userId, userId), ne(armyMissions.state, 'completed')))
+    const slotsUsed = allActive.filter(m => m.missionType !== 'missile').length
+    if (slotsUsed >= maxSlots) {
+      return res.status(400).json({
+        error: `Slots de flota llenos (${slotsUsed}/${maxSlots}). Mejora Logística para desbloquear más misiones simultáneas.`,
+      })
+    }
+  }
 
   // Can't attack yourself
   if (kingdom.realm === tRealm && kingdom.region === tRegion && kingdom.slot === tSlot) {

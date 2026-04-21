@@ -432,6 +432,22 @@ export function SendMissionPage() {
         </Card>
       )}
 
+      {/* Fleet slots indicator */}
+      {armies?.fleetSlots && !isMissile && (
+        <div className={`anim-fade-up-3 flex items-center justify-between px-4 py-2.5 rounded-lg border ${
+          armies.fleetSlots.used >= armies.fleetSlots.max
+            ? 'border-crimson/25 bg-crimson/5'
+            : 'border-gold/20 bg-gold-soft'
+        }`}>
+          <span className="font-ui text-xs text-ink-muted">Slots de flota</span>
+          <span className={`font-ui text-sm font-bold tabular-nums ${
+            armies.fleetSlots.used >= armies.fleetSlots.max ? 'text-crimson' : 'text-gold-dim'
+          }`}>
+            {armies.fleetSlots.used} / {armies.fleetSlots.max}
+          </span>
+        </div>
+      )}
+
       {/* Error + Send button */}
       <div className="anim-fade-up-3 space-y-3 pb-10">
         {send.isError && (
