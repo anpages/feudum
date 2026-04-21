@@ -220,21 +220,27 @@ export function SendMissionPage() {
               Expediciones activas: {activeExpeditions} / {maxExpeditions}
               {cartographyLevel === 0 && ' · Mejora Cartografía para desbloquear más slots'}
             </p>
-            <div className="space-y-2">
-              <p className="font-ui text-xs text-ink-muted uppercase tracking-wider">Duración en destino</p>
-              <div className="flex items-center gap-3">
-                <input
-                  type="range" min={1} max={Math.max(1, cartographyLevel)}
-                  value={holdingHours}
-                  onChange={e => setHoldingHours(parseInt(e.target.value, 10))}
-                  className="flex-1 accent-gold-dim"
-                />
-                <span className="font-ui text-sm font-semibold text-ink-mid tabular-nums w-12 text-right">{holdingHours}h</span>
+            {cartographyLevel > 1 ? (
+              <div className="space-y-2">
+                <p className="font-ui text-xs text-ink-muted uppercase tracking-wider">Duración en destino</p>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="range" min={1} max={cartographyLevel}
+                    value={holdingHours}
+                    onChange={e => setHoldingHours(parseInt(e.target.value, 10))}
+                    className="flex-1 accent-gold-dim"
+                  />
+                  <span className="font-ui text-sm font-semibold text-ink-mid tabular-nums w-12 text-right">{holdingHours}h</span>
+                </div>
+                <p className="font-body text-[0.65rem] text-ink-muted/60">
+                  De 1 a {cartographyLevel} horas · mejora Cartografía para ampliar el tiempo máximo
+                </p>
               </div>
-              <p className="font-body text-[0.65rem] text-ink-muted/60">
-                Entre 1 y {Math.max(1, cartographyLevel)} hora(s) según tu nivel de Cartografía
+            ) : (
+              <p className="font-body text-xs text-ink-muted/70">
+                Duración en destino: <strong className="text-ink-mid">1 hora</strong> · Mejora Cartografía para aumentarla
               </p>
-            </div>
+            )}
           </div>
         ) : (
           <div className="grid grid-cols-3 gap-4">
