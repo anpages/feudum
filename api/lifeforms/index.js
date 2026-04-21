@@ -1,5 +1,5 @@
 import { eq } from 'drizzle-orm'
-import { db, kingdoms } from '../_db.js'
+import { db, kingdoms, lfBuildingQueue, lfResearchQueue } from '../_db.js'
 import { getSessionUserId } from '../lib/handler.js'
 import {
   CIVILIZATIONS, LF_BUILDINGS_BY_CIV, LF_RESEARCH_BY_CIV,
@@ -64,6 +64,15 @@ export default async function handler(req, res) {
   const workshopLevel  = kingdom.workshop       ?? 0
   const naniteLevel    = kingdom.engineersGuild  ?? 0
 
+  // Load active queues for this kingdom
+  const [activeBuildQ, activeResQ] = await Promise.all([
+    db.select().from(lfBuildingQueue).where(eq(lfBuildingQueue.kingdomId, kingdom.id)),
+    db.select().from(lfResearchQueue).where(eq(lfResearchQueue.kingdomId, kingdom.id)),
+  ])
+  // Map building_id → { finishesAt, level }
+  const buildQueueMap = Object.fromEntries(activeBuildQ.map(q => [q.building, { finishesAt: q.finishesAt, level: q.level }]))
+  const resQueueMap   = activeResQ.length > 0 ? { [activeResQ[0].research]: { finishesAt: activeResQ[0].finishesAt, level: activeResQ[0].level } } : {}
+
   // Build per-civilization building lists (only current civ enriched)
   const buildingsByCiv = {}
   for (const c of CIVILIZATIONS) {
@@ -73,7 +82,8 @@ export default async function handler(req, res) {
       const cost      = lfBuildingCost(def, nextLevel)
       const timeSecs  = lfBuildingTime(def, nextLevel, workshopLevel, naniteLevel, speed)
       const reqMet    = lfBuildingRequirementsMet(def, lfLevels, popTotal)
-      return { id: def.id, name: def.name, description: def.description, role: def.role, level, nextLevel, cost, timeSecs, requiresMet: reqMet, requires: def.requires ?? [], bonuses: def.bonuses }
+      const inQueue   = buildQueueMap[def.id] ?? null
+      return { id: def.id, name: def.name, description: def.description, role: def.role, level, nextLevel, cost, timeSecs, requiresMet: reqMet, requires: def.requires ?? [], bonuses: def.bonuses, inQueue }
     })
   }
 
@@ -85,7 +95,8 @@ export default async function handler(req, res) {
       const nextLevel = level + 1
       const cost      = lfResearchCost(def, nextLevel)
       const timeSecs  = lfResearchTime(def, nextLevel, speed)
-      return { id: def.id, name: def.name, tier: def.tier, level, nextLevel, cost, timeSecs, effects: def.effects }
+      const inQueue   = resQueueMap[def.id] ?? null
+      return { id: def.id, name: def.name, tier: def.tier, level, nextLevel, cost, timeSecs, effects: def.effects, inQueue }
     })
   }
 

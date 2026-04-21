@@ -1,13 +1,34 @@
-import { useState } from 'react'
-import { Users, FlaskConical, Hammer } from 'lucide-react'
+import { useState, useEffect, useCallback } from 'react'
+import { Users, FlaskConical, Hammer, Loader2, Clock } from 'lucide-react'
 import { GiScrollUnfurled, GiCastle, GiHiking, GiByzantinTemple, GiCamel } from 'react-icons/gi'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { useLifeforms, useSelectCivilization, useBuildLFBuilding, useResearchLF } from './useLifeforms'
 import { useResourceTicker } from '@/features/kingdom/useResourceTicker'
 import { useKingdom } from '@/features/kingdom/useKingdom'
+import { useQueueSync } from '@/features/queues/useQueueSync'
 import { formatResource, formatDuration } from '@/lib/format'
+import { toast } from '@/lib/toast'
 import type { CivilizationId, LFBuildingInfo, LFResearchInfo } from './types'
+
+function useCountdown(finishesAt: number | null, onEnd: () => void) {
+  const [secs, setSecs] = useState(() =>
+    finishesAt ? Math.max(0, finishesAt - Math.floor(Date.now() / 1000)) : 0
+  )
+  useEffect(() => {
+    if (!finishesAt) return
+    let fired = false
+    const tick = () => {
+      const rem = Math.max(0, finishesAt - Math.floor(Date.now() / 1000))
+      setSecs(rem)
+      if (rem === 0 && !fired) { fired = true; onEnd() }
+    }
+    tick()
+    const id = setInterval(tick, 1000)
+    return () => clearInterval(id)
+  }, [finishesAt, onEnd])
+  return secs
+}
 
 const CIV_ICONS: Record<string, React.ComponentType<{ size?: number; className?: string }>> = {
   romans:     GiCastle,
@@ -24,13 +45,20 @@ const CIV_COLORS: Record<string, string> = {
 }
 
 export function LifeformsPage() {
-  const { data, isLoading } = useLifeforms()
+  const { data, isLoading, refetch } = useLifeforms()
   const { data: kingdom } = useKingdom()
   const resources = useResourceTicker(kingdom)
   const selectCiv = useSelectCivilization()
   const buildBuilding = useBuildLFBuilding()
   const researchLF = useResearchLF()
+  const syncQueues = useQueueSync()
   const [tab, setTab] = useState<'buildings' | 'research'>('buildings')
+
+  const handleCountdownEnd = useCallback(async (label: string) => {
+    await syncQueues()
+    await refetch()
+    toast.success(`${label} completado`)
+  }, [syncQueues, refetch])
 
   if (isLoading) return <LFSkeleton />
 
@@ -121,6 +149,7 @@ export function LifeformsPage() {
               resources={resources}
               onBuild={() => buildBuilding.mutate(b.id)}
               isBuildPending={buildBuilding.isPending && buildBuilding.variables === b.id}
+              onCountdownEnd={() => handleCountdownEnd(b.name)}
             />
           ))}
         </div>
@@ -150,6 +179,7 @@ export function LifeformsPage() {
                     locked={!data.tiers[`t${tier}` as 't1'|'t2'|'t3']}
                     onResearch={() => researchLF.mutate(r.id)}
                     isPending={researchLF.isPending && researchLF.variables === r.id}
+                    onCountdownEnd={() => handleCountdownEnd(r.name)}
                   />
                 ))}
               </div>
@@ -216,12 +246,15 @@ function SelectCivilizationPanel({ civs, onSelect, isPending }: {
 
 // ── LF Building Card ──────────────────────────────────────────────────────────
 
-function LFBuildingCard({ building: b, resources, onBuild, isBuildPending }: {
+function LFBuildingCard({ building: b, resources, onBuild, isBuildPending, onCountdownEnd }: {
   building: LFBuildingInfo
   resources: { wood: number; stone: number; grain: number }
   onBuild: () => void
   isBuildPending: boolean
+  onCountdownEnd: () => void
 }) {
+  const countdown = useCountdown(b.inQueue?.finishesAt ?? null, onCountdownEnd)
+  const inQueue   = !!b.inQueue && countdown > 0
   const canAfford = resources.wood >= b.cost.wood && resources.stone >= b.cost.stone && resources.grain >= b.cost.grain
 
   return (
@@ -234,42 +267,52 @@ function LFBuildingCard({ building: b, resources, onBuild, isBuildPending }: {
         <span className="shrink-0 font-ui text-lg font-bold text-gold-dim tabular-nums">{b.level}</span>
       </div>
 
-      <div className="flex gap-2 flex-wrap">
-        {b.cost.wood  > 0 && <ResourcePill label="🪵" value={b.cost.wood}  enough={resources.wood  >= b.cost.wood} />}
-        {b.cost.stone > 0 && <ResourcePill label="🪨" value={b.cost.stone} enough={resources.stone >= b.cost.stone} />}
-        {b.cost.grain > 0 && <ResourcePill label="🌾" value={b.cost.grain} enough={resources.grain >= b.cost.grain} />}
-        <span className="font-body text-[0.65rem] text-ink-muted/50 ml-auto self-center">{formatDuration(b.timeSecs)}</span>
-      </div>
-
-      {!b.requiresMet && (
-        <p className="font-body text-[0.65rem] text-crimson">
-          ⚠ Requisitos no cumplidos
-        </p>
+      {!inQueue && (
+        <div className="flex gap-2 flex-wrap">
+          {b.cost.wood  > 0 && <ResourcePill label="🪵" value={b.cost.wood}  enough={canAfford} />}
+          {b.cost.stone > 0 && <ResourcePill label="🪨" value={b.cost.stone} enough={canAfford} />}
+          {b.cost.grain > 0 && <ResourcePill label="🌾" value={b.cost.grain} enough={canAfford} />}
+          <span className="font-body text-[0.65rem] text-ink-muted/50 ml-auto self-center">{formatDuration(b.timeSecs)}</span>
+        </div>
       )}
 
-      <Button
-        variant="primary"
-        size="sm"
-        className="w-full"
-        disabled={!canAfford || !b.requiresMet || isBuildPending}
-        onClick={onBuild}
-      >
-        {isBuildPending ? 'Encolando…' : `Construir nv. ${b.nextLevel}`}
-      </Button>
+      {!b.requiresMet && !inQueue && (
+        <p className="font-body text-[0.65rem] text-crimson">⚠ Requisitos no cumplidos</p>
+      )}
+
+      {inQueue ? (
+        <div className="flex items-center justify-center gap-2 py-2.5 rounded border border-gold/15 bg-gold-soft text-gold-dim font-ui text-xs font-semibold uppercase tracking-wide">
+          <Loader2 size={12} className="animate-spin" />
+          Nv. {b.inQueue!.level} · {countdown > 0 ? formatDuration(countdown) : 'Finalizando…'}
+        </div>
+      ) : (
+        <Button
+          variant="primary"
+          size="sm"
+          className="w-full"
+          disabled={!canAfford || !b.requiresMet || isBuildPending}
+          onClick={onBuild}
+        >
+          {isBuildPending ? 'Encolando…' : `Construir nv. ${b.nextLevel}`}
+        </Button>
+      )}
     </Card>
   )
 }
 
 // ── LF Research Card ──────────────────────────────────────────────────────────
 
-function LFResearchCard({ research: r, resources, locked, onResearch, isPending }: {
+function LFResearchCard({ research: r, resources, locked, onResearch, isPending, onCountdownEnd }: {
   research: LFResearchInfo
   resources: { wood: number; stone: number; grain: number }
   locked: boolean
   onResearch: () => void
   isPending: boolean
+  onCountdownEnd: () => void
 }) {
-  const canAfford = !locked && resources.wood >= r.cost.wood && resources.stone >= r.cost.stone && resources.grain >= r.cost.grain
+  const countdown = useCountdown(r.inQueue?.finishesAt ?? null, onCountdownEnd)
+  const inQueue   = !!r.inQueue && countdown > 0
+  const canAfford = !locked && !inQueue && resources.wood >= r.cost.wood && resources.stone >= r.cost.stone && resources.grain >= r.cost.grain
 
   return (
     <Card className={`p-4 space-y-3 ${locked ? 'opacity-50' : ''}`}>
@@ -287,24 +330,33 @@ function LFResearchCard({ research: r, resources, locked, onResearch, isPending 
         <span className="shrink-0 font-ui text-lg font-bold text-gold-dim tabular-nums">{r.level}</span>
       </div>
 
-      {!locked && (
+      {!locked && !inQueue && (
         <div className="flex gap-2 flex-wrap">
           {r.cost.wood  > 0 && <ResourcePill label="🪵" value={r.cost.wood}  enough={resources.wood  >= r.cost.wood} />}
           {r.cost.stone > 0 && <ResourcePill label="🪨" value={r.cost.stone} enough={resources.stone >= r.cost.stone} />}
           {r.cost.grain > 0 && <ResourcePill label="🌾" value={r.cost.grain} enough={resources.grain >= r.cost.grain} />}
-          <span className="font-body text-[0.65rem] text-ink-muted/50 ml-auto self-center">{formatDuration(r.timeSecs)}</span>
+          <span className="font-body text-[0.65rem] text-ink-muted/50 ml-auto self-center">
+            <Clock size={10} className="inline mr-0.5" />{formatDuration(r.timeSecs)}
+          </span>
         </div>
       )}
 
-      <Button
-        variant="ghost"
-        size="sm"
-        className="w-full"
-        disabled={!canAfford || isPending || locked}
-        onClick={onResearch}
-      >
-        {locked ? 'Bloqueado' : isPending ? 'Investigando…' : `Investigar nv. ${r.nextLevel}`}
-      </Button>
+      {inQueue ? (
+        <div className="flex items-center justify-center gap-2 py-2.5 rounded border border-gold/15 bg-gold-soft text-gold-dim font-ui text-xs font-semibold uppercase tracking-wide">
+          <Loader2 size={12} className="animate-spin" />
+          Nv. {r.inQueue!.level} · {countdown > 0 ? formatDuration(countdown) : 'Finalizando…'}
+        </div>
+      ) : (
+        <Button
+          variant="ghost"
+          size="sm"
+          className="w-full"
+          disabled={!canAfford || isPending || locked}
+          onClick={onResearch}
+        >
+          {locked ? 'Bloqueado' : isPending ? 'Investigando…' : `Investigar nv. ${r.nextLevel}`}
+        </Button>
+      )}
     </Card>
   )
 }

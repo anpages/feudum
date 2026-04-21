@@ -6,6 +6,11 @@ export interface Civilization {
   description: string
 }
 
+export interface LFQueueEntry {
+  finishesAt: number
+  level: number
+}
+
 export interface LFBuildingInfo {
   id: string
   name: string
@@ -18,6 +23,7 @@ export interface LFBuildingInfo {
   requiresMet: boolean
   requires: { id: string; level: number }[]
   bonuses: { type: string; base: number; factor: number }[]
+  inQueue: LFQueueEntry | null
 }
 
 export interface LFResearchInfo {
@@ -29,6 +35,7 @@ export interface LFResearchInfo {
   cost: { wood: number; stone: number; grain: number }
   timeSecs: number
   effects: { type: string; base: number }[]
+  inQueue: LFQueueEntry | null
 }
 
 export interface LifeformsResponse {
