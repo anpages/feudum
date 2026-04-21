@@ -2,7 +2,7 @@ import { useCallback, useMemo } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { GiCauldron, GiCrossedSwords, GiCompass, GiScrollQuill } from 'react-icons/gi'
 import { Card } from '@/components/ui/Card'
-import { useResearch, useUpgradeResearch } from '@/features/research/useResearch'
+import { useResearch, useUpgradeResearch, useCancelResearch } from '@/features/research/useResearch'
 import { useAccelerate } from '@/features/queues/useAccelerate'
 import { useQueueSync } from '@/features/queues/useQueueSync'
 import { useKingdom } from '@/features/kingdom/useKingdom'
@@ -23,6 +23,7 @@ export function ResearchPage() {
   const { data: kingdom } = useKingdom()
   const resources = useResourceTicker(kingdom)
   const upgrade = useUpgradeResearch()
+  const cancel = useCancelResearch()
   const accelerate = useAccelerate()
   const syncQueues = useQueueSync()
 
@@ -87,6 +88,8 @@ export function ResearchPage() {
                     onCountdownEnd={handleCountdownEnd}
                     onAccelerate={r.inQueue ? () => accelerate.mutate('research') : undefined}
                     isAccelerating={accelerate.isPending}
+                    onCancel={(queueId) => cancel.mutate(queueId)}
+                    isCancelling={cancel.isPending}
                     animClass={`anim-fade-up-${Math.min(i + 1, 5) as 1 | 2 | 3 | 4 | 5}`}
                   />
                 )

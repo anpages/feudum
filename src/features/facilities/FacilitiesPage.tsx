@@ -1,7 +1,7 @@
 import { useCallback } from 'react'
 import { GiVillage } from 'react-icons/gi'
 import { Card } from '@/components/ui/Card'
-import { useBuildings, useUpgradeBuilding } from '@/features/buildings/useBuildings'
+import { useBuildings, useUpgradeBuilding, useCancelBuilding } from '@/features/buildings/useBuildings'
 import { useAccelerate } from '@/features/queues/useAccelerate'
 import { useQueueSync } from '@/features/queues/useQueueSync'
 import { useKingdom } from '@/features/kingdom/useKingdom'
@@ -15,6 +15,7 @@ export function FacilitiesPage() {
   const { data: kingdom } = useKingdom()
   const resources = useResourceTicker(kingdom)
   const upgrade = useUpgradeBuilding()
+  const cancel = useCancelBuilding()
   const accelerate = useAccelerate()
   const syncQueues = useQueueSync()
 
@@ -73,6 +74,8 @@ export function FacilitiesPage() {
                 onCountdownEnd={handleCountdownEnd}
                 onAccelerate={b.inQueue ? () => accelerate.mutate('building') : undefined}
                 isAccelerating={accelerate.isPending}
+                onCancel={(queueId) => cancel.mutate(queueId)}
+                isCancelling={cancel.isPending}
                 animClass={`anim-fade-up-${Math.min(i + 1, 5) as 1|2|3|4|5}`}
               />
             )

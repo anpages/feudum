@@ -4,7 +4,7 @@ import { GiFactory, GiOpenTreasureChest } from 'react-icons/gi'
 import { useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { Card } from '@/components/ui/Card'
-import { useBuildings, useUpgradeBuilding } from '@/features/buildings/useBuildings'
+import { useBuildings, useUpgradeBuilding, useCancelBuilding } from '@/features/buildings/useBuildings'
 import { useAccelerate } from '@/features/queues/useAccelerate'
 import { useQueueSync } from '@/features/queues/useQueueSync'
 import { useKingdom } from '@/features/kingdom/useKingdom'
@@ -39,6 +39,7 @@ export function ResourcesPage() {
   const { data: kingdom } = useKingdom()
   const resources = useResourceTicker(kingdom)
   const upgrade = useUpgradeBuilding()
+  const cancel = useCancelBuilding()
   const accelerate = useAccelerate()
   const syncQueues = useQueueSync()
 
@@ -164,6 +165,8 @@ export function ResourcesPage() {
                     onCountdownEnd={handleCountdownEnd}
                     onAccelerate={b.inQueue ? () => accelerate.mutate('building') : undefined}
                     isAccelerating={accelerate.isPending}
+                    onCancel={(queueId) => cancel.mutate(queueId)}
+                    isCancelling={cancel.isPending}
                     queueFull={queueFull && !b.inQueue}
                   />
                 )

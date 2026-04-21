@@ -83,7 +83,7 @@ export const researchService = {
         timeSeconds: timeSecs,
         requiresMet: requirementsMet(def, kingdomForReqs, projected),
         requires:    def.requires as ResearchResponse['research'][number]['requires'],
-        inQueue:     queueItem ? { level: queueItem.level, startedAt: queueItem.startedAt, finishesAt: queueItem.finishesAt } : null,
+        inQueue:     queueItem ? { id: queueItem.id, level: queueItem.level, startedAt: queueItem.startedAt, finishesAt: queueItem.finishesAt } : null,
       }
     })
 
@@ -92,4 +92,7 @@ export const researchService = {
 
   upgrade: (researchId: string) =>
     http.post<UpgradeResearchResponse>('/research/upgrade', { research: researchId }),
+
+  cancel: (queueId: string) =>
+    http.post<{ ok: boolean; refund: { wood: number; stone: number; grain: number } }>('/research/cancel', { queueId }),
 }

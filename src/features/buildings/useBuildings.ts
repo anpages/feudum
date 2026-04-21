@@ -34,6 +34,18 @@ export function useBuildings() {
   return { data, ...rest }
 }
 
+export function useCancelBuilding() {
+  const qc = useQueryClient()
+
+  return useMutation({
+    mutationFn: (queueId: string) => buildingsService.cancel(queueId),
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: ['buildings'] })
+      qc.invalidateQueries({ queryKey: ['kingdom'] })
+    },
+  })
+}
+
 export function useUpgradeBuilding() {
   const qc = useQueryClient()
   const activeId = getActiveKingdomId()
@@ -56,7 +68,7 @@ export function useUpgradeBuilding() {
             totalQueueCount: prev.totalQueueCount + 1,
             buildings: prev.buildings.map(b =>
               b.id === buildingId
-                ? { ...b, inQueue: { level: b.nextLevel, startedAt: Math.floor(Date.now() / 1000), finishesAt }, queueDepth: 1 }
+                ? { ...b, inQueue: { id: '', level: b.nextLevel, startedAt: Math.floor(Date.now() / 1000), finishesAt }, queueDepth: 1 }
                 : b
             ),
           })

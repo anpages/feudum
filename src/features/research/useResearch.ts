@@ -34,6 +34,18 @@ export function useResearch() {
   return result
 }
 
+export function useCancelResearch() {
+  const qc = useQueryClient()
+
+  return useMutation({
+    mutationFn: (queueId: string) => researchService.cancel(queueId),
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: ['research'] })
+      qc.invalidateQueries({ queryKey: ['kingdom'] })
+    },
+  })
+}
+
 export function useUpgradeResearch() {
   const qc = useQueryClient()
   const activeId = getActiveKingdomId()
@@ -53,7 +65,7 @@ export function useUpgradeResearch() {
           const finishesAt = Math.floor(Date.now() / 1000) + item.timeSeconds
           qc.setQueryData<ResearchResponse>(key, {
             research: prev.research.map(r =>
-              r.id === researchId ? { ...r, inQueue: { level: r.level + 1, startedAt: Math.floor(Date.now() / 1000), finishesAt } } : r
+              r.id === researchId ? { ...r, inQueue: { id: '', level: r.level + 1, startedAt: Math.floor(Date.now() / 1000), finishesAt } } : r
             ),
           })
         }

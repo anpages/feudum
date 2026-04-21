@@ -1,5 +1,5 @@
 import { useState, useEffect, memo, type ReactNode } from 'react'
-import { ArrowUp, Clock, TrendingUp, Loader2, Zap, TreePine, Mountain, Wheat, Warehouse, ListOrdered } from 'lucide-react'
+import { ArrowUp, Clock, TrendingUp, Loader2, Zap, TreePine, Mountain, Wheat, Warehouse, ListOrdered, X } from 'lucide-react'
 import { storageCapacity } from '@/lib/game/buildings'
 import { type IconType } from 'react-icons'
 import { Card } from '@/components/ui/Card'
@@ -76,6 +76,8 @@ interface Props {
   onCountdownEnd: () => void
   onAccelerate?: () => void
   isAccelerating?: boolean
+  onCancel?: (queueId: string) => void
+  isCancelling?: boolean
   dimmed?: boolean
   animClass?: string
   queueFull?: boolean
@@ -92,6 +94,8 @@ function BuildingCardImpl({
   onCountdownEnd,
   onAccelerate,
   isAccelerating,
+  onCancel,
+  isCancelling,
   dimmed,
   animClass = '',
   queueFull = false,
@@ -173,17 +177,41 @@ function BuildingCardImpl({
 
       {/* Action */}
       {inQueue && isPending ? (
-        <div className="mt-auto">
-          <div className="flex items-center justify-center gap-2 py-2 rounded border border-gold/10 bg-parchment-warm text-ink-muted font-ui text-xs font-semibold uppercase tracking-wide">
-            <ListOrdered size={12} />
-            En cola
+        <div className="mt-auto space-y-1.5">
+          <div className="flex items-center gap-2">
+            <div className="flex-1 flex items-center justify-center gap-2 py-2 rounded border border-gold/10 bg-parchment-warm text-ink-muted font-ui text-xs font-semibold uppercase tracking-wide">
+              <ListOrdered size={12} />
+              En cola
+            </div>
+            {onCancel && building.inQueue && (
+              <button
+                onClick={() => onCancel(building.inQueue!.id)}
+                disabled={isCancelling}
+                title="Cancelar"
+                className="shrink-0 flex items-center justify-center w-8 h-8 rounded border border-crimson/20 text-crimson/60 hover:bg-crimson/10 hover:text-crimson hover:border-crimson/40 transition-colors disabled:opacity-40"
+              >
+                {isCancelling ? <Loader2 size={11} className="animate-spin" /> : <X size={11} />}
+              </button>
+            )}
           </div>
         </div>
       ) : inQueue ? (
         <div className="mt-auto space-y-2">
-          <div className="flex items-center justify-center gap-2 py-2 rounded border border-gold/15 bg-gold-soft text-gold-dim font-ui text-xs font-semibold uppercase tracking-wide">
-            <Loader2 size={12} className="animate-spin" />
-            {countdown > 0 ? formatDuration(countdown) : 'Finalizando…'}
+          <div className="flex items-center gap-2">
+            <div className="flex-1 flex items-center justify-center gap-2 py-2 rounded border border-gold/15 bg-gold-soft text-gold-dim font-ui text-xs font-semibold uppercase tracking-wide">
+              <Loader2 size={12} className="animate-spin" />
+              {countdown > 0 ? formatDuration(countdown) : 'Finalizando…'}
+            </div>
+            {onCancel && building.inQueue && (
+              <button
+                onClick={() => onCancel(building.inQueue!.id)}
+                disabled={isCancelling}
+                title="Cancelar"
+                className="shrink-0 flex items-center justify-center w-8 h-8 rounded border border-crimson/20 text-crimson/60 hover:bg-crimson/10 hover:text-crimson hover:border-crimson/40 transition-colors disabled:opacity-40"
+              >
+                {isCancelling ? <Loader2 size={11} className="animate-spin" /> : <X size={11} />}
+              </button>
+            )}
           </div>
           {onAccelerate && (
             <button
@@ -259,6 +287,7 @@ export const BuildingCard = memo(BuildingCardImpl, (prev, next) =>
   prev.resources === next.resources &&
   prev.isUpgrading === next.isUpgrading &&
   prev.isAccelerating === next.isAccelerating &&
+  prev.isCancelling === next.isCancelling &&
   prev.dimmed === next.dimmed &&
   prev.animClass === next.animClass
 )

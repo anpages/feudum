@@ -1,5 +1,5 @@
 import { useState, useEffect, memo, type ReactNode } from 'react'
-import { ArrowUp, Clock, Loader2, Zap, TreePine, Mountain, Wheat, ListOrdered } from 'lucide-react'
+import { ArrowUp, Clock, Loader2, Zap, TreePine, Mountain, Wheat, ListOrdered, X } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
@@ -50,6 +50,8 @@ interface ResearchCardProps {
   onCountdownEnd: () => void
   onAccelerate?: () => void
   isAccelerating?: boolean
+  onCancel?: (queueId: string) => void
+  isCancelling?: boolean
   animClass: string
 }
 
@@ -66,6 +68,8 @@ function ResearchCardImpl({
   onCountdownEnd,
   onAccelerate,
   isAccelerating,
+  onCancel,
+  isCancelling,
   animClass,
 }: ResearchCardProps) {
   const now = Math.floor(Date.now() / 1000)
@@ -98,17 +102,41 @@ function ResearchCardImpl({
       </div>
 
       {inQueue && isPending ? (
-        <div className="mt-auto">
-          <div className="flex items-center justify-center gap-2 py-2 rounded border border-gold/10 bg-parchment-warm text-ink-muted font-ui text-xs font-semibold uppercase tracking-wide">
-            <ListOrdered size={12} />
-            En cola
+        <div className="mt-auto space-y-1.5">
+          <div className="flex items-center gap-2">
+            <div className="flex-1 flex items-center justify-center gap-2 py-2 rounded border border-gold/10 bg-parchment-warm text-ink-muted font-ui text-xs font-semibold uppercase tracking-wide">
+              <ListOrdered size={12} />
+              En cola
+            </div>
+            {onCancel && item.inQueue && (
+              <button
+                onClick={() => onCancel(item.inQueue!.id)}
+                disabled={isCancelling}
+                title="Cancelar"
+                className="shrink-0 flex items-center justify-center w-8 h-8 rounded border border-crimson/20 text-crimson/60 hover:bg-crimson/10 hover:text-crimson hover:border-crimson/40 transition-colors disabled:opacity-40"
+              >
+                {isCancelling ? <Loader2 size={11} className="animate-spin" /> : <X size={11} />}
+              </button>
+            )}
           </div>
         </div>
       ) : inQueue ? (
         <div className="mt-auto space-y-2">
-          <div className="flex items-center justify-center gap-2 py-2 rounded border border-gold/15 bg-gold-soft text-gold-dim font-ui text-xs font-semibold uppercase tracking-wide">
-            <Loader2 size={12} className="animate-spin" />
-            {countdown > 0 ? formatDuration(countdown) : 'Finalizando…'}
+          <div className="flex items-center gap-2">
+            <div className="flex-1 flex items-center justify-center gap-2 py-2 rounded border border-gold/15 bg-gold-soft text-gold-dim font-ui text-xs font-semibold uppercase tracking-wide">
+              <Loader2 size={12} className="animate-spin" />
+              {countdown > 0 ? formatDuration(countdown) : 'Finalizando…'}
+            </div>
+            {onCancel && item.inQueue && (
+              <button
+                onClick={() => onCancel(item.inQueue!.id)}
+                disabled={isCancelling}
+                title="Cancelar"
+                className="shrink-0 flex items-center justify-center w-8 h-8 rounded border border-crimson/20 text-crimson/60 hover:bg-crimson/10 hover:text-crimson hover:border-crimson/40 transition-colors disabled:opacity-40"
+              >
+                {isCancelling ? <Loader2 size={11} className="animate-spin" /> : <X size={11} />}
+              </button>
+            )}
           </div>
           {onAccelerate && (
             <button
@@ -149,5 +177,6 @@ export const ResearchCard = memo(ResearchCardImpl, (prev, next) =>
   prev.globalQueueFull === next.globalQueueFull &&
   prev.isUpgrading === next.isUpgrading &&
   prev.isAccelerating === next.isAccelerating &&
+  prev.isCancelling === next.isCancelling &&
   prev.animClass === next.animClass
 )
