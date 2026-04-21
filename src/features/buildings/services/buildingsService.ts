@@ -74,7 +74,7 @@ export const buildingsService = {
         timeSeconds: timeSecs,
         requiresMet: buildingRequirementsMet(def, projected, research),
         requires:    def.requires as BuildingsResponse['buildings'][number]['requires'],
-        inQueue:     queueItem ? { level: queueItem.level, startedAt: queueItem.startedAt, finishesAt: queueItem.finishesAt } : null,
+        inQueue:     queueItem ? { id: queueItem.id, level: queueItem.level, startedAt: queueItem.startedAt, finishesAt: queueItem.finishesAt } : null,
         queueDepth:  activeQueue.filter(q => q.building === def.id).length,
       }
     })
@@ -84,4 +84,7 @@ export const buildingsService = {
 
   upgrade: (buildingId: string) =>
     http.post<UpgradeBuildingResponse>('/buildings/upgrade', { building: buildingId }),
+
+  cancel: (queueId: string) =>
+    http.post<{ ok: boolean; refund: { wood: number; stone: number; grain: number } }>('/buildings/cancel', { queueId }),
 }

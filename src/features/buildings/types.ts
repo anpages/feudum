@@ -8,7 +8,7 @@ export interface BuildingInfo {
   timeSeconds: number      // build time for nextLevel
   requiresMet: boolean
   requires: { type: 'building' | 'research'; id: string; level: number }[]
-  inQueue: { level: number; startedAt: number; finishesAt: number } | null  // first (active) item
+  inQueue: { id: string; level: number; startedAt: number; finishesAt: number } | null  // first (active) item
   queueDepth: number       // total items queued for this building
 }
 

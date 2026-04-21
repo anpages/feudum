@@ -93,7 +93,7 @@ export default async function handler(req, res) {
     kingdomId:  kingdom.id,
     building:   buildingId,
     level:      nextLevel,
-    startedAt:  now,
+    startedAt:  startAt,
     finishesAt,
   })
 

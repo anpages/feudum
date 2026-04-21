@@ -38,12 +38,9 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Requisitos no cumplidos' })
   }
 
-  // ── Check not already in queue for this unit ──────────────────────────────
+  // ── Single shared queue for all units — fetch existing to chain ──────────
   const existingQueue = await db.select().from(unitQueue)
     .where(eq(unitQueue.kingdomId, kingdom.id))
-  if (existingQueue.some(q => q.unit === unitId && q.finishesAt > Math.floor(Date.now() / 1000))) {
-    return res.status(400).json({ error: 'Esta unidad ya está en producción' })
-  }
 
   // ── Lazy resource tick ────────────────────────────────────────────────────
   const { wood, stone, grain, now } = applyResourceTick(kingdom, cfg, userRow?.characterClass ?? null, resRow)
@@ -56,11 +53,15 @@ export default async function handler(req, res) {
   if (stone < totalStone) return res.status(400).json({ error: 'Piedra insuficiente',  need: totalStone, have: Math.floor(stone) })
   if (grain < totalGrain) return res.status(400).json({ error: 'Grano insuficiente',   need: totalGrain, have: Math.floor(grain) })
 
-  // ── Calculate build time ──────────────────────────────────────────────────
+  // ── Calculate build time — chain after last queued item ──────────────────
   const barracksLv = kingdom.barracks       ?? 0
   const egLv       = kingdom.engineersGuild ?? 0
   const timeSecs   = unitBuildTime(def.hull, barracksLv, egLv, amount, cfg.economy_speed ?? 1)
-  const finishesAt = now + timeSecs
+  const lastQueuedAt = existingQueue.length > 0
+    ? Math.max(...existingQueue.map(q => q.finishesAt))
+    : now
+  const startAt    = Math.max(now, lastQueuedAt)
+  const finishesAt = startAt + timeSecs
 
   const updated = await db.update(kingdoms).set({
     wood:  wood  - totalWood,
@@ -84,7 +85,7 @@ export default async function handler(req, res) {
     kingdomId: kingdom.id,
     unit:      unitId,
     amount,
-    startedAt: now,
+    startedAt: startAt,
     finishesAt,
   })
 
