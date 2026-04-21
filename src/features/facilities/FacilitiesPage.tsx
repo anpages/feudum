@@ -10,6 +10,19 @@ import { BuildingCard } from '@/features/buildings/components/BuildingCard'
 import { BUILDING_META, FACILITY_BUILDING_IDS } from '@/features/buildings/buildingMeta'
 import type { BuildingInfo } from '@/features/buildings/types'
 
+function FieldsBadge({ used, max, className = '' }: { used: number; max: number; className?: string }) {
+  const full = used >= max
+  return (
+    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full font-ui text-xs font-semibold border ${
+      full ? 'border-crimson/30 bg-crimson/10 text-crimson' : 'border-gold/20 bg-parchment-warm text-ink-mid'
+    } ${className}`}>
+      <span className="tabular-nums">{used}/{max}</span>
+      <span className="text-ink-muted/60 font-normal">campos</span>
+      {full && <span className="ml-0.5">⚠</span>}
+    </span>
+  )
+}
+
 export function FacilitiesPage() {
   const { data, isLoading, refetch } = useBuildings()
   const { data: kingdom } = useKingdom()
@@ -42,6 +55,7 @@ export function FacilitiesPage() {
         <p className="font-body text-ink-muted text-sm mt-1.5">
           Edificios que habilitan funciones clave: tropas, investigación y velocidad de construcción.
         </p>
+        {data?.fields && <FieldsBadge used={data.fields.used} max={data.fields.max} className="mt-2" />}
       </div>
 
       <section className="anim-fade-up-1">

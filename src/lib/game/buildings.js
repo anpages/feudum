@@ -207,3 +207,17 @@ export function applyBuildingEffect(building, newLevel, kingdom = {}) {
 
   return patch
 }
+
+// ── Building fields (slot limit) ─────────────────────────────────────────────
+// Mirrors OGame Terraformer: BASE + 5*level + floor(level/2)
+
+export const BASE_FIELDS = 100
+
+export function calcFieldMax(alchemistTowerLevel = 0) {
+  const lv = alchemistTowerLevel ?? 0
+  return BASE_FIELDS + 5 * lv + Math.floor(lv / 2)
+}
+
+export function calcFieldsUsed(kingdom) {
+  return BUILDINGS.reduce((sum, b) => sum + (kingdom[b.id] ?? 0), 0)
+}

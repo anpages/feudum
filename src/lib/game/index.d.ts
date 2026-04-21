@@ -25,6 +25,9 @@ declare module '@/lib/game/buildings' {
   export function storageCapacity(level: number): number
   export function buildingRequirementsMet(def: { requires?: { type: string; id: string; level: number }[] }, kingdom: Record<string, number>, research: Record<string, number>): boolean
   export function applyBuildingEffect(building: string, newLevel: number, kingdom?: Record<string, number>): Record<string, number>
+  export const BASE_FIELDS: number
+  export function calcFieldMax(alchemistTowerLevel?: number): number
+  export function calcFieldsUsed(kingdom: Record<string, number>): number
 }
 
 declare module '@/lib/game/research' {

@@ -15,6 +15,7 @@ export interface BuildingInfo {
 export interface BuildingsResponse {
   buildings: BuildingInfo[]
   totalQueueCount: number  // total items across all buildings (max 5)
+  fields: { used: number; max: number }
 }
 
 export interface UpgradeBuildingResponse {

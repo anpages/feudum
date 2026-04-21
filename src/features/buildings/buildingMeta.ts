@@ -120,8 +120,8 @@ export const BUILDING_META: Record<string, BuildingMeta> = {
     Icon: GiMagicGate,
     produces: null,
     category: 'infrastructure',
-    effect: 'Amplía los campos de construcción del reino (+5 por nivel)',
-    description: 'El Terraformador medieval. Cada nivel añade más slots de construcción disponibles.',
+    effect: '+5 campos por nivel (+1 extra cada 2 niveles). Base: 100 campos.',
+    description: 'Expande el límite de campos de construcción del reino. Sin ella el reino tiene 100 campos en total (suma de niveles de todos los edificios). Cada nivel añade ~5 campos extra.',
   },
   ambassadorHall: {
     name: 'Salón de Embajadores',

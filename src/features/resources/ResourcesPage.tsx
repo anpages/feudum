@@ -89,6 +89,7 @@ export function ResourcesPage() {
           <p className="font-body text-ink-muted text-sm mt-1.5">
             Edificios de producción y almacenamiento. La energía del Molino alimenta las minas.
           </p>
+          {data?.fields && <FieldsBadge used={data.fields.used} max={data.fields.max} />}
         </div>
         <button
           onClick={() => navigate('/resources/settings')}
@@ -177,6 +178,19 @@ export function ResourcesPage() {
       })}
 
     </div>
+  )
+}
+
+function FieldsBadge({ used, max }: { used: number; max: number }) {
+  const full = used >= max
+  return (
+    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full font-ui text-xs font-semibold border ${
+      full ? 'border-crimson/30 bg-crimson/10 text-crimson' : 'border-gold/20 bg-parchment-warm text-ink-mid'
+    }`}>
+      <span className="tabular-nums">{used}/{max}</span>
+      <span className="text-ink-muted/60 font-normal">campos</span>
+      {full && <span className="ml-0.5">⚠</span>}
+    </span>
   )
 }
 

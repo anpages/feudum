@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabase'
 import { snakeToCamel, snakeToCamelArray } from '@/lib/game/caseConvert'
 import {
   BUILDINGS, buildCost, buildTime, applyBuildingEffect, buildingRequirementsMet,
+  calcFieldMax, calcFieldsUsed,
 } from '@/lib/game/buildings'
 import type { BuildingsResponse, UpgradeBuildingResponse } from '../types'
 
@@ -79,7 +80,10 @@ export const buildingsService = {
       }
     })
 
-    return { buildings, totalQueueCount }
+    const fieldsUsed = calcFieldsUsed(projected)
+    const fieldMax   = calcFieldMax(projected.alchemistTower ?? 0)
+
+    return { buildings, totalQueueCount, fields: { used: fieldsUsed, max: fieldMax } }
   },
 
   upgrade: (buildingId: string) =>

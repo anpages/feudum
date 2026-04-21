@@ -1,7 +1,7 @@
 import { eq, and } from 'drizzle-orm'
 import { db, kingdoms, buildingQueue, research, users } from '../_db.js'
 import { getSessionUserId } from '../lib/handler.js'
-import { BUILDINGS, buildCost, buildTime, buildingRequirementsMet } from '../lib/buildings.js'
+import { BUILDINGS, buildCost, buildTime, buildingRequirementsMet, calcFieldMax, calcFieldsUsed } from '../lib/buildings.js'
 import { getSettings } from '../lib/settings.js'
 import { applyResourceTick } from '../lib/tick.js'
 import { processUserQueues } from '../lib/process-queues.js'
@@ -32,6 +32,15 @@ export default async function handler(req, res) {
   // ── Check requirements ────────────────────────────────────────────────────
   if (!buildingRequirementsMet(def, kingdom, researchRow ?? {})) {
     return res.status(400).json({ error: 'Requisitos no cumplidos' })
+  }
+
+  // ── Check building field limit (alchemistTower expands it) ──────────────────
+  const fieldsUsed = calcFieldsUsed(kingdom)
+  const fieldMax   = calcFieldMax(kingdom.alchemistTower ?? 0)
+  if (fieldsUsed >= fieldMax) {
+    return res.status(400).json({
+      error: `Campos de construcción llenos (${fieldsUsed}/${fieldMax}). Sube la Torre del Alquimista para ampliarlos.`,
+    })
   }
 
   // ── Check not already queued + queue limit (max 5, same as OGame-ref) ────────
