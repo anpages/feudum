@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/Badge'
 import { useArmies, useSendArmy, type MissionType } from '@/features/armies/useArmies'
 import { useKingdom } from '@/features/kingdom/useKingdom'
 import { useResearch } from '@/features/research/useResearch'
+import { useAdminSettings } from '@/features/admin/useAdmin'
 import { ALL_UNIT_META, MISSION_META } from './armiesMeta'
 import { CoordPicker } from './components/CoordPicker'
 import { calcDistance, calcDuration } from '@/lib/game/speed'
@@ -85,6 +86,7 @@ export function SendMissionPage() {
   const { data: kingdom } = useKingdom()
   const { data: researchData } = useResearch()
   const { data: armies } = useArmies()
+  const { data: adminSettings } = useAdminSettings()
   const send = useSendArmy()
 
   const [missionType, setMissionType] = useState<MissionType>(initType)
@@ -126,6 +128,11 @@ export function SendMissionPage() {
   const totalUnits = Object.values(units).reduce((s, n) => s + n, 0)
   const ballisticCount = units['ballistic'] ?? 0
 
+  const isWarMission = missionType === 'attack' || missionType === 'missile'
+  const universeSpeed = isWarMission
+    ? (adminSettings?.fleet_speed_war    ?? 1)
+    : (adminSettings?.fleet_speed_peaceful ?? 1)
+
   const travelPreview = useMemo(() => {
     if (!kingdom) return null
     const effectiveUnits = isMissile ? { ballistic: ballisticCount || 1 } : units
@@ -137,8 +144,8 @@ export function SendMissionPage() {
     const dest = { realm: tRealm, region: tRegion, slot: destSlot }
     const research = Object.fromEntries(researchData?.research.map(r => [r.id, r.level]) ?? [])
     const dist = calcDistance(origin, dest)
-    return calcDuration(dist, effectiveUnits, speedPct, 1, research, null)
-  }, [kingdom, isMissile, ballisticCount, units, totalUnits, missionType, tSlot, tRealm, tRegion, speedPct, researchData])
+    return calcDuration(dist, effectiveUnits, speedPct, universeSpeed, research, null)
+  }, [kingdom, isMissile, ballisticCount, units, totalUnits, missionType, tSlot, tRealm, tRegion, speedPct, researchData, universeSpeed])
 
   const canSend = !send.isPending &&
     !(missionType === 'expedition' && expeditionSlotsFull) &&
