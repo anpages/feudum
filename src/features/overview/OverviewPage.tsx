@@ -5,6 +5,7 @@ import {
 } from 'react-icons/gi'
 import { useNavigate } from 'react-router-dom'
 import { useKingdom } from '@/features/kingdom/useKingdom'
+import { useResourceTicker } from '@/features/kingdom/useResourceTicker'
 import { useResearch } from '@/features/research/useResearch'
 import { useBuildings } from '@/features/buildings/useBuildings'
 import { useBarracks } from '@/features/barracks/useBarracks'
@@ -34,6 +35,7 @@ const BUILDING_KEYS = [
 export function OverviewPage() {
   const navigate = useNavigate()
   const { data: kingdom, isLoading } = useKingdom()
+  const resources = useResourceTicker(kingdom)
   const { data: researchData } = useResearch()
   const { data: buildingsData } = useBuildings()
   const { data: barracksData } = useBarracks()
@@ -138,9 +140,9 @@ export function OverviewPage() {
                 )}
               </div>
               <div className="grid grid-cols-3 gap-3">
-                <ProductionRow icon={<TreePine size={14} />} label="Madera" rate={kingdom?.woodProduction ?? 0}  current={kingdom ? (kingdom as Record<string,unknown>).wood as number : 0}  cap={kingdom?.woodCapacity}  deficit={deficit} />
-                <ProductionRow icon={<Mountain size={14} />} label="Piedra" rate={kingdom?.stoneProduction ?? 0} current={kingdom ? (kingdom as Record<string,unknown>).stone as number : 0} cap={kingdom?.stoneCapacity} deficit={deficit} />
-                <ProductionRow icon={<Wheat size={14} />}    label="Grano"  rate={kingdom?.grainProduction ?? 0} current={kingdom ? (kingdom as Record<string,unknown>).grain as number : 0} cap={kingdom?.grainCapacity} deficit={deficit} />
+                <ProductionRow icon={<TreePine size={14} />} label="Madera" rate={kingdom?.woodProduction ?? 0}  current={resources.wood}  cap={kingdom?.woodCapacity}  deficit={deficit} />
+                <ProductionRow icon={<Mountain size={14} />} label="Piedra" rate={kingdom?.stoneProduction ?? 0} current={resources.stone} cap={kingdom?.stoneCapacity} deficit={deficit} />
+                <ProductionRow icon={<Wheat size={14} />}    label="Grano"  rate={kingdom?.grainProduction ?? 0} current={resources.grain} cap={kingdom?.grainCapacity} deficit={deficit} />
               </div>
             </>
           )
