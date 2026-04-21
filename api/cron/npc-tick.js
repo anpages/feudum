@@ -7,6 +7,7 @@ import { eq, and, lte, gte } from 'drizzle-orm'
 import { db, users, kingdoms, armyMissions, messages, debrisFields } from '../_db.js'
 import { applyResourceTick } from '../lib/tick.js'
 import { BUILDINGS, buildCost, buildTime, applyBuildingEffect } from '../lib/buildings.js'
+import { ALL_UNITS } from '../lib/units.js'
 import { ECONOMY_SPEED, NPC_AGGRESSION, NPC_ATTACK_INTERVAL_HOURS, NPC_BASH_LIMIT } from '../lib/config.js'
 import { calcDistance, calcDuration } from '../lib/speed.js'
 import {
@@ -37,6 +38,34 @@ function npcClass(kingdom) {
 // collector:  +25% resource production (accumulates faster, harder to loot dry)
 // general:    −10% unit cost, +1 extra unit type trained per tick, attacks more aggressively
 // discoverer: +1 extra building per tick (researches / builds faster), wider attack search radius
+
+// ── Virtual research derived from NPC building levels ────────────────────────
+// NPCs don't have research rows. This function maps building levels to equivalent
+// research levels so unit unlock requirements and travel drive bonuses are
+// consistent with the player progression (no schema changes needed).
+function npcResearch(kingdom) {
+  const b = kingdom.barracks ?? 0
+  const a = kingdom.academy  ?? 0
+  const r = kingdom.armoury  ?? 0
+  return {
+    horsemanship:      b,
+    swordsmanship:     b,
+    fortification:     r,
+    armoury:           r,
+    cartography:       a,
+    tradeRoutes:       Math.max(0, a - 2),
+    alchemy:           a,
+    pyromancy:         Math.max(0, a - 1),
+    runemastery:       Math.max(0, a - 3),
+    mysticism:         Math.max(0, a - 4),
+    dragonlore:        Math.max(0, a - 7),
+    spycraft:          a,
+    logistics:         a,
+    exploration:       a,
+    diplomaticNetwork: a,
+    divineBlessing:    Math.max(0, a - 9),
+  }
+}
 
 // ── Build priorities per personality ─────────────────────────────────────────
 // economy:  focus production first, barracks last
@@ -82,13 +111,6 @@ const ATTACK_THRESHOLD = {
   economy:  8,
   military: 5,
   balanced: 6,
-}
-
-// ── Minimum barracks level per unit ──────────────────────────────────────────
-const UNIT_BARRACKS_REQ = {
-  squire: 1, archer: 1, crossbowman: 2, knight: 3,
-  ballista: 4, mageTower: 4, paladin: 5, warlord: 7,
-  grandKnight: 8, siegeMaster: 8, warMachine: 9, dragonKnight: 12,
 }
 
 // ── Unit costs (wood/stone to train one unit) ─────────────────────────────────
@@ -188,11 +210,23 @@ async function growNpc(kingdom, cfg, now) {
   const costMult     = (isBoss || cls === 'general') ? 0.9 : 1.0
   let unitTypesTrained = 0
 
+  const researchLevels = npcResearch({ ...kingdom, ...patch })
+
   for (const unitId of UNIT_PRIORITY[personality]) {
     if (unitTypesTrained >= maxUnitTypes) break
 
-    const reqBarracks = UNIT_BARRACKS_REQ[unitId] ?? 1
-    if (barracksLv < reqBarracks) continue
+    const unitDef = ALL_UNITS.find(u => u.id === unitId)
+    if (!unitDef) continue
+
+    // Check building + research requirements using virtual research
+    if (unitDef.requires?.length) {
+      const blocked = unitDef.requires.some(req => {
+        if (req.type === 'building') return ((patch[req.id] ?? kingdom[req.id] ?? 0)) < req.level
+        if (req.type === 'research') return (researchLevels[req.id] ?? 0) < req.level
+        return false
+      })
+      if (blocked) continue
+    }
 
     const cost = UNIT_COSTS[unitId]
     if (!cost) continue
@@ -317,9 +351,9 @@ async function attackAI(npcKingdom, allKingdoms, bashMap, now, cfg) {
 
   const universeSpeed = parseFloat(cfg.fleet_speed_war ?? 1)
   const dist       = calcDistance(npcKingdom, target)
-  // general class: +25% army speed (same bonus as player General class via speed.js)
   const npcCharClass = cls === 'general' ? 'general' : null
-  const travelSecs = calcDuration(dist, force, 100, universeSpeed, {}, npcCharClass)
+  const research   = npcResearch(npcKingdom)
+  const travelSecs = calcDuration(dist, force, 100, universeSpeed, research, npcCharClass)
   const arrivalTime = now + travelSecs
 
   await db.insert(armyMissions).values({
@@ -381,9 +415,11 @@ async function resolveNpcVsNpcAttacks(npcKingdomsById, now) {
       if (!atkKingdom) continue  // player-initiated attack, handled elsewhere
 
       const missionUnits  = extractK(m, NPC_UNIT_KEYS)
-      const attackerUnits = buildBattleUnits(missionUnits, {})
+      const atkResearch   = npcResearch(atkKingdom)
+      const defResearch   = npcResearch(defKingdom)
+      const attackerUnits = buildBattleUnits(missionUnits, atkResearch)
       const defenderUnits = buildBattleUnits(
-        { ...extractK(defKingdom, NPC_UNIT_KEYS), ...extractK(defKingdom, NPC_DEFENSE_KEYS) }, {}
+        { ...extractK(defKingdom, NPC_UNIT_KEYS), ...extractK(defKingdom, NPC_DEFENSE_KEYS) }, defResearch
       )
 
       const { outcome, rounds, survivingAtk, lostAtk, lostDef } = runBattle(attackerUnits, defenderUnits)
