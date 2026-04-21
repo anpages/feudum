@@ -81,7 +81,8 @@ export default function App() {
               <Route path="/facilities"         element={<FacilitiesPage />} />
               <Route path="/buildings"          element={<Navigate to="/resources" replace />} />
               <Route path="/research"           element={<ResearchPage />} />
-              <Route path="/barracks"           element={<BarracksPage />} />
+              <Route path="/barracks"           element={<BarracksPage mode="attack" />} />
+              <Route path="/support"            element={<BarracksPage mode="support" />} />
               <Route path="/defense"            element={<DefensePage />} />
               <Route path="/map"                element={<MapPage />} />
               <Route path="/armies"             element={<ArmiesPage />} />

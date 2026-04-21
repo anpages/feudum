@@ -1,7 +1,7 @@
 import { NavLink } from 'react-router-dom'
 import {
-  X, ShieldAlert, MessageSquare,
-  Castle, Factory, Building2, BookOpen, Swords, Shield, Navigation, Map, Trophy, BarChart2,
+  X, ShieldAlert,
+  Castle, Factory, Building2, BookOpen, Swords, Shield, Navigation, Map, Trophy, BarChart2, Users,
   type LucideIcon,
 } from 'lucide-react'
 import { useAuth } from '@/features/auth/useAuth'
@@ -18,7 +18,8 @@ const NAV_ITEMS: NavItem[] = [
   { to: '/resources',   label: 'Recursos',      Icon: Factory },
   { to: '/facilities',  label: 'Instalaciones', Icon: Building2 },
   { to: '/research',    label: 'Academia',      Icon: BookOpen },
-  { to: '/barracks',    label: 'Cuartel',       Icon: Swords },
+  { to: '/barracks',    label: 'Ataque',        Icon: Swords },
+  { to: '/support',     label: 'Apoyo',         Icon: Users },
   { to: '/defense',     label: 'Defensa',       Icon: Shield },
   { to: '/armies',      label: 'Misiones',      Icon: Navigation },
   { to: '/map',         label: 'Mapa',          Icon: Map },
@@ -64,10 +65,6 @@ export function NavBar({ isOpen, onClose }: Props) {
         ))}
 
         <span className="nav-section-label mt-3">Social</span>
-        <NavLink to="/messages"     onClick={onClose} className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}>
-          <MessageSquare size={15} className="nav-icon shrink-0" />
-          <span className="flex-1">Mensajes</span>
-        </NavLink>
         <NavLink to="/rankings"     onClick={onClose} className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}>
           <BarChart2 size={16} className="nav-icon shrink-0" />
           <span className="flex-1">Rankings</span>

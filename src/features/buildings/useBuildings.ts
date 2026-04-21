@@ -62,13 +62,16 @@ export function useUpgradeBuilding() {
       if (prev) {
         const building = prev.buildings.find(b => b.id === buildingId)
         if (building) {
-          const finishesAt = Math.floor(Date.now() / 1000) + building.timeSeconds
+          const now = Math.floor(Date.now() / 1000)
+          const finishesAt = now + building.timeSeconds
+          // If queue already has items, this one is pending (startedAt in future)
+          const startedAt = prev.totalQueueCount > 0 ? finishesAt + 1 : now
           qc.setQueryData<BuildingsResponse>(key, {
             ...prev,
             totalQueueCount: prev.totalQueueCount + 1,
             buildings: prev.buildings.map(b =>
               b.id === buildingId
-                ? { ...b, inQueue: { id: '', level: b.nextLevel, startedAt: Math.floor(Date.now() / 1000), finishesAt }, queueDepth: 1 }
+                ? { ...b, inQueue: { id: '', level: b.nextLevel, startedAt, finishesAt }, queueDepth: 1 }
                 : b
             ),
           })
