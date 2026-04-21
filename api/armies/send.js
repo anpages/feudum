@@ -265,7 +265,9 @@ export default async function handler(req, res) {
   const speedPct = Math.min(100, Math.max(10, parseInt(rawSpeedPct ?? 100, 10) || 100))
 
   const distance   = calcDistance(origin, dest)
-  const travelSecs = calcDuration(distance, units, speedPct, universeSpeed, researchRow ?? {}, userRow?.characterClass ?? null)
+  const { calcLFArmySpeedBonus } = await import('../lib/lifeforms.js')
+  const lfSpeedBonus = calcLFArmySpeedBonus(kingdom.lfResearch ?? {})
+  const travelSecs = calcDuration(distance, units, speedPct, universeSpeed, researchRow ?? {}, userRow?.characterClass ?? null, lfSpeedBonus)
 
   if (travelSecs === 0) {
     return res.status(400).json({ error: 'No se pudo calcular el tiempo de viaje' })

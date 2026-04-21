@@ -72,7 +72,7 @@ function applyBonus(base, level) {
 }
 
 // ── Build battle unit array from counts + research ─────────────────────────────
-export function buildBattleUnits(unitCounts, res = {}) {
+export function buildBattleUnits(unitCounts, res = {}, lfBonuses = {}) {
   const sword = res.swordsmanship ?? 0
   const arm   = res.armoury       ?? 0
   const fort  = res.fortification ?? 0
@@ -83,9 +83,10 @@ export function buildBattleUnits(unitCounts, res = {}) {
     if (n <= 0) continue
     const s = UNIT_STATS[id]
     if (!s) continue
-    const hull   = applyBonus(s.hull,   fort)
-    const shield = applyBonus(s.shield, arm)
-    const attack = applyBonus(s.attack, sword)
+    const lfBonus = 1 + (lfBonuses[id] ?? 0)
+    const hull   = Math.floor(applyBonus(s.hull,   fort)   * lfBonus)
+    const shield = Math.floor(applyBonus(s.shield, arm)    * lfBonus)
+    const attack = Math.floor(applyBonus(s.attack, sword)  * lfBonus)
     for (let i = 0; i < n; i++) {
       units.push({ id, type: s.type, hull, maxHull: hull, shield, maxShield: shield, attack })
     }

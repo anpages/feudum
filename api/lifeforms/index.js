@@ -5,6 +5,7 @@ import {
   CIVILIZATIONS, LF_BUILDINGS_BY_CIV, LF_RESEARCH_BY_CIV,
   lfBuildingCost, lfBuildingTime, lfResearchCost, lfResearchTime,
   lfBuildingRequirementsMet, unlockedTiers, civLevelBonus,
+  applyPopulationTick,
   TIER_POPULATION, TIER_ARTIFACTS,
 } from '../lib/lifeforms.js'
 import { getSettings } from '../lib/settings.js'
@@ -23,6 +24,34 @@ export default async function handler(req, res) {
     getSettings(),
   ])
   if (!kingdom) return res.status(404).json({ error: 'Reino no encontrado' })
+
+  // Population/food tick — runs on every lifeforms page visit
+  if (kingdom.civilization) {
+    const now2 = Math.floor(Date.now() / 1000)
+    const lastPop = kingdom.foodLastUpdate ?? 0
+    const elapsed  = lastPop > 0 ? now2 - lastPop : 0
+    const popResult = elapsed > 0
+      ? applyPopulationTick(kingdom, kingdom.lfBuildings ?? {}, elapsed)
+      : null
+    if (popResult) {
+      await db.update(kingdoms).set({
+        populationT1: popResult.populationT1,
+        populationT2: popResult.populationT2,
+        populationT3: popResult.populationT3,
+        foodStored:   popResult.foodStored,
+        foodLastUpdate: now2,
+        updatedAt: new Date(),
+      }).where(eq(kingdoms.id, kingdom.id))
+      kingdom.populationT1   = popResult.populationT1
+      kingdom.populationT2   = popResult.populationT2
+      kingdom.populationT3   = popResult.populationT3
+      kingdom.foodStored     = popResult.foodStored
+      kingdom.foodLastUpdate = now2
+    } else if (lastPop === 0) {
+      await db.update(kingdoms).set({ foodLastUpdate: now2, updatedAt: new Date() }).where(eq(kingdoms.id, kingdom.id))
+      kingdom.foodLastUpdate = now2
+    }
+  }
 
   const civ       = kingdom.civilization ?? null
   const lfLevels  = (kingdom.lfBuildings  ?? {})

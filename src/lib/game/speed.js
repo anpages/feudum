@@ -121,15 +121,16 @@ export function calcDistance(from, to) {
  * @param {string|null} characterClass — 'general' gives +25% combat unit speed
  * @returns {number} travel time in seconds
  */
-export function calcDuration(distance, units, speedPct = 100, universeSpeed = 1, research = {}, characterClass = null) {
+export function calcDuration(distance, units, speedPct = 100, universeSpeed = 1, research = {}, characterClass = null, lfSpeedBonus = 0) {
   const COMBAT_UNITS = new Set(['squire','knight','paladin','warlord','grandKnight','siegeMaster','warMachine','dragonKnight'])
+  const speedMult = 1 + lfSpeedBonus
 
   const speeds = Object.entries(units)
     .filter(([, n]) => (n ?? 0) > 0)
     .map(([id]) => {
       const speed = getUnitSpeed(id, research)
       const classBonus = (characterClass === 'general' && COMBAT_UNITS.has(id)) ? 1.25 : 1.0
-      return speed * classBonus
+      return speed * classBonus * speedMult
     })
 
   if (speeds.length === 0) return 0

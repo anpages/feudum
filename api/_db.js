@@ -2,7 +2,7 @@ import './lib/env.js'
 import postgres from 'postgres'
 import { drizzle } from 'drizzle-orm/postgres-js'
 import {
-  pgTable, integer, varchar, real, timestamp, text, boolean, uuid,
+  pgTable, integer, varchar, real, timestamp, text, boolean, uuid, jsonb,
 } from 'drizzle-orm/pg-core'
 
 // ── Battle log ────────────────────────────────────────────────────────────────
@@ -136,6 +136,21 @@ export const kingdoms = pgTable('kingdoms', {
   npcBuildAvailableAt: integer('npc_build_available_at').default(0),
   npcLastBuildAt:      integer('npc_last_build_at').default(0).notNull(),
   npcLastAttackAt:     integer('npc_last_attack_at').default(0).notNull(),
+
+  // Lifeforms / Civilizations
+  civilization:       varchar('civilization', { length: 20 }),
+  civLevelRomans:     integer('civ_level_romans').default(0).notNull(),
+  civLevelVikings:    integer('civ_level_vikings').default(0).notNull(),
+  civLevelByzantines: integer('civ_level_byzantines').default(0).notNull(),
+  civLevelSaracens:   integer('civ_level_saracens').default(0).notNull(),
+  populationT1:       integer('population_t1').default(0).notNull(),
+  populationT2:       integer('population_t2').default(0).notNull(),
+  populationT3:       integer('population_t3').default(0).notNull(),
+  foodStored:         real('food_stored').default(0).notNull(),
+  foodLastUpdate:     integer('food_last_update').default(0).notNull(),
+  artifacts:          integer('artifacts').default(0).notNull(),
+  lfBuildings:        jsonb('lf_buildings').default({}).notNull(),
+  lfResearch:         jsonb('lf_research').default({}).notNull(),
 
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),

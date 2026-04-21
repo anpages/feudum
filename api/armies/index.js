@@ -62,6 +62,16 @@ async function processReturn(mission, kingdom, now) {
   if (mission.stoneLoad > 0) patch.stone = Math.min((kingdom.stone ?? 0) + mission.stoneLoad, kingdom.stoneCapacity)
   if (mission.grainLoad > 0) patch.grain = Math.min((kingdom.grain ?? 0) + mission.grainLoad, kingdom.grainCapacity)
 
+  // Artifacts from battle victory (stored in result JSON)
+  if (mission.result && kingdom.civilization) {
+    try {
+      const r = JSON.parse(mission.result)
+      if (r.artifactsGained > 0) {
+        patch.artifacts = Math.min(3600, (kingdom.artifacts ?? 0) + r.artifactsGained)
+      }
+    } catch { /* ignore */ }
+  }
+
   await db.update(kingdoms).set(patch).where(eq(kingdoms.id, kingdom.id))
   Object.assign(kingdom, patch)
   await db.delete(armyMissions).where(eq(armyMissions.id, mission.id))

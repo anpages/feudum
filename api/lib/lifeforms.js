@@ -1067,7 +1067,94 @@ export function applyPopulationTick(kingdom, lfLevels, elapsedSecs) {
 }
 
 // ── Civilization level bonus ──────────────────────────────────────────────────
-// Each level of civilization gives +0.1% to all bonuses of that civ's researches
 export function civLevelBonus(civLevel) {
   return Math.min(0.10, civLevel * 0.001) // máx 10%
+}
+
+// ── Aggregate LF research bonus helpers ──────────────────────────────────────
+
+// Returns { woodMult, stoneMult, grainMult } — production multipliers (≥1.0)
+export function calcLFProductionBonus(lfResearch) {
+  if (!lfResearch) return { woodMult: 1, stoneMult: 1, grainMult: 1 }
+  let all = 0, wood = 0, stone = 0, grain = 0
+  for (const res of LF_RESEARCH) {
+    const lv = lfResearch[res.id] ?? 0
+    if (lv === 0) continue
+    for (const eff of res.effects) {
+      if (eff.type === 'production_all')   all   += eff.base * lv
+      if (eff.type === 'production_wood')  wood  += eff.base * lv
+      if (eff.type === 'production_stone') stone += eff.base * lv
+      if (eff.type === 'production_grain') grain += eff.base * lv
+    }
+  }
+  return {
+    woodMult:  1 + all + wood,
+    stoneMult: 1 + all + stone,
+    grainMult: 1 + all + grain,
+  }
+}
+
+// Returns a multiplier 0.1–1.0 to apply to research time (reduction from LF)
+export function calcLFResearchTimeMult(lfResearch) {
+  if (!lfResearch) return 1
+  let reduction = 0
+  for (const res of LF_RESEARCH) {
+    const lv = lfResearch[res.id] ?? 0
+    if (lv === 0) continue
+    for (const eff of res.effects) {
+      if (eff.type === 'research_time') reduction += Math.abs(eff.base) * lv
+    }
+  }
+  return Math.max(0.1, 1 - reduction)
+}
+
+// Returns additive army speed bonus (0 = no bonus)
+export function calcLFArmySpeedBonus(lfResearch) {
+  if (!lfResearch) return 0
+  let bonus = 0
+  for (const res of LF_RESEARCH) {
+    const lv = lfResearch[res.id] ?? 0
+    if (lv === 0) continue
+    for (const eff of res.effects) {
+      if (eff.type === 'army_speed' || eff.type === 'army_speed_civil') bonus += eff.base * lv
+    }
+  }
+  return bonus
+}
+
+// Returns per-unit-type stat bonus multipliers: { squire: 0.6, knight: 0.3, ... }
+// A value of 0.3 means +30% to attack/shield/hull for that unit
+export function calcLFUnitStatBonuses(lfResearch) {
+  if (!lfResearch) return {}
+  const bonuses = {}
+  for (const res of LF_RESEARCH) {
+    const lv = lfResearch[res.id] ?? 0
+    if (lv === 0) continue
+    for (const eff of res.effects) {
+      if (eff.type.startsWith('unit_stats_')) {
+        const key = eff.type.slice('unit_stats_'.length)
+        bonuses[key] = (bonuses[key] ?? 0) + eff.base * lv
+      }
+      if (eff.type === 'defense_stats') {
+        for (const def of ['archer','crossbowman','ballista','trebuchet','mageTower','dragonCannon','catapult']) {
+          bonuses[def] = (bonuses[def] ?? 0) + eff.base * lv
+        }
+      }
+    }
+  }
+  return bonuses
+}
+
+// Returns unit build time multiplier (reduction from arsenalNaval etc.)
+export function calcLFUnitBuildTimeMult(lfResearch) {
+  if (!lfResearch) return 1
+  let reduction = 0
+  for (const res of LF_RESEARCH) {
+    const lv = lfResearch[res.id] ?? 0
+    if (lv === 0) continue
+    for (const eff of res.effects) {
+      if (eff.type === 'unit_build_time') reduction += Math.abs(eff.base) * lv
+    }
+  }
+  return Math.max(0.3, 1 - reduction / 100)
 }
