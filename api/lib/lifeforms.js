@@ -95,9 +95,9 @@ export const LF_BUILDINGS = [
     requires: [],
     // bonus1: cap T1, bonus2: tasa crecimiento, bonus3: tasa crecimiento T2+T3
     bonuses: [
-      { type: 'pop_capacity_t1',  base: 210000, factor: 1.21 },
-      { type: 'pop_growth',       base: 16000,  factor: 1.20 },
-      { type: 'pop_growth_t2t3',  base: 9000,   factor: 1.15 },
+      { type: 'pop_capacity_t1',  base: 210, factor: 1.21 },
+      { type: 'pop_growth',       base: 16,  factor: 1.20 },
+      { type: 'pop_growth_t2t3',  base: 9,   factor: 1.15 },
     ],
   },
   {
@@ -109,8 +109,8 @@ export const LF_BUILDINGS = [
     durationBase: 40, durationFactor: 1.25,
     requires: [],
     bonuses: [
-      { type: 'food_production', base: 10000, factor: 1.15 },
-      { type: 'food_storage',    base: 10000, factor: 1.14 },
+      { type: 'food_production', base: 10, factor: 1.15 },
+      { type: 'food_storage',    base: 10, factor: 1.14 },
     ],
   },
   {
@@ -254,9 +254,9 @@ export const LF_BUILDINGS = [
     durationBase: 40, durationFactor: 1.21,
     requires: [],
     bonuses: [
-      { type: 'pop_capacity_t1', base: 150000, factor: 1.216 },
-      { type: 'pop_growth',      base: 12000,  factor: 1.20  },
-      { type: 'pop_growth_t2t3', base: 5000,   factor: 1.15  },
+      { type: 'pop_capacity_t1', base: 150, factor: 1.216 },
+      { type: 'pop_growth',      base: 12,  factor: 1.20  },
+      { type: 'pop_growth_t2t3', base: 5,   factor: 1.15  },
     ],
   },
   {
@@ -268,8 +268,8 @@ export const LF_BUILDINGS = [
     durationBase: 40, durationFactor: 1.21,
     requires: [],
     bonuses: [
-      { type: 'food_production', base: 8000,  factor: 1.15 },
-      { type: 'food_storage',    base: 6000,  factor: 1.14 },
+      { type: 'food_production', base: 8,  factor: 1.15 },
+      { type: 'food_storage',    base: 6,  factor: 1.14 },
     ],
   },
   {
@@ -411,9 +411,9 @@ export const LF_BUILDINGS = [
     durationBase: 40, durationFactor: 1.22,
     requires: [],
     bonuses: [
-      { type: 'pop_capacity_t1', base: 500000, factor: 1.205 },
-      { type: 'pop_growth',      base: 24000,  factor: 1.20  },
-      { type: 'pop_growth_t2t3', base: 22000,  factor: 1.15  },
+      { type: 'pop_capacity_t1', base: 500, factor: 1.205 },
+      { type: 'pop_growth',      base: 24,  factor: 1.20  },
+      { type: 'pop_growth_t2t3', base: 22,  factor: 1.15  },
     ],
   },
   {
@@ -425,8 +425,8 @@ export const LF_BUILDINGS = [
     durationBase: 48, durationFactor: 1.20,
     requires: [],
     bonuses: [
-      { type: 'food_production', base: 18000, factor: 1.15 },
-      { type: 'food_storage',    base: 23000, factor: 1.12 },
+      { type: 'food_production', base: 18, factor: 1.15 },
+      { type: 'food_storage',    base: 23, factor: 1.12 },
     ],
   },
   {
@@ -569,9 +569,9 @@ export const LF_BUILDINGS = [
     durationBase: 40, durationFactor: 1.22,
     requires: [],
     bonuses: [
-      { type: 'pop_capacity_t1', base: 250000, factor: 1.21  },
-      { type: 'pop_growth',      base: 16000,  factor: 1.20  },
-      { type: 'pop_growth_t2t3', base: 11000,  factor: 1.15  },
+      { type: 'pop_capacity_t1', base: 250, factor: 1.21  },
+      { type: 'pop_growth',      base: 16,  factor: 1.20  },
+      { type: 'pop_growth_t2t3', base: 11,  factor: 1.15  },
     ],
   },
   {
@@ -583,8 +583,8 @@ export const LF_BUILDINGS = [
     durationBase: 40, durationFactor: 1.22,
     requires: [],
     bonuses: [
-      { type: 'food_production', base: 12000, factor: 1.15 },
-      { type: 'food_storage',    base: 12000, factor: 1.14 },
+      { type: 'food_production', base: 12, factor: 1.15 },
+      { type: 'food_storage',    base: 12, factor: 1.14 },
     ],
   },
   {
@@ -1059,7 +1059,7 @@ export function applyPopulationTick(kingdom, lfLevels, elapsedSecs) {
   }
 
   return {
-    populationT1: Math.floor(populationT1),
+    populationT1,
     populationT2: kingdom.populationT2,
     populationT3: kingdom.populationT3,
     foodStored,
