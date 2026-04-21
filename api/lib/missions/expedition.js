@@ -1,7 +1,9 @@
-import { eq } from 'drizzle-orm'
-import { db, armyMissions, research, messages, users, etherTransactions } from '../../_db.js'
+import { eq, desc, and } from 'drizzle-orm'
+import { db, armyMissions, research, messages, users, etherTransactions, kingdoms, debrisFields } from '../../_db.js'
 import { resolveExpedition } from '../expedition.js'
+import { calculateDebris } from '../battle.js'
 import { UNIT_KEYS } from './keys.js'
+import { calcPoints } from '../points.js'
 
 const OUTCOME_LABELS = {
   nothing:   '🌑 Tierras Ignotas — expedición vacía',
@@ -20,11 +22,20 @@ export async function processExpedition(mission, myKingdom, now) {
   const missionUnits = {}
   for (const k of UNIT_KEYS) missionUnits[k] = mission[k] ?? 0
 
-  const [researchRow] = await db.select().from(research)
-    .where(eq(research.userId, myKingdom.userId)).limit(1)
+  const [[researchRow], [userRow], allKingdoms] = await Promise.all([
+    db.select().from(research).where(eq(research.userId, myKingdom.userId)).limit(1),
+    db.select({ characterClass: users.characterClass }).from(users).where(eq(users.id, myKingdom.userId)).limit(1),
+    db.select().from(kingdoms),
+  ])
+
+  // Top-1 player points for resource reward scaling
+  const top1Points = allKingdoms.reduce((max, k) => Math.max(max, calcPoints(k)), 0)
+
+  // Discoverer class: halve combat encounter probability
+  const combatMultiplier = userRow?.characterClass === 'discoverer' ? 0.5 : 1.0
 
   const { outcome, result, unitPatch, returnTimeDelta, etherGained, destroyed, merchantOffer } =
-    resolveExpedition(missionUnits, researchRow ?? {}, travelSecs, now)
+    resolveExpedition(missionUnits, researchRow ?? {}, travelSecs, now, { top1Points, combatMultiplier })
 
   if (outcome === 'merchant' && merchantOffer) {
     await db.update(armyMissions).set({
@@ -33,6 +44,28 @@ export async function processExpedition(mission, myKingdom, now) {
       updatedAt: new Date(),
     }).where(eq(armyMissions.id, mission.id))
     return
+  }
+
+  // Expedition battle debris: 10% of all losses (not the standard 30%)
+  if (result.lostAtk || result.lostDef) {
+    const debris = calculateDebris(result.lostAtk ?? {}, result.lostDef ?? {}, 0.1)
+    if (debris.wood > 0 || debris.stone > 0) {
+      const [existing] = await db.select().from(debrisFields).where(and(
+        eq(debrisFields.realm,  mission.targetRealm),
+        eq(debrisFields.region, mission.targetRegion),
+        eq(debrisFields.slot,   mission.targetSlot),
+      )).limit(1)
+      if (existing) {
+        await db.update(debrisFields).set({
+          wood: existing.wood + debris.wood, stone: existing.stone + debris.stone, updatedAt: new Date(),
+        }).where(eq(debrisFields.id, existing.id))
+      } else {
+        await db.insert(debrisFields).values({
+          realm: mission.targetRealm, region: mission.targetRegion, slot: mission.targetSlot,
+          wood: debris.wood, stone: debris.stone,
+        })
+      }
+    }
   }
 
   if (destroyed) {

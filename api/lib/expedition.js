@@ -2,34 +2,33 @@
  * Expedition engine for Feudum.
  * Slot 16 = "Tierras Ignotas" — beyond the known map.
  *
- * Outcomes:
- *   nothing      35% — flota regresa vacía
- *   resources    25% — botín abandonado (madera/piedra/grano)
- *   units        15% — supervivientes que se unen
- *   delay        10% — caminos perdidos, regreso retrasado
- *   speedup       5% — viento favorable, regreso anticipado
- *   bandits       4% — merodeadores (débiles, tech -3)
- *   demons        3% — bestias oscuras (fuertes, tech +3)
- *   ether         2% — reliquias arcanas
- *   black_hole    1% — tormenta arcana, flota desaparece
+ * Weights mirror OGame reference (ExpeditionMission.php):
+ *   nothing      25   — flota regresa vacía
+ *   resources    35   — botín abandonado (madera/piedra/grano)
+ *   units        17   — supervivientes que se unen
+ *   ether         7.5 — reliquias arcanas (≈ dark matter)
+ *   delay         7.5 — caminos perdidos, regreso retrasado
+ *   speedup       2.75— viento favorable, regreso anticipado
+ *   bandits       3   — merodeadores (débiles, tech -3)
+ *   demons        1.5 — bestias oscuras (fuertes, tech +3)
+ *   merchant      0.4 — mercader errante
+ *   black_hole    0.2 — tormenta arcana, flota desaparece
  */
 
 import { buildBattleUnits, runBattle, calcCargoCapacity } from './battle.js'
 
-const OUTCOMES = [
-  { id: 'nothing',    weight: 33 },
-  { id: 'resources',  weight: 24 },
-  { id: 'units',      weight: 14 },
-  { id: 'delay',      weight: 10 },
-  { id: 'speedup',    weight:  5 },
-  { id: 'bandits',    weight:  4 },
-  { id: 'demons',     weight:  3 },
-  { id: 'merchant',   weight:  4 },
-  { id: 'ether',      weight:  2 },
-  { id: 'black_hole', weight:  1 },
+const BASE_OUTCOMES = [
+  { id: 'nothing',    weight: 25   },
+  { id: 'resources',  weight: 35   },
+  { id: 'units',      weight: 17   },
+  { id: 'ether',      weight:  7.5 },
+  { id: 'delay',      weight:  7.5 },
+  { id: 'speedup',    weight:  2.75},
+  { id: 'bandits',    weight:  3   },
+  { id: 'demons',     weight:  1.5 },
+  { id: 'merchant',   weight:  0.4 },
+  { id: 'black_hole', weight:  0.2 },
 ]
-
-const TOTAL_WEIGHT = OUTCOMES.reduce((s, o) => s + o.weight, 0)
 
 // Unit cost proxy for fleet value (wood + stone)
 const UNIT_VALUE = {
@@ -42,9 +41,16 @@ const UNIT_VALUE = {
 
 const COMBAT_UNITS = ['squire','knight','paladin','warlord','grandKnight','siegeMaster','warMachine','dragonKnight']
 
-function pickOutcome() {
-  let r = Math.random() * TOTAL_WEIGHT
-  for (const o of OUTCOMES) {
+// combatMultiplier: 0.5 for Discoverer class, 1.0 otherwise
+function pickOutcome(combatMultiplier = 1.0) {
+  const outcomes = BASE_OUTCOMES.map(o =>
+    (o.id === 'bandits' || o.id === 'demons')
+      ? { ...o, weight: o.weight * combatMultiplier }
+      : o
+  )
+  const total = outcomes.reduce((s, o) => s + o.weight, 0)
+  let r = Math.random() * total
+  for (const o of outcomes) {
     r -= o.weight
     if (r <= 0) return o.id
   }
@@ -111,38 +117,73 @@ function npcResearch(playerResearch, techDelta) {
   return out
 }
 
-// Resources found: up to 60% of cargo capacity, random mix
-function resourcesFound(units) {
-  const cargo = calcCargoCapacity(units)
-  if (cargo === 0) return { wood: 0, stone: 0, grain: 0 }
-
-  const total = Math.floor(cargo * (0.2 + Math.random() * 0.4))
-  const woodShare  = 0.5 + Math.random() * 0.3
-  const stoneShare = (1 - woodShare) * (0.6 + Math.random() * 0.3)
-  const grainShare = 1 - woodShare - stoneShare
-
-  return {
-    wood:  Math.floor(total * woodShare),
-    stone: Math.floor(total * stoneShare),
-    grain: Math.floor(total * grainShare),
-  }
+// Max resources by top-1 player points (mirrors OGame ref highscore tiers)
+function maxResourcesByPoints(top1Points) {
+  if      (top1Points <     10000) return   40000
+  else if (top1Points <    100000) return  500000
+  else if (top1Points <   1000000) return 1200000
+  else if (top1Points <   5000000) return 1800000
+  else if (top1Points <  25000000) return 2400000
+  else if (top1Points <  50000000) return 3000000
+  else if (top1Points <  75000000) return 3600000
+  else if (top1Points < 100000000) return 4200000
+  else                              return 5000000
 }
 
-// Units found: 10-20% of the sent fleet's combat units, one random type
+// Resources found: scaled by top-1 player points, capped by cargo capacity
+// top1Points: points of the top-ranked player (from rankings query)
+function resourcesFound(units, top1Points = 0) {
+  const cargo  = calcCargoCapacity(units)
+  const maxTier = maxResourcesByPoints(top1Points)
+  const minTier = Math.max(1, Math.floor(maxTier * 0.1))
+  const base   = minTier + Math.floor(Math.random() * (maxTier - minTier + 1))
+
+  // OGame distribution: wood 100%, stone 66%, grain 33% of base
+  const rng = Math.floor(Math.random() * 3)
+  let wood = 0, stone = 0, grain = 0
+  if (rng === 0)      wood  = Math.min(cargo, base)
+  else if (rng === 1) stone = Math.min(cargo, Math.floor(base * 2 / 3))
+  else                grain = Math.min(cargo, Math.floor(base / 3))
+
+  return { wood, stone, grain }
+}
+
+// Tier hierarchy: units discoverable = one tier above the highest tier sent
+// tier 1: squire, knight  |  tier 2: paladin, warlord  |  tier 3: grandKnight, siegeMaster  |  tier 4: warMachine, dragonKnight
+const UNIT_TIERS = [
+  ['squire', 'knight'],
+  ['paladin', 'warlord'],
+  ['grandKnight', 'siegeMaster'],
+  ['warMachine', 'dragonKnight'],
+]
+
+function unitTier(unitId) {
+  return UNIT_TIERS.findIndex(t => t.includes(unitId))
+}
+
+// Units found: tier one above highest sent, or same tier if already at max
 function unitsFound(sentUnits) {
-  const available = COMBAT_UNITS.filter(k => (sentUnits[k] ?? 0) > 0)
-  if (available.length === 0) {
-    // At least squires if no combat units sent
-    return { squire: Math.max(1, Math.floor(2 + Math.random() * 5)) }
+  const sentTiers = COMBAT_UNITS.filter(k => (sentUnits[k] ?? 0) > 0).map(unitTier)
+  if (sentTiers.length === 0) {
+    return { squire: Math.max(1, 2 + Math.floor(Math.random() * 5)) }
   }
-  const type  = available[Math.floor(Math.random() * available.length)]
-  const count = Math.max(1, Math.floor((sentUnits[type] ?? 1) * (0.10 + Math.random() * 0.10)))
+  const maxSentTier = Math.max(...sentTiers)
+  const discoverTier = Math.min(maxSentTier + 1, UNIT_TIERS.length - 1)
+  const pool = UNIT_TIERS[discoverTier]
+  const type = pool[Math.floor(Math.random() * pool.length)]
+
+  // Count based on value ratio: find similar-value count vs what was sent
+  const refUnit = COMBAT_UNITS.find(k => unitTier(k) === maxSentTier && (sentUnits[k] ?? 0) > 0) ?? 'squire'
+  const refValue  = (UNIT_VALUE[refUnit]  ?? 1000) * (sentUnits[refUnit] ?? 1)
+  const typeValue = (UNIT_VALUE[type] ?? 1000)
+  const ratio = 0.10 + Math.random() * 0.10
+  const count = Math.max(1, Math.floor(refValue * ratio / typeValue))
   return { [type]: count }
 }
 
-// Ether amount: 5–50
+// Ether amount: 150–400 (mirrors OGame dark matter range)
 function etherFound() {
-  return Math.floor(5 + Math.random() * 46)
+  return 150 + Math.floor(Math.random() * 251)
 }
 
 // Merchant offer: trade one resource for another at favorable rates
@@ -188,15 +229,18 @@ function speedupFraction() {
  * etherGained: ether to credit to player
  * merchantOffer: present only when outcome === 'merchant'
  */
-export function resolveExpedition(sentUnits, playerResearch, travelSecs, now) {
-  const outcome = pickOutcome()
+// opts.top1Points: points of top-ranked player (for resource scaling)
+// opts.combatMultiplier: 0.5 for Discoverer class, 1.0 otherwise
+export function resolveExpedition(sentUnits, playerResearch, travelSecs, now, opts = {}) {
+  const { top1Points = 0, combatMultiplier = 1.0 } = opts
+  const outcome = pickOutcome(combatMultiplier)
 
   switch (outcome) {
     case 'nothing':
       return { outcome, result: { type: 'nothing' }, unitPatch: null, returnTimeDelta: 0, etherGained: 0 }
 
     case 'resources': {
-      const found = resourcesFound(sentUnits)
+      const found = resourcesFound(sentUnits, top1Points)
       return { outcome, result: { type: 'resources', found }, unitPatch: null, returnTimeDelta: 0, etherGained: 0 }
     }
 

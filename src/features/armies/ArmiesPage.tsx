@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/Badge'
 import { Sheet } from '@/components/ui/Sheet'
 import { useArmies, useSendArmy, type MissionType } from '@/features/armies/useArmies'
 import { useKingdom, type Kingdom } from '@/features/kingdom/useKingdom'
+import { useResearch } from '@/features/research/useResearch'
 import { ALL_UNIT_META, MISSION_META } from './armiesMeta'
 import { MissionRow } from './components/MissionRow'
 import { CoordPicker } from './components/CoordPicker'
@@ -16,6 +17,7 @@ export function ArmiesPage() {
   const qc = useQueryClient()
   const { data: armies, isLoading } = useArmies()
   const { data: kingdom } = useKingdom()
+  const { data: researchData } = useResearch()
   const send = useSendArmy()
   const [searchParams, setSearchParams] = useSearchParams()
 
@@ -46,7 +48,15 @@ export function ArmiesPage() {
   const setUnit    = (id: string, val: string) => setUnits(prev => ({ ...prev, [id]: Math.max(0, parseInt(val) || 0) }))
   const isMissile  = missionType === 'missile'
   const totalUnits = Object.values(units).reduce((s, n) => s + n, 0)
-  const canSend    = totalUnits > 0 && !send.isPending
+
+  const cartographyLevel = researchData?.research.find(r => r.id === 'cartography')?.level ?? 0
+  const maxExpeditions = Math.max(1, Math.floor(Math.sqrt(cartographyLevel)))
+  const activeExpeditions = armies?.missions.filter(
+    m => m.missionType === 'expedition' && m.state !== 'completed'
+  ).length ?? 0
+  const expeditionSlotsFull = activeExpeditions >= maxExpeditions
+
+  const canSend    = totalUnits > 0 && !send.isPending && !(missionType === 'expedition' && expeditionSlotsFull)
   const hasUnits   = ALL_UNIT_META.some(u => ((kingdom as unknown as Record<string, number> | null)?.[u.id] ?? 0) > 0)
 
   const handleSend = () => {
@@ -124,6 +134,10 @@ export function ArmiesPage() {
           canSend={canSend} hasUnits={hasUnits}
           kingdom={kingdom} send={send}
           onSend={handleSend}
+          expeditionSlotsFull={expeditionSlotsFull}
+          activeExpeditions={activeExpeditions}
+          maxExpeditions={maxExpeditions}
+          cartographyLevel={cartographyLevel}
         />
       </Sheet>
     </div>
@@ -137,6 +151,7 @@ function MissionForm({
   tRealm, setTRealm, tRegion, setTRegion, tSlot, setTSlot,
   units, setUnit, resLoad, setResLoad,
   isMissile, totalUnits, canSend, hasUnits, kingdom, send, onSend,
+  expeditionSlotsFull, activeExpeditions, maxExpeditions, cartographyLevel,
 }: {
   missionType: MissionType; setMissionType: (t: MissionType) => void
   tRealm: number; setTRealm: (n: number) => void
@@ -147,6 +162,7 @@ function MissionForm({
   setResLoad: React.Dispatch<React.SetStateAction<{ wood: number; stone: number; grain: number }>>
   isMissile: boolean; totalUnits: number; canSend: boolean; hasUnits: boolean
   kingdom: Kingdom | null | undefined; send: ReturnType<typeof useSendArmy>; onSend: () => void
+  expeditionSlotsFull: boolean; activeExpeditions: number; maxExpeditions: number; cartographyLevel: number
 }) {
   const kingdomUnits = kingdom as unknown as Record<string, number> | null | undefined
   return (
@@ -182,9 +198,15 @@ function MissionForm({
       <div className="space-y-2">
         <p className="font-ui text-xs text-ink-muted uppercase tracking-wider">Destino</p>
         {missionType === 'expedition' ? (
-          <p className="font-body text-xs text-gold/80 italic py-1">
-            Las expediciones se dirigen automáticamente a las <strong>Tierras Ignotas</strong> (slot 16).
-          </p>
+          <div className="space-y-1.5 py-1">
+            <p className="font-body text-xs text-gold/80 italic">
+              Las expediciones se dirigen automáticamente a las <strong>Tierras Ignotas</strong> (slot 16).
+            </p>
+            <p className={`font-ui text-xs ${expeditionSlotsFull ? 'text-crimson' : 'text-ink-muted'}`}>
+              Expediciones activas: {activeExpeditions}/{maxExpeditions}
+              {cartographyLevel === 0 && ' · Mejora Cartografía para desbloquear más slots'}
+            </p>
+          </div>
         ) : (
           <div className="grid grid-cols-3 gap-3">
             <CoordPicker label="Reino"    value={tRealm}  min={1} max={3}  onChange={setTRealm} />

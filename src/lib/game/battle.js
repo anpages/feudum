@@ -221,8 +221,8 @@ export function calculateLoot(defRes, cargoCapacity) {
   return { wood: Math.floor(result.wood), stone: Math.floor(result.stone), grain: Math.floor(result.grain) }
 }
 
-// ── Debris (30% of destroyed unit costs) ─────────────────────────────────────
-export function calculateDebris(lostAtk, lostDef) {
+// ── Debris (default 30% of destroyed unit costs; expeditions use 10%) ────────
+export function calculateDebris(lostAtk, lostDef, rate = 0.3) {
   let wood = 0, stone = 0
   const all = [lostAtk, lostDef]
   for (const losses of all) {
@@ -230,8 +230,8 @@ export function calculateDebris(lostAtk, lostDef) {
       if (!count) continue
       const cost = UNIT_COST[id]
       if (!cost) continue
-      wood  += Math.floor(cost.wood  * count * 0.3)
-      stone += Math.floor(cost.stone * count * 0.3)
+      wood  += Math.floor(cost.wood  * count * rate)
+      stone += Math.floor(cost.stone * count * rate)
     }
   }
   return { wood, stone }

@@ -169,6 +169,26 @@ export default async function handler(req, res) {
     }
   }
 
+  // Expedition missions: limited by floor(√cartography), minimum 1
+  if (isExpedition) {
+    const cartographyLevel = researchRow?.cartography ?? 0
+    const maxExpeditions = Math.max(1, Math.floor(Math.sqrt(cartographyLevel)))
+    const activeExpeditions = await db.select({ id: armyMissions.id, state: armyMissions.state }).from(armyMissions)
+      .where(and(
+        eq(armyMissions.userId, userId),
+        eq(armyMissions.missionType, 'expedition'),
+      ))
+    // Count only active/returning/merchant (not completed)
+    const ongoingCount = activeExpeditions.filter(m => m.state !== 'completed').length
+    if (ongoingCount >= maxExpeditions) {
+      return res.status(400).json({
+        error: `Límite de expediciones alcanzado (${ongoingCount}/${maxExpeditions}). Mejora Cartografía para enviar más.`,
+        maxExpeditions,
+        cartographyLevel,
+      })
+    }
+  }
+
   // Deploy missions: target must be own kingdom (different slot)
   if (missionType === 'deploy') {
     const [target] = await db.select({ userId: kingdoms.userId }).from(kingdoms)
