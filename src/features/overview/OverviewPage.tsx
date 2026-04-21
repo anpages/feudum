@@ -50,11 +50,12 @@ export function OverviewPage() {
   const researchCount = researchData?.research.filter(r => r.level > 0).length ?? 0
   const researchTotalLevels = researchData?.research.reduce((s, r) => s + r.level, 0) ?? 0
 
-  const allBarracksUnits = [...(barracksData?.units ?? []), ...(barracksData?.support ?? []), ...(barracksData?.defenses ?? [])]
-  const totalAttackPower  = allBarracksUnits.reduce((s, u) => s + u.count * u.attack,  0)
-  const totalShieldPower  = allBarracksUnits.reduce((s, u) => s + u.count * u.shield,  0)
-  const combatCount = (barracksData?.units ?? []).reduce((s, u) => s + u.count, 0)
-  const defenseCount = (barracksData?.defenses ?? []).reduce((s, u) => s + u.count, 0)
+  const combatUnits  = barracksData?.units    ?? []
+  const defenseUnits = barracksData?.defenses ?? []
+  const totalAttackPower = combatUnits.reduce((s, u) => s + u.count * u.attack, 0)
+  const totalShieldPower = [...combatUnits, ...defenseUnits].reduce((s, u) => s + u.count * u.shield, 0)
+  const combatCount  = combatUnits.reduce((s, u) => s + u.count, 0)
+  const defenseCount = defenseUnits.reduce((s, u) => s + u.count, 0)
   const myRanking = rankingsData?.rankings.find(r => r.isMe)
   const activeMissions = armiesData?.missions.filter(m => m.state === 'active').length ?? 0
   const returningMissions = armiesData?.missions.filter(m => m.state === 'returning').length ?? 0
