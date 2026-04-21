@@ -278,6 +278,14 @@ export function SendMissionPage() {
               <p className="font-ui text-xs text-ink-muted uppercase tracking-wider">Unidades</p>
               {totalUnits > 0 && <Badge variant="gold">{totalUnits.toLocaleString()} seleccionadas</Badge>}
             </div>
+            {MISSION_META[missionType].unitHint && (
+              <div className="flex gap-2 px-3 py-2.5 rounded-lg bg-gold-soft border border-gold/20">
+                <span className="text-gold-dim shrink-0 mt-0.5">💡</span>
+                <p className="font-body text-xs text-ink-mid leading-relaxed">
+                  {MISSION_META[missionType].unitHint}
+                </p>
+              </div>
+            )}
             {unitsToShow.filter(u => (kingdomRaw?.[u.id] ?? 0) > 0).length === 0 ? (
               <p className="font-body text-sm text-ink-muted/50 italic py-4 text-center">
                 {unitsToShow.length === 0
