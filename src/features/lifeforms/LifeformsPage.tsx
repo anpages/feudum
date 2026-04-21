@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Users, FlaskConical, Hammer, Loader2, Clock, TrendingUp, TreePine, Mountain, Wheat, ChevronRight } from 'lucide-react'
+import { Users, FlaskConical, Hammer, Loader2, Clock, TrendingUp, TreePine, Mountain, Wheat, ChevronRight, Home, Sprout, GraduationCap, Factory, Shield, Sparkles, type LucideIcon } from 'lucide-react'
 import { GiScrollUnfurled, GiCastle, GiHiking, GiByzantinTemple, GiCamel } from 'react-icons/gi'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
@@ -49,6 +49,52 @@ function getLFBuildingName(id: string) {
   return LF_BUILDING_NAMES[id] ?? id
 }
 
+interface BuildingCategory {
+  id: string
+  label: string
+  description: string
+  Icon: LucideIcon
+  roles: string[]
+}
+
+const BUILDING_CATEGORIES: BuildingCategory[] = [
+  {
+    id: 'housing',
+    label: 'Vivienda',
+    description: 'Hogares para tu población. Aumentan la capacidad y la velocidad de crecimiento.',
+    Icon: Home,
+    roles: ['housing'],
+  },
+  {
+    id: 'food',
+    label: 'Alimentación',
+    description: 'Granjas y despensas que sostienen a los habitantes de tu ciudad.',
+    Icon: Sprout,
+    roles: ['food'],
+  },
+  {
+    id: 'education',
+    label: 'Educación',
+    description: 'Escuelas e instituciones que elevan a la población a niveles superiores.',
+    Icon: GraduationCap,
+    roles: ['lab', 'school_t2', 'school_t3'],
+  },
+  {
+    id: 'production',
+    label: 'Producción y Servicios',
+    description: 'Talleres, herrerías y servicios que potencian la economía del reino.',
+    Icon: Factory,
+    roles: ['utility', 'amplifier'],
+  },
+  {
+    id: 'defense',
+    label: 'Defensa',
+    description: 'Murallas y fortines que protegen a los ciudadanos de los ataques enemigos.',
+    Icon: Shield,
+    roles: ['defense_pop'],
+  },
+]
+
 function useCountdown(finishesAt: number | null, onEnd: () => void) {
   const [secs, setSecs] = useState(() =>
     finishesAt ? Math.max(0, finishesAt - Math.floor(Date.now() / 1000)) : 0
@@ -90,12 +136,13 @@ export function LifeformsPage() {
     return <SelectCivilizationPanel civs={data?.civilizations ?? []} onSelect={id => selectCiv.mutate(id)} isPending={selectCiv.isPending} />
   }
 
-  const civ      = data.civilization
-  const buildings = data.buildings[civ] ?? []
-  const research  = data.research[civ] ?? []
-  const civMeta   = data.civilizations.find(c => c.id === civ)
-  const popTotal  = data.population.t1 + data.population.t2 + data.population.t3
-  const Icon      = CIV_ICONS[civ] ?? GiScrollUnfurled
+  const civ           = data.civilization
+  const buildings      = data.buildings[civ] ?? []
+  const research       = data.research[civ] ?? []
+  const civMeta        = data.civilizations.find(c => c.id === civ)
+  const popTotal       = data.population.t1 + data.population.t2 + data.population.t3
+  const Icon           = CIV_ICONS[civ] ?? GiScrollUnfurled
+  const lfBuildingsMap = Object.fromEntries(buildings.map(b => [b.id, b.level]))
 
   return (
     <div className="space-y-8">
@@ -181,21 +228,49 @@ export function LifeformsPage() {
         </button>
       </div>
 
-      {/* Buildings tab */}
+      {/* Buildings tab — grouped by city category */}
       {tab === 'buildings' && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 anim-fade-up-3">
-          {buildings.map((b, i) => (
-            <LFBuildingCard
-              key={b.id}
-              building={b}
-              lfBuildingsMap={Object.fromEntries(buildings.map(x => [x.id, x.level]))}
-              resources={resources}
-              onBuild={() => buildBuilding.mutate(b.id)}
-              isBuildPending={buildBuilding.isPending && buildBuilding.variables === b.id}
-              onCountdownEnd={() => handleCountdownEnd(b.name)}
-              animClass={`anim-fade-up-${Math.min(i + 1, 5) as 1|2|3|4|5}`}
-            />
-          ))}
+        <div className="space-y-10 anim-fade-up-3">
+          {BUILDING_CATEGORIES.map(cat => {
+            const catBuildings = buildings.filter(b => cat.roles.includes(b.role))
+            if (catBuildings.length === 0) return null
+            const CatIcon = cat.Icon
+            return (
+              <section key={cat.id}>
+                {/* Category header */}
+                <div className="flex items-center gap-3 mb-5">
+                  <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 bg-gold/10 border border-gold/20">
+                    <CatIcon size={16} className="text-gold-dim" />
+                  </div>
+                  <div>
+                    <h3 className="font-ui text-sm font-bold text-ink leading-none">{cat.label}</h3>
+                    <p className="font-body text-xs text-ink-muted/60 mt-0.5">{cat.description}</p>
+                  </div>
+                  <div className="ml-auto flex items-center gap-1">
+                    {catBuildings.some(b => b.inQueue) && (
+                      <span className="flex items-center gap-1 font-ui text-[0.6rem] text-gold-dim border border-gold/20 bg-gold/5 px-2 py-0.5 rounded-full">
+                        <Sparkles size={9} />en construcción
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+                  {catBuildings.map((b, i) => (
+                    <LFBuildingCard
+                      key={b.id}
+                      building={b}
+                      lfBuildingsMap={lfBuildingsMap}
+                      resources={resources}
+                      onBuild={() => buildBuilding.mutate(b.id)}
+                      isBuildPending={buildBuilding.isPending && buildBuilding.variables === b.id}
+                      onCountdownEnd={() => handleCountdownEnd(b.name)}
+                      animClass={`anim-fade-up-${Math.min(i + 1, 5) as 1|2|3|4|5}`}
+                    />
+                  ))}
+                </div>
+              </section>
+            )
+          })}
         </div>
       )}
 
