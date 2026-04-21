@@ -50,12 +50,10 @@ export function OverviewPage() {
   const researchCount = researchData?.research.filter(r => r.level > 0).length ?? 0
   const researchTotalLevels = researchData?.research.reduce((s, r) => s + r.level, 0) ?? 0
 
-  const combatUnits  = barracksData?.units    ?? []
-  const defenseUnits = barracksData?.defenses ?? []
-  const totalAttackPower = combatUnits.reduce((s, u) => s + u.count * u.attack, 0)
-  const totalShieldPower = [...combatUnits, ...defenseUnits].reduce((s, u) => s + u.count * u.shield, 0)
-  const combatCount  = combatUnits.reduce((s, u) => s + u.count, 0)
-  const defenseCount = defenseUnits.reduce((s, u) => s + u.count, 0)
+  const allBarracksUnits = [...(barracksData?.units ?? []), ...(barracksData?.support ?? []), ...(barracksData?.defenses ?? [])]
+  const totalAttackPower = allBarracksUnits.reduce((s, u) => s + u.count * u.attack, 0)
+  const totalShieldPower = allBarracksUnits.reduce((s, u) => s + u.count * u.shield, 0)
+  const totalUnitCount   = allBarracksUnits.reduce((s, u) => s + u.count, 0)
   const myRanking = rankingsData?.rankings.find(r => r.isMe)
   const activeMissions = armiesData?.missions.filter(m => m.state === 'active').length ?? 0
   const returningMissions = armiesData?.missions.filter(m => m.state === 'returning').length ?? 0
@@ -164,8 +162,8 @@ export function OverviewPage() {
           {/* Military stats */}
           <Card className="p-4 space-y-3">
             <p className="font-ui text-[0.6rem] text-ink-muted/60 uppercase tracking-widest">Fuerza militar</p>
-            <StatRow icon={<GiCrossedSwords size={13} />} label="Potencia ofensiva" value={formatResource(totalAttackPower)} note={`${combatCount} tropas`} onClick={() => navigate('/barracks')} />
-            <StatRow icon={<Shield size={13} />} label="Potencia defensiva" value={formatResource(totalShieldPower)} note={`${defenseCount} defensas`} onClick={() => navigate('/defense')} />
+            <StatRow icon={<GiCrossedSwords size={13} />} label="Potencia ofensiva" value={formatResource(totalAttackPower)} note={`${totalUnitCount} unidades`} onClick={() => navigate('/barracks')} />
+            <StatRow icon={<Shield size={13} />} label="Potencia defensiva" value={formatResource(totalShieldPower)} note={`${totalUnitCount} unidades`} onClick={() => navigate('/defense')} />
           </Card>
 
           {/* Active missions */}
