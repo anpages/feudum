@@ -10,13 +10,11 @@ import { useResearch } from '@/features/research/useResearch'
 import { useBuildings } from '@/features/buildings/useBuildings'
 import { useBarracks } from '@/features/barracks/useBarracks'
 import { useArmies } from '@/features/armies/useArmies'
-import { useRankings } from '@/features/rankings/useRankings'
 import { useAuth } from '@/features/auth/useAuth'
 import { formatResource, formatDuration } from '@/lib/format'
 import { label } from '@/lib/labels'
 import { tempLabel } from '@/lib/terrain'
 import { Card } from '@/components/ui/Card'
-import { Badge } from '@/components/ui/Badge'
 import { SeasonCard } from '@/features/season/SeasonCard'
 
 const CLASS_INFO: Record<string, { emoji: string; label: string; color: string }> = {
@@ -40,7 +38,6 @@ export function OverviewPage() {
   const { data: buildingsData } = useBuildings()
   const { data: barracksData } = useBarracks()
   const { data: armiesData } = useArmies()
-  const { data: rankingsData } = useRankings()
   const { user } = useAuth()
 
   const buildingCount = kingdom
@@ -61,7 +58,6 @@ export function OverviewPage() {
   const totalAttackPower = allBarracksUnits.reduce((s, u) => s + u.count * effBonus(u.attack, sword), 0)
   const totalShieldPower = allBarracksUnits.reduce((s, u) => s + u.count * effBonus(u.shield, arm),   0)
   const totalUnitCount   = allBarracksUnits.reduce((s, u) => s + u.count, 0)
-  const myRanking = rankingsData?.rankings.find(r => r.isMe)
   const activeMissions = armiesData?.missions.filter(m => m.state === 'active').length ?? 0
   const returningMissions = armiesData?.missions.filter(m => m.state === 'returning').length ?? 0
 
@@ -93,12 +89,6 @@ export function OverviewPage() {
             <p className="font-body text-sm text-ink-muted mt-1">
               Reino {kingdom?.realm ?? '—'} · Región {kingdom?.region ?? '—'} · Posición {kingdom?.slot ?? '—'}
             </p>
-          </div>
-          <div className="flex flex-col items-end gap-2">
-            <Badge variant="gold">Rango #{myRanking?.rank ?? '—'}</Badge>
-            <span className="font-ui text-xs tabular-nums text-ink-muted">
-              {myRanking?.points.toLocaleString() ?? '—'} pts
-            </span>
           </div>
         </div>
 
