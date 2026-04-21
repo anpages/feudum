@@ -10,6 +10,7 @@ import { useResearch } from '@/features/research/useResearch'
 import { useBuildings } from '@/features/buildings/useBuildings'
 import { useBarracks } from '@/features/barracks/useBarracks'
 import { useArmies } from '@/features/armies/useArmies'
+import { useLifeforms } from '@/features/lifeforms/useLifeforms'
 import { useAuth } from '@/features/auth/useAuth'
 import { formatResource, formatDuration } from '@/lib/format'
 import { label } from '@/lib/labels'
@@ -38,6 +39,7 @@ export function OverviewPage() {
   const { data: buildingsData } = useBuildings()
   const { data: barracksData } = useBarracks()
   const { data: armiesData } = useArmies()
+  const { data: lfData } = useLifeforms()
   const { user } = useAuth()
 
   const buildingCount = kingdom
@@ -182,6 +184,32 @@ export function OverviewPage() {
         </div>
       </section>
 
+      {/* ── Civilization ── */}
+      {lfData && (
+        <section className="anim-fade-up-3">
+          <div className="flex items-center justify-between mb-3">
+            <span className="section-heading mb-0">Civilización</span>
+            <button onClick={() => navigate('/lifeforms')} className="font-ui text-xs text-gold-dim hover:text-gold transition-colors">
+              Ver detalles →
+            </button>
+          </div>
+          {lfData.civilization ? (
+            <LFOverviewCard data={lfData} />
+          ) : (
+            <Card className="p-4">
+              <button onClick={() => navigate('/lifeforms')} className="w-full flex items-center gap-3 text-left group">
+                <span className="text-2xl">🏛️</span>
+                <div>
+                  <p className="font-ui text-sm font-semibold text-ink">Sin civilización</p>
+                  <p className="font-body text-xs text-ink-muted/60 mt-0.5">Elige tu civilización para desbloquear población, alimento y bonificaciones únicas.</p>
+                </div>
+                <ChevronRight size={14} className="ml-auto text-ink-muted/30 group-hover:text-gold shrink-0" />
+              </button>
+            </Card>
+          )}
+        </section>
+      )}
+
       {/* ── Active queues ── */}
       <section className="anim-fade-up-3">
         <span className="section-heading">Colas activas</span>
@@ -320,6 +348,48 @@ function QueueRow({
           <div className="progress-fill transition-none" style={{ width: `${pct}%` }} />
         </div>
       )}
+    </Card>
+  )
+}
+
+function LFOverviewCard({ data }: { data: NonNullable<ReturnType<typeof useLifeforms>['data']> }) {
+  const civ = data.civilization!
+  const civMeta = data.civilizations.find(c => c.id === civ)
+  const popTotal = data.population.t1 + data.population.t2 + data.population.t3
+  const CIV_COLORS: Record<string, string> = {
+    romans: 'text-gold-dim', vikings: 'text-blue-400', byzantines: 'text-purple-400', saracens: 'text-orange-400',
+  }
+  const color = CIV_COLORS[civ] ?? 'text-gold-dim'
+  const tier = data.tiers.t3 ? 'T3' : data.tiers.t2 ? 'T2' : data.tiers.t1 ? 'T1' : null
+
+  return (
+    <Card className="p-4">
+      <div className="flex items-center gap-3 mb-3">
+        <div className={`w-8 h-8 rounded-lg border flex items-center justify-center shrink-0 ${color} border-current/25 bg-current/5`}>
+          <span className="text-base">🏛️</span>
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <p className={`font-ui text-sm font-bold ${color}`}>{civMeta?.name}</p>
+            {tier && <span className="font-ui text-[0.6rem] px-1.5 py-0.5 rounded border border-forest/30 text-forest-light bg-forest/5">{tier} desbloqueado</span>}
+          </div>
+          <p className="font-body text-xs text-ink-muted/60">Nv. civ. {data.civLevels[civ]}</p>
+        </div>
+      </div>
+      <div className="grid grid-cols-3 gap-2 pt-3 border-t border-gold/10">
+        <div className="text-center">
+          <p className="font-ui text-xs font-semibold tabular-nums text-ink">{formatResource(popTotal)}</p>
+          <p className="font-body text-[0.6rem] text-ink-muted/50 mt-0.5">Población</p>
+        </div>
+        <div className="text-center">
+          <p className="font-ui text-xs font-semibold tabular-nums text-ink">{formatResource(data.foodStored)}</p>
+          <p className="font-body text-[0.6rem] text-ink-muted/50 mt-0.5">Alimento</p>
+        </div>
+        <div className="text-center">
+          <p className="font-ui text-xs font-semibold tabular-nums text-ink">{data.artifacts}</p>
+          <p className="font-body text-[0.6rem] text-ink-muted/50 mt-0.5">Artefactos</p>
+        </div>
+      </div>
     </Card>
   )
 }

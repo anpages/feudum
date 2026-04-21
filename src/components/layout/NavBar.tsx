@@ -15,6 +15,7 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { to: '/overview',    label: 'Reino',         Icon: Castle },
+  { to: '/lifeforms',   label: 'Civilización',  Icon: Landmark },
   { to: '/resources',   label: 'Recursos',      Icon: Factory },
   { to: '/facilities',  label: 'Instalaciones', Icon: Building2 },
   { to: '/research',    label: 'Academia',      Icon: BookOpen },
@@ -23,7 +24,6 @@ const NAV_ITEMS: NavItem[] = [
   { to: '/defense',     label: 'Defensa',       Icon: Shield },
   { to: '/armies',      label: 'Misiones',      Icon: Navigation },
   { to: '/map',         label: 'Mapa',          Icon: Map },
-  { to: '/lifeforms',   label: 'Civilización',  Icon: Landmark },
 ]
 
 interface Props {
