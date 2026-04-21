@@ -62,12 +62,15 @@ export function MobileResources({ resources, kingdom, user }: {
     <div ref={ref} className="relative flex items-center">
       <button
         onClick={() => setOpen(v => !v)}
-        className={`flex items-center gap-2 px-2 py-1 rounded-md transition-colors ${open ? 'bg-parchment/60' : 'hover:bg-parchment/40'}`}
+        className={`flex items-center gap-1.5 px-2 py-1 rounded-md transition-colors ${open ? 'bg-parchment/60' : 'hover:bg-parchment/40'}`}
       >
+        <TreePine  size={11} className={woodFull  ? 'text-crimson' : 'text-gold/60'} />
         <span className={`font-ui text-xs tabular-nums font-semibold ${woodFull  ? 'text-crimson' : 'text-ink-mid'}`}>{formatResource(resources.wood)}</span>
         <span className="text-ink-muted/30 text-[10px]">·</span>
+        <Mountain size={11} className={stoneFull ? 'text-crimson' : 'text-gold/60'} />
         <span className={`font-ui text-xs tabular-nums font-semibold ${stoneFull ? 'text-crimson' : 'text-ink-mid'}`}>{formatResource(resources.stone)}</span>
         <span className="text-ink-muted/30 text-[10px]">·</span>
+        <Wheat    size={11} className={grainFull ? 'text-crimson' : 'text-gold/60'} />
         <span className={`font-ui text-xs tabular-nums font-semibold ${grainFull ? 'text-crimson' : 'text-ink-mid'}`}>{formatResource(resources.grain)}</span>
         {anyAlert && <span className="w-1.5 h-1.5 rounded-full bg-crimson animate-pulse" />}
         {open ? <ChevronUp size={11} className="text-ink-muted" /> : <ChevronDown size={11} className="text-ink-muted" />}

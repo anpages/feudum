@@ -30,8 +30,6 @@ const BUILDING_KEYS = [
   'alchemistTower','ambassadorHall','armoury',
 ] as const
 
-const COMBAT_KEYS = ['squire','knight','paladin','warlord','grandKnight','siegeMaster','warMachine','dragonKnight'] as const
-const DEFENSE_KEYS = ['archer','crossbowman','ballista','trebuchet','mageTower','dragonCannon','palisade','castleWall','moat','catapult'] as const
 
 export function OverviewPage() {
   const navigate = useNavigate()
@@ -46,13 +44,17 @@ export function OverviewPage() {
   const buildingCount = kingdom
     ? BUILDING_KEYS.reduce((s, k) => s + (Number((kingdom as Record<string, unknown>)[k]) > 0 ? 1 : 0), 0)
     : 0
+  const buildingTotalLevels = kingdom
+    ? BUILDING_KEYS.reduce((s, k) => s + (Number((kingdom as Record<string, unknown>)[k]) || 0), 0)
+    : 0
   const researchCount = researchData?.research.filter(r => r.level > 0).length ?? 0
-  const combatCount = kingdom
-    ? COMBAT_KEYS.reduce((s, k) => s + (Number((kingdom as Record<string, unknown>)[k]) || 0), 0)
-    : 0
-  const defenseCount = kingdom
-    ? DEFENSE_KEYS.reduce((s, k) => s + (Number((kingdom as Record<string, unknown>)[k]) || 0), 0)
-    : 0
+  const researchTotalLevels = researchData?.research.reduce((s, r) => s + r.level, 0) ?? 0
+
+  const allBarracksUnits = [...(barracksData?.units ?? []), ...(barracksData?.support ?? []), ...(barracksData?.defenses ?? [])]
+  const totalAttackPower  = allBarracksUnits.reduce((s, u) => s + u.count * u.attack,  0)
+  const totalShieldPower  = allBarracksUnits.reduce((s, u) => s + u.count * u.shield,  0)
+  const combatCount = (barracksData?.units ?? []).reduce((s, u) => s + u.count, 0)
+  const defenseCount = (barracksData?.defenses ?? []).reduce((s, u) => s + u.count, 0)
   const myRanking = rankingsData?.rankings.find(r => r.isMe)
   const activeMissions = armiesData?.missions.filter(m => m.state === 'active').length ?? 0
   const returningMissions = armiesData?.missions.filter(m => m.state === 'returning').length ?? 0
@@ -137,9 +139,9 @@ export function OverviewPage() {
                 )}
               </div>
               <div className="grid grid-cols-3 gap-3">
-                <ProductionRow icon={<TreePine size={14} />} label="Madera" rate={kingdom?.woodProduction ?? 0} deficit={deficit} />
-                <ProductionRow icon={<Mountain size={14} />} label="Piedra" rate={kingdom?.stoneProduction ?? 0} deficit={deficit} />
-                <ProductionRow icon={<Wheat size={14} />} label="Grano" rate={kingdom?.grainProduction ?? 0} deficit={deficit} />
+                <ProductionRow icon={<TreePine size={14} />} label="Madera" rate={kingdom?.woodProduction ?? 0}  current={kingdom ? (kingdom as Record<string,unknown>).wood as number : 0}  cap={kingdom?.woodCapacity}  deficit={deficit} />
+                <ProductionRow icon={<Mountain size={14} />} label="Piedra" rate={kingdom?.stoneProduction ?? 0} current={kingdom ? (kingdom as Record<string,unknown>).stone as number : 0} cap={kingdom?.stoneCapacity} deficit={deficit} />
+                <ProductionRow icon={<Wheat size={14} />}    label="Grano"  rate={kingdom?.grainProduction ?? 0} current={kingdom ? (kingdom as Record<string,unknown>).grain as number : 0} cap={kingdom?.grainCapacity} deficit={deficit} />
               </div>
             </>
           )
@@ -154,15 +156,15 @@ export function OverviewPage() {
           {/* Kingdom stats */}
           <Card className="p-4 space-y-3">
             <p className="font-ui text-[0.6rem] text-ink-muted/60 uppercase tracking-widest">Desarrollo</p>
-            <StatRow icon={<GiAnvil size={13} />} label="Edificios" value={`${buildingCount}`} note="construidos" onClick={() => navigate('/resources')} />
-            <StatRow icon={<GiSpellBook size={13} />} label="Investigaciones" value={`${researchCount}`} note="descubiertas" onClick={() => navigate('/research')} />
+            <StatRow icon={<GiAnvil size={13} />} label="Edificios" value={`${buildingCount}`} note={`Nv. total ${buildingTotalLevels}`} onClick={() => navigate('/resources')} />
+            <StatRow icon={<GiSpellBook size={13} />} label="Investigaciones" value={`${researchCount}`} note={`Nv. total ${researchTotalLevels}`} onClick={() => navigate('/research')} />
           </Card>
 
           {/* Military stats */}
           <Card className="p-4 space-y-3">
             <p className="font-ui text-[0.6rem] text-ink-muted/60 uppercase tracking-widest">Fuerza militar</p>
-            <StatRow icon={<GiCrossedSwords size={13} />} label="Combate" value={combatCount.toLocaleString()} note="tropas" onClick={() => navigate('/barracks')} />
-            <StatRow icon={<Shield size={13} />} label="Defensa" value={defenseCount.toLocaleString()} note="unidades" onClick={() => navigate('/defense')} />
+            <StatRow icon={<GiCrossedSwords size={13} />} label="Potencia ofensiva" value={formatResource(totalAttackPower)} note={`${combatCount} tropas`} onClick={() => navigate('/barracks')} />
+            <StatRow icon={<Shield size={13} />} label="Potencia defensiva" value={formatResource(totalShieldPower)} note={`${defenseCount} defensas`} onClick={() => navigate('/defense')} />
           </Card>
 
           {/* Active missions */}
@@ -233,8 +235,10 @@ export function OverviewPage() {
 // ── Sub-components ────────────────────────────────────────────────────────────
 
 function ProductionRow({
-  icon, label, rate, deficit,
-}: { icon: ReactNode; label: string; rate: number; deficit?: boolean }) {
+  icon, label, rate, current, cap, deficit,
+}: { icon: ReactNode; label: string; rate: number; current?: number; cap?: number; deficit?: boolean }) {
+  const pct = cap && cap > 0 ? Math.min(100, ((current ?? 0) / cap) * 100) : 0
+  const full = cap !== undefined && (current ?? 0) >= cap
   return (
     <Card className="p-3">
       <div className="flex items-center gap-1.5 mb-2">
@@ -250,6 +254,16 @@ function ProductionRow({
         <TrendingUp size={8} />
         <span>/h · neto</span>
       </p>
+      {cap !== undefined && (
+        <div className="mt-2 space-y-1">
+          <div className="progress-track h-1">
+            <div className={`progress-fill transition-none ${full ? 'full' : ''}`} style={{ width: `${pct}%` }} />
+          </div>
+          <p className="font-ui text-[0.6rem] tabular-nums text-ink-muted/50">
+            {formatResource(current ?? 0)} / {formatResource(cap)}
+          </p>
+        </div>
+      )}
     </Card>
   )
 }
