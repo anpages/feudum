@@ -53,7 +53,7 @@ export function useUpgradeResearch() {
           const finishesAt = Math.floor(Date.now() / 1000) + item.timeSeconds
           qc.setQueryData<ResearchResponse>(key, {
             research: prev.research.map(r =>
-              r.id === researchId ? { ...r, inQueue: { level: r.level + 1, finishesAt } } : r
+              r.id === researchId ? { ...r, inQueue: { level: r.level + 1, startedAt: Math.floor(Date.now() / 1000), finishesAt } } : r
             ),
           })
         }

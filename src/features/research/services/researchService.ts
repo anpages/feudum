@@ -8,6 +8,7 @@ interface QueueRow {
   id: string
   research: string
   level: number
+  startedAt: number
   finishesAt: number
 }
 
@@ -42,7 +43,7 @@ export const researchService = {
     }
 
     const [{ data: queueRows }, { data: buildingQueueRows }] = await Promise.all([
-      supabase.from('research_queue').select('id, research, level, finishes_at').eq('user_id', user.id),
+      supabase.from('research_queue').select('id, research, level, started_at, finishes_at').eq('user_id', user.id),
       supabase.from('building_queue').select('building, level, finishes_at').eq('kingdom_id', kingdomRow.id),
     ])
 
@@ -82,7 +83,7 @@ export const researchService = {
         timeSeconds: timeSecs,
         requiresMet: requirementsMet(def, kingdomForReqs, projected),
         requires:    def.requires as ResearchResponse['research'][number]['requires'],
-        inQueue:     queueItem ? { level: queueItem.level, finishesAt: queueItem.finishesAt } : null,
+        inQueue:     queueItem ? { level: queueItem.level, startedAt: queueItem.startedAt, finishesAt: queueItem.finishesAt } : null,
       }
     })
 

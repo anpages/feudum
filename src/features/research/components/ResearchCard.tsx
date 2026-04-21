@@ -1,5 +1,5 @@
 import { useState, useEffect, memo, type ReactNode } from 'react'
-import { ArrowUp, Clock, Loader2, Zap, TreePine, Mountain, Wheat } from 'lucide-react'
+import { ArrowUp, Clock, Loader2, Zap, TreePine, Mountain, Wheat, ListOrdered } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
@@ -68,8 +68,10 @@ function ResearchCardImpl({
   isAccelerating,
   animClass,
 }: ResearchCardProps) {
-  const countdown = useCountdown(item.inQueue?.finishesAt ?? null, onCountdownEnd)
-  const inQueue = !!item.inQueue && countdown > 0
+  const now = Math.floor(Date.now() / 1000)
+  const isPending = !!item.inQueue && item.inQueue.startedAt > now
+  const countdown = useCountdown(isPending ? null : (item.inQueue?.finishesAt ?? null), onCountdownEnd)
+  const inQueue = !!item.inQueue && (countdown > 0 || isPending)
 
   return (
     <Card className={`p-5 flex flex-col gap-4 ${animClass}`}>
@@ -95,7 +97,14 @@ function ResearchCardImpl({
         </div>
       </div>
 
-      {inQueue ? (
+      {inQueue && isPending ? (
+        <div className="mt-auto">
+          <div className="flex items-center justify-center gap-2 py-2 rounded border border-gold/10 bg-parchment-warm text-ink-muted font-ui text-xs font-semibold uppercase tracking-wide">
+            <ListOrdered size={12} />
+            En cola
+          </div>
+        </div>
+      ) : inQueue ? (
         <div className="mt-auto space-y-2">
           <div className="flex items-center justify-center gap-2 py-2 rounded border border-gold/15 bg-gold-soft text-gold-dim font-ui text-xs font-semibold uppercase tracking-wide">
             <Loader2 size={12} className="animate-spin" />

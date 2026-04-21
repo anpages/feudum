@@ -34,7 +34,9 @@ export function ResearchPage() {
   }, [refetch, syncQueues, qc])
 
   const items = useMemo(() => data?.research ?? [], [data])
-  const hasInQueue = useMemo(() => items.some(r => !!r.inQueue), [items])
+  const queueCount = useMemo(() => items.filter(r => !!r.inQueue).length, [items])
+  const hasInQueue = queueCount > 0
+  const queueFull = queueCount >= 5
   const researchLevels = useMemo(() => Object.fromEntries(items.map(x => [x.id, x.level])), [items])
 
   if (isLoading) return <ResearchSkeleton />
@@ -79,7 +81,7 @@ export function ResearchPage() {
                     researchLevels={researchLevels}
                     canAfford={canAfford}
                     resources={resources}
-                    globalQueueFull={hasInQueue && !r.inQueue}
+                    globalQueueFull={queueFull && !r.inQueue}
                     isUpgrading={upgrade.isPending && upgrade.variables === r.id}
                     onUpgrade={() => upgrade.mutate(r.id)}
                     onCountdownEnd={handleCountdownEnd}

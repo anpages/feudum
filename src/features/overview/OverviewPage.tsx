@@ -59,10 +59,11 @@ export function OverviewPage() {
 
   const queuedBuildings = buildingsData?.buildings.filter(b => !!b.inQueue)
     .sort((a, b) => a.inQueue!.finishesAt - b.inQueue!.finishesAt) ?? []
-  const activeResearch = researchData?.research.find(r => !!r.inQueue)
+  const queuedResearch = researchData?.research.filter(r => !!r.inQueue)
+    .sort((a, b) => a.inQueue!.finishesAt - b.inQueue!.finishesAt) ?? []
   const allUnits = [...(barracksData?.units ?? []), ...(barracksData?.support ?? []), ...(barracksData?.defenses ?? [])]
-  const activeUnit = allUnits.find(u => !!u.inQueue)
-  const hasQueue = !!(queuedBuildings.length || activeResearch || activeUnit)
+  const queuedUnits = allUnits.filter(u => !!u.inQueue)
+  const hasQueue = !!(queuedBuildings.length || queuedResearch.length || queuedUnits.length)
 
   const tempAvg = (kingdom as Record<string, unknown> | null)?.tempAvg as number | undefined
   const charClass = user?.characterClass ? CLASS_INFO[user.characterClass] : null
@@ -191,25 +192,29 @@ export function OverviewPage() {
                 icon={<Hammer size={13} />}
                 label={`${label(b.id)} → Nv. ${b.inQueue!.level}`}
                 finishesAt={b.inQueue!.finishesAt}
+                startedAt={b.inQueue!.startedAt}
                 color="gold"
               />
             ))}
-            {activeResearch && (
+            {queuedResearch.map(r => (
               <QueueRow
+                key={r.id}
                 icon={<FlaskConical size={13} />}
-                label={`${label(activeResearch.id)} → Nv. ${activeResearch.inQueue!.level}`}
-                finishesAt={activeResearch.inQueue!.finishesAt}
+                label={`${label(r.id)} → Nv. ${r.inQueue!.level}`}
+                finishesAt={r.inQueue!.finishesAt}
+                startedAt={r.inQueue!.startedAt}
                 color="forest"
               />
-            )}
-            {activeUnit && (
+            ))}
+            {queuedUnits.map(u => (
               <QueueRow
+                key={u.id}
                 icon={<Swords size={13} />}
-                label={`${label(activeUnit.id)} × ${activeUnit.inQueue!.amount}`}
-                finishesAt={activeUnit.inQueue!.finishesAt}
+                label={`${label(u.id)} × ${u.inQueue!.amount}`}
+                finishesAt={u.inQueue!.finishesAt}
                 color="stone"
               />
-            )}
+            ))}
           </div>
         ) : (
           <Card className="p-4">
@@ -267,33 +272,38 @@ function StatRow({
 }
 
 function QueueRow({
-  icon, label: lbl, finishesAt, color,
-}: { icon: ReactNode; label: string; finishesAt: number; color: 'gold' | 'forest' | 'stone' }) {
+  icon, label: lbl, finishesAt, startedAt, color,
+}: { icon: ReactNode; label: string; finishesAt: number; startedAt?: number; color: 'gold' | 'forest' | 'stone' }) {
+  const nowSec = Math.floor(Date.now() / 1000)
+  const pending = startedAt !== undefined && startedAt > nowSec
   const [remaining, setRemaining] = useState(() =>
-    Math.max(0, finishesAt - Math.floor(Date.now() / 1000))
+    pending ? 0 : Math.max(0, finishesAt - nowSec)
   )
-  const [total] = useState(remaining)
+  const [total] = useState(pending ? 0 : Math.max(0, finishesAt - nowSec))
 
   useEffect(() => {
+    if (pending) return
     const id = setInterval(() => setRemaining(r => Math.max(0, r - 1)), 1000)
     return () => clearInterval(id)
-  }, [])
+  }, [pending])
 
   const colorClass = { gold: 'text-gold', forest: 'text-forest-light', stone: 'text-ink-muted' }[color]
-  const pct = total > 0 ? Math.max(0, Math.min(100, ((total - remaining) / total) * 100)) : 100
+  const pct = total > 0 ? Math.max(0, Math.min(100, ((total - remaining) / total) * 100)) : (pending ? 0 : 100)
 
   return (
     <Card className="p-3">
       <div className="flex items-center gap-2.5 mb-2">
-        <span className={colorClass}>{icon}</span>
+        <span className={pending ? 'text-ink-muted/50' : colorClass}>{icon}</span>
         <span className="font-ui text-sm text-ink flex-1 min-w-0 truncate">{lbl}</span>
-        <span className="font-ui text-xs tabular-nums text-ink-muted shrink-0">
-          {remaining > 0 ? formatDuration(remaining) : 'Completado'}
+        <span className="font-ui text-xs tabular-nums text-ink-muted/60 shrink-0">
+          {pending ? 'En cola' : remaining > 0 ? formatDuration(remaining) : 'Completado'}
         </span>
       </div>
-      <div className="progress-track h-1">
-        <div className="progress-fill transition-none" style={{ width: `${pct}%` }} />
-      </div>
+      {!pending && (
+        <div className="progress-track h-1">
+          <div className="progress-fill transition-none" style={{ width: `${pct}%` }} />
+        </div>
+      )}
     </Card>
   )
 }

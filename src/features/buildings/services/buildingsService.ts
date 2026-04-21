@@ -10,6 +10,7 @@ interface QueueRow {
   id: string
   building: string
   level: number
+  startedAt: number
   finishesAt: number
 }
 
@@ -36,7 +37,7 @@ export const buildingsService = {
 
     const { data: queueRows } = await supabase
       .from('building_queue')
-      .select('id, building, level, finishes_at')
+      .select('id, building, level, started_at, finishes_at')
       .eq('kingdom_id', kingdomRow.id)
 
     const queue: QueueRow[] = snakeToCamelArray<QueueRow>(queueRows)
@@ -73,8 +74,8 @@ export const buildingsService = {
         timeSeconds: timeSecs,
         requiresMet: buildingRequirementsMet(def, projected, research),
         requires:    def.requires as BuildingsResponse['buildings'][number]['requires'],
-        inQueue:     queueItem ? { level: queueItem.level, finishesAt: queueItem.finishesAt } : null,
-        queueDepth:  queueItem ? 1 : 0,
+        inQueue:     queueItem ? { level: queueItem.level, startedAt: queueItem.startedAt, finishesAt: queueItem.finishesAt } : null,
+        queueDepth:  activeQueue.filter(q => q.building === def.id).length,
       }
     })
 

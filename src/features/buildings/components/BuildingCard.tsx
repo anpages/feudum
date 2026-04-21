@@ -1,5 +1,5 @@
 import { useState, useEffect, memo, type ReactNode } from 'react'
-import { ArrowUp, Clock, TrendingUp, Loader2, Zap, TreePine, Mountain, Wheat, Warehouse } from 'lucide-react'
+import { ArrowUp, Clock, TrendingUp, Loader2, Zap, TreePine, Mountain, Wheat, Warehouse, ListOrdered } from 'lucide-react'
 import { storageCapacity } from '@/lib/game/buildings'
 import { type IconType } from 'react-icons'
 import { Card } from '@/components/ui/Card'
@@ -96,8 +96,10 @@ function BuildingCardImpl({
   animClass = '',
   queueFull = false,
 }: Props) {
-  const countdown = useCountdown(building.inQueue?.finishesAt ?? null, onCountdownEnd)
-  const inQueue = !!building.inQueue && countdown > 0
+  const now = Math.floor(Date.now() / 1000)
+  const isPending = !!building.inQueue && building.inQueue.startedAt > now
+  const countdown = useCountdown(isPending ? null : (building.inQueue?.finishesAt ?? null), onCountdownEnd)
+  const inQueue = !!building.inQueue && (countdown > 0 || isPending)
   const { Icon } = meta
 
   return (
@@ -170,7 +172,14 @@ function BuildingCardImpl({
       </div>
 
       {/* Action */}
-      {inQueue ? (
+      {inQueue && isPending ? (
+        <div className="mt-auto">
+          <div className="flex items-center justify-center gap-2 py-2 rounded border border-gold/10 bg-parchment-warm text-ink-muted font-ui text-xs font-semibold uppercase tracking-wide">
+            <ListOrdered size={12} />
+            En cola
+          </div>
+        </div>
+      ) : inQueue ? (
         <div className="mt-auto space-y-2">
           <div className="flex items-center justify-center gap-2 py-2 rounded border border-gold/15 bg-gold-soft text-gold-dim font-ui text-xs font-semibold uppercase tracking-wide">
             <Loader2 size={12} className="animate-spin" />

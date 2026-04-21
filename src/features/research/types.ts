@@ -7,7 +7,7 @@ export interface ResearchInfo {
   timeSeconds: number
   requiresMet: boolean
   requires: { type: 'building' | 'research'; id: string; level: number }[]
-  inQueue: { level: number; finishesAt: number } | null
+  inQueue: { level: number; startedAt: number; finishesAt: number } | null
 }
 
 export interface ResearchResponse {

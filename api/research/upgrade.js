@@ -29,11 +29,14 @@ export default async function handler(req, res) {
   if (!kingdom) return res.status(404).json({ error: 'Reino no encontrado' })
   if (!resRow)  return res.status(404).json({ error: 'Research no encontrado' })
 
-  // ── One active research at a time per player ──────────────────────────────
+  // ── Queue limit (max 5, same as building queue) ───────────────────────────
   const existing = await db.select().from(researchQueue)
     .where(eq(researchQueue.userId, userId))
-  if (existing.length > 0) {
-    return res.status(400).json({ error: 'Ya hay una investigación en curso' })
+  if (existing.some(q => q.research === researchId)) {
+    return res.status(400).json({ error: 'Esta investigación ya está en cola' })
+  }
+  if (existing.length >= 5) {
+    return res.status(400).json({ error: 'Cola llena (máximo 5 investigaciones)' })
   }
 
   // ── Requirements ──────────────────────────────────────────────────────────
@@ -58,7 +61,12 @@ export default async function handler(req, res) {
   if (stone < cost.stone) return res.status(400).json({ error: 'Piedra insuficiente',  need: cost.stone, have: Math.floor(stone) })
   if (grain < cost.grain) return res.status(400).json({ error: 'Grano insuficiente',   need: cost.grain, have: Math.floor(grain) })
 
-  const finishesAt = now + timeSecs
+  // Chain after the last queued item so researches are processed in series
+  const lastQueuedAt = existing.length > 0
+    ? Math.max(...existing.map(q => q.finishesAt))
+    : now
+  const startAt    = Math.max(now, lastQueuedAt)
+  const finishesAt = startAt + timeSecs
 
   const updated = await db.update(kingdoms).set({
     wood:  wood  - cost.wood,
@@ -84,7 +92,7 @@ export default async function handler(req, res) {
     kingdomId:  kingdom.id,
     research:   researchId,
     level:      nextLevel,
-    startedAt:  now,
+    startedAt:  startAt,
     finishesAt,
   })
 
