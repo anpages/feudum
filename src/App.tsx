@@ -21,6 +21,7 @@ const BarracksPage      = lazy(() => import('@/features/barracks/BarracksPage').
 const DefensePage       = lazy(() => import('@/features/defense/DefensePage').then(m => ({ default: m.DefensePage })))
 const MapPage           = lazy(() => import('@/features/map/MapPage').then(m => ({ default: m.MapPage })))
 const ArmiesPage        = lazy(() => import('@/features/armies/ArmiesPage').then(m => ({ default: m.ArmiesPage })))
+const SendMissionPage   = lazy(() => import('@/features/armies/SendMissionPage').then(m => ({ default: m.SendMissionPage })))
 const RankingsPage      = lazy(() => import('@/features/rankings/RankingsPage').then(m => ({ default: m.RankingsPage })))
 const AchievementsPage  = lazy(() => import('@/features/achievements/AchievementsPage').then(m => ({ default: m.AchievementsPage })))
 const MessagesPage      = lazy(() => import('@/features/messages/MessagesPage').then(m => ({ default: m.MessagesPage })))
@@ -86,6 +87,7 @@ export default function App() {
               <Route path="/defense"            element={<DefensePage />} />
               <Route path="/map"                element={<MapPage />} />
               <Route path="/armies"             element={<ArmiesPage />} />
+              <Route path="/armies/send"       element={<SendMissionPage />} />
               <Route path="/rankings"           element={<RankingsPage />} />
               <Route path="/achievements"       element={<AchievementsPage />} />
               <Route path="/messages"           element={<MessagesPage />} />

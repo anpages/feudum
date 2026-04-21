@@ -45,7 +45,7 @@ export function MapPage() {
 
   function sendMission(type: string) {
     if (!selected) return
-    navigate(`/armies?realm=${realm}&region=${region}&slot=${selected.slot}&type=${type}`)
+    navigate(`/armies/send?realm=${realm}&region=${region}&slot=${selected.slot}&type=${type}`)
   }
 
   return (
@@ -97,7 +97,7 @@ export function MapPage() {
               />
             ))}
             <button
-              onClick={() => navigate(`/armies?realm=${realm}&region=${region}&slot=16&type=expedition`)}
+              onClick={() => navigate(`/armies/send?realm=${realm}&region=${region}&slot=16&type=expedition`)}
               className="w-full flex items-center gap-2 sm:gap-4 px-3 sm:px-4 py-2.5 rounded border border-gold/20 bg-gold-soft/40 hover:bg-gold-soft transition-colors cursor-pointer"
             >
               <span className="font-ui text-xs tabular-nums w-5 text-center shrink-0 text-gold/60 font-bold">16</span>
