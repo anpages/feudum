@@ -161,9 +161,12 @@ export function OverviewPage() {
 
           {/* Military stats */}
           <Card className="p-4 space-y-3">
-            <p className="font-ui text-[0.6rem] text-ink-muted/60 uppercase tracking-widest">Fuerza militar</p>
-            <StatRow icon={<GiCrossedSwords size={13} />} label="Potencia ofensiva" value={formatResource(totalAttackPower)} note={`${totalUnitCount} unidades`} onClick={() => navigate('/barracks')} />
-            <StatRow icon={<Shield size={13} />} label="Potencia defensiva" value={formatResource(totalShieldPower)} note={`${totalUnitCount} unidades`} onClick={() => navigate('/defense')} />
+            <div className="flex items-center justify-between">
+              <p className="font-ui text-[0.6rem] text-ink-muted/60 uppercase tracking-widest">Fuerza militar</p>
+              <p className="font-ui text-[0.6rem] text-ink-muted/50 tabular-nums">{totalUnitCount} unidades</p>
+            </div>
+            <StatRow icon={<GiCrossedSwords size={13} />} label="Potencia ofensiva" value={formatResource(totalAttackPower)} onClick={() => navigate('/barracks')} />
+            <StatRow icon={<Shield size={13} />} label="Potencia defensiva" value={formatResource(totalShieldPower)} onClick={() => navigate('/defense')} />
           </Card>
 
           {/* Active missions */}
@@ -269,7 +272,7 @@ function ProductionRow({
 
 function StatRow({
   icon, label: lbl, value, note, highlight, onClick,
-}: { icon: ReactNode; label: string; value: string; note: string; highlight?: boolean; onClick?: () => void }) {
+}: { icon: ReactNode; label: string; value: string; note?: string; highlight?: boolean; onClick?: () => void }) {
   return (
     <button
       className="w-full flex items-center gap-2.5 group hover:opacity-80 transition-opacity text-left"
