@@ -1,7 +1,6 @@
 import { useState, useEffect, memo, type ReactNode } from 'react'
-import { Sword, Shield, Heart, Clock, Loader2, Plus, Minus, Zap } from 'lucide-react'
+import { Sword, Shield, Heart, Clock, Loader2, Plus, Minus, Zap, TreePine, Mountain, Wheat } from 'lucide-react'
 import { type IconType } from 'react-icons'
-import { GiWoodPile, GiStoneBlock, GiWheat } from 'react-icons/gi'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
@@ -146,9 +145,9 @@ function UnitCardImpl({
 
       {/* Cost */}
       <div className="flex items-center gap-3 text-xs flex-wrap">
-        {totalWood  > 0 && <CostItem icon={<GiWoodPile size={13} />}  value={totalWood}  affordable={inQueue || canAfford} />}
-        {totalStone > 0 && <CostItem icon={<GiStoneBlock size={13} />} value={totalStone} affordable={inQueue || canAfford} />}
-        {totalGrain > 0 && <CostItem icon={<GiWheat size={13} />}     value={totalGrain} affordable={inQueue || canAfford} />}
+        {totalWood  > 0 && <CostItem icon={<TreePine  size={13} />} value={totalWood}  affordable={inQueue || canAfford} />}
+        {totalStone > 0 && <CostItem icon={<Mountain  size={13} />} value={totalStone} affordable={inQueue || canAfford} />}
+        {totalGrain > 0 && <CostItem icon={<Wheat     size={13} />} value={totalGrain} affordable={inQueue || canAfford} />}
         <div className="flex items-center gap-1 ml-auto text-ink-muted/60">
           <Clock size={10} /><span className="font-body">{formatDuration(totalTime)}</span>
         </div>
