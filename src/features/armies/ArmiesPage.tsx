@@ -31,8 +31,9 @@ export function ArmiesPage() {
   const [tRealm,  setTRealm]  = useState(initRealm)
   const [tRegion, setTRegion] = useState(initRegion)
   const [tSlot,   setTSlot]   = useState(initSlot)
-  const [units,   setUnits]   = useState<Record<string, number>>({})
-  const [resLoad, setResLoad] = useState({ wood: 0, stone: 0, grain: 0 })
+  const [units,        setUnits]        = useState<Record<string, number>>({})
+  const [resLoad,      setResLoad]      = useState({ wood: 0, stone: 0, grain: 0 })
+  const [holdingHours, setHoldingHours] = useState(1)
 
   useEffect(() => {
     if (searchParams.get('type')) setSearchParams({}, { replace: true })
@@ -67,11 +68,13 @@ export function ArmiesPage() {
         target: { realm: tRealm, region: tRegion, slot: destSlot },
         units,
         resources: (missionType === 'transport' || missionType === 'deploy') ? resLoad : undefined,
+        holdingHours: missionType === 'expedition' ? holdingHours : undefined,
       },
       {
         onSuccess: () => {
           setUnits({})
           setResLoad({ wood: 0, stone: 0, grain: 0 })
+          setHoldingHours(1)
           setSheetOpen(false)
         },
       }
@@ -130,6 +133,7 @@ export function ArmiesPage() {
           tSlot={tSlot} setTSlot={setTSlot}
           units={units} setUnit={setUnit}
           resLoad={resLoad} setResLoad={setResLoad}
+          holdingHours={holdingHours} setHoldingHours={setHoldingHours}
           isMissile={isMissile} totalUnits={totalUnits}
           canSend={canSend} hasUnits={hasUnits}
           kingdom={kingdom} send={send}
@@ -150,6 +154,7 @@ function MissionForm({
   missionType, setMissionType,
   tRealm, setTRealm, tRegion, setTRegion, tSlot, setTSlot,
   units, setUnit, resLoad, setResLoad,
+  holdingHours, setHoldingHours,
   isMissile, totalUnits, canSend, hasUnits, kingdom, send, onSend,
   expeditionSlotsFull, activeExpeditions, maxExpeditions, cartographyLevel,
 }: {
@@ -160,6 +165,7 @@ function MissionForm({
   units: Record<string, number>; setUnit: (id: string, val: string) => void
   resLoad: { wood: number; stone: number; grain: number }
   setResLoad: React.Dispatch<React.SetStateAction<{ wood: number; stone: number; grain: number }>>
+  holdingHours: number; setHoldingHours: (n: number) => void
   isMissile: boolean; totalUnits: number; canSend: boolean; hasUnits: boolean
   kingdom: Kingdom | null | undefined; send: ReturnType<typeof useSendArmy>; onSend: () => void
   expeditionSlotsFull: boolean; activeExpeditions: number; maxExpeditions: number; cartographyLevel: number
@@ -198,7 +204,7 @@ function MissionForm({
       <div className="space-y-2">
         <p className="font-ui text-xs text-ink-muted uppercase tracking-wider">Destino</p>
         {missionType === 'expedition' ? (
-          <div className="space-y-1.5 py-1">
+          <div className="space-y-3 py-1">
             <p className="font-body text-xs text-gold/80 italic">
               Las expediciones se dirigen automáticamente a las <strong>Tierras Ignotas</strong> (slot 16).
             </p>
@@ -206,6 +212,24 @@ function MissionForm({
               Expediciones activas: {activeExpeditions}/{maxExpeditions}
               {cartographyLevel === 0 && ' · Mejora Cartografía para desbloquear más slots'}
             </p>
+            <div className="space-y-1.5">
+              <p className="font-ui text-xs text-ink-muted uppercase tracking-wider">Duración en destino</p>
+              <div className="flex items-center gap-3">
+                <input
+                  type="range"
+                  min={1} max={Math.max(1, cartographyLevel)}
+                  value={holdingHours}
+                  onChange={e => setHoldingHours(parseInt(e.target.value, 10))}
+                  className="flex-1 accent-gold-dim"
+                />
+                <span className="font-ui text-sm font-semibold text-ink-mid tabular-nums w-16 text-right">
+                  {holdingHours}h
+                </span>
+              </div>
+              <p className="font-body text-[0.65rem] text-ink-muted/60">
+                Entre 1 y {Math.max(1, cartographyLevel)} hora(s) · nivel de Cartografía
+              </p>
+            </div>
           </div>
         ) : (
           <div className="grid grid-cols-3 gap-3">

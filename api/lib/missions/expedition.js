@@ -18,6 +18,7 @@ const OUTCOME_LABELS = {
 
 export async function processExpedition(mission, myKingdom, now) {
   const travelSecs   = mission.arrivalTime - mission.departureTime
+  const holdingTime  = mission.holdingTime ?? 0
   const returnTime   = now + travelSecs
   const missionUnits = {}
   for (const k of UNIT_KEYS) missionUnits[k] = mission[k] ?? 0
@@ -31,11 +32,14 @@ export async function processExpedition(mission, myKingdom, now) {
   // Top-1 player points for resource reward scaling
   const top1Points = allKingdoms.reduce((max, k) => Math.max(max, calcPoints(k)), 0)
 
-  // Discoverer class: halve combat encounter probability
-  const combatMultiplier = userRow?.characterClass === 'discoverer' ? 0.5 : 1.0
+  const isDiscoverer = userRow?.characterClass === 'discoverer'
+  // Discoverer class: halve combat encounter probability, +50% resources/units
+  const combatMultiplier = isDiscoverer ? 0.5 : 1.0
 
   const { outcome, result, unitPatch, returnTimeDelta, etherGained, destroyed, merchantOffer } =
-    resolveExpedition(missionUnits, researchRow ?? {}, travelSecs, now, { top1Points, combatMultiplier })
+    resolveExpedition(missionUnits, researchRow ?? {}, travelSecs, now, {
+      top1Points, combatMultiplier, holdingTime, discoverer: isDiscoverer,
+    })
 
   if (outcome === 'merchant' && merchantOffer) {
     await db.update(armyMissions).set({

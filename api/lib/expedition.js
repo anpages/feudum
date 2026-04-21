@@ -231,8 +231,10 @@ function speedupFraction() {
  */
 // opts.top1Points: points of top-ranked player (for resource scaling)
 // opts.combatMultiplier: 0.5 for Discoverer class, 1.0 otherwise
+// opts.holdingTime: seconds spent at expedition target (chosen by player)
+// opts.discoverer: true if player has Discoverer class (resource/unit +50%)
 export function resolveExpedition(sentUnits, playerResearch, travelSecs, now, opts = {}) {
-  const { top1Points = 0, combatMultiplier = 1.0 } = opts
+  const { top1Points = 0, combatMultiplier = 1.0, holdingTime = 0, discoverer = false } = opts
   const outcome = pickOutcome(combatMultiplier)
 
   switch (outcome) {
@@ -241,23 +243,37 @@ export function resolveExpedition(sentUnits, playerResearch, travelSecs, now, op
 
     case 'resources': {
       const found = resourcesFound(sentUnits, top1Points)
+      // Discoverer class: +50% resources found (mirrors OGame characterClass multiplier)
+      if (discoverer) {
+        found.wood  = Math.floor((found.wood  ?? 0) * 1.5)
+        found.stone = Math.floor((found.stone ?? 0) * 1.5)
+        found.grain = Math.floor((found.grain ?? 0) * 1.5)
+      }
       return { outcome, result: { type: 'resources', found }, unitPatch: null, returnTimeDelta: 0, etherGained: 0 }
     }
 
     case 'units': {
       const found = unitsFound(sentUnits)
+      // Discoverer class: +50% units found
+      if (discoverer) {
+        for (const k of Object.keys(found)) found[k] = Math.max(1, Math.floor(found[k] * 1.5))
+      }
       return { outcome, result: { type: 'units', found }, unitPatch: found, returnTimeDelta: 0, etherGained: 0 }
     }
 
     case 'delay': {
+      // OGame formula: delay = holdingTime × multiplier (time spent at destination is multiplied)
       const mult = delayMultiplier()
-      const delta = travelSecs * (mult - 1)
+      const base = holdingTime > 0 ? holdingTime : travelSecs
+      const delta = base * (mult - 1)
       return { outcome, result: { type: 'delay', multiplier: mult }, unitPatch: null, returnTimeDelta: delta, etherGained: 0 }
     }
 
     case 'speedup': {
+      // OGame formula: speedup = (travelSecs + holdingTime) × fraction
       const frac = speedupFraction()
-      const delta = -Math.floor(travelSecs * frac)
+      const onewayDuration = travelSecs + holdingTime
+      const delta = -Math.floor(onewayDuration * frac)
       return { outcome, result: { type: 'speedup', fraction: frac }, unitPatch: null, returnTimeDelta: delta, etherGained: 0 }
     }
 

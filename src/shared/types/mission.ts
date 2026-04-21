@@ -68,4 +68,5 @@ export interface SendArmyParams {
   target: { realm: number; region: number; slot: number }
   units: Partial<Record<string, number>>
   resources?: Resources
+  holdingHours?: number
 }

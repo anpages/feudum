@@ -20,7 +20,7 @@ export default async function handler(req, res) {
   const userId = await getSessionUserId(req)
   if (!userId) return res.status(401).json({ error: 'No autenticado' })
 
-  const { missionType, target, units: rawUnits, resources: rawResources } = req.body ?? {}
+  const { missionType, target, units: rawUnits, resources: rawResources, holdingHours: rawHoldingHours } = req.body ?? {}
 
   // ── Validate mission type ─────────────────────────────────────────────────
   if (!MISSION_TYPES.includes(missionType)) {
@@ -169,7 +169,8 @@ export default async function handler(req, res) {
     }
   }
 
-  // Expedition missions: limited by floor(√cartography), minimum 1
+  // Expedition missions: limited by floor(√cartography), minimum 1; holdingHours required
+  let holdingHours = 0
   if (isExpedition) {
     const cartographyLevel = researchRow?.cartography ?? 0
     const maxExpeditions = Math.max(1, Math.floor(Math.sqrt(cartographyLevel)))
@@ -185,6 +186,16 @@ export default async function handler(req, res) {
         error: `Límite de expediciones alcanzado (${ongoingCount}/${maxExpeditions}). Mejora Cartografía para enviar más.`,
         maxExpeditions,
         cartographyLevel,
+      })
+    }
+
+    // Validate holdingHours: 1 to cartographyLevel (min 1)
+    holdingHours = parseInt(rawHoldingHours ?? 1, 10)
+    const maxHolding = Math.max(1, cartographyLevel)
+    if (isNaN(holdingHours) || holdingHours < 1 || holdingHours > maxHolding) {
+      return res.status(400).json({
+        error: `La duración de la expedición debe ser entre 1 y ${maxHolding} hora(s).`,
+        maxHoldingHours: maxHolding,
       })
     }
   }
@@ -236,9 +247,11 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'No se pudo calcular el tiempo de viaje' })
   }
 
-  const now        = Math.floor(Date.now() / 1000)
+  const now         = Math.floor(Date.now() / 1000)
   const arrivalTime = now + travelSecs
-  const returnTime  = arrivalTime + travelSecs
+  // Expedition: fleet stays at target for holdingHours before returning
+  const holdingTimeSecs = isExpedition ? holdingHours * 3600 : 0
+  const returnTime  = arrivalTime + holdingTimeSecs + travelSecs
 
   // ── Deduct units and resources atomically ────────────────────────────────
   const { wood, stone, grain } = applyResourceTick(kingdom, cfg, userRow?.characterClass ?? null, researchRow ?? null)
@@ -285,6 +298,7 @@ export default async function handler(req, res) {
     targetSlot:   tSlot,
     departureTime: now,
     arrivalTime,
+    holdingTime: holdingTimeSecs,
     returnTime,
     woodLoad,
     stoneLoad,
