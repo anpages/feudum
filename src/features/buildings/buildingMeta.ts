@@ -116,7 +116,7 @@ export const BUILDING_META: Record<string, BuildingMeta> = {
     description: 'Centro de saber donde se desarrollan nuevas tecnologías del reino.',
   },
   alchemistTower: {
-    name: 'Torre del Alquimista',
+    name: 'Expansor de Dominio',
     Icon: GiMagicGate,
     produces: null,
     category: 'infrastructure',

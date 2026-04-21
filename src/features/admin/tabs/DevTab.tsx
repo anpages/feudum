@@ -17,7 +17,7 @@ const BUILDING_OPTIONS = [
   { id: 'stonehouse',     label: 'Almacén de Piedra' },
   { id: 'silo',           label: 'Silo' },
   { id: 'academy',        label: 'Academia' },
-  { id: 'alchemistTower', label: 'Torre Alquimista' },
+  { id: 'alchemistTower', label: 'Expansor de Dominio' },
   { id: 'ambassadorHall', label: 'Sala Embajador' },
   { id: 'armoury',        label: 'Armería' },
 ]

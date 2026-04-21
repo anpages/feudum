@@ -13,7 +13,7 @@ export const BUILDING_NAMES: Record<string, string> = {
   stonehouse: 'Casa de Piedra',
   silo: 'Silo',
   academy: 'Academia',
-  alchemistTower: 'Torre del Alquimista',
+  alchemistTower: 'Expansor de Dominio',
   ambassadorHall: 'Sala de Embajadores',
   armoury: 'Armería',
 }

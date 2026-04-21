@@ -11,7 +11,7 @@ export const BUILDING_LABELS: Record<string, string> = {
   stonehouse: 'Casa de Piedra',
   silo: 'Silo',
   academy: 'Academia',
-  alchemistTower: 'Torre del Alquimista',
+  alchemistTower: 'Expansor de Dominio',
   ambassadorHall: 'Salón de Embajadores',
   armoury: 'Armería',
 }

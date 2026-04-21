@@ -39,7 +39,7 @@ export default async function handler(req, res) {
   const fieldMax   = calcFieldMax(kingdom.alchemistTower ?? 0)
   if (fieldsUsed >= fieldMax) {
     return res.status(400).json({
-      error: `Campos de construcción llenos (${fieldsUsed}/${fieldMax}). Sube la Torre del Alquimista para ampliarlos.`,
+      error: `Campos de construcción llenos (${fieldsUsed}/${fieldMax}). Sube el Expansor de Dominio para ampliarlos.`,
     })
   }
 
