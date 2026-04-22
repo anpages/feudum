@@ -95,7 +95,7 @@ export function SendMissionPage() {
   const [tSlot,   setTSlot]   = useState(initSlot)
   const [units,   setUnitsMap] = useState<Record<string, number>>({})
   const [resLoad, setResLoad]  = useState({ wood: 0, stone: 0, grain: 0 })
-  const [holdingHours, setHoldingHours] = useState(1)
+  const [holdingHours, setHoldingHours] = useState(1 as 0.5 | 1 | 1.5 | 2)
   const [speedPct, setSpeedPct] = useState(100)
 
   const kingdomRaw = kingdom as unknown as Record<string, number> | null | undefined
@@ -360,27 +360,27 @@ export function SendMissionPage() {
 
               {/* Exploration time (primary control) */}
               <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <p className="font-ui text-xs text-ink-muted">Tiempo de exploración</p>
-                  <span className="font-ui text-sm font-bold text-gold-dim tabular-nums">{holdingHours}h</span>
+                <p className="font-ui text-xs text-ink-muted">Tiempo de exploración</p>
+                <div className="grid grid-cols-4 gap-1.5">
+                  {([0.5, 1, 1.5, 2] as const).map(h => {
+                    const label = h === 0.5 ? '30m' : h === 1 ? '1h' : h === 1.5 ? '1h 30m' : '2h'
+                    const active = holdingHours === h
+                    return (
+                      <button
+                        key={h}
+                        type="button"
+                        onClick={() => setHoldingHours(h)}
+                        className={`py-1.5 rounded border font-ui text-xs font-semibold transition-colors ${
+                          active
+                            ? 'bg-gold/15 border-gold text-gold-dim'
+                            : 'bg-parchment border-gold/20 text-ink-muted hover:border-gold/50 hover:text-ink-mid'
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    )
+                  })}
                 </div>
-                {cartographyLevel > 1 ? (
-                  <>
-                    <input
-                      type="range" min={1} max={cartographyLevel}
-                      value={holdingHours}
-                      onChange={e => setHoldingHours(parseInt(e.target.value, 10))}
-                      className="w-full accent-gold-dim"
-                    />
-                    <p className="font-body text-[0.65rem] text-ink-muted/60">
-                      Máximo {cartographyLevel}h según tu nivel de Cartografía · más horas = más posibilidades de hallazgo
-                    </p>
-                  </>
-                ) : (
-                  <p className="font-body text-[0.65rem] text-ink-muted/60">
-                    Fijo en 1 hora · mejora Cartografía para explorar durante más tiempo
-                  </p>
-                )}
               </div>
 
               {/* Speed */}
@@ -397,7 +397,7 @@ export function SendMissionPage() {
                 />
                 {travelPreview !== null && (
                   <p className="font-body text-[0.65rem] text-ink-muted/60">
-                    Viaje {formatDuration(travelPreview)} · Exploración {holdingHours}h · Regreso {formatDuration(travelPreview)}
+                    Viaje {formatDuration(travelPreview)} · Exploración {holdingHours === 0.5 ? '30m' : holdingHours === 1.5 ? '1h 30m' : `${holdingHours}h`} · Regreso {formatDuration(travelPreview)}
                   </p>
                 )}
               </div>
