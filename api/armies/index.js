@@ -191,6 +191,7 @@ export default async function handler(req, res) {
         state: m.state,
         target: { realm: m.targetRealm, region: m.targetRegion, slot: m.targetSlot },
         origin: { realm: m.startRealm,  region: m.startRegion,  slot: m.startSlot },
+        departureTime: m.departureTime,
         arrivalTime: m.arrivalTime,
         holdingTime: m.holdingTime ?? 0,
         returnTime:  m.returnTime,

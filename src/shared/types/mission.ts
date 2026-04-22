@@ -55,6 +55,7 @@ export interface ArmyMission {
   state: MissionState
   origin: { realm: number; region: number; slot: number }
   target: { realm: number; region: number; slot: number }
+  departureTime: number
   arrivalTime: number
   holdingTime: number
   returnTime: number | null
