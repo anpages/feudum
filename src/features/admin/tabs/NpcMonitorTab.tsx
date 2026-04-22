@@ -47,11 +47,13 @@ function TickStatusBar({ tick, now }: { tick: NpcTickResult; now: number }) {
       <div className="w-px h-4 bg-gold/20 hidden sm:block" />
       {/* Quick stats */}
       <div className="flex flex-wrap items-center gap-3 ml-auto">
-        <TickPill label="construyeron" value={tick.grew}         color="text-forest-light" />
-        <TickPill label="atacaron"     value={tick.attacked}     color={tick.attacked     > 0 ? 'text-crimson-light' : 'text-ink-muted'} />
-        <TickPill label="expedición"   value={tick.expeditioned} color={tick.expeditioned > 0 ? 'text-gold'          : 'text-ink-muted'} />
-        <TickPill label="carroñeo"     value={tick.scavenged}    color={tick.scavenged    > 0 ? 'text-forest-light'  : 'text-ink-muted'} />
-        <TickPill label="combates"     value={tick.npcVsNpcResolved} color={tick.npcVsNpcResolved > 0 ? 'text-crimson-light' : 'text-ink-muted'} />
+        <TickPill label="edificios" value={tick.builtBuilding} color={tick.builtBuilding > 0 ? 'text-forest-light'  : 'text-ink-muted'} />
+        <TickPill label="combate"   value={tick.trainedCombat}  color={tick.trainedCombat  > 0 ? 'text-crimson-light' : 'text-ink-muted'} />
+        <TickPill label="defensas"  value={tick.trainedDefense} color={tick.trainedDefense > 0 ? 'text-gold'          : 'text-ink-muted'} />
+        <TickPill label="apoyo"     value={tick.trainedSupport} color={tick.trainedSupport > 0 ? 'text-gold-light'    : 'text-ink-muted'} />
+        <TickPill label="atacaron"  value={tick.attacked}       color={tick.attacked       > 0 ? 'text-crimson-light' : 'text-ink-muted'} />
+        <TickPill label="expedición" value={tick.expeditioned}  color={tick.expeditioned   > 0 ? 'text-gold'          : 'text-ink-muted'} />
+        <TickPill label="combates NPC" value={tick.npcVsNpcResolved} color={tick.npcVsNpcResolved > 0 ? 'text-crimson-light' : 'text-ink-muted'} />
       </div>
     </div>
   )
@@ -182,55 +184,56 @@ function MissionBadge({ label, count, color }: { label: string; count: number; c
 
 function TickHistoryTable({ history }: { history: NpcTickResult[] }) {
   const rows = [...history].reverse().slice(0, 24)
-  const maxGrew = Math.max(...rows.map(r => r.grew), 1)
+  const maxBuilt = Math.max(...rows.map(r => r.builtBuilding ?? 0), 1)
 
   return (
-    <div>
-      <div className="overflow-x-auto">
-        <table className="w-full text-xs">
-          <thead>
-            <tr className="border-b border-gold/10 font-ui text-ink-muted uppercase tracking-wider text-[0.6rem]">
-              <th className="text-left py-2 px-3">Hora</th>
-              <th className="text-right py-2 px-3">Construy.</th>
-              <th className="text-right py-2 px-3">Atacaron</th>
-              <th className="text-right py-2 px-3">Exped.</th>
-              <th className="text-right py-2 px-3">Carroñ.</th>
-              <th className="text-right py-2 px-3">Combates</th>
-              <th className="px-3 w-32 hidden sm:table-cell">Actividad</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((t, i) => {
-              const hasActivity = t.attacked > 0 || t.expeditioned > 0 || t.scavenged > 0 || t.npcVsNpcResolved > 0
-              return (
-                <tr key={t.at}
-                  className={`border-b border-gold/5 transition-colors ${i === 0 ? 'bg-gold/5' : 'hover:bg-parchment-warm/5'}`}>
-                  <td className="py-2 px-3 text-ink-muted tabular-nums">
-                    {formatTs(t.at)}
-                    {i === 0 && <span className="ml-2 font-ui text-[0.55rem] text-gold font-semibold uppercase">último</span>}
-                  </td>
-                  <td className="py-2 px-3 text-right text-ink tabular-nums font-semibold">{t.grew}</td>
-                  <td className={`py-2 px-3 text-right tabular-nums ${t.attacked > 0 ? 'text-crimson-light font-semibold' : 'text-ink-muted'}`}>{t.attacked}</td>
-                  <td className={`py-2 px-3 text-right tabular-nums ${t.expeditioned > 0 ? 'text-gold font-semibold' : 'text-ink-muted'}`}>{t.expeditioned}</td>
-                  <td className={`py-2 px-3 text-right tabular-nums ${t.scavenged > 0 ? 'text-forest-light font-semibold' : 'text-ink-muted'}`}>{t.scavenged}</td>
-                  <td className={`py-2 px-3 text-right tabular-nums ${t.npcVsNpcResolved > 0 ? 'text-crimson-light' : 'text-ink-muted'}`}>{t.npcVsNpcResolved}</td>
-                  <td className="py-2 px-3 hidden sm:table-cell">
-                    <div className="flex items-center gap-0.5 h-3">
-                      {/* Mini activity bar */}
-                      <div className="h-full rounded-sm bg-forest-light/60 transition-all"
-                        style={{ width: `${Math.round(t.grew / maxGrew * 32)}px`, minWidth: t.grew > 0 ? '2px' : '0' }} />
-                      {t.attacked > 0       && <div className="w-1.5 h-full rounded-sm bg-crimson-light/80" />}
-                      {t.expeditioned > 0   && <div className="w-1.5 h-full rounded-sm bg-gold/80" />}
-                      {t.scavenged > 0      && <div className="w-1.5 h-full rounded-sm bg-forest-light/80" />}
-                      {!hasActivity && t.grew === 0 && <span className="font-ui text-[0.55rem] text-ink-muted">—</span>}
-                    </div>
-                  </td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
-      </div>
+    <div className="overflow-x-auto">
+      <table className="w-full text-xs">
+        <thead>
+          <tr className="border-b border-gold/10 font-ui text-ink-muted uppercase tracking-wider text-[0.6rem]">
+            <th className="text-left py-2 px-3 whitespace-nowrap">Hora</th>
+            <th className="text-right py-2 px-3">Edif.</th>
+            <th className="text-right py-2 px-3">Combate</th>
+            <th className="text-right py-2 px-3">Defensa</th>
+            <th className="text-right py-2 px-3">Apoyo</th>
+            <th className="text-right py-2 px-3">Atacaron</th>
+            <th className="text-right py-2 px-3">Exped.</th>
+            <th className="text-right py-2 px-3 hidden sm:table-cell">Carroñ.</th>
+            <th className="text-right py-2 px-3 hidden sm:table-cell">C.NPC</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((t, i) => {
+            const built   = t.builtBuilding   ?? 0
+            const combat  = t.trainedCombat   ?? 0
+            const defense = t.trainedDefense  ?? 0
+            const support = t.trainedSupport  ?? 0
+            return (
+              <tr key={t.at}
+                className={`border-b border-gold/5 transition-colors ${i === 0 ? 'bg-gold/5' : 'hover:bg-parchment-warm/5'}`}>
+                <td className="py-2 px-3 text-ink-muted tabular-nums whitespace-nowrap">
+                  {formatTs(t.at)}
+                  {i === 0 && <span className="ml-2 font-ui text-[0.55rem] text-gold font-semibold uppercase">último</span>}
+                </td>
+                <td className="py-2 px-3 text-right tabular-nums">
+                  <div className="flex items-center justify-end gap-1">
+                    <div className="h-2 rounded-sm bg-forest-light/60 hidden sm:block"
+                      style={{ width: `${Math.round(built / maxBuilt * 24)}px`, minWidth: built > 0 ? '2px' : '0' }} />
+                    <span className={built > 0 ? 'text-forest-light font-semibold' : 'text-ink-muted'}>{built}</span>
+                  </div>
+                </td>
+                <td className={`py-2 px-3 text-right tabular-nums ${combat > 0 ? 'text-crimson-light font-semibold' : 'text-ink-muted'}`}>{combat}</td>
+                <td className={`py-2 px-3 text-right tabular-nums ${defense > 0 ? 'text-gold font-semibold' : 'text-ink-muted'}`}>{defense}</td>
+                <td className={`py-2 px-3 text-right tabular-nums ${support > 0 ? 'text-gold-light font-semibold' : 'text-ink-muted'}`}>{support}</td>
+                <td className={`py-2 px-3 text-right tabular-nums ${t.attacked > 0 ? 'text-crimson-light font-semibold' : 'text-ink-muted'}`}>{t.attacked}</td>
+                <td className={`py-2 px-3 text-right tabular-nums ${t.expeditioned > 0 ? 'text-gold font-semibold' : 'text-ink-muted'}`}>{t.expeditioned}</td>
+                <td className={`py-2 px-3 text-right tabular-nums hidden sm:table-cell ${t.scavenged > 0 ? 'text-forest-light font-semibold' : 'text-ink-muted'}`}>{t.scavenged}</td>
+                <td className={`py-2 px-3 text-right tabular-nums hidden sm:table-cell ${t.npcVsNpcResolved > 0 ? 'text-crimson-light' : 'text-ink-muted'}`}>{t.npcVsNpcResolved}</td>
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
     </div>
   )
 }

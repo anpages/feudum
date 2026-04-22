@@ -174,7 +174,10 @@ export interface NpcTickResult {
   at: number
   npcCount: number
   ticked: number
-  grew: number
+  builtBuilding: number
+  trainedCombat: number
+  trainedDefense: number
+  trainedSupport: number
   attacked: number
   scavenged: number
   expeditioned: number

@@ -145,6 +145,10 @@ const UNIT_KEYS = [
   'merchant','caravan','colonist','scavenger','scout',
 ]
 
+const UNIT_COMBAT_SET  = new Set(['squire','knight','paladin','warlord','grandKnight','siegeMaster','warMachine','dragonKnight'])
+const UNIT_SUPPORT_SET = new Set(['merchant','caravan','scavenger'])
+const UNIT_DEFENSE_SET = new Set(['archer','crossbowman','ballista','mageTower','trebuchet','dragonCannon','castleWall','moat','catapult'])
+
 function totalArmy(k) {
   return UNIT_KEYS.reduce((s, u) => s + (k[u] ?? 0), 0)
 }
@@ -169,9 +173,12 @@ async function growNpc(kingdom, cfg, now) {
   let { wood, stone, grain } = kingdom
   let patch = {}
 
+  let trainedCombat  = false
+  let trainedDefense = false
+  let trainedSupport = false
+  let builtBuilding  = false
+
   // ── Unit training — primer turno de recursos ──────────────────────────────
-  // Corre antes que los edificios: si el NPC puede permitirse tropas, las entrena
-  // primero de forma natural sin necesidad de bloquear el gasto en construcción.
   const maxUnitTypes = isBoss ? 3 : (cls === 'general' ? 2 : 1)
   const batchCap     = isBoss ? 200 : 50
   const costMult     = (isBoss || cls === 'general') ? 0.9 : 1.0
@@ -200,7 +207,6 @@ async function growNpc(kingdom, cfg, now) {
     const effWood  = Math.ceil(cost.wood  * costMult)
     const effStone = Math.ceil(cost.stone * costMult)
     const effGrain = Math.ceil((cost.grain ?? 0) * costMult)
-    // Requirements are met but can't afford — save up instead of buying cheaper fallback
     if (effWood > wood || effStone > stone || effGrain > grain) break
 
     const canAfford = Math.min(
@@ -216,6 +222,10 @@ async function growNpc(kingdom, cfg, now) {
     grain -= effGrain * batch
     patch[unitId] = (kingdom[unitId] ?? 0) + batch
     unitTypesTrained++
+
+    if      (UNIT_COMBAT_SET.has(unitId))  trainedCombat  = true
+    else if (UNIT_SUPPORT_SET.has(unitId)) trainedSupport = true
+    else if (UNIT_DEFENSE_SET.has(unitId)) trainedDefense = true
   }
 
   // ── Building upgrade ──────────────────────────────────────────────────────
@@ -259,19 +269,22 @@ async function growNpc(kingdom, cfg, now) {
         const rawTime  = buildTime(cost.wood, cost.stone, nextLv, workshopLv, engineersGuildLv, speed)
         const timeBonus = isBoss ? 0.5 : (cls === 'discoverer' ? 0.75 : 1.0)
         patch.npcBuildAvailableAt = now + Math.max(30, Math.floor(rawTime * timeBonus))
+        builtBuilding = true
         break
       }
     }
   }
 
-  if (Object.keys(patch).length === 0) return
+  if (Object.keys(patch).length > 0) {
+    await db.update(kingdoms).set({
+      ...patch,
+      wood, stone, grain,
+      lastResourceUpdate: now,
+      updatedAt: new Date(),
+    }).where(eq(kingdoms.id, kingdom.id))
+  }
 
-  await db.update(kingdoms).set({
-    ...patch,
-    wood, stone, grain,
-    lastResourceUpdate: now,
-    updatedAt: new Date(),
-  }).where(eq(kingdoms.id, kingdom.id))
+  return { builtBuilding, trainedCombat, trainedDefense, trainedSupport }
 }
 
 // ── Attack AI ─────────────────────────────────────────────────────────────────
@@ -963,56 +976,64 @@ export default async function handler(req, res) {
   const depletionMap = await getExpeditionDepletion(now)
 
   // ── Per-NPC tick, growth, attack, scavenge and expedition ─────────────────
-  let ticked = 0, grew = 0, attacked = 0, scavenged = 0, expeditioned = 0
+  let ticked = 0, builtBuilding = 0, trainedCombat = 0, trainedDefense = 0, trainedSupport = 0
+  let attacked = 0, scavenged = 0, expeditioned = 0
 
   for (const kingdom of npcKingdoms) {
-    // Resource tick — pass npcClass so tick.js applies collector +25% via same path as players
-    const cls = npcClass(kingdom)
-    const tickResult = applyResourceTick(kingdom, cfg, cls === 'collector' ? 'collector' : null)
-    const finalWood  = tickResult.wood
-    const finalStone = tickResult.stone
-    const finalGrain = tickResult.grain
+    try {
+      // Resource tick — pass npcClass so tick.js applies collector +25% via same path as players
+      const cls = npcClass(kingdom)
+      const tickResult = applyResourceTick(kingdom, cfg, cls === 'collector' ? 'collector' : null)
+      const finalWood  = tickResult.wood
+      const finalStone = tickResult.stone
+      const finalGrain = tickResult.grain
 
-    if (
-      finalWood  !== kingdom.wood ||
-      finalStone !== kingdom.stone ||
-      finalGrain !== kingdom.grain
-    ) {
-      await db.update(kingdoms).set({
-        wood:               finalWood,
-        stone:              finalStone,
-        grain:              finalGrain,
-        lastResourceUpdate: now,
-        updatedAt:          new Date(),
-      }).where(eq(kingdoms.id, kingdom.id))
-      kingdom.wood               = finalWood
-      kingdom.stone              = finalStone
-      kingdom.grain              = finalGrain
-      kingdom.lastResourceUpdate = now
-      ticked++
+      if (
+        finalWood  !== kingdom.wood ||
+        finalStone !== kingdom.stone ||
+        finalGrain !== kingdom.grain
+      ) {
+        await db.update(kingdoms).set({
+          wood:               finalWood,
+          stone:              finalStone,
+          grain:              finalGrain,
+          lastResourceUpdate: now,
+          updatedAt:          new Date(),
+        }).where(eq(kingdoms.id, kingdom.id))
+        kingdom.wood               = finalWood
+        kingdom.stone              = finalStone
+        kingdom.grain              = finalGrain
+        kingdom.lastResourceUpdate = now
+        ticked++
+      }
+
+      // Growth AI — returns what actions were taken
+      const growResult = await growNpc(kingdom, cfg, now)
+      if (growResult?.builtBuilding) builtBuilding++
+      if (growResult?.trainedCombat)  trainedCombat++
+      if (growResult?.trainedDefense) trainedDefense++
+      if (growResult?.trainedSupport) trainedSupport++
+
+      // Attack AI
+      if (NPC_AGGRESSION > 0 && allKingdoms.length > 1) {
+        const launched = await attackAI(kingdom, allKingdoms, bashMap, now, cfg)
+        if (launched) attacked++
+      }
+
+      // Scavenge AI — returns claimed debris id or falsy
+      const claimedDebrisId = await scavengeAI(kingdom, allDebris, now, cfg)
+      if (claimedDebrisId) {
+        scavenged++
+        const idx = allDebris.findIndex(d => d.id === claimedDebrisId)
+        if (idx >= 0) allDebris.splice(idx, 1)
+      }
+
+      // Expedition AI
+      const didExpedition = await expeditionAI(kingdom, depletionMap, now, cfg)
+      if (didExpedition) expeditioned++
+    } catch (err) {
+      console.error(`[npc-tick] kingdom ${kingdom.id} error:`, err?.message ?? err)
     }
-
-    // Growth AI
-    await growNpc(kingdom, cfg, now)
-    grew++
-
-    // Attack AI
-    if (NPC_AGGRESSION > 0 && allKingdoms.length > 1) {
-      const launched = await attackAI(kingdom, allKingdoms, bashMap, now, cfg)
-      if (launched) attacked++
-    }
-
-    // Scavenge AI — returns claimed debris id or falsy
-    const claimedDebrisId = await scavengeAI(kingdom, allDebris, now, cfg)
-    if (claimedDebrisId) {
-      scavenged++
-      const idx = allDebris.findIndex(d => d.id === claimedDebrisId)
-      if (idx >= 0) allDebris.splice(idx, 1)
-    }
-
-    // Expedition AI
-    const didExpedition = await expeditionAI(kingdom, depletionMap, now, cfg)
-    if (didExpedition) expeditioned++
   }
 
   // ── Purge completed expeditions older than 7 days ─────────────────────────
@@ -1029,8 +1050,9 @@ export default async function handler(req, res) {
   // ── Persist tick result for admin monitor ─────────────────────────────────
   const tickResult = {
     at: now,
-    npcCount: npcKingdoms.length, ticked, grew, attacked,
-    scavenged, expeditioned, npcExpeditionsResolved, npcVsNpcResolved, purged,
+    npcCount: npcKingdoms.length, ticked,
+    builtBuilding, trainedCombat, trainedDefense, trainedSupport,
+    attacked, scavenged, expeditioned, npcExpeditionsResolved, npcVsNpcResolved, purged,
   }
   const MAX_HISTORY = 48
   let history = []
