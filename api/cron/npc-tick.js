@@ -3,7 +3,7 @@
  * Called by Vercel Cron: schedule "0 * * * *"
  * Secured with CRON_SECRET header.
  */
-import { eq, and, lte, gte, or } from 'drizzle-orm'
+import { eq, and, lte, gte, or, lt } from 'drizzle-orm'
 import { db, users, kingdoms, armyMissions, messages, debrisFields } from '../_db.js'
 import { applyResourceTick } from '../lib/tick.js'
 import { BUILDINGS, buildCost, buildTime, applyBuildingEffect } from '../lib/buildings.js'
@@ -815,9 +815,30 @@ async function processNpcReturns(npcUserId, npcKingdomsById, now) {
     if ((m.grainLoad ?? 0) > 0) patch.grain = Math.min((npcKingdom.grain ?? 0) + m.grainLoad, npcKingdom.grainCapacity)
 
     await db.update(kingdoms).set(patch).where(eq(kingdoms.id, npcKingdom.id))
-    await db.delete(armyMissions).where(eq(armyMissions.id, m.id))
+
+    // Expeditions are kept as 'completed' for the admin log; others are deleted.
+    if (m.missionType === 'expedition') {
+      await db.update(armyMissions)
+        .set({ state: 'completed', updatedAt: new Date() })
+        .where(eq(armyMissions.id, m.id))
+    } else {
+      await db.delete(armyMissions).where(eq(armyMissions.id, m.id))
+    }
     Object.assign(npcKingdom, patch)
   }
+}
+
+// ── Purge old completed expeditions (>7 days) to prevent table bloat ─────────
+
+async function purgeOldExpeditions(now) {
+  const cutoff = now - 7 * 86400
+  const { rowCount } = await db.delete(armyMissions)
+    .where(and(
+      eq(armyMissions.missionType, 'expedition'),
+      eq(armyMissions.state,       'completed'),
+      lt(armyMissions.departureTime, cutoff),
+    ))
+  return rowCount ?? 0
 }
 
 // ── Season auto-management ────────────────────────────────────────────────────
@@ -1000,6 +1021,9 @@ export default async function handler(req, res) {
     if (didExpedition) expeditioned++
   }
 
+  // ── Purge completed expeditions older than 7 days ─────────────────────────
+  const purged = await purgeOldExpeditions(now)
+
   // ── Debug breakdown ────────────────────────────────────────────────────────
   const byPersonality = { economy: 0, military: 0, balanced: 0 }
   const byClass = { collector: 0, general: 0, discoverer: 0 }
@@ -1008,5 +1032,5 @@ export default async function handler(req, res) {
     byClass[npcClass(k)]++
   }
 
-  return res.json({ ok: true, npcCount: npcKingdoms.length, ticked, grew, attacked, scavenged, expeditioned, npcExpeditionsResolved, npcVsNpcResolved, byPersonality, byClass, seasonAction, repairAction })
+  return res.json({ ok: true, npcCount: npcKingdoms.length, ticked, grew, attacked, scavenged, expeditioned, npcExpeditionsResolved, npcVsNpcResolved, purged, byPersonality, byClass, seasonAction, repairAction })
 }

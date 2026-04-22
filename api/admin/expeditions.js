@@ -11,8 +11,9 @@ export default async function handler(req, res) {
   if (!adminId) return res.status(403).json({ error: 'forbidden' })
   if (req.method !== 'GET') return res.status(405).end()
 
-  const now     = Math.floor(Date.now() / 1000)
-  const since24 = now - 86400
+  const now      = Math.floor(Date.now() / 1000)
+  const since24  = now - 86400
+  const since7d  = now - 7 * 86400
 
   // Active + exploring + returning expeditions
   const active = await db.select({
@@ -45,7 +46,7 @@ export default async function handler(req, res) {
     .orderBy(desc(armyMissions.departureTime))
     .limit(100)
 
-  // Recent completed (last 24h)
+  // Recent completed (last 7 days)
   const recent = await db.select({
     id:           armyMissions.id,
     userId:       armyMissions.userId,
@@ -55,19 +56,23 @@ export default async function handler(req, res) {
     startSlot:    armyMissions.startSlot,
     targetRealm:  armyMissions.targetRealm,
     targetRegion: armyMissions.targetRegion,
+    targetSlot:   armyMissions.targetSlot,
+    departureTime: armyMissions.departureTime,
+    arrivalTime:  armyMissions.arrivalTime,
+    returnTime:   armyMissions.returnTime,
+    holdingTime:  armyMissions.holdingTime,
     woodLoad:     armyMissions.woodLoad,
     stoneLoad:    armyMissions.stoneLoad,
     grainLoad:    armyMissions.grainLoad,
     result:       armyMissions.result,
-    departureTime: armyMissions.departureTime,
   }).from(armyMissions)
     .where(and(
       eq(armyMissions.missionType, 'expedition'),
       eq(armyMissions.state, 'completed'),
-      gte(armyMissions.departureTime, since24),
+      gte(armyMissions.departureTime, since7d),
     ))
     .orderBy(desc(armyMissions.departureTime))
-    .limit(50)
+    .limit(100)
 
   // Depletion map: all expeditions dispatched in last 24h
   const all24h = await db.select({
@@ -101,16 +106,23 @@ export default async function handler(req, res) {
     : []
 
   const kingdomByUser = {}
+  const kingdomByPos  = {}
   for (const k of kingdomRows) {
     if (!kingdomByUser[k.userId]) kingdomByUser[k.userId] = k
+    kingdomByPos[`${k.realm}:${k.region}:${k.slot}`] = k
   }
 
-  const enrich = m => ({
-    ...m,
-    kingdomName: kingdomByUser[m.userId]?.name ?? '?',
-    isNpc: kingdomByUser[m.userId]?.isNpc ?? false,
-    result: m.result ? JSON.parse(m.result) : null,
-  })
+  const enrich = m => {
+    // Use position-based lookup for NPCs (all share the same userId; position is unique)
+    const k = kingdomByPos[`${m.startRealm}:${m.startRegion}:${m.startSlot}`]
+           ?? kingdomByUser[m.userId]
+    return {
+      ...m,
+      kingdomName: k?.name ?? '?',
+      isNpc: k?.isNpc ?? false,
+      result: m.result ? JSON.parse(m.result) : null,
+    }
+  }
 
   // Stats
   const stats = {

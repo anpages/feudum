@@ -40,7 +40,7 @@ export function BattlesTab() {
   const { data, isLoading } = useQuery({
     queryKey: ['admin', 'battles', filter, page],
     queryFn: () => adminService.getBattles({ type: filter, page }),
-    refetchInterval: 30_000,
+    refetchInterval: 5_000,
   })
 
   return (

@@ -78,7 +78,16 @@ async function processReturn(mission, kingdom, now) {
 
   await db.update(kingdoms).set(patch).where(eq(kingdoms.id, kingdom.id))
   Object.assign(kingdom, patch)
-  await db.delete(armyMissions).where(eq(armyMissions.id, mission.id))
+
+  // Expeditions are kept as 'completed' so the admin log can show results.
+  // All other missions are deleted immediately on return.
+  if (mission.missionType === 'expedition') {
+    await db.update(armyMissions)
+      .set({ state: 'completed', updatedAt: new Date() })
+      .where(eq(armyMissions.id, mission.id))
+  } else {
+    await db.delete(armyMissions).where(eq(armyMissions.id, mission.id))
+  }
 }
 
 async function processMissions(userId, kingdom) {

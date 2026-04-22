@@ -88,6 +88,73 @@ export interface AdminExpedition {
   isNpc: boolean
 }
 
+export interface NpcProfileKingdom {
+  id: string
+  name: string
+  realm: number; region: number; slot: number
+  isNpc: boolean; isBoss: boolean; npcLevel: number
+  wood: number; woodProduction: number; woodCapacity: number
+  stone: number; stoneProduction: number; stoneCapacity: number
+  grain: number; grainProduction: number; grainCapacity: number
+  lastResourceUpdate: number
+  // Buildings
+  sawmill: number; quarry: number; grainFarm: number; windmill: number
+  cathedral: number; workshop: number; engineersGuild: number; barracks: number
+  granary: number; stonehouse: number; silo: number; academy: number
+  alchemistTower: number; ambassadorHall: number; armoury: number
+  // Combat units
+  squire: number; knight: number; paladin: number; warlord: number
+  grandKnight: number; siegeMaster: number; warMachine: number; dragonKnight: number
+  // Support
+  merchant: number; caravan: number; colonist: number; scavenger: number; scout: number
+  // Defenses
+  archer: number; crossbowman: number; ballista: number; trebuchet: number
+  mageTower: number; dragonCannon: number; palisade: number; castleWall: number
+  moat: number; catapult: number; ballistic: number
+  // NPC meta
+  npcBuildAvailableAt: number | null
+  npcLastBuildAt: number
+  npcLastAttackAt: number
+  createdAt: string; updatedAt: string
+}
+
+export interface NpcProfileMission {
+  id: string
+  missionType: string; state: string
+  startRealm: number; startRegion: number; startSlot: number
+  targetRealm: number; targetRegion: number; targetSlot: number
+  departureTime: number; arrivalTime: number
+  holdingTime: number; returnTime: number | null
+  woodLoad: number; stoneLoad: number; grainLoad: number
+  squire: number; knight: number; paladin: number; warlord: number
+  grandKnight: number; siegeMaster: number; warMachine: number; dragonKnight: number
+  merchant: number; caravan: number; colonist: number; scavenger: number; scout: number
+  result: string | null
+  createdAt: string
+}
+
+export interface NpcProfileBattle {
+  id: string
+  attackerName: string; attackerIsNpc: boolean; attackerCoord: string
+  defenderName: string; defenderIsNpc: boolean; defenderCoord: string
+  missionType: string; outcome: string
+  lootWood: number; lootStone: number; lootGrain: number
+  attackerLosses: number; defenderLosses: number; rounds: number
+  createdAt: string
+}
+
+export interface NpcProfileResponse {
+  kingdom: NpcProfileKingdom
+  personality: 'economy' | 'military' | 'balanced' | null
+  npcClass: 'collector' | 'general' | 'discoverer' | null
+  virtualResearch: Record<string, number> | null
+  points: number
+  activeMissions: NpcProfileMission[]
+  recentMissions: NpcProfileMission[]
+  battles: NpcProfileBattle[]
+  now: number
+}
+
 export interface AdminExpeditionsResponse {
   active: AdminExpedition[]
   recent: AdminExpedition[]
@@ -100,3 +167,5 @@ export interface AdminExpeditionsResponse {
   }
   now: number
 }
+
+// AdminExpedition already covers both active and recent (same shape)
