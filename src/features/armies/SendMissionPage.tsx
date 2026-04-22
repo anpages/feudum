@@ -10,9 +10,38 @@ import { useResearch } from '@/features/research/useResearch'
 import { useAdminSettings } from '@/features/admin/useAdmin'
 import { ALL_UNIT_META, MISSION_META } from './armiesMeta'
 import { CoordPicker } from './components/CoordPicker'
-import { calcDistance, calcDuration } from '@/lib/game/speed'
-import { formatDuration } from '@/lib/format'
+import { calcDistance, calcDuration, calcCargoCapacity, UNIT_CAPACITY } from '@/lib/game/speed'
+import { formatDuration, formatResource } from '@/lib/format'
 import type { IconType } from 'react-icons'
+
+const UNIT_TIERS = [
+  ['squire', 'knight'],
+  ['paladin', 'warlord'],
+  ['grandKnight', 'siegeMaster'],
+  ['warMachine', 'dragonKnight'],
+]
+const UNIT_TIER_LABELS = ['Escudero/Caballero', 'Paladín/Señor', 'Gran Caballero/Maestro Asedio', 'Máquina/Caballero Dragón']
+
+function maxResourcesByPoints(pts: number) {
+  if      (pts <     10000) return   40000
+  else if (pts <    100000) return  500000
+  else if (pts <   1000000) return 1200000
+  else if (pts <   5000000) return 1800000
+  else if (pts <  25000000) return 2400000
+  else if (pts <  50000000) return 3000000
+  else if (pts <  75000000) return 3600000
+  else if (pts < 100000000) return 4200000
+  else                      return 5000000
+}
+
+function expeditionUnitTier(units: Record<string, number>): number {
+  const COMBAT = ['squire','knight','paladin','warlord','grandKnight','siegeMaster','warMachine','dragonKnight']
+  const sentTiers = COMBAT.filter(k => (units[k] ?? 0) > 0)
+    .map(k => UNIT_TIERS.findIndex(t => t.includes(k)))
+    .filter(t => t >= 0)
+  if (sentTiers.length === 0) return 0
+  return Math.min(Math.max(...sentTiers) + 1, UNIT_TIERS.length - 1)
+}
 
 // Units visible per mission type (undefined = all units)
 const MISSION_UNITS: Partial<Record<MissionType, string[]>> = {
@@ -106,6 +135,17 @@ export function SendMissionPage() {
     m => m.missionType === 'expedition' && m.state !== 'completed'
   ).length ?? 0
   const expeditionSlotsFull = activeExpeditions >= maxExpeditions
+
+  // Expedition context
+  const top1Points     = armies?.top1Points ?? 0
+  const characterClass = armies?.characterClass ?? null
+  const isDiscoverer   = characterClass === 'discoverer'
+  const cargo          = useMemo(() => calcCargoCapacity(units), [units])
+  const hasCargo       = Object.keys(UNIT_CAPACITY).some(k => (units[k] ?? 0) > 0)
+  const maxResources   = maxResourcesByPoints(top1Points)
+  const effectiveMax   = isDiscoverer ? Math.floor(maxResources * 1.5) : maxResources
+  const resourceCap    = hasCargo ? Math.min(cargo, effectiveMax) : effectiveMax
+  const unitTierIdx    = useMemo(() => expeditionUnitTier(units), [units])
 
   const isMissile = missionType === 'missile'
 
@@ -347,6 +387,37 @@ export function SendMissionPage() {
         <Card className="anim-fade-up-3 p-5 space-y-4">
           {missionType === 'expedition' ? (
             <>
+              {/* Expedition context panel */}
+              <div className="rounded-lg bg-parchment-deep border border-gold/20 p-3 space-y-2">
+                <p className="font-ui text-[0.65rem] uppercase tracking-wider text-ink-muted font-semibold">Información de la expedición</p>
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="font-body text-xs text-ink-muted">Capacidad de carga</span>
+                    <span className={`font-ui text-xs font-semibold tabular-nums ${hasCargo ? 'text-ink' : 'text-ink-muted/50'}`}>
+                      {hasCargo ? formatResource(cargo) : '—'}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="font-body text-xs text-ink-muted">Recursos máximos posibles</span>
+                    <span className="font-ui text-xs font-semibold tabular-nums text-forest">
+                      {formatResource(resourceCap)}
+                      {!hasCargo && <span className="text-ink-muted/50 font-normal"> (sin cargadores)</span>}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="font-body text-xs text-ink-muted">Unidades encontrables</span>
+                    <span className="font-ui text-xs font-semibold text-gold-dim">
+                      {UNIT_TIER_LABELS[unitTierIdx]}
+                    </span>
+                  </div>
+                  {isDiscoverer && (
+                    <div className="flex items-center gap-1.5 pt-0.5 border-t border-gold/10">
+                      <span className="font-body text-[0.65rem] text-forest">✦ Clase Explorador activa — +50% recursos y unidades encontrados, −50% encuentros de combate</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
               {/* Expedition: show total mission time prominently */}
               <div className="flex items-center justify-between">
                 <p className="font-ui text-xs text-ink-muted uppercase tracking-wider">Duración de la misión</p>

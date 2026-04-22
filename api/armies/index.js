@@ -1,5 +1,6 @@
 import { eq, and, ne } from 'drizzle-orm'
-import { db, kingdoms, armyMissions, messages, research } from '../_db.js'
+import { db, kingdoms, armyMissions, messages, research, users } from '../_db.js'
+import { calcPoints } from '../lib/points.js'
 import { getSessionUserId } from '../lib/handler.js'
 import { resolveIncomingNpcAttacks } from '../lib/npc-resolve.js'
 import { UNIT_KEYS } from '../lib/missions/keys.js'
@@ -139,9 +140,11 @@ export default async function handler(req, res) {
   const userId = await getSessionUserId(req)
   if (!userId) return res.status(401).json({ error: 'No autenticado' })
 
-  const [[kingdom], [researchRow]] = await Promise.all([
+  const [[kingdom], [researchRow], allKingdoms, [userRow]] = await Promise.all([
     db.select().from(kingdoms).where(eq(kingdoms.userId, userId)).limit(1),
     db.select({ logistics: research.logistics }).from(research).where(eq(research.userId, userId)).limit(1),
+    db.select().from(kingdoms).where(eq(kingdoms.isNpc, false)),
+    db.select({ characterClass: users.characterClass }).from(users).where(eq(users.id, userId)).limit(1),
   ])
   if (!kingdom) return res.status(404).json({ error: 'Reino no encontrado' })
 
@@ -198,9 +201,11 @@ export default async function handler(req, res) {
       }
     })
 
-  const logistics  = researchRow?.logistics ?? 0
-  const maxSlots   = 1 + logistics
-  const slotsUsed  = missions.filter(m => m.missionType !== 'missile').length
+  const logistics    = researchRow?.logistics ?? 0
+  const maxSlots     = 1 + logistics
+  const slotsUsed    = missions.filter(m => m.missionType !== 'missile').length
+  const top1Points   = allKingdoms.reduce((max, k) => Math.max(max, calcPoints(k)), 0)
+  const characterClass = userRow?.characterClass ?? null
 
-  return res.json({ missions, fleetSlots: { used: slotsUsed, max: maxSlots } })
+  return res.json({ missions, fleetSlots: { used: slotsUsed, max: maxSlots }, top1Points, characterClass })
 }
