@@ -18,23 +18,22 @@ const OUTCOME_LABEL: Record<string, string> = {
 }
 
 const OUTCOME_COLOR: Record<string, string> = {
-  resources: 'text-gold',
-  units:     'text-forest-light',
-  ether:     'text-gold-light',
-  bandits:   'text-crimson-light',
-  demons:    'text-crimson-light',
-  black_hole:'text-crimson-light',
-  delay:     'text-ink-muted',
-  speedup:   'text-forest-light',
-  merchant:  'text-gold',
-  nothing:   'text-ink-muted',
+  resources:  'text-gold',
+  units:      'text-forest-light',
+  ether:      'text-gold-light',
+  bandits:    'text-crimson-light',
+  demons:     'text-crimson-light',
+  black_hole: 'text-crimson-light',
+  delay:      'text-ink-muted',
+  speedup:    'text-forest-light',
+  merchant:   'text-gold',
+  nothing:    'text-ink-muted',
 }
 
 function stateColor(state: string) {
   if (state === 'active')    return 'text-gold'
   if (state === 'exploring') return 'text-forest-light'
   if (state === 'returning') return 'text-ink-mid'
-  if (state === 'completed') return 'text-ink-muted'
   return 'text-ink-muted'
 }
 
@@ -52,7 +51,7 @@ function formatDate(unix: number) {
   })
 }
 
-// ── Active row (with countdown) ───────────────────────────────────────────────
+// ── Active expedition row ─────────────────────────────────────────────────────
 
 function ActiveRow({ m, now }: { m: AdminExpedition; now: number }) {
   const outcome = m.result ? (m.result as Record<string, unknown>).outcome as string : null
@@ -69,65 +68,92 @@ function ActiveRow({ m, now }: { m: AdminExpedition; now: number }) {
   }
 
   return (
-    <tr className="border-b border-gold/5 hover:bg-parchment-warm/3 transition-colors">
-      <td className="py-2 px-2">
-        <div className="font-ui text-xs font-semibold text-ink">{m.kingdomName}</div>
-        <div className="font-ui text-[0.6rem] text-ink-muted">{m.startRealm}:{m.startRegion}:{m.startSlot}</div>
-        {m.isNpc && <span className="badge badge-stone text-[0.55rem] px-1 py-0">NPC</span>}
-      </td>
-      <td className="py-2 px-2 text-center font-ui text-xs text-gold-dim">
-        {m.targetRealm}:{m.targetRegion}:16
-      </td>
-      <td className={`py-2 px-2 text-center font-ui text-xs font-semibold ${stateColor(m.state)}`}>
-        {stateLabel(m.state)}
-      </td>
-      <td className="py-2 px-2 text-right font-ui text-xs text-ink-muted tabular-nums">
-        {timeLeft !== null ? formatDuration(timeLeft) : '—'}
-      </td>
-      <td className={`py-2 px-2 text-center font-ui text-xs font-semibold ${outcome ? (OUTCOME_COLOR[outcome] ?? 'text-ink-mid') : 'text-ink-muted'}`}>
-        {outcome ? (OUTCOME_LABEL[outcome] ?? outcome) : '—'}
-      </td>
-      <td className="py-2 px-2 text-right font-ui text-xs text-gold tabular-nums">
-        {loot > 0 ? formatResource(loot) : '—'}
-      </td>
-    </tr>
+    <div className="grid grid-cols-[1fr_auto_auto_auto_auto] items-center gap-x-4 py-3 border-b border-gold/8 last:border-0 hover:bg-parchment-warm/30 transition-colors px-4 -mx-4 rounded">
+      {/* Reino */}
+      <div className="min-w-0">
+        <div className="flex items-center gap-2">
+          <p className="font-ui text-xs font-semibold text-ink truncate">{m.kingdomName}</p>
+          {m.isNpc && <span className="badge badge-stone text-[0.55rem] shrink-0">NPC</span>}
+        </div>
+        <p className="font-ui text-[0.6rem] text-ink-muted">{m.startRealm}:{m.startRegion}:{m.startSlot} → {m.targetRealm}:{m.targetRegion}:16</p>
+      </div>
+
+      {/* Estado */}
+      <div className="text-center min-w-[72px]">
+        <p className={`font-ui text-xs font-semibold ${stateColor(m.state)}`}>{stateLabel(m.state)}</p>
+      </div>
+
+      {/* Tiempo */}
+      <div className="text-right min-w-[60px]">
+        <p className="font-ui text-xs tabular-nums text-ink-muted">
+          {timeLeft !== null ? formatDuration(timeLeft) : '—'}
+        </p>
+      </div>
+
+      {/* Resultado */}
+      <div className="text-center min-w-[100px]">
+        {outcome
+          ? <p className={`font-ui text-xs font-semibold ${OUTCOME_COLOR[outcome] ?? 'text-ink-mid'}`}>{OUTCOME_LABEL[outcome] ?? outcome}</p>
+          : <p className="font-ui text-xs text-ink-muted/40">—</p>
+        }
+      </div>
+
+      {/* Botín */}
+      <div className="text-right min-w-[56px]">
+        <p className={`font-ui text-xs font-semibold tabular-nums ${loot > 0 ? 'text-gold' : 'text-ink-muted/40'}`}>
+          {loot > 0 ? formatResource(loot) : '—'}
+        </p>
+      </div>
+    </div>
   )
 }
 
-// ── Completed row (with date + full result breakdown) ─────────────────────────
+// ── Completed expedition row ──────────────────────────────────────────────────
 
 function CompletedRow({ m }: { m: AdminExpedition }) {
-  const outcome = m.result ? (m.result as Record<string, unknown>).outcome as string : null
-  const result  = m.result as Record<string, unknown> | null
-  const loot    = (m.woodLoad ?? 0) + (m.stoneLoad ?? 0) + (m.grainLoad ?? 0)
+  const outcome    = m.result ? (m.result as Record<string, unknown>).outcome as string : null
+  const result     = m.result as Record<string, unknown> | null
+  const loot       = (m.woodLoad ?? 0) + (m.stoneLoad ?? 0) + (m.grainLoad ?? 0)
   const etherGained = result?.etherGained as number | undefined
 
   return (
-    <tr className="border-b border-gold/5 hover:bg-parchment-warm/3 transition-colors">
-      <td className="py-2 px-2">
-        <div className="font-ui text-xs font-semibold text-ink">{m.kingdomName}</div>
-        <div className="font-ui text-[0.6rem] text-ink-muted">{m.startRealm}:{m.startRegion}:{m.startSlot}</div>
-        {m.isNpc && <span className="badge badge-stone text-[0.55rem] px-1 py-0">NPC</span>}
-      </td>
-      <td className="py-2 px-2 text-center font-ui text-xs text-gold-dim">
-        {m.targetRealm}:{m.targetRegion}:16
-      </td>
-      <td className="py-2 px-2 text-center font-ui text-[0.6rem] text-ink-muted tabular-nums">
-        {formatDate(m.departureTime)}
-      </td>
-      <td className={`py-2 px-2 text-center font-ui text-xs font-semibold ${outcome ? (OUTCOME_COLOR[outcome] ?? 'text-ink-mid') : 'text-ink-muted'}`}>
-        {outcome ? (OUTCOME_LABEL[outcome] ?? outcome) : '—'}
-      </td>
-      <td className="py-2 px-2 text-right font-ui text-xs text-gold tabular-nums">
+    <div className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-x-4 py-3 border-b border-gold/8 last:border-0 hover:bg-parchment-warm/30 transition-colors px-4 -mx-4 rounded">
+      {/* Reino + fecha */}
+      <div className="min-w-0">
+        <div className="flex items-center gap-2">
+          <p className="font-ui text-xs font-semibold text-ink truncate">{m.kingdomName}</p>
+          {m.isNpc && <span className="badge badge-stone text-[0.55rem] shrink-0">NPC</span>}
+        </div>
+        <p className="font-ui text-[0.6rem] text-ink-muted">{m.startRealm}:{m.startRegion}:{m.startSlot} · {formatDate(m.departureTime)}</p>
+      </div>
+
+      {/* Destino */}
+      <div className="text-center min-w-[60px]">
+        <p className="font-ui text-[0.6rem] text-ink-muted">{m.targetRealm}:{m.targetRegion}:16</p>
+      </div>
+
+      {/* Resultado */}
+      <div className="text-center min-w-[110px]">
+        {outcome
+          ? <p className={`font-ui text-xs font-semibold ${OUTCOME_COLOR[outcome] ?? 'text-ink-mid'}`}>{OUTCOME_LABEL[outcome] ?? outcome}</p>
+          : <p className="font-ui text-xs text-ink-muted/40">—</p>
+        }
+      </div>
+
+      {/* Botín */}
+      <div className="text-right min-w-[64px]">
         {loot > 0 ? (
-          <span title={`Madera: ${m.woodLoad ?? 0}  Piedra: ${m.stoneLoad ?? 0}  Grano: ${m.grainLoad ?? 0}`}>
+          <p className="font-ui text-xs font-semibold tabular-nums text-gold"
+            title={`Madera: ${m.woodLoad ?? 0}  Piedra: ${m.stoneLoad ?? 0}  Grano: ${m.grainLoad ?? 0}`}>
             {formatResource(loot)}
-          </span>
+          </p>
         ) : etherGained ? (
-          <span className="text-gold-light">✨{etherGained}</span>
-        ) : '—'}
-      </td>
-    </tr>
+          <p className="font-ui text-xs font-semibold text-gold-light">✨{etherGained}</p>
+        ) : (
+          <p className="font-ui text-xs text-ink-muted/40">—</p>
+        )}
+      </div>
+    </div>
   )
 }
 
@@ -148,7 +174,6 @@ export function ExpeditionsTab() {
 
   const { depletion, active, recent } = data ?? {}
 
-  // Aggregate recent stats
   const recentStats = recent?.reduce((acc, m) => {
     const outcome = m.result ? (m.result as Record<string, unknown>).outcome as string : 'nothing'
     acc[outcome] = (acc[outcome] ?? 0) + 1
@@ -158,20 +183,21 @@ export function ExpeditionsTab() {
   }, { _total: 0, _loot: 0 } as Record<string, number>) ?? { _total: 0, _loot: 0 }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
 
       {/* Depletion map */}
       {depletion && Object.keys(depletion).length > 0 && (
-        <div>
-          <h3 className="font-ui text-xs font-semibold uppercase tracking-widest text-ink-muted mb-2">Depleción por región (24h)</h3>
+        <div className="card-medieval p-5">
+          <div className="card-corner-tr" /><div className="card-corner-bl" />
+          <h3 className="section-heading mb-3">Depleción por región (24h)</h3>
           <div className="flex flex-wrap gap-2">
             {Object.entries(depletion)
               .sort(([, a], [, b]) => b.count - a.count)
               .map(([key, d]) => (
-                <div key={key} className="glass rounded px-3 py-1.5 flex items-center gap-2">
+                <div key={key} className="glass rounded-lg px-3 py-2 flex items-center gap-2.5">
                   <span className="font-ui text-xs font-semibold text-ink">{key}</span>
                   <span className="font-ui text-xs text-ink-muted">{d.count}×</span>
-                  <span className={`font-ui text-xs font-bold ${d.factor < 0.7 ? 'text-crimson-light' : d.factor < 1 ? 'text-gold' : 'text-forest-light'}`}>
+                  <span className={`font-ui text-sm font-bold ${d.factor < 0.7 ? 'text-crimson-light' : d.factor < 1 ? 'text-gold' : 'text-forest-light'}`}>
                     ×{d.factor.toFixed(2)}
                   </span>
                 </div>
@@ -180,88 +206,85 @@ export function ExpeditionsTab() {
         </div>
       )}
 
-      {/* Active + exploring + returning */}
-      <div>
-        <h3 className="font-ui text-xs font-semibold uppercase tracking-widest text-ink-muted mb-2">
-          En curso ({active?.length ?? 0})
-        </h3>
+      {/* Active */}
+      <div className="card-medieval p-5 space-y-3">
+        <div className="card-corner-tr" /><div className="card-corner-bl" />
+        <div className="flex items-center justify-between">
+          <h3 className="section-heading">En curso</h3>
+          <span className="font-ui text-xs text-ink-muted">{active?.length ?? 0} expediciones</span>
+        </div>
+
         {isLoading ? (
-          <div className="space-y-2">{Array.from({ length: 4 }).map((_, i) => <div key={i} className="skeleton h-10 rounded" />)}</div>
+          <div className="space-y-3">{Array.from({ length: 3 }).map((_, i) => <div key={i} className="skeleton h-14 rounded-lg" />)}</div>
         ) : !active?.length ? (
-          <p className="font-ui text-sm text-ink-muted text-center py-6">Sin expediciones activas.</p>
+          <p className="font-ui text-sm text-ink-muted text-center py-8">Sin expediciones activas.</p>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full font-ui text-xs">
-              <thead>
-                <tr className="border-b border-gold/10 text-ink-muted uppercase tracking-wider text-[0.6rem]">
-                  <th className="text-left py-2 px-2">Reino</th>
-                  <th className="text-center py-2 px-2">Destino</th>
-                  <th className="text-center py-2 px-2">Estado</th>
-                  <th className="text-right py-2 px-2">Tiempo</th>
-                  <th className="text-center py-2 px-2">Resultado</th>
-                  <th className="text-right py-2 px-2">Botín</th>
-                </tr>
-              </thead>
-              <tbody>
-                {active.map(m => <ActiveRow key={m.id} m={m} now={now} />)}
-              </tbody>
-            </table>
+          <div>
+            {/* Column headers */}
+            <div className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-x-4 pb-2 border-b border-gold/10 px-4 -mx-4">
+              <span className="font-ui text-[0.6rem] uppercase tracking-widest text-ink-muted">Reino</span>
+              <span className="font-ui text-[0.6rem] uppercase tracking-widest text-ink-muted text-center min-w-[72px]">Estado</span>
+              <span className="font-ui text-[0.6rem] uppercase tracking-widest text-ink-muted text-right min-w-[60px]">Tiempo</span>
+              <span className="font-ui text-[0.6rem] uppercase tracking-widest text-ink-muted text-center min-w-[100px]">Resultado</span>
+              <span className="font-ui text-[0.6rem] uppercase tracking-widest text-ink-muted text-right min-w-[56px]">Botín</span>
+            </div>
+            {active.map(m => <ActiveRow key={m.id} m={m} now={now} />)}
           </div>
         )}
       </div>
 
-      {/* Completed history */}
-      <div>
-        <div className="flex items-center justify-between mb-2">
-          <h3 className="font-ui text-xs font-semibold uppercase tracking-widest text-ink-muted">
-            Completadas — últimos 7 días ({recentStats._total})
-          </h3>
+      {/* Completed */}
+      <div className="card-medieval p-5 space-y-3">
+        <div className="card-corner-tr" /><div className="card-corner-bl" />
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <div>
+            <h3 className="section-heading">Últimos 7 días</h3>
+            <p className="font-ui text-[0.6rem] text-ink-muted mt-0.5">{recentStats._total} expediciones completadas</p>
+          </div>
           {recentStats._total > 0 && (
-            <div className="flex gap-3 flex-wrap justify-end">
+            <div className="flex gap-3 flex-wrap">
               {Object.entries(recentStats)
                 .filter(([k]) => !k.startsWith('_') && (recentStats[k] as number) > 0)
                 .sort(([, a], [, b]) => (b as number) - (a as number))
                 .slice(0, 5)
                 .map(([outcome, count]) => (
-                  <span key={outcome} className={`font-ui text-[0.6rem] ${OUTCOME_COLOR[outcome] ?? 'text-ink-muted'}`}>
-                    {OUTCOME_LABEL[outcome] ?? outcome} ×{count}
-                  </span>
+                  <div key={outcome} className="glass rounded-lg px-2.5 py-1.5 text-center">
+                    <p className={`font-ui text-xs font-semibold ${OUTCOME_COLOR[outcome] ?? 'text-ink-muted'}`}>
+                      {OUTCOME_LABEL[outcome] ?? outcome}
+                    </p>
+                    <p className="font-ui text-[0.6rem] text-ink-muted">×{count}</p>
+                  </div>
                 ))}
               {recentStats._loot > 0 && (
-                <span className="font-ui text-[0.6rem] text-gold">
-                  Botín total: {formatResource(recentStats._loot)}
-                </span>
+                <div className="glass rounded-lg px-2.5 py-1.5 text-center">
+                  <p className="font-ui text-xs font-semibold text-gold">{formatResource(recentStats._loot)}</p>
+                  <p className="font-ui text-[0.6rem] text-ink-muted">botín total</p>
+                </div>
               )}
             </div>
           )}
         </div>
 
         {isLoading ? (
-          <div className="space-y-2">{Array.from({ length: 4 }).map((_, i) => <div key={i} className="skeleton h-10 rounded" />)}</div>
+          <div className="space-y-3">{Array.from({ length: 4 }).map((_, i) => <div key={i} className="skeleton h-14 rounded-lg" />)}</div>
         ) : !recent?.length ? (
-          <p className="font-ui text-sm text-ink-muted text-center py-6">
-            Sin expediciones completadas en los últimos 7 días.{' '}
-            <span className="opacity-60">(Los registros se guardan a partir de ahora.)</span>
+          <p className="font-ui text-sm text-ink-muted text-center py-8">
+            Sin expediciones completadas en los últimos 7 días.
           </p>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full font-ui text-xs">
-              <thead>
-                <tr className="border-b border-gold/10 text-ink-muted uppercase tracking-wider text-[0.6rem]">
-                  <th className="text-left py-2 px-2">Reino</th>
-                  <th className="text-center py-2 px-2">Destino</th>
-                  <th className="text-center py-2 px-2">Fecha salida</th>
-                  <th className="text-center py-2 px-2">Resultado</th>
-                  <th className="text-right py-2 px-2">Botín</th>
-                </tr>
-              </thead>
-              <tbody>
-                {recent.map(m => <CompletedRow key={m.id} m={m} />)}
-              </tbody>
-            </table>
+          <div>
+            {/* Column headers */}
+            <div className="grid grid-cols-[1fr_auto_auto_auto] gap-x-4 pb-2 border-b border-gold/10 px-4 -mx-4">
+              <span className="font-ui text-[0.6rem] uppercase tracking-widest text-ink-muted">Reino</span>
+              <span className="font-ui text-[0.6rem] uppercase tracking-widest text-ink-muted text-center min-w-[60px]">Destino</span>
+              <span className="font-ui text-[0.6rem] uppercase tracking-widest text-ink-muted text-center min-w-[110px]">Resultado</span>
+              <span className="font-ui text-[0.6rem] uppercase tracking-widest text-ink-muted text-right min-w-[64px]">Botín</span>
+            </div>
+            {recent.map(m => <CompletedRow key={m.id} m={m} />)}
           </div>
         )}
       </div>
+
     </div>
   )
 }
