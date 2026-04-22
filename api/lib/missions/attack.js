@@ -70,7 +70,7 @@ export async function processAttack(mission, myKingdom, now, targetKingdom) {
     const cargo = calcCargoCapacity(missionUnits)
     const loot  = outcome === 'victory' ? calculateLoot(defRes, cargo) : { wood: 0, stone: 0, grain: 0 }
 
-    if (targetKingdom && outcome === 'victory') {
+    if (targetKingdom) {
       const repaired  = repairDefenses(extractUnits(lostDef, DEFENSE_KEYS))
       await db.update(kingdoms).set(applyDefenderPatch(targetKingdom, lostDef, repaired))
         .where(eq(kingdoms.id, targetKingdom.id))

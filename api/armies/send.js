@@ -5,6 +5,7 @@ import { calcDistance, calcDuration, calcCargoCapacity } from '../lib/speed.js'
 import { getSettings } from '../lib/settings.js'
 import { applyResourceTick } from '../lib/tick.js'
 import { processUserQueues } from '../lib/process-queues.js'
+import { sendPush } from '../lib/push.js'
 
 const UNIT_KEYS = [
   'squire','knight','paladin','warlord','grandKnight',
@@ -131,6 +132,21 @@ export default async function handler(req, res) {
       woodLoad: 0, stoneLoad: 0, grainLoad: 0,
       ballistic: ballisticCount,
     }).returning({ id: armyMissions.id })
+
+    // Notify target player
+    db.select({ userId: kingdoms.userId, isNpc: kingdoms.isNpc }).from(kingdoms)
+      .where(and(eq(kingdoms.realm, tRealm), eq(kingdoms.region, tRegion), eq(kingdoms.slot, tSlot)))
+      .limit(1)
+      .then(([tk]) => {
+        if (tk && !tk.isNpc && tk.userId !== userId) {
+          sendPush(tk.userId, {
+            title: '🪨 ¡Bombardeo entrante!',
+            body: `${kingdom.name} lanza misiles hacia tu reino.`,
+            url: '/armies',
+            tag: 'incoming-attack',
+          }).catch(() => {})
+        }
+      }).catch(() => {})
 
     return res.json({ ok: true, missionId: inserted.id, arrivalTime, travelSeconds: travelSecs })
   }
@@ -341,6 +357,24 @@ export default async function handler(req, res) {
   }
 
   const [inserted] = await db.insert(armyMissions).values(missionRow).returning({ id: armyMissions.id })
+
+  // Notify target player of incoming hostile mission
+  if (['attack', 'spy'].includes(missionType)) {
+    const [targetKingdom] = await db
+      .select({ userId: kingdoms.userId, isNpc: kingdoms.isNpc })
+      .from(kingdoms)
+      .where(and(eq(kingdoms.realm, tRealm), eq(kingdoms.region, tRegion), eq(kingdoms.slot, tSlot)))
+      .limit(1)
+    if (targetKingdom && !targetKingdom.isNpc && targetKingdom.userId !== userId) {
+      const eta = Math.round(travelSecs / 60)
+      sendPush(targetKingdom.userId, {
+        title: missionType === 'attack' ? '⚔️ ¡Ataque entrante!' : '🕵️ ¡Espía detectado!',
+        body: `${kingdom.name} ${missionType === 'attack' ? 'te ataca' : 'espía tu reino'}. Llega en ~${eta} min.`,
+        url: '/armies',
+        tag: 'incoming-attack',
+      }).catch(() => {})
+    }
+  }
 
   return res.json({
     ok: true,

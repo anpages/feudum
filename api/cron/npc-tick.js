@@ -18,6 +18,7 @@ import { insertBattleLog, sumLosses } from '../lib/battle_log.js'
 import { processScavenge } from '../lib/missions/scavenge.js'
 import { resolveExpedition } from '../lib/expedition.js'
 import { calcPoints } from '../lib/points.js'
+import { sendPush } from '../lib/push.js'
 import { getSettings, setSetting } from '../lib/settings.js'
 import { startNewSeason, repairSeasonNpcsIfMissing } from '../lib/season.js'
 
@@ -405,6 +406,17 @@ async function attackAI(npcKingdom, allKingdoms, bashMap, now, cfg) {
   const deduct = { npcLastAttackAt: now, updatedAt: new Date() }
   for (const [u, n] of Object.entries(force)) deduct[u] = (npcKingdom[u] ?? 0) - n
   await db.update(kingdoms).set(deduct).where(eq(kingdoms.id, npcKingdom.id))
+
+  // Notify target player if human
+  if (!target.isNpc && target.userId) {
+    const eta = Math.round(travelSecs / 60)
+    sendPush(target.userId, {
+      title: '⚔️ ¡Ataque entrante!',
+      body: `${npcKingdom.name} (NPC) te ataca. Llega en ~${eta} min.`,
+      url: '/armies',
+      tag: 'incoming-attack',
+    }).catch(() => {})
+  }
 
   return true
 }
