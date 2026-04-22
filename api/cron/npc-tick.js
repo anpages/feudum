@@ -1026,5 +1026,24 @@ export default async function handler(req, res) {
     byClass[npcClass(k)]++
   }
 
-  return res.json({ ok: true, npcCount: npcKingdoms.length, ticked, grew, attacked, scavenged, expeditioned, npcExpeditionsResolved, npcVsNpcResolved, purged, byPersonality, byClass, seasonAction, repairAction })
+  // ── Persist tick result for admin monitor ─────────────────────────────────
+  const tickResult = {
+    at: now,
+    npcCount: npcKingdoms.length, ticked, grew, attacked,
+    scavenged, expeditioned, npcExpeditionsResolved, npcVsNpcResolved, purged,
+  }
+  const MAX_HISTORY = 48
+  let history = []
+  try {
+    const raw = cfg.npc_tick_history
+    if (raw) history = JSON.parse(raw)
+  } catch { history = [] }
+  history.push(tickResult)
+  if (history.length > MAX_HISTORY) history = history.slice(-MAX_HISTORY)
+  await Promise.all([
+    setSetting('npc_last_tick',    JSON.stringify(tickResult)),
+    setSetting('npc_tick_history', JSON.stringify(history)),
+  ])
+
+  return res.json({ ok: true, ...tickResult, byPersonality, byClass, seasonAction, repairAction })
 }

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Navigate } from 'react-router-dom'
-import { Settings, Users, Crown, ScrollText, Compass, Search } from 'lucide-react'
+import { Settings, Users, Crown, ScrollText, Compass, Search, Activity } from 'lucide-react'
 import { useAuth } from '@/features/auth/useAuth'
 import { ServerTab }      from './tabs/ServerTab'
 import { PlayersTab }     from './tabs/PlayersTab'
@@ -8,8 +8,9 @@ import { SeasonTab }      from './tabs/SeasonTab'
 import { BattlesTab }     from './tabs/BattlesTab'
 import { ExpeditionsTab } from './tabs/ExpeditionsTab'
 import { NpcProfileTab }  from './tabs/NpcProfileTab'
+import { NpcMonitorTab }  from './tabs/NpcMonitorTab'
 
-type Tab = 'server' | 'players' | 'season' | 'battles' | 'expeditions' | 'npc'
+type Tab = 'server' | 'players' | 'season' | 'battles' | 'expeditions' | 'npc' | 'npc_monitor'
 
 const TABS: { id: Tab; label: string; Icon: typeof Settings }[] = [
   { id: 'server',      label: 'Servidor',     Icon: Settings },
@@ -17,6 +18,7 @@ const TABS: { id: Tab; label: string; Icon: typeof Settings }[] = [
   { id: 'season',      label: 'Temporada',    Icon: Crown },
   { id: 'battles',     label: 'Combates',     Icon: ScrollText },
   { id: 'expeditions', label: 'Expediciones', Icon: Compass },
+  { id: 'npc_monitor', label: 'NPCs Monitor', Icon: Activity },
   { id: 'npc',         label: 'Perfil NPC',   Icon: Search },
 ]
 
@@ -54,6 +56,7 @@ export function AdminPage() {
         {tab === 'season'      && <SeasonTab />}
         {tab === 'battles'     && <BattlesTab />}
         {tab === 'expeditions' && <ExpeditionsTab />}
+        {tab === 'npc_monitor' && <NpcMonitorTab />}
         {tab === 'npc'         && <NpcProfileTab />}
       </div>
     </div>

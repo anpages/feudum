@@ -169,3 +169,49 @@ export interface AdminExpeditionsResponse {
 }
 
 // AdminExpedition already covers both active and recent (same shape)
+
+export interface NpcTickResult {
+  at: number
+  npcCount: number
+  ticked: number
+  grew: number
+  attacked: number
+  scavenged: number
+  expeditioned: number
+  npcExpeditionsResolved: number
+  npcVsNpcResolved: number
+  purged: number
+}
+
+export interface NpcAggregate {
+  total: number
+  bosses: number
+  withArmy: number
+  withMerchant: number
+  withCaravan: number
+  withScavenger: number
+  avgBarracks: number
+  avgAcademy: number
+  avgWorkshop: number
+  avgSawmill: number
+  maxBarracks: number
+  maxAcademy: number
+  avgArmy: number
+  maxArmy: number
+  totalSquire: number
+  totalMerchant: number
+  totalCaravan: number
+  totalScavenger: number
+  avgWood: number
+  avgStone: number
+  avgGrain: number
+  armyDistribution: Record<string, number>
+  missionCounts: Record<string, number>
+  now: number
+}
+
+export interface NpcStatsResponse {
+  lastTick: NpcTickResult | null
+  tickHistory: NpcTickResult[]
+  aggregate: NpcAggregate
+}
