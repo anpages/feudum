@@ -1,5 +1,5 @@
 import { type ReactNode, useState, useEffect } from 'react'
-import { Clock, TrendingUp, Hammer, FlaskConical, Swords, Send, Shield, ChevronRight, Zap, TreePine, Mountain, Wheat, X } from 'lucide-react'
+import { Clock, TrendingUp, Hammer, FlaskConical, Swords, Send, Shield, ChevronRight, Zap, TreePine, Mountain, Wheat } from 'lucide-react'
 import {
   GiAnvil, GiSpellBook, GiCrossedSwords,
 } from 'react-icons/gi'
@@ -15,6 +15,7 @@ import { formatResource, formatDuration } from '@/lib/format'
 import { label as unitLabel } from '@/lib/labels'
 import { tempLabel } from '@/lib/terrain'
 import { Card } from '@/components/ui/Card'
+import { Sheet } from '@/components/ui/Sheet'
 import { SeasonCard } from '@/features/season/SeasonCard'
 
 const CLASS_INFO: Record<string, { emoji: string; label: string; color: string }> = {
@@ -238,16 +239,15 @@ export function OverviewPage() {
         )}
       </section>
 
-      {/* ── Military modal ── */}
-      {militaryOpen && (
-        <MilitaryModal
+      {/* ── Military sheet ── */}
+      <Sheet open={militaryOpen} onClose={() => setMilitaryOpen(false)} title="Fuerza militar">
+        <MilitarySheetContent
           units={barracksData?.units ?? []}
           support={barracksData?.support ?? []}
           defenses={barracksData?.defenses ?? []}
           inMissions={unitsInMissions}
-          onClose={() => setMilitaryOpen(false)}
         />
-      )}
+      </Sheet>
 
     </div>
   )
@@ -347,7 +347,7 @@ function QueueRow({
 }
 
 
-// ── Military modal ────────────────────────────────────────────────────────────
+// ── Military sheet content ────────────────────────────────────────────────────
 
 interface UnitInfo { id: string; count: number; attack: number; shield: number; inQueue: unknown }
 
@@ -355,25 +355,24 @@ function UnitRow({ u, inMissions }: { u: UnitInfo; inMissions: Record<string, nu
   const away      = inMissions[u.id] ?? 0
   const available = Math.max(0, u.count - away)
   return (
-    <div className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-x-4 py-2 border-b border-gold/5 last:border-0">
-      <span className="font-ui text-xs text-ink truncate">{unitLabel(u.id)}</span>
-      <span className="font-ui text-xs tabular-nums text-ink text-right w-12">{u.count}</span>
-      <span className={`font-ui text-xs tabular-nums text-right w-12 ${away > 0 ? 'text-crimson-light' : 'text-ink-muted/40'}`}>
+    <div className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-x-4 py-2.5 border-b border-gold/8 last:border-0">
+      <span className="font-ui text-sm text-ink truncate">{unitLabel(u.id)}</span>
+      <span className="font-ui text-sm tabular-nums text-ink text-right w-14">{u.count}</span>
+      <span className={`font-ui text-sm tabular-nums text-right w-14 ${away > 0 ? 'text-crimson-light font-semibold' : 'text-ink-muted/30'}`}>
         {away > 0 ? `−${away}` : '—'}
       </span>
-      <span className={`font-ui text-xs font-semibold tabular-nums text-right w-12 ${available > 0 ? 'text-forest-light' : 'text-ink-muted/40'}`}>
+      <span className={`font-ui text-sm font-semibold tabular-nums text-right w-14 ${available > 0 ? 'text-forest-light' : 'text-ink-muted/30'}`}>
         {available}
       </span>
     </div>
   )
 }
 
-function MilitaryModal({ units, support, defenses, inMissions, onClose }: {
+function MilitarySheetContent({ units, support, defenses, inMissions }: {
   units: UnitInfo[]
   support: UnitInfo[]
   defenses: UnitInfo[]
   inMissions: Record<string, number>
-  onClose: () => void
 }) {
   const combatUnits  = units.filter(u => u.count > 0 || (inMissions[u.id] ?? 0) > 0)
   const supportUnits = support.filter(u => u.count > 0 || (inMissions[u.id] ?? 0) > 0)
@@ -381,62 +380,42 @@ function MilitaryModal({ units, support, defenses, inMissions, onClose }: {
   const hasAway = Object.values(inMissions).some(n => n > 0)
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-ink/50 backdrop-blur-sm"
-      onClick={onClose}
-    >
-      <div
-        className="card-medieval w-full max-w-md max-h-[80vh] flex flex-col overflow-hidden"
-        onClick={e => e.stopPropagation()}
-      >
-        <div className="card-corner-tr" /><div className="card-corner-bl" />
+    <div className="px-5 pb-6">
+      {hasAway && (
+        <p className="font-ui text-xs text-ink-muted py-3 border-b border-gold/10">
+          Las unidades en misión se muestran en rojo y se descuentan del disponible.
+        </p>
+      )}
 
-        {/* Header */}
-        <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-gold/10">
-          <div>
-            <h2 className="font-ui text-sm font-semibold text-ink">Fuerza militar</h2>
-            {hasAway && (
-              <p className="font-ui text-[0.6rem] text-ink-muted mt-0.5">Hay unidades fuera en misión</p>
-            )}
-          </div>
-          <button onClick={onClose} className="text-ink-muted hover:text-ink transition-colors p-1">
-            <X size={16} />
-          </button>
-        </div>
-
-        {/* Column headers */}
-        <div className="grid grid-cols-[1fr_auto_auto_auto] gap-x-4 px-5 py-2 bg-parchment-deep/40">
-          <span className="font-ui text-[0.6rem] uppercase tracking-widest text-ink-muted">Unidad</span>
-          <span className="font-ui text-[0.6rem] uppercase tracking-widest text-ink-muted text-right w-12">Total</span>
-          <span className="font-ui text-[0.6rem] uppercase tracking-widest text-crimson/60 text-right w-12">Misión</span>
-          <span className="font-ui text-[0.6rem] uppercase tracking-widest text-forest/70 text-right w-12">Libre</span>
-        </div>
-
-        {/* Scrollable body */}
-        <div className="overflow-y-auto flex-1 px-5 pb-4">
-          {combatUnits.length > 0 && (
-            <div className="mt-3">
-              <p className="font-ui text-[0.6rem] uppercase tracking-widest text-gold-dim mb-1">Combate</p>
-              {combatUnits.map(u => <UnitRow key={u.id} u={u} inMissions={inMissions} />)}
-            </div>
-          )}
-          {supportUnits.length > 0 && (
-            <div className="mt-4">
-              <p className="font-ui text-[0.6rem] uppercase tracking-widest text-gold-dim mb-1">Apoyo</p>
-              {supportUnits.map(u => <UnitRow key={u.id} u={u} inMissions={inMissions} />)}
-            </div>
-          )}
-          {defenseUnits.length > 0 && (
-            <div className="mt-4">
-              <p className="font-ui text-[0.6rem] uppercase tracking-widest text-gold-dim mb-1">Defensas</p>
-              {defenseUnits.map(u => <UnitRow key={u.id} u={u} inMissions={inMissions} />)}
-            </div>
-          )}
-          {combatUnits.length === 0 && supportUnits.length === 0 && defenseUnits.length === 0 && (
-            <p className="font-body text-sm text-ink-muted text-center py-8">Sin unidades entrenadas todavía.</p>
-          )}
-        </div>
+      {/* Column headers */}
+      <div className="grid grid-cols-[1fr_auto_auto_auto] gap-x-4 py-2.5 border-b border-gold/15 sticky top-0 bg-surface">
+        <span className="font-ui text-[0.6rem] uppercase tracking-widest text-ink-muted">Unidad</span>
+        <span className="font-ui text-[0.6rem] uppercase tracking-widest text-ink-muted text-right w-14">Total</span>
+        <span className="font-ui text-[0.6rem] uppercase tracking-widest text-crimson/70 text-right w-14">Misión</span>
+        <span className="font-ui text-[0.6rem] uppercase tracking-widest text-forest/80 text-right w-14">Libre</span>
       </div>
+
+      {combatUnits.length > 0 && (
+        <div className="mt-4">
+          <p className="section-heading mb-2">Combate</p>
+          {combatUnits.map(u => <UnitRow key={u.id} u={u} inMissions={inMissions} />)}
+        </div>
+      )}
+      {supportUnits.length > 0 && (
+        <div className="mt-5">
+          <p className="section-heading mb-2">Apoyo</p>
+          {supportUnits.map(u => <UnitRow key={u.id} u={u} inMissions={inMissions} />)}
+        </div>
+      )}
+      {defenseUnits.length > 0 && (
+        <div className="mt-5">
+          <p className="section-heading mb-2">Defensas</p>
+          {defenseUnits.map(u => <UnitRow key={u.id} u={u} inMissions={inMissions} />)}
+        </div>
+      )}
+      {combatUnits.length === 0 && supportUnits.length === 0 && defenseUnits.length === 0 && (
+        <p className="font-body text-sm text-ink-muted text-center py-10">Sin unidades entrenadas todavía.</p>
+      )}
     </div>
   )
 }
