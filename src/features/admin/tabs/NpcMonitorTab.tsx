@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { adminService } from '../services/adminService'
 import { formatResource } from '@/lib/format'
-import type { NpcTickResult, NpcAggregate } from '../types'
+import type { NpcTickResult } from '../types'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 

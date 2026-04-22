@@ -1,5 +1,5 @@
 import { type ReactNode, useState, useEffect } from 'react'
-import { Clock, TrendingUp, Hammer, FlaskConical, Swords, Send, Shield, ChevronRight, Zap, TreePine, Mountain, Wheat } from 'lucide-react'
+import { Clock, TrendingUp, Hammer, FlaskConical, Swords, Send, Shield, ChevronRight, Zap, TreePine, Mountain, Wheat, X } from 'lucide-react'
 import {
   GiAnvil, GiSpellBook, GiCrossedSwords,
 } from 'react-icons/gi'
@@ -12,7 +12,7 @@ import { useBarracks } from '@/features/barracks/useBarracks'
 import { useArmies } from '@/features/armies/useArmies'
 import { useAuth } from '@/features/auth/useAuth'
 import { formatResource, formatDuration } from '@/lib/format'
-import { label } from '@/lib/labels'
+import { label as unitLabel } from '@/lib/labels'
 import { tempLabel } from '@/lib/terrain'
 import { Card } from '@/components/ui/Card'
 import { SeasonCard } from '@/features/season/SeasonCard'
@@ -60,6 +60,17 @@ export function OverviewPage() {
   const totalUnitCount   = allBarracksUnits.reduce((s, u) => s + u.count, 0)
   const activeMissions = armiesData?.missions.filter(m => m.state === 'active').length ?? 0
   const returningMissions = armiesData?.missions.filter(m => m.state === 'returning').length ?? 0
+
+  const [militaryOpen, setMilitaryOpen] = useState(false)
+
+  // Units currently away on missions (active + exploring + returning)
+  const unitsInMissions: Record<string, number> = {}
+  for (const m of armiesData?.missions ?? []) {
+    if (!['active','exploring','returning'].includes(m.state)) continue
+    for (const [id, n] of Object.entries(m.units ?? {})) {
+      unitsInMissions[id] = (unitsInMissions[id] ?? 0) + (n ?? 0)
+    }
+  }
 
   const queuedBuildings = buildingsData?.buildings.filter(b => !!b.inQueue)
     .sort((a, b) => a.inQueue!.finishesAt - b.inQueue!.finishesAt) ?? []
@@ -152,7 +163,7 @@ export function OverviewPage() {
           {/* Kingdom stats */}
           <Card className="p-4 space-y-3">
             <p className="font-ui text-[0.6rem] text-ink-muted/60 uppercase tracking-widest">Desarrollo</p>
-            <StatRow icon={<GiAnvil size={13} />} label="Edificios" value={`${buildingCount}`} note={`Nv. total ${buildingTotalLevels}`} onClick={() => navigate('/resources')} />
+            <StatRow icon={<GiAnvil size={13} />} label="Edificios" value={`${buildingCount}`} note={`Nv. total ${buildingTotalLevels}`} onClick={() => navigate('/buildings')} />
             <StatRow icon={<GiSpellBook size={13} />} label="Investigaciones" value={`${researchCount}`} note={`Nv. total ${researchTotalLevels}`} onClick={() => navigate('/research')} />
           </Card>
 
@@ -162,8 +173,8 @@ export function OverviewPage() {
               <p className="font-ui text-[0.6rem] text-ink-muted/60 uppercase tracking-widest">Fuerza militar</p>
               <p className="font-ui text-[0.6rem] text-ink-muted/50 tabular-nums">{totalUnitCount} unidades</p>
             </div>
-            <StatRow icon={<GiCrossedSwords size={13} />} label="Potencia ofensiva" value={formatResource(totalAttackPower)} onClick={() => navigate('/barracks')} />
-            <StatRow icon={<Shield size={13} />} label="Potencia defensiva" value={formatResource(totalShieldPower)} onClick={() => navigate('/defense')} />
+            <StatRow icon={<GiCrossedSwords size={13} />} label="Potencia ofensiva" value={formatResource(totalAttackPower)} onClick={() => setMilitaryOpen(true)} />
+            <StatRow icon={<Shield size={13} />} label="Potencia defensiva" value={formatResource(totalShieldPower)} onClick={() => setMilitaryOpen(true)} />
           </Card>
 
           {/* Active missions */}
@@ -191,7 +202,7 @@ export function OverviewPage() {
               <QueueRow
                 key={b.id}
                 icon={<Hammer size={13} />}
-                label={`${label(b.id)} → Nv. ${b.inQueue!.level}`}
+                label={`${unitLabel(b.id)} → Nv. ${b.inQueue!.level}`}
                 finishesAt={b.inQueue!.finishesAt}
                 startedAt={b.inQueue!.startedAt}
                 color="gold"
@@ -201,7 +212,7 @@ export function OverviewPage() {
               <QueueRow
                 key={r.id}
                 icon={<FlaskConical size={13} />}
-                label={`${label(r.id)} → Nv. ${r.inQueue!.level}`}
+                label={`${unitLabel(r.id)} → Nv. ${r.inQueue!.level}`}
                 finishesAt={r.inQueue!.finishesAt}
                 startedAt={r.inQueue!.startedAt}
                 color="forest"
@@ -211,7 +222,7 @@ export function OverviewPage() {
               <QueueRow
                 key={u.id}
                 icon={<Swords size={13} />}
-                label={`${label(u.id)} × ${u.inQueue!.amount}`}
+                label={`${unitLabel(u.id)} × ${u.inQueue!.amount}`}
                 finishesAt={u.inQueue!.finishesAt}
                 color="stone"
               />
@@ -226,6 +237,17 @@ export function OverviewPage() {
           </Card>
         )}
       </section>
+
+      {/* ── Military modal ── */}
+      {militaryOpen && (
+        <MilitaryModal
+          units={barracksData?.units ?? []}
+          support={barracksData?.support ?? []}
+          defenses={barracksData?.defenses ?? []}
+          inMissions={unitsInMissions}
+          onClose={() => setMilitaryOpen(false)}
+        />
+      )}
 
     </div>
   )
@@ -324,6 +346,100 @@ function QueueRow({
   )
 }
 
+
+// ── Military modal ────────────────────────────────────────────────────────────
+
+interface UnitInfo { id: string; count: number; attack: number; shield: number; inQueue: unknown }
+
+function UnitRow({ u, inMissions }: { u: UnitInfo; inMissions: Record<string, number> }) {
+  const away      = inMissions[u.id] ?? 0
+  const available = Math.max(0, u.count - away)
+  return (
+    <div className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-x-4 py-2 border-b border-gold/5 last:border-0">
+      <span className="font-ui text-xs text-ink truncate">{unitLabel(u.id)}</span>
+      <span className="font-ui text-xs tabular-nums text-ink text-right w-12">{u.count}</span>
+      <span className={`font-ui text-xs tabular-nums text-right w-12 ${away > 0 ? 'text-crimson-light' : 'text-ink-muted/40'}`}>
+        {away > 0 ? `−${away}` : '—'}
+      </span>
+      <span className={`font-ui text-xs font-semibold tabular-nums text-right w-12 ${available > 0 ? 'text-forest-light' : 'text-ink-muted/40'}`}>
+        {available}
+      </span>
+    </div>
+  )
+}
+
+function MilitaryModal({ units, support, defenses, inMissions, onClose }: {
+  units: UnitInfo[]
+  support: UnitInfo[]
+  defenses: UnitInfo[]
+  inMissions: Record<string, number>
+  onClose: () => void
+}) {
+  const combatUnits  = units.filter(u => u.count > 0 || (inMissions[u.id] ?? 0) > 0)
+  const supportUnits = support.filter(u => u.count > 0 || (inMissions[u.id] ?? 0) > 0)
+  const defenseUnits = defenses.filter(u => u.count > 0 || (inMissions[u.id] ?? 0) > 0)
+  const hasAway = Object.values(inMissions).some(n => n > 0)
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-ink/50 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        className="card-medieval w-full max-w-md max-h-[80vh] flex flex-col overflow-hidden"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="card-corner-tr" /><div className="card-corner-bl" />
+
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-gold/10">
+          <div>
+            <h2 className="font-ui text-sm font-semibold text-ink">Fuerza militar</h2>
+            {hasAway && (
+              <p className="font-ui text-[0.6rem] text-ink-muted mt-0.5">Hay unidades fuera en misión</p>
+            )}
+          </div>
+          <button onClick={onClose} className="text-ink-muted hover:text-ink transition-colors p-1">
+            <X size={16} />
+          </button>
+        </div>
+
+        {/* Column headers */}
+        <div className="grid grid-cols-[1fr_auto_auto_auto] gap-x-4 px-5 py-2 bg-parchment-deep/40">
+          <span className="font-ui text-[0.6rem] uppercase tracking-widest text-ink-muted">Unidad</span>
+          <span className="font-ui text-[0.6rem] uppercase tracking-widest text-ink-muted text-right w-12">Total</span>
+          <span className="font-ui text-[0.6rem] uppercase tracking-widest text-crimson/60 text-right w-12">Misión</span>
+          <span className="font-ui text-[0.6rem] uppercase tracking-widest text-forest/70 text-right w-12">Libre</span>
+        </div>
+
+        {/* Scrollable body */}
+        <div className="overflow-y-auto flex-1 px-5 pb-4">
+          {combatUnits.length > 0 && (
+            <div className="mt-3">
+              <p className="font-ui text-[0.6rem] uppercase tracking-widest text-gold-dim mb-1">Combate</p>
+              {combatUnits.map(u => <UnitRow key={u.id} u={u} inMissions={inMissions} />)}
+            </div>
+          )}
+          {supportUnits.length > 0 && (
+            <div className="mt-4">
+              <p className="font-ui text-[0.6rem] uppercase tracking-widest text-gold-dim mb-1">Apoyo</p>
+              {supportUnits.map(u => <UnitRow key={u.id} u={u} inMissions={inMissions} />)}
+            </div>
+          )}
+          {defenseUnits.length > 0 && (
+            <div className="mt-4">
+              <p className="font-ui text-[0.6rem] uppercase tracking-widest text-gold-dim mb-1">Defensas</p>
+              {defenseUnits.map(u => <UnitRow key={u.id} u={u} inMissions={inMissions} />)}
+            </div>
+          )}
+          {combatUnits.length === 0 && supportUnits.length === 0 && defenseUnits.length === 0 && (
+            <p className="font-body text-sm text-ink-muted text-center py-8">Sin unidades entrenadas todavía.</p>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
 
 function OverviewSkeleton() {
   return (
