@@ -49,12 +49,11 @@ function TickStatusBar({ tick, now }: { tick: NpcTickResult; now: number }) {
       {/* Quick stats */}
       <div className="flex flex-wrap items-center gap-3 ml-auto">
         <TickPill label="edificios" value={tick.builtBuilding} color={tick.builtBuilding > 0 ? 'text-forest-light'  : 'text-ink-muted'} />
-        <TickPill label="combate"   value={tick.trainedCombat}  color={tick.trainedCombat  > 0 ? 'text-crimson-light' : 'text-ink-muted'} />
+        <TickPill label="ataque"    value={tick.trainedCombat}  color={tick.trainedCombat  > 0 ? 'text-crimson-light' : 'text-ink-muted'} />
         <TickPill label="defensas"  value={tick.trainedDefense} color={tick.trainedDefense > 0 ? 'text-gold'          : 'text-ink-muted'} />
         <TickPill label="apoyo"     value={tick.trainedSupport} color={tick.trainedSupport > 0 ? 'text-gold-light'    : 'text-ink-muted'} />
-        <TickPill label="atacaron"  value={tick.attacked}       color={tick.attacked       > 0 ? 'text-crimson-light' : 'text-ink-muted'} />
+        <TickPill label="combates"  value={tick.attacked}       color={tick.attacked       > 0 ? 'text-crimson-light' : 'text-ink-muted'} />
         <TickPill label="expedición" value={tick.expeditioned}  color={tick.expeditioned   > 0 ? 'text-gold'          : 'text-ink-muted'} />
-        <TickPill label="combates NPC" value={tick.npcVsNpcResolved} color={tick.npcVsNpcResolved > 0 ? 'text-crimson-light' : 'text-ink-muted'} />
       </div>
     </div>
   )
@@ -200,13 +199,12 @@ function TickHistoryTable({ history }: { history: NpcTickResult[] }) {
             <tr className="border-b border-gold/10 font-ui text-ink-muted uppercase tracking-wider text-[0.6rem]">
               <th className="text-left py-2 px-3 whitespace-nowrap">Hora</th>
               <th className="text-right py-2 px-3">Edif.</th>
-              <th className="text-right py-2 px-3">Combate</th>
+              <th className="text-right py-2 px-3">Ataque</th>
               <th className="text-right py-2 px-3">Defensa</th>
               <th className="text-right py-2 px-3">Apoyo</th>
-              <th className="text-right py-2 px-3">Atacaron</th>
+              <th className="text-right py-2 px-3">Combates</th>
               <th className="text-right py-2 px-3">Exped.</th>
               <th className="text-right py-2 px-3 hidden sm:table-cell">Carroñ.</th>
-              <th className="text-right py-2 px-3 hidden sm:table-cell">C.NPC</th>
             </tr>
           </thead>
           <tbody>
@@ -235,7 +233,6 @@ function TickHistoryTable({ history }: { history: NpcTickResult[] }) {
                   <td className={`py-2 px-3 text-right tabular-nums ${t.attacked > 0 ? 'text-crimson-light font-semibold' : 'text-ink-muted'}`}>{t.attacked}</td>
                   <td className={`py-2 px-3 text-right tabular-nums ${t.expeditioned > 0 ? 'text-gold font-semibold' : 'text-ink-muted'}`}>{t.expeditioned}</td>
                   <td className={`py-2 px-3 text-right tabular-nums hidden sm:table-cell ${t.scavenged > 0 ? 'text-forest-light font-semibold' : 'text-ink-muted'}`}>{t.scavenged}</td>
-                  <td className={`py-2 px-3 text-right tabular-nums hidden sm:table-cell ${t.npcVsNpcResolved > 0 ? 'text-crimson-light' : 'text-ink-muted'}`}>{t.npcVsNpcResolved}</td>
                 </tr>
               )
             })}
