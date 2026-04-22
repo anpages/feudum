@@ -94,6 +94,7 @@ export async function seedNpcs(npcUserId, takenSlots, now) {
     isNpc: true, isBoss: false, npcLevel: 1,
     wood: 500, stone: 500, grain: 500,
     woodCapacity: 10000, stoneCapacity: 10000, grainCapacity: 10000,
+    windmill: 1,
     woodProduction: 0, stoneProduction: 0, grainProduction: 0,
     lastResourceUpdate: now,
   }))

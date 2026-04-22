@@ -12,50 +12,6 @@ import {
 } from './buildings.js'
 import { UNITS, SUPPORT_UNITS } from './units.js'
 
-// LF production bonus — must mirror api/lib/lifeforms.js calcLFProductionBonus
-// Kept inline to avoid cross-boundary imports (this file runs on both client and server).
-// Effect types 'production_all/wood/stone/grain': base * level = additive % bonus.
-// The LF research data is loaded lazily to avoid bundling the full lifeforms data.
-function _lfProdMults(lfResearch) {
-  if (!lfResearch || Object.keys(lfResearch).length === 0) {
-    return { wood: 1, stone: 1, grain: 1 }
-  }
-  // Inline effect table — only production effects needed here
-  const EFFECTS = {
-    // Romanos
-    extractoresHP:       [{ t: 'all',   b: 0.06 }],
-    tecProduccionMejorada: [{ t: 'all', b: 0.06 }],
-    // Vikingos
-    escaneAcustico:      [{ t: 'stone', b: 0.08 }],
-    sistemaBombeoHP:     [{ t: 'grain', b: 0.08 }],
-    produccionMagma:     [{ t: 'all',   b: 0.08 }],
-    sondeoProf:          [{ t: 'wood',  b: 0.08 }],
-    perforadoresDiamante:[{ t: 'wood',  b: 0.08 }],
-    mineriaSismica:      [{ t: 'stone', b: 0.08 }],
-    sistemaBombeoMagma:  [{ t: 'grain', b: 0.08 }],
-    // Bizantinos
-    tecnologiaCatalizador:[{ t: 'grain', b: 0.08 }],
-    lineasTransporte:    [{ t: 'all',   b: 0.06 }],
-    inteligenciaEnjambre:[{ t: 'all',   b: 0.06 }],
-    // Sarracenos
-    procesoSulfuro:      [{ t: 'grain', b: 0.08 }],
-    psicoharmonizador:   [{ t: 'all',   b: 0.06 }],
-  }
-  let all = 0, wood = 0, stone = 0, grain = 0
-  for (const [id, effs] of Object.entries(EFFECTS)) {
-    const lv = lfResearch[id] ?? 0
-    if (lv === 0) continue
-    for (const e of effs) {
-      const v = e.b * lv
-      if (e.t === 'all')   { all   += v }
-      if (e.t === 'wood')  { wood  += v }
-      if (e.t === 'stone') { stone += v }
-      if (e.t === 'grain') { grain += v }
-    }
-  }
-  return { wood: 1 + all + wood, stone: 1 + all + stone, grain: 1 + all + grain }
-}
-
 export function effectiveProduction(kingdom, res, cfg, characterClass = null) {
   const dl         = res?.dragonlore ?? 0
   const alchLv     = res?.alchemy    ?? 0
@@ -81,12 +37,9 @@ export function effectiveProduction(kingdom, res, cfg, characterClass = null) {
     ? Math.min(1, energyProd / energyCons)
     : 1.0
 
-  const lfRes   = kingdom.lfResearch ?? {}
-  const lfMults = _lfProdMults(lfRes)
-
-  const wood  = (basicWood  + (kingdom.woodProduction  ?? 0) * sawPct   * energyFactor * (1 + dl * 0.010)  * speed * classBonus) * lfMults.wood
-  const stone = (basicStone + (kingdom.stoneProduction ?? 0) * quarPct  * energyFactor * (1 + dl * 0.0066) * speed * classBonus) * lfMults.stone
-  const grain =               (kingdom.grainProduction ?? 0) * grainPct * energyFactor * (1 + dl * 0.0033) * speed * classBonus  * lfMults.grain
+  const wood  = basicWood  + (kingdom.woodProduction  ?? 0) * sawPct   * energyFactor * (1 + dl * 0.010)  * speed * classBonus
+  const stone = basicStone + (kingdom.stoneProduction ?? 0) * quarPct  * energyFactor * (1 + dl * 0.0066) * speed * classBonus
+  const grain =              (kingdom.grainProduction ?? 0) * grainPct * energyFactor * (1 + dl * 0.0033) * speed * classBonus
 
   return { wood, stone, grain, energyProd, energyCons }
 }

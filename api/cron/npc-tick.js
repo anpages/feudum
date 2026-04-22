@@ -81,20 +81,20 @@ function npcResearch(kingdom) {
 // No ceiling — growth is infinite and exponential.
 const BUILD_WEIGHTS = {
   economy: {
-    sawmill: 1.0, quarry: 0.85, grainFarm: 0.70, windmill: 0.60,
+    sawmill: 1.0, windmill: 1.5, quarry: 0.85, grainFarm: 0.70,
     cathedral: 0.50, granary: 0.55, stonehouse: 0.50, silo: 0.45,
     workshop: 0.65, barracks: 0.60, academy: 0.25,
     alchemistTower: 0.40, ambassadorHall: 0.20, armoury: 0.35, engineersGuild: 0.35,
   },
   military: {
-    barracks: 1.0, sawmill: 0.75, quarry: 0.65, workshop: 0.60,
-    grainFarm: 0.55, windmill: 0.45, armoury: 0.50, granary: 0.35,
+    barracks: 1.0, sawmill: 0.75, windmill: 1.5, quarry: 0.65, workshop: 0.60,
+    grainFarm: 0.55, armoury: 0.50, granary: 0.35,
     stonehouse: 0.35, silo: 0.30, academy: 0.25,
     alchemistTower: 0.25, ambassadorHall: 0.30, cathedral: 0.20, engineersGuild: 0.25,
   },
   balanced: {
-    sawmill: 0.90, barracks: 0.80, quarry: 0.75, grainFarm: 0.65,
-    windmill: 0.55, workshop: 0.60, granary: 0.45, stonehouse: 0.40,
+    sawmill: 0.90, windmill: 1.5, barracks: 0.80, quarry: 0.75, grainFarm: 0.65,
+    workshop: 0.60, granary: 0.45, stonehouse: 0.40,
     silo: 0.35, academy: 0.30, alchemistTower: 0.35,
     armoury: 0.35, ambassadorHall: 0.25, cathedral: 0.30, engineersGuild: 0.30,
   },
@@ -207,7 +207,8 @@ async function growNpc(kingdom, cfg, now) {
 
     const effWood  = Math.ceil(cost.wood  * costMult)
     const effStone = Math.ceil(cost.stone * costMult)
-    if (effWood > wood || effStone > stone) continue
+    // Requirements are met but can't afford — save up instead of buying cheaper fallback
+    if (effWood > wood || effStone > stone) break
 
     const canAfford = Math.min(
       effWood  > 0 ? Math.floor(wood  / effWood)  : Infinity,

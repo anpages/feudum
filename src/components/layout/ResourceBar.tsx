@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom'
-import { Menu, Zap, Bell, UserRound, TreePine, Mountain, Wheat } from 'lucide-react'
+import { Menu, Zap, Mail, UserRound, TreePine, Mountain, Wheat } from 'lucide-react'
 import { useKingdom } from '@/features/kingdom/useKingdom'
 import { useResourceTicker } from '@/features/kingdom/useResourceTicker'
 import { useAuth } from '@/features/auth/useAuth'
@@ -69,7 +69,7 @@ export function ResourceBar({ onMenuToggle }: Props) {
           className="relative p-1.5 rounded text-ink-muted hover:text-ink hover:bg-parchment-warm transition-colors"
           title="Mensajes"
         >
-          <Bell size={15} />
+          <Mail size={15} />
           {unread > 0 && (
             <span className="absolute -top-0.5 -right-0.5 min-w-[14px] h-[14px] flex items-center justify-center rounded-full bg-crimson text-parchment font-ui text-[9px] font-bold leading-none px-0.5">
               {unread > 99 ? '99+' : unread}
