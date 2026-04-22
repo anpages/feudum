@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { Users, FlaskConical, Hammer, Loader2, Clock, TrendingUp, TrendingDown, TreePine, Mountain, Wheat, ChevronRight, Home, Sprout, GraduationCap, Factory, Shield, Sparkles, ArrowUp, Swords, type LucideIcon } from 'lucide-react'
 import { GiScrollUnfurled, GiCastle, GiHiking, GiByzantinTemple, GiCamel } from 'react-icons/gi'
 import { Card } from '@/components/ui/Card'
@@ -95,6 +95,61 @@ const BUILDING_CATEGORIES: BuildingCategory[] = [
   },
 ]
 
+// Real-time interpolation of population and food using server-provided rates.
+// Resets whenever new data arrives from the server.
+function useLFTicker(data: import('./types').LifeformsResponse | undefined) {
+  const dataRef = useRef(data)
+  useEffect(() => { dataRef.current = data }, [data])
+
+  const [live, setLive] = useState({ popT1: 0, popT2: 0, popT3: 0, popTotal: 0, foodStored: 0 })
+
+  useEffect(() => {
+    if (!data) return
+    const startMs = Date.now()
+
+    const tick = () => {
+      const d = dataRef.current
+      if (!d) return
+      const elapsedH = (Date.now() - startMs) / 3_600_000
+      // T1 population grows or shrinks; T2/T3 are static until tier transitions
+      let liveT1 = d.population.t1
+      if (d.popStats.isGrowing) {
+        liveT1 = Math.min(
+          d.population.t1 + d.popStats.popGrowthPerHour * elapsedH,
+          d.popStats.popCapT1
+        )
+      } else if (d.popStats.isStarving) {
+        liveT1 = Math.max(0, d.population.t1 - d.popStats.popGrowthPerHour * elapsedH)
+      }
+      const liveTotal = liveT1 + d.population.t2 + d.population.t3
+      // Food balance
+      const liveFood = Math.max(0, d.foodStored + d.popStats.foodBalance * elapsedH)
+      setLive({ popT1: liveT1, popT2: d.population.t2, popT3: d.population.t3, popTotal: liveTotal, foodStored: liveFood })
+    }
+
+    tick()
+    const id = setInterval(tick, 1000)
+    return () => clearInterval(id)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data])
+
+  // seed from static data on first render
+  useEffect(() => {
+    if (!data) return
+    setLive({
+      popT1: data.population.t1, popT2: data.population.t2, popT3: data.population.t3,
+      popTotal: data.population.t1 + data.population.t2 + data.population.t3,
+      foodStored: data.foodStored,
+    })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  return live
+}
+
+// Convert raw population to familias for display (pop is stored as number of people)
+function toFamilias(pop: number) { return Math.round(pop / 10) }
+
 function useCountdown(finishesAt: number | null, onEnd: () => void) {
   const [secs, setSecs] = useState(() =>
     finishesAt ? Math.max(0, finishesAt - Math.floor(Date.now() / 1000)) : 0
@@ -118,6 +173,7 @@ export function LifeformsPage() {
   const { data, isLoading, refetch } = useLifeforms()
   const { data: kingdom } = useKingdom()
   const resources = useResourceTicker(kingdom)
+  const live       = useLFTicker(data)
   const selectCiv = useSelectCivilization()
   const buildBuilding = useBuildLFBuilding()
   const researchLF = useResearchLF()
@@ -140,7 +196,7 @@ export function LifeformsPage() {
   const buildings      = data.buildings[civ] ?? []
   const research       = data.research[civ] ?? []
   const civMeta        = data.civilizations.find(c => c.id === civ)
-  const popTotal       = data.population.t1 + data.population.t2 + data.population.t3
+  const popTotal       = live.popTotal
   const Icon           = CIV_ICONS[civ] ?? GiScrollUnfurled
   const lfBuildingsMap = Object.fromEntries(buildings.map(b => [b.id, b.level]))
   const ps             = data.popStats
@@ -168,8 +224,8 @@ export function LifeformsPage() {
 
       {/* Stats — población + alimento en 2 columnas */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 anim-fade-up-1">
-        <PopulationCard pop={data.population} popTotal={popTotal} ps={ps} artifacts={data.artifacts} tiers={data.tiers} />
-        <FoodCard foodStored={data.foodStored} ps={ps} />
+        <PopulationCard pop={{ t1: live.popT1, t2: live.popT2, t3: live.popT3 }} popTotal={popTotal} ps={ps} artifacts={data.artifacts} tiers={data.tiers} />
+        <FoodCard foodStored={live.foodStored} ps={ps} />
       </div>
 
       {/* Bonos activos de investigación */}
@@ -260,7 +316,7 @@ export function LifeformsPage() {
                           <div className="h-full bg-gold/40 rounded-full transition-all" style={{ width: `${popPct}%` }} />
                         </div>
                         <span className="font-ui text-[0.6rem] tabular-nums text-ink-muted/60 shrink-0">
-                          {formatResource(popTotal)}/{formatResource(progress.popRequired)}
+                          {formatResource(toFamilias(popTotal))}/{formatResource(toFamilias(progress.popRequired))} fam.
                         </span>
                       </div>
                       <div className="flex items-center gap-1.5 flex-1 min-w-0">
@@ -334,14 +390,17 @@ function PopulationCard({ pop, popTotal, ps, artifacts, tiers }: {
       </div>
 
       <div>
-        <p className="font-ui text-2xl tabular-nums font-bold text-ink leading-none">{formatResource(popTotal)}</p>
+        <p className="font-ui text-2xl tabular-nums font-bold text-ink leading-none">
+          {formatResource(toFamilias(popTotal))}
+          <span className="font-ui text-sm font-normal text-ink-muted ml-1.5">familias</span>
+        </p>
         {ps.isStarving ? (
           <p className="flex items-center gap-1 mt-1 font-ui text-[0.65rem] text-crimson font-semibold">
             <TrendingDown size={10} />hambruna — población decreciendo
           </p>
         ) : ps.isGrowing ? (
           <p className="flex items-center gap-1 mt-1 font-ui text-[0.65rem] text-forest">
-            <TrendingUp size={10} />+{formatResource(ps.popGrowthPerHour)}/h
+            <TrendingUp size={10} />+{formatResource(toFamilias(ps.popGrowthPerHour))}/h
           </p>
         ) : (
           <p className="flex items-center gap-1 mt-1 font-ui text-[0.65rem] text-ink-muted/50">
@@ -354,7 +413,9 @@ function PopulationCard({ pop, popTotal, ps, artifacts, tiers }: {
         <div className="space-y-1">
           <div className="flex justify-between font-ui text-[0.6rem] text-ink-muted/50">
             <span>Capacidad T1</span>
-            <span className="tabular-nums">{formatResource(Math.round(pop.t1))} / {formatResource(ps.popCapT1)}</span>
+            <span className="tabular-nums">
+              {formatResource(toFamilias(Math.round(pop.t1)))} / {formatResource(toFamilias(ps.popCapT1))} fam.
+            </span>
           </div>
           <div className="h-1.5 rounded-full bg-gold/10 overflow-hidden">
             <div className={`h-full rounded-full transition-all ${capPct >= 95 ? 'bg-crimson/60' : 'bg-gold/50'}`} style={{ width: `${capPct}%` }} />
@@ -367,7 +428,7 @@ function PopulationCard({ pop, popTotal, ps, artifacts, tiers }: {
           {(['t1','t2','t3'] as const).map(t => (
             <div key={t} className="text-center">
               <p className="font-ui text-[0.6rem] text-ink-muted/40 uppercase">{t}</p>
-              <p className="font-ui text-xs tabular-nums text-ink-muted/70">{formatResource(pop[t])}</p>
+              <p className="font-ui text-xs tabular-nums text-ink-muted/70">{formatResource(toFamilias(pop[t]))}</p>
             </div>
           ))}
         </div>
