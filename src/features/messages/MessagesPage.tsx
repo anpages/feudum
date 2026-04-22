@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { Mail, MailOpen, CheckCheck, PenLine } from 'lucide-react'
-import { useMessages, useMarkAllRead, type GameMessage } from '@/features/messages/useMessages'
+import { Mail, MailOpen, CheckCheck, PenLine, Trash2 } from 'lucide-react'
+import { useMessages, useMarkAllRead, useMarkRead, useDeleteMessage, type GameMessage } from '@/features/messages/useMessages'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Sheet } from '@/components/ui/Sheet'
@@ -10,7 +10,9 @@ import { ComposePanel } from './components/ComposePanel'
 
 export function MessagesPage() {
   const { data, isLoading } = useMessages()
-  const markAll = useMarkAllRead()
+  const markAll    = useMarkAllRead()
+  const markRead   = useMarkRead()
+  const deleteMsg  = useDeleteMessage()
   const [selected, setSelected] = useState<GameMessage | null>(null)
   const [composing, setComposing] = useState(false)
   const [replyTo, setReplyTo] = useState('')
@@ -33,16 +35,16 @@ export function MessagesPage() {
           <span className="section-heading">Mensajería</span>
           <h1 className="page-title mt-0.5">Mensajes</h1>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           {unread > 0 && (
             <Button variant="ghost" size="sm" onClick={() => markAll.mutate()} disabled={markAll.isPending}>
               <CheckCheck size={13} />
-              Marcar todo leído
+              <span className="hidden sm:inline">Marcar todo leído</span>
             </Button>
           )}
           <Button variant="primary" size="sm" onClick={() => openCompose()}>
             <PenLine size={13} />
-            Nuevo mensaje
+            <span className="hidden sm:inline">Nuevo mensaje</span>
           </Button>
         </div>
       </div>
@@ -63,7 +65,11 @@ export function MessagesPage() {
           {messages.map(msg => (
             <button
               key={msg.id}
-              onClick={() => { setSelected(msg); setComposing(false) }}
+              onClick={() => {
+                setSelected(msg)
+                setComposing(false)
+                if (!msg.viewed) markRead.mutate(msg.id)
+              }}
               className={`w-full text-left rounded-lg border px-3.5 py-3 transition-colors ${
                 !composing && selected?.id === msg.id
                   ? 'border-gold/60 bg-gold/5'
@@ -98,7 +104,22 @@ export function MessagesPage() {
         maxWidth="max-w-xl"
       >
         {selected && (
-          <MessageDetail message={selected} onReply={username => openCompose(username)} />
+          <>
+            <MessageDetail message={selected} onReply={username => openCompose(username)} />
+            <div className="px-5 pb-5">
+              <button
+                onClick={() => {
+                  deleteMsg.mutate(selected.id)
+                  setSelected(null)
+                }}
+                disabled={deleteMsg.isPending}
+                className="flex items-center gap-1.5 font-ui text-xs text-crimson/60 hover:text-crimson transition-colors disabled:opacity-40"
+              >
+                <Trash2 size={12} />
+                Eliminar mensaje
+              </button>
+            </div>
+          </>
         )}
       </Sheet>
 

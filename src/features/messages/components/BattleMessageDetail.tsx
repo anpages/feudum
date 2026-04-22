@@ -16,15 +16,16 @@ export function BattleMessageDetail({ data }: { data: Record<string, unknown> })
   const role = data.role as string | undefined
 
   const isVictory = outcome === 'victory'
+  const isDraw    = outcome === 'draw'
   const outcomeLabel =
     role === 'defender'
-      ? isVictory ? 'Rechazado' : 'Derrotado'
-      : isVictory ? 'Victoria' : 'Derrota'
+      ? isVictory ? 'Rechazado' : isDraw ? 'Empate' : 'Derrotado'
+      : isVictory ? 'Victoria'  : isDraw ? 'Empate' : 'Derrota'
 
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-3">
-        <Badge variant={isVictory ? 'forest' : 'crimson'}>{outcomeLabel}</Badge>
+        <Badge variant={isVictory ? 'forest' : isDraw ? 'stone' : 'crimson'}>{outcomeLabel}</Badge>
         {rounds !== undefined && (
           <span className="font-body text-xs text-ink-muted/60">{rounds} rondas de combate</span>
         )}

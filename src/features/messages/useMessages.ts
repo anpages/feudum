@@ -19,6 +19,22 @@ export function useMarkAllRead() {
   })
 }
 
+export function useMarkRead() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => messagesService.markRead(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['messages'] }),
+  })
+}
+
+export function useDeleteMessage() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => messagesService.deleteMessage(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['messages'] }),
+  })
+}
+
 export function useSendMessage() {
   const qc = useQueryClient()
   return useMutation({

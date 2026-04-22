@@ -35,6 +35,18 @@ export const messagesService = {
     return { ok: true }
   },
 
+  async markRead(id: string): Promise<{ ok: boolean }> {
+    const { error } = await supabase.from('messages').update({ viewed: true }).eq('id', id)
+    if (error) throw error
+    return { ok: true }
+  },
+
+  async deleteMessage(id: string): Promise<{ ok: boolean }> {
+    const { error } = await supabase.from('messages').delete().eq('id', id)
+    if (error) throw error
+    return { ok: true }
+  },
+
   send: (params: { to: string; subject: string; body: string }) =>
     http.post<{ ok: boolean }>('/messages/send', params),
 }

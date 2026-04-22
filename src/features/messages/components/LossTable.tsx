@@ -1,3 +1,5 @@
+import { UNIT_LABELS } from '@/lib/labels'
+
 export function LossTable({ title, losses }: { title: string; losses: Record<string, number> }) {
   const entries = Object.entries(losses).filter(([, v]) => v > 0)
   if (entries.length === 0) return null
@@ -10,7 +12,7 @@ export function LossTable({ title, losses }: { title: string; losses: Record<str
         {entries.map(([unit, count]) => (
           <div key={unit} className="flex items-center justify-between gap-2 font-body text-xs">
             <span className="text-ink-muted capitalize">
-              {unit.replace(/([A-Z])/g, ' $1').trim()}
+              {UNIT_LABELS[unit] ?? unit.replace(/([A-Z])/g, ' $1').trim()}
             </span>
             <span className="text-ink tabular-nums">{count.toLocaleString()}</span>
           </div>
