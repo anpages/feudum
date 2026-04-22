@@ -66,12 +66,20 @@ export const UNIT_SPEEDS = Object.fromEntries(
   Object.entries(UNIT_DRIVES).map(([k, v]) => [k, v.base])
 )
 
-// Max resource cargo per unit
+// Max resource cargo per unit (combat units from OGame ref: capacity param in GameObjectProperties)
 export const UNIT_CAPACITY = {
-  merchant:  5000,
-  caravan:  25000,
-  colonist:  7500,
-  scavenger: 20000,
+  squire:       50,
+  knight:      100,
+  paladin:     800,
+  warlord:    1500,
+  grandKnight:  750,
+  siegeMaster:  500,
+  warMachine:  2000,
+  dragonKnight: 1_000_000,
+  merchant:    5000,
+  caravan:    25000,
+  colonist:    7500,
+  scavenger:  20000,
 }
 
 // Combat stats for simple battle resolution
