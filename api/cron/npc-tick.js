@@ -179,7 +179,50 @@ async function growNpc(kingdom, cfg, now) {
   let trainedSupport = false
   let builtBuilding  = false
 
-  // ── Unit training — primer turno de recursos ──────────────────────────────
+  // ── Building upgrade (first, so unit training doesn't drain building funds) ─
+  if (canBuild) {
+    const candidates = Object.entries(weights)
+      .map(([id, weight]) => {
+        const def = BUILDINGS.find(x => x.id === id)
+        if (!def) return null
+        const currentLv = kingdom[id] ?? 0
+        return { id, def, currentLv, score: currentLv / weight }
+      })
+      .filter(Boolean)
+      .sort((a, b) => a.score - b.score)
+
+    for (const { id, def, currentLv } of candidates) {
+      if (def.requires?.length) {
+        const blocked = def.requires.some(req => {
+          if (req.type !== 'building') return false
+          return (kingdom[req.id] ?? 0) < req.level
+        })
+        if (blocked) continue
+      }
+
+      const nextLv = currentLv + 1
+      const cost = buildCost(def.woodBase, def.stoneBase, def.factor, nextLv - 1, def.grainBase ?? 0)
+
+      if (wood >= cost.wood && stone >= cost.stone && grain >= (cost.grain ?? 0)) {
+        wood  -= cost.wood
+        stone -= cost.stone
+        grain -= (cost.grain ?? 0)
+
+        const effect = applyBuildingEffect(id, nextLv, { ...kingdom })
+        Object.assign(patch, effect)
+
+        const workshopLv       = (patch.workshop       ?? kingdom.workshop)       ?? 0
+        const engineersGuildLv = (patch.engineersGuild ?? kingdom.engineersGuild) ?? 0
+        const rawTime  = buildTime(cost.wood, cost.stone, nextLv, workshopLv, engineersGuildLv, speed)
+        const timeBonus = isBoss ? 0.5 : (cls === 'discoverer' ? 0.75 : 1.0)
+        patch.npcBuildAvailableAt = now + Math.max(30, Math.floor(rawTime * timeBonus))
+        builtBuilding = true
+        break
+      }
+    }
+  }
+
+  // ── Unit training ─────────────────────────────────────────────────────────
   const maxUnitTypes = isBoss ? 3 : (cls === 'general' ? 2 : 1)
   const batchCap     = isBoss ? 200 : 50
   const costMult     = (isBoss || cls === 'general') ? 0.9 : 1.0
@@ -200,6 +243,14 @@ async function growNpc(kingdom, cfg, now) {
         return false
       })
       if (blocked) continue
+    }
+
+    // Block defense training while combat units are below attack threshold —
+    // otherwise cheap defense units (crossbowman 1500w) drain wood before
+    // the NPC can save enough for squire (3000w), creating a deadlock.
+    if (UNIT_DEFENSE_SET.has(unitId)) {
+      const combatTotal = UNIT_KEYS.reduce((s, u) => s + (kingdom[u] ?? 0), 0)
+      if (combatTotal < ATTACK_THRESHOLD[personality]) continue
     }
 
     const cost = UNIT_COSTS[unitId]
@@ -227,53 +278,6 @@ async function growNpc(kingdom, cfg, now) {
     if      (UNIT_COMBAT_SET.has(unitId))  trainedCombat  = true
     else if (UNIT_SUPPORT_SET.has(unitId)) trainedSupport = true
     else if (UNIT_DEFENSE_SET.has(unitId)) trainedDefense = true
-  }
-
-  // ── Building upgrade ──────────────────────────────────────────────────────
-  if (canBuild) {
-    const candidates = Object.entries(weights)
-      .map(([id, weight]) => {
-        const def = BUILDINGS.find(x => x.id === id)
-        if (!def) return null
-        const currentLv = kingdom[id] ?? 0
-        return { id, def, currentLv, score: currentLv / weight }
-      })
-      .filter(Boolean)
-      .sort((a, b) => a.score - b.score)
-
-    for (const { id, def, currentLv } of candidates) {
-      if (def.requires?.length) {
-        const blocked = def.requires.some(req => {
-          if (req.type !== 'building') return false
-          return ((patch[req.id] ?? kingdom[req.id] ?? 0)) < req.level
-        })
-        if (blocked) continue
-      }
-
-      const nextLv = currentLv + 1
-      const cost = buildCost(def.woodBase, def.stoneBase, def.factor, nextLv - 1, def.grainBase ?? 0)
-
-      if (
-        wood >= cost.wood &&
-        stone >= cost.stone &&
-        grain >= (cost.grain ?? 0)
-      ) {
-        wood  -= cost.wood
-        stone -= cost.stone
-        grain -= (cost.grain ?? 0)
-
-        const effect = applyBuildingEffect(id, nextLv, { ...kingdom, ...patch })
-        Object.assign(patch, effect)
-
-        const workshopLv       = (patch.workshop       ?? kingdom.workshop)       ?? 0
-        const engineersGuildLv = (patch.engineersGuild ?? kingdom.engineersGuild) ?? 0
-        const rawTime  = buildTime(cost.wood, cost.stone, nextLv, workshopLv, engineersGuildLv, speed)
-        const timeBonus = isBoss ? 0.5 : (cls === 'discoverer' ? 0.75 : 1.0)
-        patch.npcBuildAvailableAt = now + Math.max(30, Math.floor(rawTime * timeBonus))
-        builtBuilding = true
-        break
-      }
-    }
   }
 
   if (Object.keys(patch).length > 0) {
