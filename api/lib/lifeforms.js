@@ -1060,9 +1060,9 @@ export function applyPopulationTick(kingdom, lfLevels, elapsedSecs) {
   }
 
   return {
-    populationT1,
-    populationT2: kingdom.populationT2,
-    populationT3: kingdom.populationT3,
+    populationT1: Math.floor(populationT1),
+    populationT2: Math.floor(kingdom.populationT2),
+    populationT3: Math.floor(kingdom.populationT3),
     foodStored,
   }
 }
