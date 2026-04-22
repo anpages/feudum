@@ -58,11 +58,15 @@ function ActiveRow({ m, now }: { m: AdminExpedition; now: number }) {
   const outcome = m.result ? (m.result as Record<string, unknown>).outcome as string : null
   const loot    = (m.woodLoad ?? 0) + (m.stoneLoad ?? 0) + (m.grainLoad ?? 0)
 
-  const timeLeft = m.state === 'returning' && m.returnTime && m.returnTime > now
-    ? m.returnTime - now
-    : m.state !== 'completed' && m.arrivalTime > now
-    ? m.arrivalTime - now
-    : null
+  let timeLeft: number | null = null
+  if (m.state === 'returning' && m.returnTime && m.returnTime > now) {
+    timeLeft = m.returnTime - now
+  } else if (m.state === 'active' && m.arrivalTime > now) {
+    timeLeft = m.arrivalTime - now
+  } else if (m.state === 'exploring') {
+    const holdUntil = m.arrivalTime + (m.holdingTime ?? 0)
+    if (holdUntil > now) timeLeft = holdUntil - now
+  }
 
   return (
     <tr className="border-b border-gold/5 hover:bg-parchment-warm/3 transition-colors">
