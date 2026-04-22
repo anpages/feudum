@@ -10,7 +10,7 @@ import { useKingdom } from '@/features/kingdom/useKingdom'
 import { useQueueSync } from '@/features/queues/useQueueSync'
 import { formatResource, formatDuration } from '@/lib/format'
 import { toast } from '@/lib/toast'
-import type { CivilizationId, LFBuildingInfo, LFResearchInfo, PopStats, ActiveBonuses, TierProgress } from './types'
+import type { CivilizationId, LFBuildingInfo, LFResearchInfo, PopStats, ActiveBonuses } from './types'
 
 const CIV_ICONS: Record<string, React.ComponentType<{ size?: number; className?: string }>> = {
   romans:     GiCastle,
