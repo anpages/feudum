@@ -358,8 +358,8 @@ async function attackAI(npcKingdom, allKingdoms, bashMap, now, cfg) {
 
   // Compose force:
   // general sends more (70-90%), economy sends less (50-70%), discoverer is moderate (55-75%)
-  const minRatio = cls === 'general' ? 0.70 : cls === 'economy' || personality === 'economy' ? 0.50 : 0.55
-  const maxRatio = cls === 'general' ? 0.90 : cls === 'economy' || personality === 'economy' ? 0.70 : 0.75
+  const minRatio = cls === 'general' ? 0.70 : personality === 'economy' ? 0.50 : 0.55
+  const maxRatio = cls === 'general' ? 0.90 : personality === 'economy' ? 0.70 : 0.75
   const sendRatio = minRatio + Math.random() * (maxRatio - minRatio)
 
   const force = {}
@@ -464,7 +464,7 @@ async function scavengeAI(npcKingdom, allDebris, now, cfg) {
     .where(eq(kingdoms.id, npcKingdom.id))
   npcKingdom.scavenger = 0
 
-  return true
+  return target.id  // return id so handler can remove the exact debris entry
 }
 
 // ── Expedition depletion helpers ─────────────────────────────────────────────
@@ -494,8 +494,10 @@ async function getExpeditionDepletion(now) {
 // ── Expedition AI ─────────────────────────────────────────────────────────────
 
 async function expeditionAI(npcKingdom, depletionMap, now, cfg) {
-  const cls = npcClass(npcKingdom)
-  const probability = cls === 'discoverer' ? 0.35 : cls === 'balanced' ? 0.12 : 0
+  const cls         = npcClass(npcKingdom)
+  const personality = npcPersonality(npcKingdom)
+  // discoverer class → strong explorer; balanced personality → moderate; rest → skip
+  const probability = cls === 'discoverer' ? 0.35 : personality === 'balanced' ? 0.12 : 0
   if (probability === 0 || Math.random() > probability) return false
 
   // Need enough units — keep at least half the army home
@@ -608,6 +610,8 @@ async function resolveNpcExpeditions(npcUserId, npcKingdomsById, now) {
     eq(armyMissions.state,       'exploring'),
   ))
 
+  if (exploring.length === 0) return resolved
+
   const allKingdoms = await db.select().from(kingdoms)
   const top1Points = allKingdoms.reduce((max, k) => Math.max(max, calcPoints(k)), 0)
 
@@ -698,18 +702,28 @@ function extractK(row, keys) {
 
 async function resolveNpcVsNpcAttacks(npcKingdomsById, now) {
   let resolved = 0
-  for (const defKingdom of Object.values(npcKingdomsById)) {
-    const arrivedMissions = await db.select().from(armyMissions)
-      .where(and(
-        eq(armyMissions.missionType, 'attack'),
-        eq(armyMissions.state,       'active'),
-        eq(armyMissions.targetRealm,  defKingdom.realm),
-        eq(armyMissions.targetRegion, defKingdom.region),
-        eq(armyMissions.targetSlot,   defKingdom.slot),
-        lte(armyMissions.arrivalTime, now),
-      ))
 
-    for (const m of arrivedMissions) {
+  // Single query for all arrived attack missions targeting any NPC kingdom
+  const arrivedAll = await db.select().from(armyMissions)
+    .where(and(
+      eq(armyMissions.missionType, 'attack'),
+      eq(armyMissions.state,       'active'),
+      lte(armyMissions.arrivalTime, now),
+    ))
+
+  // Group by defender position and skip missions whose defender is not an NPC
+  const byDefender = {}
+  for (const m of arrivedAll) {
+    const defKey = `${m.targetRealm}:${m.targetRegion}:${m.targetSlot}`
+    if (!npcKingdomsById[defKey]) continue
+    if (!byDefender[defKey]) byDefender[defKey] = []
+    byDefender[defKey].push(m)
+  }
+
+  for (const [defKey, missions] of Object.entries(byDefender)) {
+    const defKingdom = npcKingdomsById[defKey]
+
+    for (const m of missions) {
       const atkKey = `${m.startRealm}:${m.startRegion}:${m.startSlot}`
       const atkKingdom = npcKingdomsById[atkKey]
       if (!atkKingdom) continue  // player-initiated attack, handled elsewhere
@@ -821,7 +835,6 @@ async function manageSeason(cfg, now) {
     const winnerCondition = cfg.season_winner_condition ?? ''
     if (!winnerCondition || winnerCondition === '') {
       await setSetting('season_winner_condition', 'points')
-      await setSetting('season_state', 'ended')
     }
     const nextNumber = seasonNumber + 1
     const result = await startNewSeason(nextNumber, cfg.economy_speed)
@@ -973,14 +986,11 @@ export default async function handler(req, res) {
       if (launched) attacked++
     }
 
-    // Scavenge AI
-    const didScavenge = await scavengeAI(kingdom, allDebris, now, cfg)
-    if (didScavenge) {
+    // Scavenge AI — returns claimed debris id or falsy
+    const claimedDebrisId = await scavengeAI(kingdom, allDebris, now, cfg)
+    if (claimedDebrisId) {
       scavenged++
-      // Remove the claimed debris from the local list so two NPCs no longer fight over it
-      const idx = allDebris.findIndex(d =>
-        d.realm === kingdom.realm && d.region === kingdom.region
-      )
+      const idx = allDebris.findIndex(d => d.id === claimedDebrisId)
       if (idx >= 0) allDebris.splice(idx, 1)
     }
 
