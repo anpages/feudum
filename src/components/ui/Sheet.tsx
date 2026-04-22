@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
 
 interface SheetProps {
@@ -24,7 +25,7 @@ export function Sheet({ open, onClose, title, children, maxWidth = 'max-w-lg' }:
 
   if (!open) return null
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-end lg:items-center lg:justify-center">
       {/* Backdrop */}
       <div
@@ -36,7 +37,7 @@ export function Sheet({ open, onClose, title, children, maxWidth = 'max-w-lg' }:
       <div
         className={`
           relative w-full ${maxWidth} max-h-[90dvh] lg:max-h-[85dvh]
-          bg-parchment border border-gold/20
+          bg-surface border border-gold/20
           rounded-t-2xl lg:rounded-2xl
           shadow-2xl overflow-hidden flex flex-col
           anim-sheet-up lg:anim-sheet-fade
@@ -75,6 +76,7 @@ export function Sheet({ open, onClose, title, children, maxWidth = 'max-w-lg' }:
           {children}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }

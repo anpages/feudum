@@ -63,7 +63,7 @@ function MissionRowImpl({ mission, onEnd }: Props) {
       {/* ── Compact card ─────────────────────────────────────────────────── */}
       <button
         onClick={() => setOpen(true)}
-        className="w-full text-left rounded-xl border border-gold/20 bg-parchment p-3 hover:border-gold/40 hover:bg-gold/5 transition-colors"
+        className="w-full text-left rounded-xl border border-gold/20 bg-surface p-3 hover:border-gold/40 hover:bg-gold/5 transition-colors"
       >
           <div className="flex items-center gap-3">
             {/* Icon */}

@@ -255,6 +255,7 @@ export const armyMissions = pgTable('army_missions', {
 
   departureTime: integer('departure_time').notNull(),
   arrivalTime:   integer('arrival_time').notNull(),
+  holdingTime:   integer('holding_time').default(0).notNull(),
   returnTime:    integer('return_time'),
 
   woodLoad:  real('wood_load').default(0).notNull(),
