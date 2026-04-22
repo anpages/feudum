@@ -1,23 +1,25 @@
 import { useState } from 'react'
 import { Navigate } from 'react-router-dom'
-import { Settings, Users, Zap, Swords, Crown, ScrollText } from 'lucide-react'
+import { Settings, Users, Zap, Swords, Crown, ScrollText, Compass } from 'lucide-react'
 import { useAuth } from '@/features/auth/useAuth'
-import { ServerTab }   from './tabs/ServerTab'
-import { PlayersTab }  from './tabs/PlayersTab'
-import { DevTab }      from './tabs/DevTab'
-import { MissionsTab } from './tabs/MissionsTab'
-import { SeasonTab }   from './tabs/SeasonTab'
-import { BattlesTab }  from './tabs/BattlesTab'
+import { ServerTab }      from './tabs/ServerTab'
+import { PlayersTab }     from './tabs/PlayersTab'
+import { DevTab }         from './tabs/DevTab'
+import { MissionsTab }    from './tabs/MissionsTab'
+import { SeasonTab }      from './tabs/SeasonTab'
+import { BattlesTab }     from './tabs/BattlesTab'
+import { ExpeditionsTab } from './tabs/ExpeditionsTab'
 
-type Tab = 'server' | 'players' | 'dev' | 'missions' | 'season' | 'battles'
+type Tab = 'server' | 'players' | 'dev' | 'missions' | 'season' | 'battles' | 'expeditions'
 
 const TABS: { id: Tab; label: string; Icon: typeof Settings }[] = [
-  { id: 'server',   label: 'Servidor',   Icon: Settings },
-  { id: 'players',  label: 'Jugadores',  Icon: Users },
-  { id: 'season',   label: 'Temporada',  Icon: Crown },
-  { id: 'battles',  label: 'Combates',   Icon: ScrollText },
-  { id: 'dev',      label: 'Dev',        Icon: Zap },
-  { id: 'missions', label: 'Misiones',   Icon: Swords },
+  { id: 'server',      label: 'Servidor',     Icon: Settings },
+  { id: 'players',     label: 'Jugadores',    Icon: Users },
+  { id: 'season',      label: 'Temporada',    Icon: Crown },
+  { id: 'battles',     label: 'Combates',     Icon: ScrollText },
+  { id: 'expeditions', label: 'Expediciones', Icon: Compass },
+  { id: 'dev',         label: 'Dev',          Icon: Zap },
+  { id: 'missions',    label: 'Misiones',     Icon: Swords },
 ]
 
 export function AdminPage() {
@@ -52,9 +54,10 @@ export function AdminPage() {
         {tab === 'server'   && <ServerTab />}
         {tab === 'players'  && <PlayersTab />}
         {tab === 'season'   && <SeasonTab />}
-        {tab === 'dev'      && <DevTab />}
-        {tab === 'missions' && <MissionsTab />}
-        {tab === 'battles'  && <BattlesTab />}
+        {tab === 'dev'         && <DevTab />}
+        {tab === 'missions'    && <MissionsTab />}
+        {tab === 'battles'     && <BattlesTab />}
+        {tab === 'expeditions' && <ExpeditionsTab />}
       </div>
     </div>
   )

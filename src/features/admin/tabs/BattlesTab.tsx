@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { TreePine, Mountain, Wheat } from 'lucide-react'
 import { adminService } from '../services/adminService'
 import { formatResource } from '@/lib/format'
 import type { AdminBattleLog } from '../types'
@@ -34,15 +33,6 @@ function typeTag(row: AdminBattleLog) {
   return <span className="badge badge-forest">JvJ</span>
 }
 
-function MetricCard({ label, value }: { label: string; value: number | string }) {
-  return (
-    <div className="glass rounded-lg p-3 text-center">
-      <div className="font-ui text-xl font-bold text-parchment tabular-nums">{value}</div>
-      <div className="font-ui text-[0.65rem] text-parchment-dim uppercase tracking-widest mt-0.5">{label}</div>
-    </div>
-  )
-}
-
 export function BattlesTab() {
   const [filter, setFilter] = useState<FilterType>('all')
   const [page, setPage]     = useState(1)
@@ -53,34 +43,8 @@ export function BattlesTab() {
     refetchInterval: 30_000,
   })
 
-  const m = data?.metrics
-
   return (
     <div className="space-y-5">
-      {/* Metrics — last 24h */}
-      {m && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
-          <MetricCard label="Total 24h" value={m.total24h} />
-          <MetricCard label="NPC vs NPC" value={m.npcVsNpc24h} />
-          <MetricCard label="NPC → Jugador" value={m.npcVsPlayer24h} />
-          <MetricCard label="Jugador → NPC" value={m.playerVsNpc24h} />
-          <MetricCard label="JvJ" value={m.playerVsPlayer24h} />
-          <div className="glass rounded-lg p-3 text-center col-span-2 sm:col-span-1 lg:col-span-1">
-            <div className="font-ui text-xs font-bold text-parchment leading-tight">
-              <span className="flex items-center justify-center gap-1">
-                <TreePine size={10} className="text-forest-light" /> {formatResource(m.totalLoot24h.wood)}
-              </span>
-              <span className="flex items-center justify-center gap-1">
-                <Mountain size={10} className="text-parchment-dim" /> {formatResource(m.totalLoot24h.stone)}
-              </span>
-              <span className="flex items-center justify-center gap-1">
-                <Wheat size={10} className="text-gold" /> {formatResource(m.totalLoot24h.grain)}
-              </span>
-            </div>
-            <div className="font-ui text-[0.65rem] text-parchment-dim uppercase tracking-widest mt-0.5">Botín 24h</div>
-          </div>
-        </div>
-      )}
 
       {/* Filter tabs */}
       <div className="flex gap-1 flex-wrap">

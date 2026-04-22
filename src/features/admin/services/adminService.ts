@@ -1,5 +1,5 @@
 import { http } from '@/shared/services/http'
-import type { AdminSettings, AdminUser, AdminMission, AdminBattlesResponse } from '../types'
+import type { AdminSettings, AdminUser, AdminMission, AdminBattlesResponse, AdminExpeditionsResponse } from '../types'
 
 export const adminService = {
   getSettings: () => http.get<AdminSettings>('/admin/settings'),
@@ -25,4 +25,5 @@ export const adminService = {
     if (params?.page)  qs.set('page', String(params.page))
     return http.get<AdminBattlesResponse>(`/admin/battles?${qs}`)
   },
+  getExpeditions: () => http.get<AdminExpeditionsResponse>('/admin/expeditions'),
 }

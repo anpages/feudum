@@ -65,3 +65,38 @@ export interface AdminMission {
   targetRegion: number
   targetSlot: number
 }
+
+export interface AdminExpedition {
+  id: string
+  userId: string
+  state: string
+  startRealm: number
+  startRegion: number
+  startSlot: number
+  targetRealm: number
+  targetRegion: number
+  targetSlot: number
+  departureTime: number
+  arrivalTime: number
+  holdingTime: number | null
+  returnTime: number | null
+  woodLoad: number | null
+  stoneLoad: number | null
+  grainLoad: number | null
+  result: Record<string, unknown> | null
+  kingdomName: string
+  isNpc: boolean
+}
+
+export interface AdminExpeditionsResponse {
+  active: AdminExpedition[]
+  recent: AdminExpedition[]
+  depletion: Record<string, { count: number; factor: number }>
+  stats: {
+    active24h: number
+    byRegion: Record<string, { count: number; factor: number }>
+    npcCount: number
+    playerCount: number
+  }
+  now: number
+}

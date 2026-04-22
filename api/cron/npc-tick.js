@@ -3,7 +3,7 @@
  * Called by Vercel Cron: schedule "0 * * * *"
  * Secured with CRON_SECRET header.
  */
-import { eq, and, lte, gte } from 'drizzle-orm'
+import { eq, and, lte, gte, or } from 'drizzle-orm'
 import { db, users, kingdoms, armyMissions, messages, debrisFields } from '../_db.js'
 import { applyResourceTick } from '../lib/tick.js'
 import { BUILDINGS, buildCost, buildTime, applyBuildingEffect } from '../lib/buildings.js'
@@ -16,6 +16,8 @@ import {
 } from '../lib/battle.js'
 import { insertBattleLog, sumLosses } from '../lib/battle_log.js'
 import { processScavenge } from '../lib/missions/scavenge.js'
+import { resolveExpedition } from '../lib/expedition.js'
+import { calcPoints } from '../lib/points.js'
 import { getSettings, setSetting } from '../lib/settings.js'
 import { startNewSeason, repairSeasonNpcsIfMissing } from '../lib/season.js'
 
@@ -465,6 +467,218 @@ async function scavengeAI(npcKingdom, allDebris, now, cfg) {
   return true
 }
 
+// ── Expedition depletion helpers ─────────────────────────────────────────────
+
+function depletionFactor(count) {
+  return Math.max(0.3, 1 - Math.max(0, count - 3) * 0.10)
+}
+
+async function getExpeditionDepletion(now) {
+  const since = now - 86400
+  const rows = await db.select({
+    targetRealm:  armyMissions.targetRealm,
+    targetRegion: armyMissions.targetRegion,
+  }).from(armyMissions)
+    .where(and(
+      eq(armyMissions.missionType, 'expedition'),
+      gte(armyMissions.departureTime, since),
+    ))
+  const map = {}
+  for (const r of rows) {
+    const key = `${r.targetRealm}:${r.targetRegion}`
+    map[key] = (map[key] ?? 0) + 1
+  }
+  return map
+}
+
+// ── Expedition AI ─────────────────────────────────────────────────────────────
+
+async function expeditionAI(npcKingdom, depletionMap, now, cfg) {
+  const cls = npcClass(npcKingdom)
+  const probability = cls === 'discoverer' ? 0.35 : cls === 'balanced' ? 0.12 : 0
+  if (probability === 0 || Math.random() > probability) return false
+
+  // Need enough units — keep at least half the army home
+  const total = totalArmy(npcKingdom)
+  if (total < 20) return false
+
+  // No active expedition already from this position
+  const existing = await db.select({ id: armyMissions.id }).from(armyMissions).where(and(
+    eq(armyMissions.missionType, 'expedition'),
+    eq(armyMissions.startRealm,  npcKingdom.realm),
+    eq(armyMissions.startRegion, npcKingdom.region),
+    eq(armyMissions.startSlot,   npcKingdom.slot),
+    or(eq(armyMissions.state, 'active'), eq(armyMissions.state, 'exploring')),
+  )).limit(1)
+  if (existing.length > 0) return false
+
+  // Pick least-depleted region in same realm
+  const REALM = npcKingdom.realm
+  let bestRegion = npcKingdom.region
+  let bestFactor = -1
+  for (let r = 1; r <= 10; r++) {
+    const count  = depletionMap[`${REALM}:${r}`] ?? 0
+    const factor = depletionFactor(count)
+    // Prefer higher factor; tiebreak: closer to home
+    if (
+      factor > bestFactor ||
+      (factor === bestFactor && Math.abs(r - npcKingdom.region) < Math.abs(bestRegion - npcKingdom.region))
+    ) {
+      bestFactor = factor
+      bestRegion = r
+    }
+  }
+
+  // Send 15–25% of available units (at least 2)
+  const sendRatio = 0.15 + Math.random() * 0.10
+  const force = {}
+  let totalSent = 0
+  for (const u of UNIT_KEYS) {
+    const n = npcKingdom[u] ?? 0
+    if (n === 0) continue
+    const send = Math.floor(n * sendRatio)
+    if (send > 0) { force[u] = send; totalSent += send }
+  }
+  if (totalSent < 2) return false
+
+  const holdingTime  = 1800 + Math.floor(Math.random() * 1800) // 30–60 min
+  const universeSpeed = parseFloat(cfg.fleet_speed_peaceful ?? cfg.fleet_speed_war ?? 1)
+  const origin = { realm: npcKingdom.realm, region: npcKingdom.region, slot: npcKingdom.slot }
+  const target = { realm: REALM, region: bestRegion, slot: 16 }
+  const dist        = calcDistance(origin, target)
+  const research    = npcResearch(npcKingdom)
+  const travelSecs  = calcDuration(dist, force, 100, universeSpeed, research, null)
+  const arrivalTime = now + travelSecs
+
+  await db.insert(armyMissions).values({
+    userId:       npcKingdom.userId,
+    missionType:  'expedition',
+    state:        'active',
+    startRealm:   npcKingdom.realm,
+    startRegion:  npcKingdom.region,
+    startSlot:    npcKingdom.slot,
+    targetRealm:  REALM,
+    targetRegion: bestRegion,
+    targetSlot:   16,
+    departureTime: now,
+    arrivalTime,
+    holdingTime,
+    ...force,
+  })
+
+  const deduct = { updatedAt: new Date() }
+  for (const [u, n] of Object.entries(force)) deduct[u] = (npcKingdom[u] ?? 0) - n
+  await db.update(kingdoms).set(deduct).where(eq(kingdoms.id, npcKingdom.id))
+  Object.assign(npcKingdom, deduct)
+
+  // Update local depletion map so other NPCs see it this tick
+  const key = `${REALM}:${bestRegion}`
+  depletionMap[key] = (depletionMap[key] ?? 0) + 1
+
+  return true
+}
+
+// ── Resolve NPC expeditions ───────────────────────────────────────────────────
+
+async function resolveNpcExpeditions(npcUserId, npcKingdomsById, now) {
+  let resolved = 0
+
+  // 1. active → exploring (fleet arrived at slot 16)
+  const arrivedActive = await db.select({ id: armyMissions.id }).from(armyMissions).where(and(
+    eq(armyMissions.userId,      npcUserId),
+    eq(armyMissions.missionType, 'expedition'),
+    eq(armyMissions.state,       'active'),
+    lte(armyMissions.arrivalTime, now),
+  ))
+  if (arrivedActive.length > 0) {
+    await db.update(armyMissions)
+      .set({ state: 'exploring', updatedAt: new Date() })
+      .where(and(
+        eq(armyMissions.userId,      npcUserId),
+        eq(armyMissions.missionType, 'expedition'),
+        eq(armyMissions.state,       'active'),
+        lte(armyMissions.arrivalTime, now),
+      ))
+  }
+
+  // 2. exploring → resolve → returning
+  const exploring = await db.select().from(armyMissions).where(and(
+    eq(armyMissions.userId,      npcUserId),
+    eq(armyMissions.missionType, 'expedition'),
+    eq(armyMissions.state,       'exploring'),
+  ))
+
+  const allKingdoms = await db.select().from(kingdoms)
+  const top1Points = allKingdoms.reduce((max, k) => Math.max(max, calcPoints(k)), 0)
+
+  for (const m of exploring) {
+    if (m.arrivalTime + (m.holdingTime ?? 0) > now) continue
+
+    const npcKingdom = npcKingdomsById[`${m.startRealm}:${m.startRegion}:${m.startSlot}`]
+    if (!npcKingdom) {
+      await db.delete(armyMissions).where(eq(armyMissions.id, m.id))
+      continue
+    }
+
+    const missionUnits = {}
+    for (const k of UNIT_KEYS) missionUnits[k] = m[k] ?? 0
+
+    const travelSecs = m.arrivalTime - m.departureTime
+    const cls        = npcClass(npcKingdom)
+    const isDisc     = cls === 'discoverer'
+
+    const { outcome, result, unitPatch, returnTimeDelta, destroyed } =
+      resolveExpedition(missionUnits, {}, travelSecs, now, {
+        top1Points,
+        combatMultiplier: isDisc ? 0.5 : 1.0,
+        holdingTime: m.holdingTime ?? 0,
+        discoverer: isDisc,
+      })
+
+    // NPCs skip merchant interaction (treat as resources) and ether (no wallet)
+    const effectiveOutcome = (outcome === 'merchant') ? 'resources' : outcome
+
+    const returnTime = Math.max(now + 1,
+      m.arrivalTime + (m.holdingTime ?? 0) + travelSecs + (returnTimeDelta ?? 0))
+
+    if (destroyed) {
+      await db.update(armyMissions).set({
+        state:  'completed',
+        result: JSON.stringify({ type: 'expedition', outcome: effectiveOutcome }),
+        updatedAt: new Date(),
+      }).where(eq(armyMissions.id, m.id))
+      resolved++
+      continue
+    }
+
+    const finalUnits = { ...missionUnits }
+    if (unitPatch) Object.assign(finalUnits, unitPatch)
+
+    // Resources found (from resources/bandits/demons victory)
+    let woodLoad = 0, stoneLoad = 0, grainLoad = 0
+    if (effectiveOutcome === 'resources' && result.found) {
+      woodLoad  = result.found.wood  ?? 0
+      stoneLoad = result.found.stone ?? 0
+      grainLoad = result.found.grain ?? 0
+    }
+    // Ether → convert to grain equivalent for NPCs
+    if (outcome === 'ether' && result.amount) {
+      grainLoad = result.amount * 10
+    }
+
+    await db.update(armyMissions).set({
+      ...finalUnits, state: 'returning',
+      returnTime, woodLoad, stoneLoad, grainLoad,
+      result: JSON.stringify({ type: 'expedition', outcome: effectiveOutcome }),
+      updatedAt: new Date(),
+    }).where(eq(armyMissions.id, m.id))
+
+    resolved++
+  }
+
+  return resolved
+}
+
 // ── Resolve NPC-vs-NPC battles ────────────────────────────────────────────────
 
 const NPC_UNIT_KEYS = [
@@ -713,8 +927,14 @@ export default async function handler(req, res) {
   // ── Resolve arrived NPC-vs-NPC battles ────────────────────────────────────
   const npcVsNpcResolved = await resolveNpcVsNpcAttacks(npcKingdomsById, now)
 
-  // ── Per-NPC tick, growth, attack and scavenge ─────────────────────────────
-  let ticked = 0, grew = 0, attacked = 0, scavenged = 0
+  // ── Resolve NPC expeditions (active→exploring→returning) ─────────────────
+  const npcExpeditionsResolved = await resolveNpcExpeditions(npcUserId, npcKingdomsById, now)
+
+  // ── Load expedition depletion map for this tick ───────────────────────────
+  const depletionMap = await getExpeditionDepletion(now)
+
+  // ── Per-NPC tick, growth, attack, scavenge and expedition ─────────────────
+  let ticked = 0, grew = 0, attacked = 0, scavenged = 0, expeditioned = 0
 
   for (const kingdom of npcKingdoms) {
     // Resource tick — pass npcClass so tick.js applies collector +25% via same path as players
@@ -763,6 +983,10 @@ export default async function handler(req, res) {
       )
       if (idx >= 0) allDebris.splice(idx, 1)
     }
+
+    // Expedition AI
+    const didExpedition = await expeditionAI(kingdom, depletionMap, now, cfg)
+    if (didExpedition) expeditioned++
   }
 
   // ── Debug breakdown ────────────────────────────────────────────────────────
@@ -773,5 +997,5 @@ export default async function handler(req, res) {
     byClass[npcClass(k)]++
   }
 
-  return res.json({ ok: true, npcCount: npcKingdoms.length, ticked, grew, attacked, scavenged, npcVsNpcResolved, byPersonality, byClass, seasonAction, repairAction })
+  return res.json({ ok: true, npcCount: npcKingdoms.length, ticked, grew, attacked, scavenged, expeditioned, npcExpeditionsResolved, npcVsNpcResolved, byPersonality, byClass, seasonAction, repairAction })
 }
