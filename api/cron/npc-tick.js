@@ -169,24 +169,9 @@ async function growNpc(kingdom, cfg, now) {
   let { wood, stone, grain } = kingdom
   let patch = {}
 
-  // ── Equilibrio progresivo construcción / ejército ─────────────────────────
-  // armyTarget escala con barracks × npcLevel — sin techo, crece exponencialmente
-  // igual que lo haría un jugador: más cuartel → más tropas objetivo.
-  // militaryNeed ∈ [0,1]: 1 = sin ejército, 0 = ejército al objetivo o superior.
-  // woodFloor: madera que el NPC NO gastará en edificios mientras militaryNeed > 0,
-  //   forzando acumulación tick a tick hasta poder entrenar unidades.
-  // El boss ignora el floor — ya tiene ejército masivo.
-  const barracksLv  = kingdom.barracks ?? 0
-  const armyTarget  = barracksLv > 0 ? barracksLv * 10 * npcLv : 0
-  const militaryNeed = armyTarget > 0
-    ? Math.max(0, 1 - totalArmy(kingdom) / armyTarget)
-    : 0
-  const SQUIRE_WOOD = 3000
-  const woodFloor   = isBoss ? 0 : Math.round(SQUIRE_WOOD * militaryNeed)
-
   // ── Unit training — primer turno de recursos ──────────────────────────────
-  // Se ejecuta ANTES de los edificios para que las tropas tengan acceso a la
-  // madera acumulada. El woodFloor frena el gasto en edificios, no el de tropas.
+  // Corre antes que los edificios: si el NPC puede permitirse tropas, las entrena
+  // primero de forma natural sin necesidad de bloquear el gasto en construcción.
   const maxUnitTypes = isBoss ? 3 : (cls === 'general' ? 2 : 1)
   const batchCap     = isBoss ? 200 : 50
   const costMult     = (isBoss || cls === 'general') ? 0.9 : 1.0
@@ -233,9 +218,7 @@ async function growNpc(kingdom, cfg, now) {
     unitTypesTrained++
   }
 
-  // ── Building upgrade — respeta el woodFloor ────────────────────────────────
-  // Un edificio solo se construye si, tras pagarlo, queda >= woodFloor de madera.
-  // Cuando militaryNeed es alto el NPC no construirá hasta acumular suficiente.
+  // ── Building upgrade ──────────────────────────────────────────────────────
   if (canBuild) {
     const candidates = Object.entries(weights)
       .map(([id, weight]) => {
@@ -261,7 +244,6 @@ async function growNpc(kingdom, cfg, now) {
 
       if (
         wood >= cost.wood &&
-        wood - cost.wood >= woodFloor &&
         stone >= cost.stone &&
         grain >= (cost.grain ?? 0)
       ) {
