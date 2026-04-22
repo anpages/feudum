@@ -44,10 +44,15 @@ function expeditionUnitTier(units: Record<string, number>): number {
 }
 
 // Units visible per mission type (undefined = all units)
+const ALL_COMBAT_UNITS = ['squire','knight','paladin','warlord','grandKnight','siegeMaster','warMachine','dragonKnight','merchant','caravan','colonist','scavenger']
+
 const MISSION_UNITS: Partial<Record<MissionType, string[]>> = {
   spy:      ['scout'],
   scavenge: ['scavenger'],
   colonize: ['colonist'],
+  attack:    ALL_COMBAT_UNITS,
+  transport: ALL_COMBAT_UNITS,
+  deploy:    ALL_COMBAT_UNITS,
 }
 
 function parseError(err: unknown): string {
