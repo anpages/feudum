@@ -207,7 +207,7 @@ async function growNpc(kingdom, cfg, now) {
     const effWood  = Math.ceil(cost.wood  * costMult)
     const effStone = Math.ceil(cost.stone * costMult)
     const effGrain = Math.ceil((cost.grain ?? 0) * costMult)
-    if (effWood > wood || effStone > stone || effGrain > grain) break
+    if (effWood > wood || effStone > stone || effGrain > grain) continue
 
     const canAfford = Math.min(
       effWood  > 0 ? Math.floor(wood  / effWood)  : Infinity,

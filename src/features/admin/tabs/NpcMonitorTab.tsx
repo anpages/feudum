@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { adminService } from '../services/adminService'
 import { formatResource } from '@/lib/format'
@@ -182,58 +183,78 @@ function MissionBadge({ label, count, color }: { label: string; count: number; c
   )
 }
 
+const PAGE_SIZE = 10
+
 function TickHistoryTable({ history }: { history: NpcTickResult[] }) {
-  const rows = [...history].reverse().slice(0, 24)
-  const maxBuilt = Math.max(...rows.map(r => r.builtBuilding ?? 0), 1)
+  const [visible, setVisible] = useState(PAGE_SIZE)
+  const sorted    = [...history].reverse()
+  const rows      = sorted.slice(0, visible)
+  const hasMore   = visible < sorted.length
+  const maxBuilt  = Math.max(...sorted.map(r => r.builtBuilding ?? 0), 1)
 
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-xs">
-        <thead>
-          <tr className="border-b border-gold/10 font-ui text-ink-muted uppercase tracking-wider text-[0.6rem]">
-            <th className="text-left py-2 px-3 whitespace-nowrap">Hora</th>
-            <th className="text-right py-2 px-3">Edif.</th>
-            <th className="text-right py-2 px-3">Combate</th>
-            <th className="text-right py-2 px-3">Defensa</th>
-            <th className="text-right py-2 px-3">Apoyo</th>
-            <th className="text-right py-2 px-3">Atacaron</th>
-            <th className="text-right py-2 px-3">Exped.</th>
-            <th className="text-right py-2 px-3 hidden sm:table-cell">Carroñ.</th>
-            <th className="text-right py-2 px-3 hidden sm:table-cell">C.NPC</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((t, i) => {
-            const built   = t.builtBuilding   ?? 0
-            const combat  = t.trainedCombat   ?? 0
-            const defense = t.trainedDefense  ?? 0
-            const support = t.trainedSupport  ?? 0
-            return (
-              <tr key={t.at}
-                className={`border-b border-gold/5 transition-colors ${i === 0 ? 'bg-gold/5' : 'hover:bg-parchment-warm/5'}`}>
-                <td className="py-2 px-3 text-ink-muted tabular-nums whitespace-nowrap">
-                  {formatTs(t.at)}
-                  {i === 0 && <span className="ml-2 font-ui text-[0.55rem] text-gold font-semibold uppercase">último</span>}
-                </td>
-                <td className="py-2 px-3 text-right tabular-nums">
-                  <div className="flex items-center justify-end gap-1">
-                    <div className="h-2 rounded-sm bg-forest-light/60 hidden sm:block"
-                      style={{ width: `${Math.round(built / maxBuilt * 24)}px`, minWidth: built > 0 ? '2px' : '0' }} />
-                    <span className={built > 0 ? 'text-forest-light font-semibold' : 'text-ink-muted'}>{built}</span>
-                  </div>
-                </td>
-                <td className={`py-2 px-3 text-right tabular-nums ${combat > 0 ? 'text-crimson-light font-semibold' : 'text-ink-muted'}`}>{combat}</td>
-                <td className={`py-2 px-3 text-right tabular-nums ${defense > 0 ? 'text-gold font-semibold' : 'text-ink-muted'}`}>{defense}</td>
-                <td className={`py-2 px-3 text-right tabular-nums ${support > 0 ? 'text-gold-light font-semibold' : 'text-ink-muted'}`}>{support}</td>
-                <td className={`py-2 px-3 text-right tabular-nums ${t.attacked > 0 ? 'text-crimson-light font-semibold' : 'text-ink-muted'}`}>{t.attacked}</td>
-                <td className={`py-2 px-3 text-right tabular-nums ${t.expeditioned > 0 ? 'text-gold font-semibold' : 'text-ink-muted'}`}>{t.expeditioned}</td>
-                <td className={`py-2 px-3 text-right tabular-nums hidden sm:table-cell ${t.scavenged > 0 ? 'text-forest-light font-semibold' : 'text-ink-muted'}`}>{t.scavenged}</td>
-                <td className={`py-2 px-3 text-right tabular-nums hidden sm:table-cell ${t.npcVsNpcResolved > 0 ? 'text-crimson-light' : 'text-ink-muted'}`}>{t.npcVsNpcResolved}</td>
-              </tr>
-            )
-          })}
-        </tbody>
-      </table>
+    <div className="space-y-3">
+      <div className="overflow-x-auto">
+        <table className="w-full text-xs">
+          <thead>
+            <tr className="border-b border-gold/10 font-ui text-ink-muted uppercase tracking-wider text-[0.6rem]">
+              <th className="text-left py-2 px-3 whitespace-nowrap">Hora</th>
+              <th className="text-right py-2 px-3">Edif.</th>
+              <th className="text-right py-2 px-3">Combate</th>
+              <th className="text-right py-2 px-3">Defensa</th>
+              <th className="text-right py-2 px-3">Apoyo</th>
+              <th className="text-right py-2 px-3">Atacaron</th>
+              <th className="text-right py-2 px-3">Exped.</th>
+              <th className="text-right py-2 px-3 hidden sm:table-cell">Carroñ.</th>
+              <th className="text-right py-2 px-3 hidden sm:table-cell">C.NPC</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((t, i) => {
+              const built   = t.builtBuilding   ?? 0
+              const combat  = t.trainedCombat   ?? 0
+              const defense = t.trainedDefense  ?? 0
+              const support = t.trainedSupport  ?? 0
+              return (
+                <tr key={t.at}
+                  className={`border-b border-gold/5 transition-colors ${i === 0 ? 'bg-gold/5' : 'hover:bg-parchment-warm/5'}`}>
+                  <td className="py-2 px-3 text-ink-muted tabular-nums whitespace-nowrap">
+                    {formatTs(t.at)}
+                    {i === 0 && <span className="ml-2 font-ui text-[0.55rem] text-gold font-semibold uppercase">último</span>}
+                  </td>
+                  <td className="py-2 px-3 text-right tabular-nums">
+                    <div className="flex items-center justify-end gap-1">
+                      <div className="h-2 rounded-sm bg-forest-light/60 hidden sm:block"
+                        style={{ width: `${Math.round(built / maxBuilt * 24)}px`, minWidth: built > 0 ? '2px' : '0' }} />
+                      <span className={built > 0 ? 'text-forest-light font-semibold' : 'text-ink-muted'}>{built}</span>
+                    </div>
+                  </td>
+                  <td className={`py-2 px-3 text-right tabular-nums ${combat > 0 ? 'text-crimson-light font-semibold' : 'text-ink-muted'}`}>{combat}</td>
+                  <td className={`py-2 px-3 text-right tabular-nums ${defense > 0 ? 'text-gold font-semibold' : 'text-ink-muted'}`}>{defense}</td>
+                  <td className={`py-2 px-3 text-right tabular-nums ${support > 0 ? 'text-gold-light font-semibold' : 'text-ink-muted'}`}>{support}</td>
+                  <td className={`py-2 px-3 text-right tabular-nums ${t.attacked > 0 ? 'text-crimson-light font-semibold' : 'text-ink-muted'}`}>{t.attacked}</td>
+                  <td className={`py-2 px-3 text-right tabular-nums ${t.expeditioned > 0 ? 'text-gold font-semibold' : 'text-ink-muted'}`}>{t.expeditioned}</td>
+                  <td className={`py-2 px-3 text-right tabular-nums hidden sm:table-cell ${t.scavenged > 0 ? 'text-forest-light font-semibold' : 'text-ink-muted'}`}>{t.scavenged}</td>
+                  <td className={`py-2 px-3 text-right tabular-nums hidden sm:table-cell ${t.npcVsNpcResolved > 0 ? 'text-crimson-light' : 'text-ink-muted'}`}>{t.npcVsNpcResolved}</td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
+      {hasMore && (
+        <div className="text-center pt-1">
+          <button
+            onClick={() => setVisible(v => v + PAGE_SIZE)}
+            className="btn btn-ghost text-xs px-4 py-1.5"
+          >
+            Cargar {Math.min(PAGE_SIZE, sorted.length - visible)} más
+            <span className="ml-1.5 font-ui text-[0.6rem] text-ink-muted">
+              ({visible}/{sorted.length})
+            </span>
+          </button>
+        </div>
+      )}
     </div>
   )
 }
