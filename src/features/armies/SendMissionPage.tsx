@@ -267,9 +267,8 @@ export function SendMissionPage() {
               <p className="font-ui text-sm font-semibold text-gold-dim">Tierras Ignotas</p>
               <p className="font-body text-xs text-ink-muted mt-1">Destino fijo · slot 16 del reino y región actuales</p>
             </div>
-            <p className={`font-ui text-xs ${expeditionSlotsFull ? 'text-crimson font-semibold' : 'text-ink-muted'}`}>
-              Expediciones activas: {activeExpeditions} / {maxExpeditions}
-              {cartographyLevel === 0 && ' · Mejora Cartografía para desbloquear más slots'}
+            <p className="font-ui text-xs text-ink-muted/60">
+              El slot se comparte con otras expediciones activas (no con el resto de misiones)
             </p>
           </div>
         ) : (
@@ -507,19 +506,48 @@ export function SendMissionPage() {
         </Card>
       )}
 
-      {/* Fleet slots indicator */}
+      {/* Slot indicators */}
       {armies?.fleetSlots && !isMissile && (
-        <div className={`anim-fade-up-3 flex items-center justify-between px-4 py-2.5 rounded-lg border ${
-          armies.fleetSlots.used >= armies.fleetSlots.max
-            ? 'border-crimson/25 bg-crimson/5'
-            : 'border-gold/20 bg-gold-soft'
-        }`}>
-          <span className="font-ui text-xs text-ink-muted">Slots de flota</span>
-          <span className={`font-ui text-sm font-bold tabular-nums ${
-            armies.fleetSlots.used >= armies.fleetSlots.max ? 'text-crimson' : 'text-gold-dim'
+        <div className="anim-fade-up-3 space-y-2">
+          {/* Expedition slots — only when expedition is selected */}
+          {missionType === 'expedition' && (
+            <div className={`flex items-center justify-between px-4 py-2.5 rounded-lg border ${
+              expeditionSlotsFull ? 'border-crimson/25 bg-crimson/5' : 'border-gold/20 bg-gold-soft'
+            }`}>
+              <div>
+                <span className="font-ui text-xs text-ink-muted">Slots de expedición</span>
+                <p className="font-body text-[0.6rem] text-ink-muted/50 mt-0.5">
+                  Independiente de los slots de flota · mejora Cartografía para más
+                </p>
+              </div>
+              <span className={`font-ui text-sm font-bold tabular-nums shrink-0 ${
+                expeditionSlotsFull ? 'text-crimson' : 'text-gold-dim'
+              }`}>
+                {activeExpeditions} / {maxExpeditions}
+              </span>
+            </div>
+          )}
+
+          {/* Fleet slots — always visible */}
+          <div className={`flex items-center justify-between px-4 py-2.5 rounded-lg border ${
+            armies.fleetSlots.used >= armies.fleetSlots.max
+              ? 'border-crimson/25 bg-crimson/5'
+              : 'border-gold/20 bg-gold-soft'
           }`}>
-            {armies.fleetSlots.used} / {armies.fleetSlots.max}
-          </span>
+            <div>
+              <span className="font-ui text-xs text-ink-muted">Slots de flota</span>
+              {missionType === 'expedition' && (
+                <p className="font-body text-[0.6rem] text-ink-muted/50 mt-0.5">
+                  Para todas las misiones · mejora Logística para más
+                </p>
+              )}
+            </div>
+            <span className={`font-ui text-sm font-bold tabular-nums shrink-0 ${
+              armies.fleetSlots.used >= armies.fleetSlots.max ? 'text-crimson' : 'text-gold-dim'
+            }`}>
+              {armies.fleetSlots.used} / {armies.fleetSlots.max}
+            </span>
+          </div>
         </div>
       )}
 
