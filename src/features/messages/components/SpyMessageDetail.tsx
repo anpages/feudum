@@ -25,7 +25,7 @@ export function SpyMessageDetail({ data }: { data: Record<string, unknown> }) {
   const detected = data.detected as boolean | undefined
   const resources = data.resources as { wood: number; stone: number; grain: number } | undefined
   const units = data.units as Record<string, number> | undefined
-  const defenses = data.defenses as Record<string, number> | undefined
+  const defenses = (data.defense ?? data.defenses) as Record<string, number> | undefined
   const buildings = data.buildings as Record<string, number> | undefined
   const researchData = data.researchData as Record<string, number> | undefined
 

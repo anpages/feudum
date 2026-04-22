@@ -55,6 +55,9 @@ export async function processSpy(mission, myKingdom, now) {
       return Object.keys(obj).length ? obj : null
     }
 
+    const [tgtRes] = await db.select().from(research)
+      .where(eq(research.userId, target.userId)).limit(1)
+
     report = {
       type: 'spy', isNpc: false, targetName: target.name,
       resources: { wood: target.wood, stone: target.stone, grain: target.grain },
@@ -65,7 +68,14 @@ export async function processSpy(mission, myKingdom, now) {
         windmill: target.windmill, workshop: target.workshop, barracks: target.barracks,
         academy: target.academy,
       } : null,
-      researchData: null,
+      researchData: canSee(7, 4) && tgtRes ? {
+        alchemy: tgtRes.alchemy, pyromancy: tgtRes.pyromancy, runemastery: tgtRes.runemastery,
+        mysticism: tgtRes.mysticism, dragonlore: tgtRes.dragonlore,
+        swordsmanship: tgtRes.swordsmanship, armoury: tgtRes.armoury,
+        fortification: tgtRes.fortification, horsemanship: tgtRes.horsemanship,
+        cartography: tgtRes.cartography, logistics: tgtRes.logistics,
+        spycraft: tgtRes.spycraft,
+      } : null,
       detected, detectionChance: Math.round(detectionChance),
     }
 
