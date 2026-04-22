@@ -10,7 +10,7 @@ export type MissionType =
   | 'expedition'
   | 'missile'
 
-export type MissionState = 'active' | 'returning' | 'completed' | 'merchant'
+export type MissionState = 'active' | 'exploring' | 'returning' | 'completed' | 'merchant'
 
 export interface MissionResult {
   type: string
@@ -56,6 +56,7 @@ export interface ArmyMission {
   origin: { realm: number; region: number; slot: number }
   target: { realm: number; region: number; slot: number }
   arrivalTime: number
+  holdingTime: number
   returnTime: number | null
   eta: number
   units: Partial<Record<string, number>>

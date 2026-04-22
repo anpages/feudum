@@ -18,10 +18,11 @@ export function ArmiesPage() {
     qc.invalidateQueries({ queryKey: ['barracks'] })
   }, [qc])
 
-  const activeMissions    = armies?.missions.filter(m => m.state === 'active')    ?? []
-  const returningMissions = armies?.missions.filter(m => m.state === 'returning') ?? []
-  const merchantMissions  = armies?.missions.filter(m => m.state === 'merchant')  ?? []
-  const totalMissions     = activeMissions.length + returningMissions.length + merchantMissions.length
+  const activeMissions     = armies?.missions.filter(m => m.state === 'active')     ?? []
+  const exploringMissions  = armies?.missions.filter(m => m.state === 'exploring')  ?? []
+  const returningMissions  = armies?.missions.filter(m => m.state === 'returning')  ?? []
+  const merchantMissions   = armies?.missions.filter(m => m.state === 'merchant')   ?? []
+  const totalMissions      = activeMissions.length + exploringMissions.length + returningMissions.length + merchantMissions.length
 
   return (
     <div className="space-y-6">
@@ -61,6 +62,12 @@ export function ArmiesPage() {
               <div className="space-y-3">
                 <p className="section-heading">En curso ({activeMissions.length})</p>
                 {activeMissions.map(m => <MissionRow key={m.id} mission={m} onEnd={handleEnd} />)}
+              </div>
+            )}
+            {exploringMissions.length > 0 && (
+              <div className="space-y-3">
+                <p className="section-heading">Explorando ({exploringMissions.length})</p>
+                {exploringMissions.map(m => <MissionRow key={m.id} mission={m} onEnd={handleEnd} />)}
               </div>
             )}
             {returningMissions.length > 0 && (

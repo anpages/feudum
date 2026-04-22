@@ -39,7 +39,10 @@ async function processArrival(mission, myKingdom, now) {
     case 'scavenge':   return processScavenge(mission,   myKingdom, now, targetKingdom)
     case 'deploy':     return processDeploy(mission,     myKingdom, now, targetKingdom)
 
-    case 'expedition': return processExpedition(mission, myKingdom, now)
+    case 'expedition':
+      await db.update(armyMissions).set({ state: 'exploring', updatedAt: new Date() })
+        .where(eq(armyMissions.id, mission.id))
+      return
     case 'missile':    return processMissile(mission,    myKingdom, now, targetKingdom)
     default:
       await db.update(armyMissions).set({
@@ -86,6 +89,9 @@ async function processMissions(userId, kingdom) {
   for (const m of missions) {
     if (m.state === 'active' && m.arrivalTime <= now) {
       await processArrival(m, kingdom, now)
+      resolved++
+    } else if (m.state === 'exploring' && m.arrivalTime + (m.holdingTime ?? 0) <= now) {
+      await processExpedition(m, kingdom, now)
       resolved++
     } else if (m.state === 'returning' && m.returnTime && m.returnTime <= now) {
       await processReturn(m, kingdom, now)
@@ -157,7 +163,7 @@ export default async function handler(req, res) {
   await expireMerchantOffers(userId, active, now)
 
   const missions = active
-    .filter(m => m.state === 'active' || m.state === 'returning' || m.state === 'merchant')
+    .filter(m => m.state === 'active' || m.state === 'exploring' || m.state === 'returning' || m.state === 'merchant')
     .filter(m => {
       if (m.state !== 'merchant') return true
       const p = m.result ? JSON.parse(m.result) : null
@@ -172,7 +178,9 @@ export default async function handler(req, res) {
         ? Math.max(0, (m.returnTime ?? 0) - now)
         : m.state === 'merchant'
           ? 0
-          : Math.max(0, m.arrivalTime - now)
+          : m.state === 'exploring'
+            ? Math.max(0, m.arrivalTime + (m.holdingTime ?? 0) - now)
+            : Math.max(0, m.arrivalTime - now)
 
       return {
         id: m.id,
@@ -181,6 +189,7 @@ export default async function handler(req, res) {
         target: { realm: m.targetRealm, region: m.targetRegion, slot: m.targetSlot },
         origin: { realm: m.startRealm,  region: m.startRegion,  slot: m.startSlot },
         arrivalTime: m.arrivalTime,
+        holdingTime: m.holdingTime ?? 0,
         returnTime:  m.returnTime,
         eta,
         units: missionUnits,

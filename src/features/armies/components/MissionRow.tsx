@@ -20,8 +20,13 @@ function MissionRowImpl({ mission, onEnd }: Props) {
   const recall      = useRecallArmy()
   const isMerchant  = mission.state === 'merchant'
   const isReturning = mission.state === 'returning'
+  const isExploring = mission.state === 'exploring'
   const target      = isReturning ? mission.origin : mission.target
-  const targetTime  = isReturning ? (mission.returnTime ?? 0) : mission.arrivalTime
+  const targetTime  = isReturning
+    ? (mission.returnTime ?? 0)
+    : isExploring
+      ? mission.arrivalTime + (mission.holdingTime ?? 0)
+      : mission.arrivalTime
   const secs        = useCountdown(isMerchant ? 0 : targetTime, onEnd)
 
   if (isMerchant && mission.result?.merchantOffer) {
@@ -56,7 +61,7 @@ function MissionRowImpl({ mission, onEnd }: Props) {
           <div className="flex items-center gap-2 flex-wrap">
             <span className="font-ui text-sm font-semibold text-ink">{meta.label}</span>
             <Badge variant={isReturning ? 'forest' : 'gold'}>
-              {isReturning ? 'Regresando' : 'En camino'}
+              {isReturning ? 'Regresando' : isExploring ? 'Explorando' : 'En camino'}
             </Badge>
             {result?.outcome === 'victory' && <Badge variant="gold">Victoria</Badge>}
             {result?.outcome === 'defeat'  && <Badge variant="crimson">Derrota</Badge>}

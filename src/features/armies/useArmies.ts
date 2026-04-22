@@ -66,6 +66,7 @@ export function useSendArmy() {
           origin: { realm: k.realm, region: k.region, slot: k.slot },
           target: params.target,
           arrivalTime: now + 60,  // placeholder; server returns real ETA on settle
+          holdingTime: params.holdingHours ? params.holdingHours * 3600 : 0,
           returnTime:  null,
           eta: 60,
           units: params.units,
