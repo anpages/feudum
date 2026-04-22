@@ -284,7 +284,7 @@ function ProductionRow({
       {cap !== undefined && (
         <div className="mt-2 pt-2 border-t border-gold/10 space-y-1">
           <div className="flex items-center justify-between">
-            <span className="font-ui text-[0.6rem] text-ink-muted/50">Almacén</span>
+            <span className="hidden sm:inline font-ui text-[0.6rem] text-ink-muted/50">Almacén</span>
             <span className={`font-ui text-[0.6rem] tabular-nums ${full ? 'text-crimson' : 'text-ink-muted/50'}`}>
               {formatResource(current ?? 0)} / {formatResource(cap)}
             </span>
