@@ -1048,7 +1048,8 @@ export function applyPopulationTick(kingdom, lfLevels, elapsedSecs) {
     ? (housingDef.bonuses[1].base * Math.pow(housingDef.bonuses[1].factor ?? 1.20, housingLv)) / 3600
     : 0
 
-  let populationT1 = kingdom.populationT1
+  // Clamp to cap in case DB has stale data above the current housing limit
+  let populationT1 = Math.min(kingdom.populationT1, capT1)
   if (foodBalance >= 0 && populationT1 < capT1) {
     populationT1 = Math.min(capT1, populationT1 + growthRate * elapsedSecs)
   } else if (foodStored <= 0 && totalPop > 0) {
