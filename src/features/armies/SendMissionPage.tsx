@@ -263,12 +263,19 @@ export function SendMissionPage() {
         <p className="font-ui text-xs text-ink-muted uppercase tracking-wider">Destino</p>
         {missionType === 'expedition' ? (
           <div className="space-y-3">
-            <div className="py-3 px-4 rounded-lg bg-parchment-deep border border-gold/15">
-              <p className="font-ui text-sm font-semibold text-gold-dim">Tierras Ignotas</p>
-              <p className="font-body text-xs text-ink-muted mt-1">Destino fijo · slot 16 del reino y región actuales</p>
+            <div className="grid grid-cols-3 gap-4">
+              <CoordPicker label="Reino"   value={tRealm}  min={1} max={3}  onChange={setTRealm} />
+              <CoordPicker label="Región"  value={tRegion} min={1} max={10} onChange={setTRegion} />
+              <div className="flex flex-col gap-1">
+                <p className="font-ui text-xs text-ink-muted/60 uppercase tracking-wider">Slot</p>
+                <div className="h-9 flex items-center px-3 rounded-lg bg-parchment-deep border border-gold/15">
+                  <span className="font-ui text-sm font-bold text-gold-dim">16</span>
+                  <span className="font-ui text-[0.6rem] text-ink-muted/50 ml-1.5">fijo</span>
+                </div>
+              </div>
             </div>
             <p className="font-ui text-xs text-ink-muted/60">
-              El slot se comparte con otras expediciones activas (no con el resto de misiones)
+              Puedes explorar el slot 16 de cualquier región · el slot es siempre fijo en 16
             </p>
           </div>
         ) : (
