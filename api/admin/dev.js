@@ -1,4 +1,4 @@
-import { eq, and } from 'drizzle-orm'
+import { eq } from 'drizzle-orm'
 import { db, users, kingdoms, research, buildingQueue, researchQueue, unitQueue } from '../_db.js'
 import { getAdminUserId } from '../lib/admin.js'
 import { applyBuildingEffect } from '../lib/buildings.js'
@@ -64,6 +64,22 @@ export default async function handler(req, res) {
       await db.update(researchQueue).set({ finishesAt: past }).where(eq(researchQueue.userId, userId))
     }
     return res.json({ ok: true })
+  }
+
+  // ── Reset a unit to 0 for all NPC kingdoms ───────────────────────────────
+  if (action === 'reset_npc_unit') {
+    const { unit } = req.body
+    const UNIT_KEYS = [
+      'squire','knight','paladin','warlord','grandKnight','siegeMaster','warMachine','dragonKnight',
+      'merchant','caravan','colonist','scavenger','scout','beacon',
+      'archer','crossbowman','ballista','trebuchet','mageTower','dragonCannon',
+      'palisade','castleWall','moat','catapult','ballistic',
+    ]
+    if (!UNIT_KEYS.includes(unit)) return res.status(400).json({ error: 'invalid_unit' })
+    const result = await db.update(kingdoms)
+      .set({ [unit]: 0, updatedAt: new Date() })
+      .where(eq(kingdoms.isNpc, true))
+    return res.json({ ok: true, unit, affected: result.rowCount ?? '?' })
   }
 
   res.status(400).json({ error: 'unknown_action' })
