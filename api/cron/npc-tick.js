@@ -103,10 +103,14 @@ const BUILD_WEIGHTS = {
 // ── Unit training priority per personality (no cap, ordered by preference) ───
 // Mobile units (squire, knight, …) come first so totalArmy() reaches attack
 // threshold. Defenses (archer, crossbowman, …) are still trained but secondary.
+// Support units (merchant, caravan, scavenger) included per personality:
+//   economy  — prioritizes them early (expedition loot + scavenging are core strategy)
+//   balanced — merchant early, scavenger mid, caravan late
+//   military — combat focus; merchant/scavenger only as fallback after all combat units
 const UNIT_PRIORITY = {
-  economy:  ['squire', 'archer', 'crossbowman', 'knight', 'mageTower', 'ballista', 'paladin', 'warlord', 'grandKnight', 'siegeMaster', 'warMachine', 'dragonKnight'],
-  military: ['squire', 'knight', 'archer', 'crossbowman', 'paladin', 'warlord', 'ballista', 'mageTower', 'grandKnight', 'siegeMaster', 'warMachine', 'dragonKnight'],
-  balanced: ['squire', 'archer', 'knight', 'crossbowman', 'paladin', 'mageTower', 'ballista', 'warlord', 'grandKnight', 'siegeMaster', 'warMachine', 'dragonKnight'],
+  economy:  ['squire', 'merchant', 'archer', 'caravan', 'crossbowman', 'knight', 'scavenger', 'mageTower', 'ballista', 'paladin', 'warlord', 'grandKnight', 'siegeMaster', 'warMachine', 'dragonKnight'],
+  military: ['squire', 'knight', 'archer', 'crossbowman', 'paladin', 'warlord', 'ballista', 'mageTower', 'grandKnight', 'siegeMaster', 'warMachine', 'dragonKnight', 'merchant', 'scavenger'],
+  balanced: ['squire', 'merchant', 'archer', 'knight', 'crossbowman', 'scavenger', 'paladin', 'mageTower', 'ballista', 'caravan', 'warlord', 'grandKnight', 'siegeMaster', 'warMachine', 'dragonKnight'],
 }
 
 // ── Attack threshold per personality (min MOBILE army units before attacking) ─
@@ -116,20 +120,23 @@ const ATTACK_THRESHOLD = {
   balanced: 6,
 }
 
-// ── Unit costs (wood/stone to train one unit) ─────────────────────────────────
+// ── Unit costs (wood/stone/grain to train one unit) ───────────────────────────
 const UNIT_COSTS = {
-  squire:      { wood: 3000,    stone: 1000   },
-  archer:      { wood: 2000,    stone: 0      },
-  crossbowman: { wood: 1500,    stone: 500    },
-  knight:      { wood: 6000,    stone: 4000   },
-  ballista:    { wood: 6000,    stone: 2000   },
-  mageTower:   { wood: 2000,    stone: 6000   },
-  paladin:     { wood: 20000,   stone: 7000   },
-  warlord:     { wood: 45000,   stone: 15000  },
-  grandKnight: { wood: 30000,   stone: 40000  },
-  siegeMaster: { wood: 50000,   stone: 25000  },
-  warMachine:  { wood: 60000,   stone: 50000  },
-  dragonKnight:{ wood: 5000000, stone: 4000000},
+  squire:      { wood: 3000,    stone: 1000,   grain: 0    },
+  archer:      { wood: 2000,    stone: 0,      grain: 0    },
+  crossbowman: { wood: 1500,    stone: 500,    grain: 0    },
+  knight:      { wood: 6000,    stone: 4000,   grain: 0    },
+  ballista:    { wood: 6000,    stone: 2000,   grain: 0    },
+  mageTower:   { wood: 2000,    stone: 6000,   grain: 0    },
+  paladin:     { wood: 20000,   stone: 7000,   grain: 0    },
+  warlord:     { wood: 45000,   stone: 15000,  grain: 0    },
+  grandKnight: { wood: 30000,   stone: 40000,  grain: 0    },
+  siegeMaster: { wood: 50000,   stone: 25000,  grain: 0    },
+  warMachine:  { wood: 60000,   stone: 50000,  grain: 0    },
+  dragonKnight:{ wood: 5000000, stone: 4000000,grain: 0    },
+  merchant:    { wood: 2000,    stone: 2000,   grain: 0    },
+  caravan:     { wood: 6000,    stone: 6000,   grain: 0    },
+  scavenger:   { wood: 10000,   stone: 6000,   grain: 2000 },
 }
 
 const UNIT_KEYS = [
@@ -207,18 +214,21 @@ async function growNpc(kingdom, cfg, now) {
 
     const effWood  = Math.ceil(cost.wood  * costMult)
     const effStone = Math.ceil(cost.stone * costMult)
+    const effGrain = Math.ceil((cost.grain ?? 0) * costMult)
     // Requirements are met but can't afford — save up instead of buying cheaper fallback
-    if (effWood > wood || effStone > stone) break
+    if (effWood > wood || effStone > stone || effGrain > grain) break
 
     const canAfford = Math.min(
       effWood  > 0 ? Math.floor(wood  / effWood)  : Infinity,
       effStone > 0 ? Math.floor(stone / effStone) : Infinity,
+      effGrain > 0 ? Math.floor(grain / effGrain) : Infinity,
     )
     if (canAfford <= 0) continue
 
     const batch = Math.min(canAfford, batchCap)
     wood  -= effWood  * batch
     stone -= effStone * batch
+    grain -= effGrain * batch
     patch[unitId] = (kingdom[unitId] ?? 0) + batch
     unitTypesTrained++
   }
