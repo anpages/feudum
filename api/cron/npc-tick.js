@@ -285,6 +285,7 @@ async function growNpc(kingdom, cfg, now) {
 // ── Attack AI ─────────────────────────────────────────────────────────────────
 
 async function attackAI(npcKingdom, allKingdoms, bashMap, now, cfg) {
+  if (npcKingdom.isBoss) return false
   if (NPC_AGGRESSION === 0) return false
 
   const personality = npcPersonality(npcKingdom)
@@ -495,6 +496,7 @@ async function getExpeditionDepletion(now) {
 // ── Expedition AI ─────────────────────────────────────────────────────────────
 
 async function expeditionAI(npcKingdom, depletionMap, now, cfg) {
+  if (npcKingdom.isBoss) return false
   const cls         = npcClass(npcKingdom)
   const personality = npcPersonality(npcKingdom)
   // discoverer class → strong explorer; balanced personality → moderate; rest → skip

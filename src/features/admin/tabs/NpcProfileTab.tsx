@@ -360,9 +360,9 @@ function KingdomProfile({
 // ── Tab root ──────────────────────────────────────────────────────────────────
 
 export function NpcProfileTab() {
-  const [realm,  setRealm]  = useState(1)
-  const [region, setRegion] = useState(1)
-  const [slot,   setSlot]   = useState(1)
+  const [realm,  setRealm]  = useState('1')
+  const [region, setRegion] = useState('1')
+  const [slot,   setSlot]   = useState('1')
   const [query,  setQuery]  = useState<{ realm: number; region: number; slot: number } | null>(null)
 
   const [now, setNow] = useState(() => Math.floor(Date.now() / 1000))
@@ -380,7 +380,10 @@ export function NpcProfileTab() {
 
   function handleSearch(e: React.FormEvent) {
     e.preventDefault()
-    setQuery({ realm, region, slot })
+    const r  = Math.max(1, Math.min(3,  parseInt(realm)  || 1))
+    const rg = Math.max(1, Math.min(10, parseInt(region) || 1))
+    const sl = Math.max(1, Math.min(15, parseInt(slot)   || 1))
+    setQuery({ realm: r, region: rg, slot: sl })
   }
 
   return (
@@ -388,16 +391,16 @@ export function NpcProfileTab() {
 
       {/* Coordinate form */}
       <form onSubmit={handleSearch} className="flex flex-wrap items-end gap-3">
-        {[
-          { label: 'Reino (1-3)',    val: realm,  set: setRealm,  min: 1, max: 3  },
-          { label: 'Región (1-10)', val: region, set: setRegion, min: 1, max: 10 },
-          { label: 'Slot (1-15)',   val: slot,   set: setSlot,   min: 1, max: 15 },
-        ].map(({ label, val, set, min, max }) => (
+        {([
+          { label: 'Reino',   val: realm,  set: setRealm,  placeholder: '1–3'  },
+          { label: 'Región',  val: region, set: setRegion, placeholder: '1–10' },
+          { label: 'Slot',    val: slot,   set: setSlot,   placeholder: '1–15' },
+        ] as const).map(({ label, val, set, placeholder }) => (
           <div key={label} className="flex flex-col gap-1">
             <label className="font-ui text-[0.6rem] uppercase tracking-widest text-ink-muted">{label}</label>
             <input
-              type="number" min={min} max={max} value={val}
-              onChange={e => set(Math.max(min, Math.min(max, parseInt(e.target.value) || min)))}
+              type="text" inputMode="numeric" value={val} placeholder={placeholder}
+              onChange={e => set(e.target.value.replace(/[^0-9]/g, ''))}
               className="game-input w-20 text-center"
             />
           </div>
