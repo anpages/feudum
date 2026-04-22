@@ -38,7 +38,7 @@ export const MISSION_META: Record<MissionType, {
   attack:     {
     label: 'Ataque', Icon: Swords, color: 'text-crimson',
     desc: 'Atacar y saquear el reino objetivo.',
-    unitHint: 'Los Exploradores tienen 0 de ataque — no contribuyen al combate. Envía solo tropas de combate.',
+    unitHint: undefined,
   },
   transport:  {
     label: 'Transporte', Icon: Package, color: 'text-forest',
