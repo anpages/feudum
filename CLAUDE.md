@@ -167,7 +167,7 @@ src/
 | `messages` | `messagesService` | `useMessages`, `useMarkAllRead`, `useSendMessage`, `useUnreadCount` | — |
 | `rankings` | `rankingsService` | `useRankings` | — |
 | `profile` | `profileService` | `useProfile`, `useUpdateProfile` | — |
-| `admin` | `adminService` | `useAdminSettings`, `useAdminUsers`, `useAdminFleet`, `useUpdateSettings`, `useToggleAdmin`, `useDevAction`, `useFastForward` | — |
+| `admin` | `adminService` | `useAdminSettings`, `useAdminUsers`, `useAdminFleet`, `useUpdateSettings`, `useToggleAdmin`, `useDevAction`, `useFastForward` | `NpcMonitorTab`, `BattlesTab`, `ExpeditionsTab`, `ServerTab`, `PlayersTab`, `NpcProfileTab` |
 | `overview` | — | (usa `useKingdom` directamente) | — |
 
 #### Añadir una nueva feature — checklist
@@ -429,8 +429,11 @@ Import from `@/components/ui` (barrel export).
   - NPC resources tick identically to player kingdoms; loot deducted from real stored values
   - Spy returns real NPC resource + troop data (no special case needed)
   - `GET /api/cron/npc-tick` — Vercel Cron (hourly); secured with `CRON_SECRET`
-    - Growth AI: NPC spends resources to build next building (sawmill→quarry→grainFarm→windmill→barracks→workshop) and trains units toward target army size per `npcLevel`
+    - Growth AI: NPC spends resources to build next building (sawmill→quarry→grainFarm→windmill→barracks→workshop) and trains units toward target army size per `npcLevel`; no woodFloor lock (removed)
+    - Unit training: all unit types including merchant (barracks lv2), caravan (barracks lv6), scavenger (barracks lv6 + academy lv5); grain deducted per unit trained
+    - `UNIT_PRIORITY` per personality: `economy`, `military`, `balanced`
     - Attack AI: if army above threshold and cooldown elapsed, selects richest player kingdom within radius, deducts 60–80% troops, inserts `army_missions` with real `arrivalTime`
+    - Tick result persisted to settings: `npc_last_tick` (JSON) + `npc_tick_history` (last 48, JSON array)
   - Battle resolution lazy: `GET /api/armies` + `GET /api/messages` trigger `resolveIncomingNpcAttacks()`; player finds outcome when they log in
   - NPC return mission: winner NPC gets loot added on arrival; loser units gone permanently
   - Boss kingdom (`isBoss: true`) seeded at universe center with scaled buildings/units per difficulty
@@ -439,12 +442,15 @@ Import from `@/components/ui` (barrel export).
 
 ### Phase 13.5 — Season System, Achievements & Push ✅
 - [x] **Season card on Overview** — prominent `<SeasonCard>` on OverviewPage: boss name, lore, army size, difficulty stars, live countdown, "Atacar" CTA linking to /armies with pre-filled coords
+- [x] **Military modal on Overview** — clicking "Fuerza militar" opens a `<Sheet>` with full army breakdown: combat / support / defenses, columns Total | Misión | Libre
 - [x] **Season fixes** — character class resets to null on `resetSeason()`; admin users included in player seeding; random slot placement (not sequential)
 - [x] **Rankings split** — `GET /api/rankings?type=players|npcs`; RankingsPage has Jugadores/NPCs tabs; boss kingdom shown with dragon icon + npcLevel
 - [x] **Achievement system** — `api/lib/achievements.js`: 23 achievements across 6 categories (buildings, research, military, combat, exploration, season); `checkAndUnlock(userId)` called after battles/spy/colonize; `GET /api/achievements`; `user_achievements` DB table (migration 0018)
 - [x] **PWA push notifications** — VAPID Web Push (`web-push` package); `push_subscriptions` DB table; `POST /api/push/subscribe` (subscribe + unsubscribe); `GET /api/push/vapid-public-key`; custom service worker `src/sw.ts` (Workbox precaching + push event handler); `usePushNotifications` hook; toggle card in ProfilePage; push sent to defender on attack and to winner on boss kill
 - [x] **Building prerequisites** — sawmill lv1 required before workshop/barracks/academy/granary; quarry lv1 for stonehouse; grainFarm lv1 for silo — prevents new players from wasting starting resources
 - [x] **Energy pill always visible** — EnergyPill shown even when both produced and consumed are 0 (was hidden at game start)
+- [x] **Admin panel redesign** — all tabs use `card-medieval` + CSS grid rows (no HTML tables); SeasonTab merged into ServerTab; default tab is NpcMonitorTab
+- [x] **NPC Monitor tab** — `GET /api/admin/npc-stats`: tick status bar, 4 metric cards, buildings avg/max, army distribution stacked bar, combat units per type, support unit adoption, defenses adoption, resources avg, active missions, tick history table (last 24 ticks)
 
 ### Phase 14 — Expeditions (pending)
 - [ ] **Expedition** (`ExpeditionMission` in OGame ref) — exploration with random encounters
