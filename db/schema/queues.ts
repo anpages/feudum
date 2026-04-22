@@ -23,25 +23,6 @@ export const researchQueue = pgTable('research_queue', {
   createdAt:  timestamp('created_at').defaultNow().notNull(),
 })
 
-export const lfBuildingQueue = pgTable('lf_building_queue', {
-  id:         uuid('id').primaryKey().defaultRandom(),
-  kingdomId:  uuid('kingdom_id').notNull().references(() => kingdoms.id, { onDelete: 'cascade' }),
-  building:   varchar('building', { length: 60 }).notNull(),
-  level:      integer('level').notNull(),
-  startedAt:  integer('started_at').notNull(),
-  finishesAt: integer('finishes_at').notNull(),
-  createdAt:  timestamp('created_at').defaultNow().notNull(),
-})
-
-export const lfResearchQueue = pgTable('lf_research_queue', {
-  id:         uuid('id').primaryKey().defaultRandom(),
-  kingdomId:  uuid('kingdom_id').notNull().references(() => kingdoms.id, { onDelete: 'cascade' }),
-  research:   varchar('research', { length: 60 }).notNull(),
-  level:      integer('level').notNull(),
-  startedAt:  integer('started_at').notNull(),
-  finishesAt: integer('finishes_at').notNull(),
-  createdAt:  timestamp('created_at').defaultNow().notNull(),
-})
 
 export const unitQueue = pgTable('unit_queue', {
   id:         uuid('id').primaryKey().defaultRandom(),

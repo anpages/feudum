@@ -50,11 +50,8 @@ export default async function handler(req, res) {
   const academyLevel  = kingdom.academy ?? 0
   const cost          = researchCost(def, currentLevel)
   const baseTime      = researchTime(cost.wood, cost.stone, academyLevel, cfg.research_speed ?? 1)
-  // Discoverer class: -25%; LF research time reduction stacks multiplicatively
-  const { calcLFResearchTimeMult } = await import('../lib/lifeforms.js')
-  const lfMult    = calcLFResearchTimeMult(kingdom.lfResearch ?? {})
   const classMult = userRow?.characterClass === 'discoverer' ? 0.75 : 1.0
-  const timeSecs  = Math.max(1, Math.floor(baseTime * classMult * lfMult))
+  const timeSecs  = Math.max(1, Math.floor(baseTime * classMult))
 
   // ── Lazy resource tick ────────────────────────────────────────────────────
   const { wood, stone, grain, now } = applyResourceTick(kingdom, cfg, userRow?.characterClass ?? null, resRow)

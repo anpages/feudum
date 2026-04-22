@@ -2,10 +2,8 @@ import { eq, and, lte } from 'drizzle-orm'
 import {
   db, kingdoms, research as researchTable,
   buildingQueue, researchQueue, unitQueue,
-  lfBuildingQueue, lfResearchQueue,
 } from '../_db.js'
 import { applyBuildingEffect } from './buildings.js'
-import { applyPopulationTick } from './lifeforms.js'
 
 /**
  * Apply every queue row whose finishesAt <= now to the kingdom/research rows,
@@ -20,7 +18,7 @@ import { applyPopulationTick } from './lifeforms.js'
 export async function processKingdomQueues(kingdomId, userId) {
   const now = Math.floor(Date.now() / 1000)
 
-  const [bq, rq, uq, lfbq, lfrq] = await Promise.all([
+  const [bq, rq, uq] = await Promise.all([
     db.select().from(buildingQueue)
       .where(and(eq(buildingQueue.kingdomId, kingdomId), lte(buildingQueue.finishesAt, now)))
       .orderBy(buildingQueue.finishesAt),
@@ -32,15 +30,9 @@ export async function processKingdomQueues(kingdomId, userId) {
     db.select().from(unitQueue)
       .where(and(eq(unitQueue.kingdomId, kingdomId), lte(unitQueue.finishesAt, now)))
       .orderBy(unitQueue.finishesAt),
-    db.select().from(lfBuildingQueue)
-      .where(and(eq(lfBuildingQueue.kingdomId, kingdomId), lte(lfBuildingQueue.finishesAt, now)))
-      .orderBy(lfBuildingQueue.finishesAt),
-    db.select().from(lfResearchQueue)
-      .where(and(eq(lfResearchQueue.kingdomId, kingdomId), lte(lfResearchQueue.finishesAt, now)))
-      .orderBy(lfResearchQueue.finishesAt),
   ])
 
-  if (bq.length === 0 && rq.length === 0 && uq.length === 0 && lfbq.length === 0 && lfrq.length === 0) return 0
+  if (bq.length === 0 && rq.length === 0 && uq.length === 0) return 0
 
   // Reload kingdom (and research) after queries so the patch we build is consistent
   const [[kingdom], [resRow]] = await Promise.all([
@@ -71,50 +63,10 @@ export async function processKingdomQueues(kingdomId, userId) {
     if ((researchPatch[row.research] ?? -1) < row.level) researchPatch[row.research] = row.level
   }
 
-  // ── LF buildings: update lfBuildings JSONB ────────────────────────────────
-  const lfBuildingPatch = {}
-  if (lfbq.length > 0) {
-    const currentLfBuildings = { ...(kingdom.lfBuildings ?? {}) }
-    for (const row of lfbq) {
-      currentLfBuildings[row.building] = row.level
-    }
-    lfBuildingPatch.lfBuildings = currentLfBuildings
-  }
-
-  // ── LF research: update lfResearch JSONB ─────────────────────────────────
-  const lfResearchPatch = {}
-  if (lfrq.length > 0) {
-    const currentLfResearch = { ...(kingdom.lfResearch ?? {}) }
-    for (const row of lfrq) {
-      currentLfResearch[row.research] = row.level
-    }
-    lfResearchPatch.lfResearch = currentLfResearch
-  }
-
   // ── Persist + delete processed queue rows in parallel ───────────────────────
   const ops = []
 
-  // ── Population tick (always, not just when queues complete) ─────────────────
-  const now2 = Math.floor(Date.now() / 1000)
-  const lastPop = kingdom.foodLastUpdate ?? 0
-  const elapsedPop = lastPop > 0 ? now2 - lastPop : 0
-  const popResult = elapsedPop > 0
-    ? applyPopulationTick(kingdom, kingdom.lfBuildings ?? {}, elapsedPop)
-    : null
-  if (popResult) {
-    Object.assign(buildingPatch, {
-      populationT1: popResult.populationT1,
-      populationT2: popResult.populationT2,
-      populationT3: popResult.populationT3,
-      foodStored:   popResult.foodStored,
-      foodLastUpdate: now2,
-    })
-  } else if (lastPop === 0 && kingdom.civilization) {
-    // First time: set timestamp
-    buildingPatch.foodLastUpdate = now2
-  }
-
-  const kingdomPatch = { ...buildingPatch, ...unitPatch, ...lfBuildingPatch, ...lfResearchPatch }
+  const kingdomPatch = { ...buildingPatch, ...unitPatch }
   if (Object.keys(kingdomPatch).length > 0) {
     ops.push(db.update(kingdoms)
       .set({ ...kingdomPatch, updatedAt: new Date() })
@@ -133,13 +85,9 @@ export async function processKingdomQueues(kingdomId, userId) {
     eq(researchQueue.userId, userId), lte(researchQueue.finishesAt, now))))
   if (uq.length > 0) ops.push(db.delete(unitQueue).where(and(
     eq(unitQueue.kingdomId, kingdomId), lte(unitQueue.finishesAt, now))))
-  if (lfbq.length > 0) ops.push(db.delete(lfBuildingQueue).where(and(
-    eq(lfBuildingQueue.kingdomId, kingdomId), lte(lfBuildingQueue.finishesAt, now))))
-  if (lfrq.length > 0) ops.push(db.delete(lfResearchQueue).where(and(
-    eq(lfResearchQueue.kingdomId, kingdomId), lte(lfResearchQueue.finishesAt, now))))
 
   await Promise.all(ops)
-  return bq.length + rq.length + uq.length + lfbq.length + lfrq.length
+  return bq.length + rq.length + uq.length
 }
 
 /**

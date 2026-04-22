@@ -27,7 +27,6 @@ const AchievementsPage  = lazy(() => import('@/features/achievements/Achievement
 const MessagesPage      = lazy(() => import('@/features/messages/MessagesPage').then(m => ({ default: m.MessagesPage })))
 const ProfilePage       = lazy(() => import('@/features/profile/ProfilePage').then(m => ({ default: m.ProfilePage })))
 const AdminPage         = lazy(() => import('@/features/admin/AdminPage').then(m => ({ default: m.AdminPage })))
-const LifeformsPage     = lazy(() => import('@/features/lifeforms/LifeformsPage').then(m => ({ default: m.LifeformsPage })))
 const NotFoundPage      = lazy(() => import('@/NotFoundPage').then(m => ({ default: m.NotFoundPage })))
 
 function GameFallback() {
@@ -93,7 +92,6 @@ export default function App() {
               <Route path="/achievements"       element={<AchievementsPage />} />
               <Route path="/messages"           element={<MessagesPage />} />
               <Route path="/profile"            element={<ProfilePage />} />
-              <Route path="/lifeforms"          element={<LifeformsPage />} />
               <Route path="/admin"              element={<AdminPage />} />
             </Route>
           </Route>

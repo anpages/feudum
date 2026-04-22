@@ -1,4 +1,4 @@
-import { pgTable, uuid, integer, varchar, real, timestamp, boolean, jsonb } from 'drizzle-orm/pg-core'
+import { pgTable, uuid, integer, varchar, real, timestamp, boolean } from 'drizzle-orm/pg-core'
 import { users } from './users'
 
 export const kingdoms = pgTable('kingdoms', {
@@ -82,21 +82,6 @@ export const kingdoms = pgTable('kingdoms', {
   npcBuildAvailableAt: integer('npc_build_available_at').default(0),
   npcLastBuildAt:      integer('npc_last_build_at').default(0).notNull(),
   npcLastAttackAt:     integer('npc_last_attack_at').default(0).notNull(),
-
-  // Civilization (Formas de Vida)
-  civilization:         varchar('civilization', { length: 20 }),  // 'romans'|'vikings'|'byzantines'|'saracens'|null
-  civLevelRomans:       integer('civ_level_romans').default(0).notNull(),
-  civLevelVikings:      integer('civ_level_vikings').default(0).notNull(),
-  civLevelByzantines:   integer('civ_level_byzantines').default(0).notNull(),
-  civLevelSaracens:     integer('civ_level_saracens').default(0).notNull(),
-  populationT1:         real('population_t1').default(0).notNull(),
-  populationT2:         real('population_t2').default(0).notNull(),
-  populationT3:         real('population_t3').default(0).notNull(),
-  foodStored:           real('food_stored').default(0).notNull(),
-  foodLastUpdate:       integer('food_last_update').default(0).notNull(),
-  artifacts:            integer('artifacts').default(0).notNull(),
-  lfBuildings:          jsonb('lf_buildings').default({}).notNull(),
-  lfResearch:           jsonb('lf_research').default({}).notNull(),
 
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),

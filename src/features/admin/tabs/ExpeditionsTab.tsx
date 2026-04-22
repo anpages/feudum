@@ -75,26 +75,10 @@ export function ExpeditionsTab() {
     refetchInterval: 30_000,
   })
 
-  const { stats, depletion, active, recent, now } = data ?? {}
+  const { depletion, active, recent, now } = data ?? {}
 
   return (
     <div className="space-y-6">
-      {/* Stats strip */}
-      {stats && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {[
-            { label: 'Expediciones 24h', value: stats.active24h },
-            { label: 'Activas ahora',    value: active?.length ?? 0 },
-            { label: 'Por jugadores',    value: stats.playerCount },
-            { label: 'Por NPCs',         value: stats.npcCount },
-          ].map(({ label, value }) => (
-            <div key={label} className="glass rounded-lg p-3 text-center">
-              <div className="font-ui text-xl font-bold text-parchment tabular-nums">{value}</div>
-              <div className="font-ui text-[0.65rem] text-parchment-dim uppercase tracking-widest mt-0.5">{label}</div>
-            </div>
-          ))}
-        </div>
-      )}
 
       {/* Depletion map */}
       {depletion && Object.keys(depletion).length > 0 && (

@@ -2,7 +2,7 @@ import './lib/env.js'
 import postgres from 'postgres'
 import { drizzle } from 'drizzle-orm/postgres-js'
 import {
-  pgTable, integer, varchar, real, timestamp, text, boolean, uuid, jsonb,
+  pgTable, integer, varchar, real, timestamp, text, boolean, uuid,
 } from 'drizzle-orm/pg-core'
 
 // ── Battle log ────────────────────────────────────────────────────────────────
@@ -137,21 +137,6 @@ export const kingdoms = pgTable('kingdoms', {
   npcLastBuildAt:      integer('npc_last_build_at').default(0).notNull(),
   npcLastAttackAt:     integer('npc_last_attack_at').default(0).notNull(),
 
-  // Lifeforms / Civilizations
-  civilization:       varchar('civilization', { length: 20 }),
-  civLevelRomans:     integer('civ_level_romans').default(0).notNull(),
-  civLevelVikings:    integer('civ_level_vikings').default(0).notNull(),
-  civLevelByzantines: integer('civ_level_byzantines').default(0).notNull(),
-  civLevelSaracens:   integer('civ_level_saracens').default(0).notNull(),
-  populationT1:       real('population_t1').default(0).notNull(),
-  populationT2:       real('population_t2').default(0).notNull(),
-  populationT3:       real('population_t3').default(0).notNull(),
-  foodStored:         real('food_stored').default(0).notNull(),
-  foodLastUpdate:     integer('food_last_update').default(0).notNull(),
-  artifacts:          integer('artifacts').default(0).notNull(),
-  lfBuildings:        jsonb('lf_buildings').default({}).notNull(),
-  lfResearch:         jsonb('lf_research').default({}).notNull(),
-
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 })
@@ -219,25 +204,6 @@ export const buildingQueue = pgTable('building_queue', {
   createdAt:  timestamp('created_at').defaultNow().notNull(),
 })
 
-export const lfBuildingQueue = pgTable('lf_building_queue', {
-  id:         uuid('id').primaryKey().defaultRandom(),
-  kingdomId:  uuid('kingdom_id').notNull().references(() => kingdoms.id, { onDelete: 'cascade' }),
-  building:   varchar('building', { length: 60 }).notNull(),
-  level:      integer('level').notNull(),
-  startedAt:  integer('started_at').notNull(),
-  finishesAt: integer('finishes_at').notNull(),
-  createdAt:  timestamp('created_at').defaultNow().notNull(),
-})
-
-export const lfResearchQueue = pgTable('lf_research_queue', {
-  id:         uuid('id').primaryKey().defaultRandom(),
-  kingdomId:  uuid('kingdom_id').notNull().references(() => kingdoms.id, { onDelete: 'cascade' }),
-  research:   varchar('research', { length: 60 }).notNull(),
-  level:      integer('level').notNull(),
-  startedAt:  integer('started_at').notNull(),
-  finishesAt: integer('finishes_at').notNull(),
-  createdAt:  timestamp('created_at').defaultNow().notNull(),
-})
 
 export const armyMissions = pgTable('army_missions', {
   id:          uuid('id').primaryKey().defaultRandom(),
@@ -335,4 +301,4 @@ export const NPC_USER_ID = '00000000-0000-0000-0000-000000000001'
 
 // prepare: false required for PgBouncer transaction pooling
 const client = postgres(process.env.STORAGE_POSTGRES_URL, { prepare: false })
-export const db = drizzle(client, { schema: { users, kingdoms, research, researchQueue, buildingQueue, lfBuildingQueue, lfResearchQueue, unitQueue, armyMissions, messages, debrisFields, settings, userAchievements, pushSubscriptions, etherTransactions, battleLog } })
+export const db = drizzle(client, { schema: { users, kingdoms, research, researchQueue, buildingQueue, unitQueue, armyMissions, messages, debrisFields, settings, userAchievements, pushSubscriptions, etherTransactions, battleLog } })

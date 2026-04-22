@@ -42,9 +42,7 @@ export async function processAttack(mission, myKingdom, now, targetKingdom) {
   const [atkResearch] = await db.select().from(research)
     .where(eq(research.userId, myKingdom.userId)).limit(1)
 
-  const { calcLFUnitStatBonuses } = await import('../lifeforms.js')
-  const atkLFBonuses = calcLFUnitStatBonuses(myKingdom.lfResearch ?? {})
-  const attackerUnits = buildBattleUnits(missionUnits, atkResearch ?? {}, atkLFBonuses)
+  const attackerUnits = buildBattleUnits(missionUnits, atkResearch ?? {})
 
   let defenderUnits = []
   let defRes        = { wood: 0, stone: 0, grain: 0 }
@@ -52,10 +50,9 @@ export async function processAttack(mission, myKingdom, now, targetKingdom) {
   if (targetKingdom) {
     const [defResearch] = await db.select().from(research)
       .where(eq(research.userId, targetKingdom.userId)).limit(1)
-    const defLFBonuses = calcLFUnitStatBonuses(targetKingdom.lfResearch ?? {})
     defenderUnits = buildBattleUnits(
       { ...extractUnits(targetKingdom, UNIT_KEYS), ...extractUnits(targetKingdom, DEFENSE_KEYS) },
-      defResearch ?? {}, defLFBonuses
+      defResearch ?? {}
     )
     defRes = { wood: targetKingdom.wood, stone: targetKingdom.stone, grain: targetKingdom.grain }
   } else {
@@ -82,15 +79,7 @@ export async function processAttack(mission, myKingdom, now, targetKingdom) {
     const survivorPatch = {}
     for (const k of UNIT_KEYS) survivorPatch[k] = survivingAtk[k] ?? 0
 
-    // Artifact gain on victory: 1 per 10k total fleet cost lost by both sides (min 1, max 20)
-    let artifactsGained = 0
-    if (outcome === 'victory' && myKingdom.civilization) {
-      const totalLostCost = [...Object.entries(lostAtk), ...Object.entries(lostDef)]
-        .reduce((sum, [id, n]) => sum + (UNIT_COST[id] ?? { wood: 0, stone: 0 }).wood * n, 0)
-      artifactsGained = Math.min(20, Math.max(1, Math.floor(totalLostCost / 10000)))
-    }
-
-    const battleResult = { type: 'attack', outcome, rounds, loot, debris, lostAtk, lostDef, artifactsGained }
+    const battleResult = { type: 'attack', outcome, rounds, loot, debris, lostAtk, lostDef }
 
     await upsertDebris(mission.targetRealm, mission.targetRegion, mission.targetSlot, debris)
 
