@@ -38,6 +38,31 @@ export interface LFResearchInfo {
   inQueue: LFQueueEntry | null
 }
 
+export interface PopStats {
+  foodProdPerHour: number
+  foodConsPerHour: number
+  foodBalance: number
+  popCapT1: number
+  popGrowthPerHour: number
+  isGrowing: boolean
+  isStarving: boolean
+}
+
+export interface ActiveBonuses {
+  woodMult: number
+  stoneMult: number
+  grainMult: number
+  researchTime: number
+  armySpeed: number
+  unitTime: number
+}
+
+export interface TierProgress {
+  t1: { popRequired: number; artifactsRequired: number }
+  t2: { popRequired: number; artifactsRequired: number }
+  t3: { popRequired: number; artifactsRequired: number }
+}
+
 export interface LifeformsResponse {
   civilization: CivilizationId | null
   civLevels: Record<CivilizationId, number>
@@ -45,6 +70,9 @@ export interface LifeformsResponse {
   foodStored: number
   artifacts: number
   tiers: { t1: boolean; t2: boolean; t3: boolean }
+  popStats: PopStats
+  activeBonuses: ActiveBonuses
+  tierProgress: TierProgress
   civilizations: Civilization[]
   buildings: Record<CivilizationId, LFBuildingInfo[]>
   research: Record<CivilizationId, LFResearchInfo[]>

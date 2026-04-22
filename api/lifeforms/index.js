@@ -6,6 +6,7 @@ import {
   lfBuildingCost, lfBuildingTime, lfResearchCost, lfResearchTime,
   lfBuildingRequirementsMet, unlockedTiers, civLevelBonus,
   applyPopulationTick,
+  calcLFProductionBonus, calcLFResearchTimeMult, calcLFArmySpeedBonus, calcLFUnitBuildTimeMult,
   TIER_POPULATION, TIER_ARTIFACTS,
 } from '../lib/lifeforms.js'
 import { getSettings } from '../lib/settings.js'
@@ -100,6 +101,49 @@ export default async function handler(req, res) {
     })
   }
 
+  // ── Population stats for UI ──────────────────────────────────────────────────
+  const buildingList = civ ? (LF_BUILDINGS_BY_CIV[civ] ?? []) : []
+  const housingDef   = buildingList.find(b => b.role === 'housing')
+  const foodDef      = buildingList.find(b => b.role === 'food')
+  const housingLv    = civ ? (lfLevels[housingDef?.id ?? ''] ?? 0) : 0
+  const foodLv       = civ ? (lfLevels[foodDef?.id   ?? ''] ?? 0) : 0
+
+  const foodProdPerHour = housingLv > 0 && foodLv > 0 && foodDef
+    ? foodDef.bonuses[0].base * Math.pow(foodDef.bonuses[0].factor ?? 1.15, foodLv)
+    : 0
+  const foodConsPerHour = popTotal / 1000
+  const foodBalance     = foodProdPerHour - foodConsPerHour
+  const popCapT1        = housingLv > 0 && housingDef
+    ? housingDef.bonuses[0].base * Math.pow(housingDef.bonuses[0].factor, housingLv)
+    : 0
+  const popGrowthPerHour = housingLv > 0 && housingDef
+    ? housingDef.bonuses[1].base * Math.pow(housingDef.bonuses[1].factor ?? 1.20, housingLv)
+    : 0
+
+  const popStats = {
+    foodProdPerHour:  Math.round(foodProdPerHour * 10) / 10,
+    foodConsPerHour:  Math.round(foodConsPerHour * 10) / 10,
+    foodBalance:      Math.round(foodBalance * 10) / 10,
+    popCapT1:         Math.round(popCapT1),
+    popGrowthPerHour: foodBalance >= 0 ? Math.round(popGrowthPerHour) : 0,
+    isGrowing:        foodBalance >= 0 && kingdom.populationT1 < popCapT1,
+    isStarving:       foodBalance < 0 && (kingdom.foodStored ?? 0) <= 0,
+  }
+
+  // ── Active LF research bonuses ───────────────────────────────────────────────
+  const prodBonus    = calcLFProductionBonus(lfResLvls)
+  const resTimeMult  = calcLFResearchTimeMult(lfResLvls)
+  const speedBonus   = calcLFArmySpeedBonus(lfResLvls)
+  const unitTimeMult = calcLFUnitBuildTimeMult(lfResLvls)
+  const activeBonuses = {
+    woodMult:     prodBonus.woodMult,
+    stoneMult:    prodBonus.stoneMult,
+    grainMult:    prodBonus.grainMult,
+    researchTime: resTimeMult,
+    armySpeed:    speedBonus,
+    unitTime:     unitTimeMult,
+  }
+
   return res.json({
     civilization: civ,
     civLevels: {
@@ -112,6 +156,13 @@ export default async function handler(req, res) {
     foodStored: kingdom.foodStored,
     artifacts:  kingdom.artifacts,
     tiers,
+    popStats,
+    activeBonuses,
+    tierProgress: {
+      t1: { popRequired: TIER_POPULATION.t1, artifactsRequired: TIER_ARTIFACTS.t1 },
+      t2: { popRequired: TIER_POPULATION.t2, artifactsRequired: TIER_ARTIFACTS.t2 },
+      t3: { popRequired: TIER_POPULATION.t3 ?? 13_000_000, artifactsRequired: TIER_ARTIFACTS.t3 },
+    },
     civilizations: CIVILIZATIONS,
     buildings:  buildingsByCiv,
     research:   researchByCiv,

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Users, FlaskConical, Hammer, Loader2, Clock, TrendingUp, TreePine, Mountain, Wheat, ChevronRight, Home, Sprout, GraduationCap, Factory, Shield, Sparkles, type LucideIcon } from 'lucide-react'
+import { Users, FlaskConical, Hammer, Loader2, Clock, TrendingUp, TrendingDown, TreePine, Mountain, Wheat, ChevronRight, Home, Sprout, GraduationCap, Factory, Shield, Sparkles, ArrowUp, Swords, type LucideIcon } from 'lucide-react'
 import { GiScrollUnfurled, GiCastle, GiHiking, GiByzantinTemple, GiCamel } from 'react-icons/gi'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
@@ -10,7 +10,7 @@ import { useKingdom } from '@/features/kingdom/useKingdom'
 import { useQueueSync } from '@/features/queues/useQueueSync'
 import { formatResource, formatDuration } from '@/lib/format'
 import { toast } from '@/lib/toast'
-import type { CivilizationId, LFBuildingInfo, LFResearchInfo } from './types'
+import type { CivilizationId, LFBuildingInfo, LFResearchInfo, PopStats, ActiveBonuses, TierProgress } from './types'
 
 const CIV_ICONS: Record<string, React.ComponentType<{ size?: number; className?: string }>> = {
   romans:     GiCastle,
@@ -143,6 +143,8 @@ export function LifeformsPage() {
   const popTotal       = data.population.t1 + data.population.t2 + data.population.t3
   const Icon           = CIV_ICONS[civ] ?? GiScrollUnfurled
   const lfBuildingsMap = Object.fromEntries(buildings.map(b => [b.id, b.level]))
+  const ps             = data.popStats
+  const ab             = data.activeBonuses
 
   return (
     <div className="space-y-8">
@@ -164,53 +166,14 @@ export function LifeformsPage() {
         </div>
       </div>
 
-      {/* Stats row — same style as production cards in Overview */}
-      <div className="grid grid-cols-3 gap-3 anim-fade-up-1">
-        <Card className="p-3">
-          <div className="flex items-center gap-1.5 mb-2">
-            <Users size={12} className="text-gold/50" />
-            <span className="font-ui text-[0.6rem] font-semibold uppercase tracking-wide text-ink-muted truncate">Población</span>
-          </div>
-          <p className="font-ui text-lg tabular-nums font-semibold leading-none text-ink">{formatResource(popTotal)}</p>
-          <p className="flex items-center gap-0.5 mt-1 text-[0.6rem] text-ink-muted/50">
-            <TrendingUp size={8} />
-            T1 · T2 · T3
-          </p>
-          <div className="mt-2 pt-2 border-t border-gold/10 space-y-0.5">
-            {([['T1', data.population.t1], ['T2', data.population.t2], ['T3', data.population.t3]] as const).map(([tier, val]) => (
-              <div key={tier} className="flex justify-between">
-                <span className="font-ui text-[0.6rem] text-ink-muted/50">{tier}</span>
-                <span className="font-ui text-[0.6rem] tabular-nums text-ink-muted/50">{formatResource(val)}</span>
-              </div>
-            ))}
-          </div>
-        </Card>
-        <Card className="p-3">
-          <div className="flex items-center gap-1.5 mb-2">
-            <Wheat size={12} className="text-gold/50" />
-            <span className="font-ui text-[0.6rem] font-semibold uppercase tracking-wide text-ink-muted truncate">Alimento</span>
-          </div>
-          <p className="font-ui text-lg tabular-nums font-semibold leading-none text-ink">{formatResource(data.foodStored)}</p>
-          <p className="flex items-center gap-0.5 mt-1 text-[0.6rem] text-ink-muted/50">
-            <TrendingUp size={8} />
-            almacenado
-          </p>
-        </Card>
-        <Card className="p-3">
-          <div className="flex items-center gap-1.5 mb-2">
-            <span className="text-gold/50 text-xs">✦</span>
-            <span className="font-ui text-[0.6rem] font-semibold uppercase tracking-wide text-ink-muted truncate">Artefactos</span>
-          </div>
-          <p className="font-ui text-lg tabular-nums font-semibold leading-none text-ink">{data.artifacts}</p>
-          <div className="mt-2 pt-2 border-t border-gold/10 flex flex-wrap gap-1">
-            {(['t1','t2','t3'] as const).map(t => (
-              <span key={t} className={`font-ui text-[0.6rem] px-1.5 py-0.5 rounded border ${
-                data.tiers[t] ? 'border-forest/30 text-forest-light bg-forest/5' : 'border-gold/10 text-ink-muted/40'
-              }`}>{t.toUpperCase()}</span>
-            ))}
-          </div>
-        </Card>
+      {/* Stats — población + alimento en 2 columnas */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 anim-fade-up-1">
+        <PopulationCard pop={data.population} popTotal={popTotal} ps={ps} artifacts={data.artifacts} tiers={data.tiers} />
+        <FoodCard foodStored={data.foodStored} ps={ps} />
       </div>
+
+      {/* Bonos activos de investigación */}
+      {ab && <ActiveBonusesCard ab={ab} />}
 
       {/* Tab selector */}
       <div className="flex gap-2 anim-fade-up-2">
@@ -277,39 +240,222 @@ export function LifeformsPage() {
       {/* Research tab */}
       {tab === 'research' && (
         <div className="space-y-6 anim-fade-up-3">
-          {([1, 2, 3] as const).map(tier => (
-            <div key={tier}>
-              <div className="flex items-center gap-2 mb-3">
-                <span className={`font-ui text-xs font-bold px-2 py-0.5 rounded border ${
-                  data.tiers[`t${tier}` as 't1'|'t2'|'t3']
-                    ? 'border-forest/30 text-forest-light bg-forest/5'
-                    : 'border-gold/20 text-ink-muted/60'
-                }`}>Tier {tier}</span>
-                {!data.tiers[`t${tier}` as 't1'|'t2'|'t3'] && (
-                  <span className="font-body text-xs text-ink-muted/50">
-                    {tier === 1 ? '200.000 pop + 200 artefactos' : tier === 2 ? '1.200.000 pop + 400 artefactos' : '13.000.000 pop + 600 artefactos'}
-                  </span>
-                )}
+          {([1, 2, 3] as const).map(tier => {
+            const tierKey  = `t${tier}` as 't1'|'t2'|'t3'
+            const unlocked = data.tiers[tierKey]
+            const progress = data.tierProgress[tierKey]
+            const popPct   = Math.min(100, Math.round(popTotal / progress.popRequired * 100))
+            const artPct   = Math.min(100, Math.round(data.artifacts / progress.artifactsRequired * 100))
+            return (
+              <div key={tier}>
+                <div className="flex items-center gap-2 mb-3 flex-wrap">
+                  <span className={`font-ui text-xs font-bold px-2 py-0.5 rounded border ${
+                    unlocked ? 'border-forest/30 text-forest-light bg-forest/5' : 'border-gold/20 text-ink-muted/60'
+                  }`}>Tier {tier}</span>
+                  {!unlocked && (
+                    <div className="flex items-center gap-3 flex-1">
+                      <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                        <Users size={10} className="text-ink-muted/50 shrink-0" />
+                        <div className="flex-1 h-1.5 rounded-full bg-gold/10 overflow-hidden">
+                          <div className="h-full bg-gold/40 rounded-full transition-all" style={{ width: `${popPct}%` }} />
+                        </div>
+                        <span className="font-ui text-[0.6rem] tabular-nums text-ink-muted/60 shrink-0">
+                          {formatResource(popTotal)}/{formatResource(progress.popRequired)}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                        <span className="text-[0.6rem] text-gold/50 shrink-0">✦</span>
+                        <div className="flex-1 h-1.5 rounded-full bg-gold/10 overflow-hidden">
+                          <div className="h-full bg-gold/40 rounded-full transition-all" style={{ width: `${artPct}%` }} />
+                        </div>
+                        <span className="font-ui text-[0.6rem] tabular-nums text-ink-muted/60 shrink-0">
+                          {data.artifacts}/{progress.artifactsRequired}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+                  {research.filter(r => r.tier === tier).map((r, i) => (
+                    <LFResearchCard
+                      key={r.id}
+                      research={r}
+                      resources={resources}
+                      locked={!unlocked}
+                      onResearch={() => researchLF.mutate(r.id)}
+                      isPending={researchLF.isPending && researchLF.variables === r.id}
+                      onCountdownEnd={() => handleCountdownEnd(r.name)}
+                      animClass={`anim-fade-up-${Math.min(i + 1, 5) as 1|2|3|4|5}`}
+                    />
+                  ))}
+                </div>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-                {research.filter(r => r.tier === tier).map((r, i) => (
-                  <LFResearchCard
-                    key={r.id}
-                    research={r}
-                    resources={resources}
-                    locked={!data.tiers[`t${tier}` as 't1'|'t2'|'t3']}
-                    onResearch={() => researchLF.mutate(r.id)}
-                    isPending={researchLF.isPending && researchLF.variables === r.id}
-                    onCountdownEnd={() => handleCountdownEnd(r.name)}
-                    animClass={`anim-fade-up-${Math.min(i + 1, 5) as 1|2|3|4|5}`}
-                  />
-                ))}
-              </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       )}
     </div>
+  )
+}
+
+// ── City stage label ──────────────────────────────────────────────────────────
+
+function cityStage(pop: number): string {
+  if (pop === 0)          return 'Sin habitantes'
+  if (pop < 50)           return 'Campamento'
+  if (pop < 300)          return 'Aldea'
+  if (pop < 1_000)        return 'Pueblo'
+  if (pop < 5_000)        return 'Villa'
+  if (pop < 20_000)       return 'Ciudad pequeña'
+  if (pop < 100_000)      return 'Ciudad'
+  if (pop < 500_000)      return 'Gran ciudad'
+  if (pop < 2_000_000)    return 'Metrópolis'
+  return 'Imperio'
+}
+
+// ── Population card ───────────────────────────────────────────────────────────
+
+function PopulationCard({ pop, popTotal, ps, artifacts, tiers }: {
+  pop: { t1: number; t2: number; t3: number }
+  popTotal: number
+  ps: PopStats
+  artifacts: number
+  tiers: { t1: boolean; t2: boolean; t3: boolean }
+}) {
+  const capPct = ps.popCapT1 > 0 ? Math.min(100, Math.round(pop.t1 / ps.popCapT1 * 100)) : 0
+  return (
+    <Card className="p-4 space-y-3">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-1.5">
+          <Users size={13} className="text-gold/60" />
+          <span className="font-ui text-xs font-semibold uppercase tracking-wide text-ink-muted">Población</span>
+        </div>
+        <span className="font-ui text-[0.65rem] text-ink-muted/60 italic">{cityStage(popTotal)}</span>
+      </div>
+
+      <div>
+        <p className="font-ui text-2xl tabular-nums font-bold text-ink leading-none">{formatResource(popTotal)}</p>
+        {ps.isStarving ? (
+          <p className="flex items-center gap-1 mt-1 font-ui text-[0.65rem] text-crimson font-semibold">
+            <TrendingDown size={10} />hambruna — población decreciendo
+          </p>
+        ) : ps.isGrowing ? (
+          <p className="flex items-center gap-1 mt-1 font-ui text-[0.65rem] text-forest">
+            <TrendingUp size={10} />+{formatResource(ps.popGrowthPerHour)}/h
+          </p>
+        ) : (
+          <p className="flex items-center gap-1 mt-1 font-ui text-[0.65rem] text-ink-muted/50">
+            <ArrowUp size={10} />estable
+          </p>
+        )}
+      </div>
+
+      {ps.popCapT1 > 0 && (
+        <div className="space-y-1">
+          <div className="flex justify-between font-ui text-[0.6rem] text-ink-muted/50">
+            <span>Capacidad T1</span>
+            <span className="tabular-nums">{formatResource(Math.round(pop.t1))} / {formatResource(ps.popCapT1)}</span>
+          </div>
+          <div className="h-1.5 rounded-full bg-gold/10 overflow-hidden">
+            <div className={`h-full rounded-full transition-all ${capPct >= 95 ? 'bg-crimson/60' : 'bg-gold/50'}`} style={{ width: `${capPct}%` }} />
+          </div>
+        </div>
+      )}
+
+      <div className="pt-1 border-t border-gold/10 flex items-center justify-between">
+        <div className="flex gap-3">
+          {(['t1','t2','t3'] as const).map(t => (
+            <div key={t} className="text-center">
+              <p className="font-ui text-[0.6rem] text-ink-muted/40 uppercase">{t}</p>
+              <p className="font-ui text-xs tabular-nums text-ink-muted/70">{formatResource(pop[t])}</p>
+            </div>
+          ))}
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="font-ui text-[0.6rem] text-ink-muted/50">Artefactos</span>
+          <span className="font-ui text-sm font-bold text-gold-dim tabular-nums">✦ {artifacts}</span>
+          <div className="flex gap-0.5 ml-1">
+            {(['t1','t2','t3'] as const).map(t => (
+              <span key={t} className={`w-1.5 h-1.5 rounded-full ${tiers[t] ? 'bg-forest' : 'bg-gold/20'}`} />
+            ))}
+          </div>
+        </div>
+      </div>
+    </Card>
+  )
+}
+
+// ── Food card ─────────────────────────────────────────────────────────────────
+
+function FoodCard({ foodStored, ps }: { foodStored: number; ps: PopStats }) {
+  const surplus  = ps.foodBalance >= 0
+  const balanced = Math.abs(ps.foodBalance) < 0.1
+  return (
+    <Card className="p-4 space-y-3">
+      <div className="flex items-center gap-1.5">
+        <Wheat size={13} className="text-gold/60" />
+        <span className="font-ui text-xs font-semibold uppercase tracking-wide text-ink-muted">Alimentación</span>
+      </div>
+
+      <div>
+        <p className="font-ui text-2xl tabular-nums font-bold text-ink leading-none">{formatResource(Math.round(foodStored))}</p>
+        <p className="font-ui text-[0.65rem] text-ink-muted/50 mt-0.5">almacenado</p>
+      </div>
+
+      <div className="space-y-1.5 pt-1 border-t border-gold/10">
+        <div className="flex items-center justify-between font-ui text-xs">
+          <span className="text-ink-muted/60 flex items-center gap-1"><TrendingUp size={10} />Producción</span>
+          <span className="tabular-nums text-forest">{ps.foodProdPerHour > 0 ? `+${ps.foodProdPerHour.toFixed(1)}` : '—'}/h</span>
+        </div>
+        <div className="flex items-center justify-between font-ui text-xs">
+          <span className="text-ink-muted/60 flex items-center gap-1"><TrendingDown size={10} />Consumo</span>
+          <span className="tabular-nums text-ink-mid">−{ps.foodConsPerHour.toFixed(1)}/h</span>
+        </div>
+        <div className={`flex items-center justify-between font-ui text-xs font-semibold pt-1 border-t border-gold/8 ${
+          balanced ? 'text-ink-muted' : surplus ? 'text-forest' : 'text-crimson'
+        }`}>
+          <span>Balance</span>
+          <span className="tabular-nums">{balanced ? '±0' : surplus ? `+${ps.foodBalance.toFixed(1)}` : ps.foodBalance.toFixed(1)}/h</span>
+        </div>
+      </div>
+    </Card>
+  )
+}
+
+// ── Active bonuses card ───────────────────────────────────────────────────────
+
+function ActiveBonusesCard({ ab }: { ab: ActiveBonuses }) {
+  const hasBonuses = ab.woodMult > 1 || ab.stoneMult > 1 || ab.grainMult > 1
+    || ab.researchTime < 1 || ab.armySpeed > 0 || ab.unitTime < 1
+  if (!hasBonuses) return null
+
+  const pct = (v: number) => `+${Math.round((v - 1) * 100)}%`
+  const neg = (v: number) => `${Math.round((1 - v) * 100)}% menos tiempo`
+  const spd = (v: number) => `+${Math.round(v * 100)}%`
+
+  const bonuses: { icon: React.ReactNode; label: string; value: string }[] = []
+  if (ab.woodMult > 1)    bonuses.push({ icon: <TreePine size={11} />, label: 'Producción madera',       value: pct(ab.woodMult) })
+  if (ab.stoneMult > 1)   bonuses.push({ icon: <Mountain size={11} />, label: 'Producción piedra',       value: pct(ab.stoneMult) })
+  if (ab.grainMult > 1)   bonuses.push({ icon: <Wheat size={11} />,    label: 'Producción grano',        value: pct(ab.grainMult) })
+  if (ab.researchTime < 1) bonuses.push({ icon: <FlaskConical size={11} />, label: 'Tiempo investigación', value: neg(ab.researchTime) })
+  if (ab.armySpeed > 0)   bonuses.push({ icon: <Swords size={11} />,   label: 'Velocidad ejército',      value: spd(ab.armySpeed) })
+  if (ab.unitTime < 1)    bonuses.push({ icon: <Hammer size={11} />,   label: 'Tiempo entrenamiento',    value: neg(ab.unitTime) })
+
+  return (
+    <Card className="p-4 anim-fade-up-2">
+      <p className="font-ui text-xs font-semibold uppercase tracking-wide text-ink-muted mb-3">Bonos activos de civilización</p>
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+        {bonuses.map((b, i) => (
+          <div key={i} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-forest/5 border border-forest/15">
+            <span className="text-forest shrink-0">{b.icon}</span>
+            <div className="min-w-0">
+              <p className="font-body text-[0.6rem] text-ink-muted/60 truncate">{b.label}</p>
+              <p className="font-ui text-xs font-bold text-forest">{b.value}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </Card>
   )
 }
 
