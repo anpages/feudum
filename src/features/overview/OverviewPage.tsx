@@ -1,5 +1,5 @@
 import { type ReactNode, useState, useEffect } from 'react'
-import { Clock, TrendingUp, Hammer, FlaskConical, Swords, Send, Shield, ChevronRight, Zap, TreePine, Mountain, Wheat } from 'lucide-react'
+import { Clock, TrendingUp, Hammer, FlaskConical, Swords, Send, Shield, ChevronRight, Zap, TreePine, Mountain, Wheat, AlertTriangle } from 'lucide-react'
 import {
   GiAnvil, GiSpellBook, GiCrossedSwords,
 } from 'react-icons/gi'
@@ -61,6 +61,8 @@ export function OverviewPage() {
   const totalUnitCount   = allBarracksUnits.reduce((s, u) => s + u.count, 0)
   const activeMissions = armiesData?.missions.filter(m => m.state === 'active').length ?? 0
   const returningMissions = armiesData?.missions.filter(m => m.state === 'returning').length ?? 0
+  const incomingHostileCount = armiesData?.incomingMissions.filter(m => m.threatLevel === 'hostile').length ?? 0
+  const underAttack = armiesData?.underAttack ?? false
 
   const [militaryOpen, setMilitaryOpen] = useState(false)
 
@@ -91,6 +93,21 @@ export function OverviewPage() {
 
       {/* ── Season card ── */}
       <SeasonCard />
+
+      {/* ── Under attack banner ── */}
+      {underAttack && (
+        <div className="anim-fade-up rounded-xl border border-crimson/40 bg-crimson/8 px-4 py-3 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <AlertTriangle size={16} className="text-crimson shrink-0 animate-pulse" />
+            <span className="font-ui text-sm font-semibold text-crimson">
+              ¡Bajo ataque! {incomingHostileCount === 1 ? '1 misión hostil' : `${incomingHostileCount} misiones hostiles`} en camino hacia tus reinos.
+            </span>
+          </div>
+          <a href="/armies" className="font-ui text-xs text-crimson underline underline-offset-2 shrink-0">
+            Ver misiones →
+          </a>
+        </div>
+      )}
 
       {/* ── Kingdom identity banner ── */}
       <Card className="p-5 anim-fade-up">

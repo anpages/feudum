@@ -1,6 +1,6 @@
 import { useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Shield, Plus, Swords, AlertTriangle } from 'lucide-react'
+import { Shield, Plus, Swords } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
@@ -27,7 +27,6 @@ export function ArmiesPage() {
 
   const incomingHostile  = armies?.incomingMissions.filter(m => m.threatLevel === 'hostile') ?? []
   const incomingNeutral  = armies?.incomingMissions.filter(m => m.threatLevel === 'neutral') ?? []
-  const underAttack      = armies?.underAttack ?? false
 
   return (
     <div className="space-y-6">
@@ -52,16 +51,6 @@ export function ArmiesPage() {
           )}
         </div>
       </div>
-
-      {/* ── Incoming hostile alert banner ────────────────────────────────── */}
-      {underAttack && (
-        <div className="anim-fade-up rounded-xl border border-crimson/40 bg-crimson/8 px-4 py-3 flex items-center gap-3">
-          <AlertTriangle size={16} className="text-crimson shrink-0 animate-pulse" />
-          <span className="font-ui text-sm font-semibold text-crimson">
-            ¡Bajo ataque! {incomingHostile.length === 1 ? '1 misión hostil' : `${incomingHostile.length} misiones hostiles`} en camino hacia tus reinos.
-          </span>
-        </div>
-      )}
 
       {/* ── Incoming missions ────────────────────────────────────────────── */}
       {(incomingHostile.length > 0 || incomingNeutral.length > 0) && (
