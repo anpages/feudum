@@ -13,11 +13,11 @@ type Tab = 'server' | 'players' | 'battles' | 'expeditions' | 'npc_monitor' | 'n
 
 const TABS: { id: Tab; label: string; Icon: typeof Settings }[] = [
   { id: 'npc_monitor', label: 'NPCs Monitor', Icon: Activity },
-  { id: 'server',      label: 'Servidor',     Icon: Settings },
-  { id: 'players',     label: 'Jugadores',    Icon: Users },
   { id: 'battles',     label: 'Combates',     Icon: ScrollText },
   { id: 'expeditions', label: 'Expediciones', Icon: Compass },
   { id: 'npc',         label: 'Perfil NPC',   Icon: Search },
+  { id: 'players',     label: 'Jugadores',    Icon: Users },
+  { id: 'server',      label: 'Servidor',     Icon: Settings },
 ]
 
 export function AdminPage() {
