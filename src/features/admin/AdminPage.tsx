@@ -12,11 +12,11 @@ import { NpcMonitorTab }  from './tabs/NpcMonitorTab'
 type Tab = 'server' | 'players' | 'battles' | 'expeditions' | 'npc_monitor' | 'npc'
 
 const TABS: { id: Tab; label: string; Icon: typeof Settings }[] = [
+  { id: 'npc_monitor', label: 'NPCs Monitor', Icon: Activity },
   { id: 'server',      label: 'Servidor',     Icon: Settings },
   { id: 'players',     label: 'Jugadores',    Icon: Users },
   { id: 'battles',     label: 'Combates',     Icon: ScrollText },
   { id: 'expeditions', label: 'Expediciones', Icon: Compass },
-  { id: 'npc_monitor', label: 'NPCs Monitor', Icon: Activity },
   { id: 'npc',         label: 'Perfil NPC',   Icon: Search },
 ]
 
