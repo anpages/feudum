@@ -179,13 +179,13 @@ async function growNpc(kingdom, cfg, now) {
   let trainedSupport = false
   let builtBuilding  = false
 
-  const combatTotal    = UNIT_KEYS.reduce((s, u) => s + (kingdom[u] ?? 0), 0)
+  const combatTotal    = [...UNIT_COMBAT_SET].reduce((s, u) => s + (kingdom[u] ?? 0), 0)
   const needMoreCombat = combatTotal < ATTACK_THRESHOLD[personality]
 
-  // ── Unit training (combat first, then support, then defense) ─────────────
-  // Defense is only trained once the NPC has enough combat units to attack —
-  // this prevents cheap defense units (crossbowman 1500w) from draining wood
-  // before the NPC can save 3000w for squire.
+  // ── Unit training (combat first, then support+defense only after threshold) ─
+  // Support (merchant/caravan) and defense are blocked until the NPC has real
+  // combat units — otherwise cheap support units count towards armySize and
+  // NPCs "attack" with merchants, or crossbowmen drain wood before squire.
   const maxUnitTypes = isBoss ? 3 : (cls === 'general' ? 2 : 1)
   const batchCap     = isBoss ? 200 : 50
   const costMult     = (isBoss || cls === 'general') ? 0.9 : 1.0
@@ -208,7 +208,7 @@ async function growNpc(kingdom, cfg, now) {
       if (blocked) continue
     }
 
-    if (UNIT_DEFENSE_SET.has(unitId) && needMoreCombat) continue
+    if ((UNIT_DEFENSE_SET.has(unitId) || UNIT_SUPPORT_SET.has(unitId)) && needMoreCombat) continue
 
     const cost = UNIT_COSTS[unitId]
     if (!cost) continue
@@ -307,7 +307,7 @@ async function attackAI(npcKingdom, allKingdoms, bashMap, now, cfg) {
 
   const personality = npcPersonality(npcKingdom)
   const cls         = npcClass(npcKingdom)
-  const armySize    = totalArmy(npcKingdom)
+  const armySize    = [...UNIT_COMBAT_SET].reduce((s, u) => s + (npcKingdom[u] ?? 0), 0)
 
   const baseThreshold = ATTACK_THRESHOLD[personality]
   const threshold = baseThreshold + (cls === 'general' ? -2 : cls === 'collector' ? 3 : 0)
