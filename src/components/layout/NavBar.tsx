@@ -4,8 +4,10 @@ import {
   Castle, Factory, Building2, BookOpen, Swords, Shield, Navigation, Map, Trophy, BarChart2, Users,
   type LucideIcon,
 } from 'lucide-react'
+import { useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@/features/auth/useAuth'
 import { usePendingClaimsCount } from '@/features/achievements/useAchievements'
+import type { ArmiesResponse } from '@/features/armies/types'
 
 interface NavItem {
   to: string
@@ -33,6 +35,8 @@ interface Props {
 export function NavBar({ isOpen, onClose }: Props) {
   const { user } = useAuth()
   const newAchievements = usePendingClaimsCount()
+  const qc = useQueryClient()
+  const underAttack = (qc.getQueryData<ArmiesResponse>(['armies'])?.underAttack) ?? false
 
   return (
     <nav className={`game-sidebar ${isOpen ? 'open' : ''}`}>
@@ -61,6 +65,9 @@ export function NavBar({ isOpen, onClose }: Props) {
           >
             <Icon size={16} className="nav-icon shrink-0" />
             <span className="flex-1">{label}</span>
+            {to === '/armies' && underAttack && (
+              <span className="ml-auto w-2 h-2 rounded-full bg-crimson animate-pulse" />
+            )}
           </NavLink>
         ))}
 

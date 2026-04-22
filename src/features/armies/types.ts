@@ -1,9 +1,11 @@
-import type { ArmyMission, SendArmyParams } from '@/shared/types'
+import type { ArmyMission, IncomingMission, SendArmyParams } from '@/shared/types'
 
-export type { ArmyMission, SendArmyParams }
+export type { ArmyMission, IncomingMission, SendArmyParams }
 
 export interface ArmiesResponse {
   missions: ArmyMission[]
+  incomingMissions: IncomingMission[]
+  underAttack: boolean
   fleetSlots: { used: number; max: number }
   top1Points: number
   characterClass: string | null

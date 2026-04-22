@@ -65,6 +65,21 @@ export interface ArmyMission {
   result: MissionResult | null
 }
 
+export type ThreatLevel = 'hostile' | 'neutral'
+
+export interface IncomingMission {
+  id: string
+  missionType: MissionType
+  state: 'active'
+  origin: { realm: number; region: number; slot: number }
+  target: { realm: number; region: number; slot: number }
+  arrivalTime: number
+  eta: number
+  units: Partial<Record<string, number>>
+  threatLevel: ThreatLevel
+  attackerName: string | null
+}
+
 export interface SendArmyParams {
   missionType: MissionType
   target: { realm: number; region: number; slot: number }

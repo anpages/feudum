@@ -1,4 +1,4 @@
-import { eq, and, ne } from 'drizzle-orm'
+import { eq, and, ne, or, inArray } from 'drizzle-orm'
 import { db, kingdoms, armyMissions, messages, research, users } from '../_db.js'
 import { calcPoints } from '../lib/points.js'
 import { getSessionUserId } from '../lib/handler.js'
@@ -217,5 +217,58 @@ export default async function handler(req, res) {
   const top1Points   = allKingdoms.reduce((max, k) => Math.max(max, calcPoints(k)), 0)
   const characterClass = userRow?.characterClass ?? null
 
-  return res.json({ missions, fleetSlots: { used: slotsUsed, max: maxSlots }, top1Points, characterClass })
+  // ── Incoming enemy missions ───────────────────────────────────────────────
+  const HOSTILE_TYPES = new Set(['attack', 'spy', 'missile'])
+  let incomingMissions = []
+  let underAttack = false
+
+  if (playerKingdoms.length > 0) {
+    const targetConditions = playerKingdoms.map(k =>
+      and(
+        eq(armyMissions.targetRealm, k.realm),
+        eq(armyMissions.targetRegion, k.region),
+        eq(armyMissions.targetSlot,   k.slot),
+      )
+    )
+    const incomingRaw = await db.select().from(armyMissions).where(
+      and(
+        ne(armyMissions.userId, userId),
+        eq(armyMissions.state, 'active'),
+        or(...targetConditions),
+      )
+    )
+
+    if (incomingRaw.length > 0) {
+      const attackerUserIds = [...new Set(incomingRaw.map(m => m.userId))]
+      const attackerKingdoms = await db.select({
+        userId: kingdoms.userId,
+        realm: kingdoms.realm, region: kingdoms.region, slot: kingdoms.slot,
+        name: kingdoms.name,
+      }).from(kingdoms).where(inArray(kingdoms.userId, attackerUserIds))
+
+      const nameByCoord = {}
+      for (const k of attackerKingdoms) nameByCoord[`${k.realm}:${k.region}:${k.slot}`] = k.name
+
+      incomingMissions = incomingRaw.map(m => {
+        const missionUnits = {}
+        for (const k of UNIT_KEYS) if ((m[k] ?? 0) > 0) missionUnits[k] = m[k]
+        return {
+          id: m.id,
+          missionType: m.missionType,
+          state: 'active',
+          origin: { realm: m.startRealm,  region: m.startRegion,  slot: m.startSlot },
+          target: { realm: m.targetRealm, region: m.targetRegion, slot: m.targetSlot },
+          arrivalTime: m.arrivalTime,
+          eta: Math.max(0, m.arrivalTime - now),
+          units: missionUnits,
+          threatLevel: HOSTILE_TYPES.has(m.missionType) ? 'hostile' : 'neutral',
+          attackerName: nameByCoord[`${m.startRealm}:${m.startRegion}:${m.startSlot}`] ?? null,
+        }
+      })
+
+      underAttack = incomingMissions.some(m => m.threatLevel === 'hostile')
+    }
+  }
+
+  return res.json({ missions, incomingMissions, underAttack, fleetSlots: { used: slotsUsed, max: maxSlots }, top1Points, characterClass })
 }

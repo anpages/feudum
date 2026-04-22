@@ -5,5 +5,7 @@ export type {
   MissionState,
   MissionResult,
   ArmyMission,
+  IncomingMission,
+  ThreatLevel,
   SendArmyParams,
 } from './mission'
