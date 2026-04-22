@@ -15,6 +15,7 @@ import {
   calculateDebris, repairDefenses, calcCargoCapacity,
 } from '../lib/battle.js'
 import { insertBattleLog, sumLosses } from '../lib/battle_log.js'
+import { processScavenge } from '../lib/missions/scavenge.js'
 import { getSettings, setSetting } from '../lib/settings.js'
 import { startNewSeason, repairSeasonNpcsIfMissing } from '../lib/season.js'
 
@@ -399,6 +400,71 @@ async function attackAI(npcKingdom, allKingdoms, bashMap, now, cfg) {
   return true
 }
 
+// ── Scavenge AI ───────────────────────────────────────────────────────────────
+// Only NPCs that already have Carroñeros send scavenge missions.
+// ~40% chance per tick. Searches debris fields in the same region.
+
+async function scavengeAI(npcKingdom, allDebris, now, cfg) {
+  const scavengerCount = npcKingdom.scavenger ?? 0
+  if (scavengerCount === 0) return false
+
+  // 40% chance to act this tick
+  if (Math.random() > 0.40) return false
+
+  // Already has an active scavenge mission from this position
+  const existing = await db.select({ id: armyMissions.id }).from(armyMissions).where(and(
+    eq(armyMissions.missionType, 'scavenge'),
+    eq(armyMissions.state,       'active'),
+    eq(armyMissions.startRealm,  npcKingdom.realm),
+    eq(armyMissions.startRegion, npcKingdom.region),
+    eq(armyMissions.startSlot,   npcKingdom.slot),
+  )).limit(1)
+  if (existing.length > 0) return false
+
+  // Find debris fields in the same region
+  const nearby = allDebris.filter(d =>
+    d.realm  === npcKingdom.realm &&
+    d.region === npcKingdom.region &&
+    (d.wood + d.stone) > 0
+  )
+  if (nearby.length === 0) return false
+
+  // Pick the richest debris field
+  const target = nearby.reduce((best, d) =>
+    (d.wood + d.stone) > (best.wood + best.stone) ? d : best
+  )
+
+  const force = { scavenger: scavengerCount }
+  const universeSpeed = parseFloat(cfg.fleet_speed_peaceful ?? cfg.fleet_speed_war ?? 1)
+  const origin = { realm: npcKingdom.realm, region: npcKingdom.region, slot: npcKingdom.slot }
+  const dest   = { realm: target.realm,     region: target.region,     slot: target.slot   }
+  const dist       = calcDistance(origin, dest)
+  const travelSecs = calcDuration(dist, force, 100, universeSpeed, {})
+  const arrivalTime = now + travelSecs
+
+  await db.insert(armyMissions).values({
+    userId:       npcKingdom.userId,
+    missionType:  'scavenge',
+    state:        'active',
+    startRealm:   npcKingdom.realm,
+    startRegion:  npcKingdom.region,
+    startSlot:    npcKingdom.slot,
+    targetRealm:  target.realm,
+    targetRegion: target.region,
+    targetSlot:   target.slot,
+    departureTime: now,
+    arrivalTime,
+    scavenger: scavengerCount,
+  })
+
+  // Deduct scavengers from kingdom
+  await db.update(kingdoms).set({ scavenger: 0, updatedAt: new Date() })
+    .where(eq(kingdoms.id, npcKingdom.id))
+  npcKingdom.scavenger = 0
+
+  return true
+}
+
 // ── Resolve NPC-vs-NPC battles ────────────────────────────────────────────────
 
 const NPC_UNIT_KEYS = [
@@ -623,14 +689,32 @@ export default async function handler(req, res) {
     bashMap[key] = (bashMap[key] ?? 0) + 1
   }
 
+  // Load all debris fields once for scavenge AI
+  const allDebris = await db.select({
+    id: debrisFields.id, realm: debrisFields.realm, region: debrisFields.region, slot: debrisFields.slot,
+    wood: debrisFields.wood, stone: debrisFields.stone,
+  }).from(debrisFields)
+
   // ── Process NPC return missions first ──────────────────────────────────────
   await processNpcReturns(npcUserId, npcKingdomsById, now)
+
+  // ── Resolve arrived NPC scavenge missions ─────────────────────────────────
+  const arrivedScavenges = await db.select().from(armyMissions).where(and(
+    eq(armyMissions.userId,      npcUserId),
+    eq(armyMissions.missionType, 'scavenge'),
+    eq(armyMissions.state,       'active'),
+    lte(armyMissions.arrivalTime, now),
+  ))
+  for (const m of arrivedScavenges) {
+    const npcKingdom = npcKingdomsById[`${m.startRealm}:${m.startRegion}:${m.startSlot}`]
+    if (npcKingdom) await processScavenge(m, npcKingdom, now, null)
+  }
 
   // ── Resolve arrived NPC-vs-NPC battles ────────────────────────────────────
   const npcVsNpcResolved = await resolveNpcVsNpcAttacks(npcKingdomsById, now)
 
-  // ── Per-NPC tick, growth, and attack ──────────────────────────────────────
-  let ticked = 0, grew = 0, attacked = 0
+  // ── Per-NPC tick, growth, attack and scavenge ─────────────────────────────
+  let ticked = 0, grew = 0, attacked = 0, scavenged = 0
 
   for (const kingdom of npcKingdoms) {
     // Resource tick — pass npcClass so tick.js applies collector +25% via same path as players
@@ -668,6 +752,17 @@ export default async function handler(req, res) {
       const launched = await attackAI(kingdom, allKingdoms, bashMap, now, cfg)
       if (launched) attacked++
     }
+
+    // Scavenge AI
+    const didScavenge = await scavengeAI(kingdom, allDebris, now, cfg)
+    if (didScavenge) {
+      scavenged++
+      // Remove the claimed debris from the local list so two NPCs no longer fight over it
+      const idx = allDebris.findIndex(d =>
+        d.realm === kingdom.realm && d.region === kingdom.region
+      )
+      if (idx >= 0) allDebris.splice(idx, 1)
+    }
   }
 
   // ── Debug breakdown ────────────────────────────────────────────────────────
@@ -678,5 +773,5 @@ export default async function handler(req, res) {
     byClass[npcClass(k)]++
   }
 
-  return res.json({ ok: true, npcCount: npcKingdoms.length, ticked, grew, attacked, npcVsNpcResolved, byPersonality, byClass, seasonAction, repairAction })
+  return res.json({ ok: true, npcCount: npcKingdoms.length, ticked, grew, attacked, scavenged, npcVsNpcResolved, byPersonality, byClass, seasonAction, repairAction })
 }
