@@ -49,7 +49,7 @@ const ALL_COMBAT_UNITS = ['squire','knight','paladin','warlord','grandKnight','s
 const MISSION_UNITS: Partial<Record<MissionType, string[]>> = {
   spy:      ['scout'],
   scavenge: ['scavenger'],
-  colonize: ['colonist'],
+  colonize: ALL_COMBAT_UNITS,
   attack:    ALL_COMBAT_UNITS,
   transport: ALL_COMBAT_UNITS,
 }

@@ -24,8 +24,9 @@ export async function processColonize(mission, myKingdom, now, targetKingdom) {
       updatedAt: new Date(),
     }).where(eq(armyMissions.id, mission.id))
   } else {
+    // Slot occupied — colonist is still consumed, other units return
     await db.update(armyMissions).set({
-      state: 'returning', returnTime,
+      colonist: 0, state: 'returning', returnTime,
       result: JSON.stringify({ type: 'colonize', success: false, reason: 'Posición ya ocupada' }),
       updatedAt: new Date(),
     }).where(eq(armyMissions.id, mission.id))

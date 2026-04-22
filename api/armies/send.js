@@ -174,14 +174,24 @@ export default async function handler(req, res) {
     }
   }
 
-  // Colonize missions: colonists only
+  // Colonize missions: exactly 1 colonist required; other units may escort (they return after)
   if (missionType === 'colonize') {
-    const nonColonists = UNIT_KEYS.filter(k => k !== 'colonist' && units[k] > 0)
-    if (nonColonists.length > 0) {
-      return res.status(400).json({ error: 'Las misiones de colonización solo permiten Colonistas' })
+    if (units.colonist !== 1) {
+      return res.status(400).json({ error: 'Las misiones de colonización requieren exactamente 1 Colonista' })
     }
-    if (units.colonist === 0) {
-      return res.status(400).json({ error: 'Necesitas al menos un Colonista para colonizar' })
+    // Colony limit: floor(cartography / 2) + 1 total kingdoms
+    const cartography = researchRow?.cartography ?? 0
+    const maxKingdoms = Math.floor(cartography / 2) + 1
+    const ownedKingdoms = await db
+      .select({ id: kingdoms.id })
+      .from(kingdoms)
+      .where(eq(kingdoms.userId, userId))
+    if (ownedKingdoms.length >= maxKingdoms) {
+      return res.status(400).json({
+        error: `Has alcanzado el límite de colonias (${ownedKingdoms.length}/${maxKingdoms}). Mejora Cartografía para colonizar más.`,
+        maxKingdoms,
+        cartography,
+      })
     }
   }
 
