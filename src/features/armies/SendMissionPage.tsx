@@ -52,7 +52,6 @@ const MISSION_UNITS: Partial<Record<MissionType, string[]>> = {
   colonize: ['colonist'],
   attack:    ALL_COMBAT_UNITS,
   transport: ALL_COMBAT_UNITS,
-  deploy:    ALL_COMBAT_UNITS,
 }
 
 function parseError(err: unknown): string {
