@@ -22,7 +22,7 @@ const TABS: { id: Tab; label: string; Icon: typeof Settings }[] = [
 
 export function AdminPage() {
   const { user, isLoading } = useAuth()
-  const [tab, setTab] = useState<Tab>('server')
+  const [tab, setTab] = useState<Tab>('npc_monitor')
 
   if (isLoading) return null
   if (!user?.isAdmin) return <Navigate to="/overview" replace />

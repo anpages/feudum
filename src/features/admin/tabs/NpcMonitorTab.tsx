@@ -3,163 +3,238 @@ import { adminService } from '../services/adminService'
 import { formatResource } from '@/lib/format'
 import type { NpcTickResult, NpcAggregate } from '../types'
 
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
 function timeAgo(unix: number, now: number) {
-  const diff = now - unix
-  if (diff < 90)   return `${diff}s`
-  if (diff < 3600) return `${Math.floor(diff / 60)}m`
-  return `${Math.floor(diff / 3600)}h ${Math.floor((diff % 3600) / 60)}m`
+  const d = now - unix
+  if (d < 90)   return `${d}s`
+  if (d < 3600) return `${Math.floor(d / 60)} min`
+  return `${Math.floor(d / 3600)}h ${Math.floor((d % 3600) / 60)}m`
 }
 
 function formatTs(unix: number) {
-  return new Date(unix * 1000).toLocaleString('es-ES', {
-    month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
+  return new Date(unix * 1000).toLocaleTimeString('es-ES', {
+    hour: '2-digit', minute: '2-digit',
   })
 }
 
-function Stat({ label, value, sub }: { label: string; value: string | number; sub?: string }) {
+function pct(n: number, total: number) {
+  return total > 0 ? Math.round(n / total * 100) : 0
+}
+
+// ── Sub-components ────────────────────────────────────────────────────────────
+
+function TickStatusBar({ tick, now }: { tick: NpcTickResult; now: number }) {
+  const age  = now - tick.at
+  const fresh = age < 900  // less than 15 min
+
   return (
-    <div className="glass rounded p-3 flex flex-col gap-0.5 min-w-0">
-      <div className="font-ui text-[0.6rem] uppercase tracking-widest text-ink-muted truncate">{label}</div>
-      <div className="font-ui text-base font-bold text-ink">{value}</div>
-      {sub && <div className="font-ui text-[0.6rem] text-ink-muted">{sub}</div>}
+    <div className="glass rounded-xl p-4 flex flex-wrap items-center gap-4">
+      {/* Status dot */}
+      <div className="flex items-center gap-2 shrink-0">
+        <span className={`w-2.5 h-2.5 rounded-full ${fresh ? 'bg-forest-light animate-pulse' : 'bg-ink-muted'}`} />
+        <span className="font-ui text-xs font-semibold text-ink">
+          {fresh ? 'Activo' : 'Sin actividad reciente'}
+        </span>
+      </div>
+      <div className="w-px h-4 bg-gold/20 hidden sm:block" />
+      {/* Last tick */}
+      <div className="flex items-center gap-1.5 font-ui text-xs text-ink-muted">
+        <span className="text-ink-muted">Último tick:</span>
+        <span className="text-ink font-semibold">{formatTs(tick.at)}</span>
+        <span className="text-ink-muted">· hace {timeAgo(tick.at, now)}</span>
+      </div>
+      <div className="w-px h-4 bg-gold/20 hidden sm:block" />
+      {/* Quick stats */}
+      <div className="flex flex-wrap items-center gap-3 ml-auto">
+        <TickPill label="construyeron" value={tick.grew}         color="text-forest-light" />
+        <TickPill label="atacaron"     value={tick.attacked}     color={tick.attacked     > 0 ? 'text-crimson-light' : 'text-ink-muted'} />
+        <TickPill label="expedición"   value={tick.expeditioned} color={tick.expeditioned > 0 ? 'text-gold'          : 'text-ink-muted'} />
+        <TickPill label="carroñeo"     value={tick.scavenged}    color={tick.scavenged    > 0 ? 'text-forest-light'  : 'text-ink-muted'} />
+        <TickPill label="combates"     value={tick.npcVsNpcResolved} color={tick.npcVsNpcResolved > 0 ? 'text-crimson-light' : 'text-ink-muted'} />
+      </div>
     </div>
   )
 }
 
-function LastTickCard({ tick, now }: { tick: NpcTickResult; now: number }) {
+function TickPill({ label, value, color }: { label: string; value: number; color: string }) {
   return (
-    <div className="glass rounded-lg p-4 space-y-3">
+    <div className="flex items-baseline gap-1">
+      <span className={`font-ui text-sm font-bold tabular-nums ${color}`}>{value}</span>
+      <span className="font-ui text-[0.6rem] text-ink-muted">{label}</span>
+    </div>
+  )
+}
+
+function MetricCard({ label, value, sub, accent }: {
+  label: string; value: string | number; sub?: string; accent?: string
+}) {
+  return (
+    <div className="card-medieval p-4 flex flex-col gap-1">
+      <div className="card-corner-tr" /><div className="card-corner-bl" />
+      <span className="font-ui text-[0.6rem] uppercase tracking-widest text-ink-muted">{label}</span>
+      <span className={`font-ui text-2xl font-bold tabular-nums ${accent ?? 'text-ink'}`}>{value}</span>
+      {sub && <span className="font-ui text-[0.6rem] text-ink-muted">{sub}</span>}
+    </div>
+  )
+}
+
+function FillBar({ value, max, color = 'bg-gold' }: { value: number; max: number; color?: string }) {
+  const w = max > 0 ? Math.min(100, value / max * 100) : 0
+  return (
+    <div className="progress-track h-1.5">
+      <div className={`progress-fill ${color}`} style={{ width: `${w}%` }} />
+    </div>
+  )
+}
+
+function ArmyDistribution({ dist, total }: { dist: Record<string, number>; total: number }) {
+  const buckets = [
+    { key: '0',     label: 'Sin ejército', color: 'bg-ink-muted/30' },
+    { key: '1-10',  label: '1–10',         color: 'bg-gold/40' },
+    { key: '11-50', label: '11–50',         color: 'bg-gold/70' },
+    { key: '51-200',label: '51–200',        color: 'bg-gold' },
+    { key: '200+',  label: '200+',          color: 'bg-forest-light' },
+  ]
+  return (
+    <div className="space-y-1.5">
+      {/* Stacked bar */}
+      <div className="flex h-3 rounded overflow-hidden gap-px">
+        {buckets.map(b => {
+          const n = dist[b.key] ?? 0
+          const w = pct(n, total)
+          return w > 0 ? (
+            <div key={b.key} className={`${b.color} transition-all`} style={{ width: `${w}%` }}
+              title={`${b.label}: ${n} NPCs`} />
+          ) : null
+        })}
+      </div>
+      {/* Legend */}
+      <div className="flex flex-wrap gap-x-3 gap-y-0.5">
+        {buckets.map(b => {
+          const n = dist[b.key] ?? 0
+          if (n === 0) return null
+          return (
+            <div key={b.key} className="flex items-center gap-1">
+              <span className={`w-2 h-2 rounded-sm ${b.color}`} />
+              <span className="font-ui text-[0.6rem] text-ink-muted">{b.label}: <strong className="text-ink">{n}</strong></span>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+function AdoptionRow({ label, withUnit, total, totalUnits }: {
+  label: string; withUnit: number; total: number; totalUnits: number
+}) {
+  const p = pct(withUnit, total)
+  return (
+    <div className="space-y-1">
       <div className="flex items-center justify-between">
-        <h3 className="font-ui text-xs font-semibold uppercase tracking-widest text-ink-muted">Último tick</h3>
-        <span className="font-ui text-xs text-gold">{formatTs(tick.at)} · hace {timeAgo(tick.at, now)}</span>
+        <span className="font-ui text-xs text-ink">{label}</span>
+        <div className="flex items-baseline gap-1.5">
+          <span className="font-ui text-xs font-semibold text-ink tabular-nums">{withUnit}<span className="text-ink-muted">/{total}</span></span>
+          <span className="font-ui text-[0.6rem] text-ink-muted">NPCs · {formatResource(totalUnits)} uds.</span>
+        </div>
       </div>
-      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2">
-        <Stat label="NPCs" value={tick.npcCount} />
-        <Stat label="Recursos ✓" value={tick.ticked} />
-        <Stat label="Construyeron" value={tick.grew} />
-        <Stat label="Atacaron" value={tick.attacked} />
-        <Stat label="Carroñearon" value={tick.scavenged} />
-        <Stat label="Expedición" value={tick.expeditioned} />
-        <Stat label="Exped. resuel." value={tick.npcExpeditionsResolved} />
-        <Stat label="Combates NPC" value={tick.npcVsNpcResolved} />
-      </div>
+      <FillBar value={withUnit} max={total} color={p > 50 ? 'bg-forest-light' : p > 10 ? 'bg-gold' : 'bg-ink-muted/40'} />
     </div>
   )
 }
 
-function AggregatePanel({ agg }: { agg: NpcAggregate }) {
-  const totalMissions = Object.values(agg.missionCounts).reduce((s, n) => s + n, 0)
-  const attackActive = (agg.missionCounts['attack:active'] ?? 0)
-  const expedActive  = (agg.missionCounts['expedition:active'] ?? 0)
-    + (agg.missionCounts['expedition:exploring'] ?? 0)
-    + (agg.missionCounts['expedition:returning'] ?? 0)
-  const scavActive   = (agg.missionCounts['scavenge:active'] ?? 0)
-
+function BuildingRow({ label, avg, max, weight }: { label: string; avg: number; max: number; weight: number }) {
   return (
-    <div className="space-y-4">
-
-      {/* Edificios */}
-      <div>
-        <h4 className="font-ui text-[0.6rem] uppercase tracking-widest text-ink-muted mb-2">Edificios (avg / max)</h4>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-          <Stat label="Barracks" value={agg.avgBarracks} sub={`max ${agg.maxBarracks}`} />
-          <Stat label="Academy"  value={agg.avgAcademy}  sub={`max ${agg.maxAcademy}`} />
-          <Stat label="Sawmill"  value={agg.avgSawmill} />
-          <Stat label="Workshop" value={agg.avgWorkshop} />
-        </div>
+    <div className="flex items-center gap-3">
+      <span className="font-ui text-xs text-ink-muted w-28 shrink-0">{label}</span>
+      <div className="flex-1 space-y-0.5">
+        <FillBar value={avg} max={weight} color="bg-gold/70" />
       </div>
-
-      {/* Ejército */}
-      <div>
-        <h4 className="font-ui text-[0.6rem] uppercase tracking-widest text-ink-muted mb-2">Ejército</h4>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-          <Stat label="Avg ejército" value={agg.avgArmy} sub={`max ${agg.maxArmy}`} />
-          <Stat label="Con ejército" value={`${agg.withArmy}/${agg.total}`} />
-          <Stat label="Squires total" value={formatResource(agg.totalSquire)} />
-          <Stat label="Distribución" value="" sub={
-            Object.entries(agg.armyDistribution)
-              .filter(([, v]) => v > 0)
-              .map(([k, v]) => `${k}: ${v}`)
-              .join(' · ')
-          } />
-        </div>
-      </div>
-
-      {/* Unidades de apoyo */}
-      <div>
-        <h4 className="font-ui text-[0.6rem] uppercase tracking-widest text-ink-muted mb-2">Unidades de apoyo</h4>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-          <Stat label="Con Merchant"  value={`${agg.withMerchant}/${agg.total}`}  sub={`${agg.totalMerchant} total`} />
-          <Stat label="Con Caravan"   value={`${agg.withCaravan}/${agg.total}`}   sub={`${agg.totalCaravan} total`} />
-          <Stat label="Con Scavenger" value={`${agg.withScavenger}/${agg.total}`} sub={`${agg.totalScavenger} total`} />
-        </div>
-      </div>
-
-      {/* Recursos y misiones */}
-      <div className="grid lg:grid-cols-2 gap-4">
-        <div>
-          <h4 className="font-ui text-[0.6rem] uppercase tracking-widest text-ink-muted mb-2">Recursos (avg por NPC)</h4>
-          <div className="grid grid-cols-3 gap-2">
-            <Stat label="Madera" value={formatResource(agg.avgWood)} />
-            <Stat label="Piedra" value={formatResource(agg.avgStone)} />
-            <Stat label="Grano"  value={formatResource(agg.avgGrain)} />
-          </div>
-        </div>
-        <div>
-          <h4 className="font-ui text-[0.6rem] uppercase tracking-widest text-ink-muted mb-2">Misiones activas ({totalMissions})</h4>
-          <div className="grid grid-cols-3 gap-2">
-            <Stat label="Ataques"    value={attackActive} />
-            <Stat label="Expedición" value={expedActive} />
-            <Stat label="Carroñeo"   value={scavActive} />
-          </div>
-        </div>
-      </div>
-
+      <span className="font-ui text-xs tabular-nums text-ink w-14 text-right shrink-0">
+        {avg} <span className="text-ink-muted text-[0.6rem]">/ {max}</span>
+      </span>
     </div>
   )
 }
 
-function HistoryTable({ history }: { history: NpcTickResult[] }) {
-  const rows = [...history].reverse()
+function ResourceRow({ label, avg, capacity }: { label: string; avg: number; capacity: number }) {
+  return (
+    <div className="flex items-center gap-3">
+      <span className="font-ui text-xs text-ink-muted w-14 shrink-0">{label}</span>
+      <div className="flex-1">
+        <FillBar value={avg} max={capacity} color="bg-gold/60" />
+      </div>
+      <span className="font-ui text-xs tabular-nums text-ink w-20 text-right shrink-0">{formatResource(avg)}</span>
+    </div>
+  )
+}
+
+function MissionBadge({ label, count, color }: { label: string; count: number; color: string }) {
+  return (
+    <div className={`glass rounded-lg p-3 text-center ${count > 0 ? '' : 'opacity-50'}`}>
+      <div className={`font-ui text-xl font-bold tabular-nums ${color}`}>{count}</div>
+      <div className="font-ui text-[0.6rem] uppercase tracking-wider text-ink-muted mt-0.5">{label}</div>
+    </div>
+  )
+}
+
+function TickHistoryTable({ history }: { history: NpcTickResult[] }) {
+  const rows = [...history].reverse().slice(0, 24)
+  const maxGrew = Math.max(...rows.map(r => r.grew), 1)
+
   return (
     <div>
-      <h3 className="font-ui text-xs font-semibold uppercase tracking-widest text-ink-muted mb-2">
-        Historial de ticks ({history.length})
-      </h3>
       <div className="overflow-x-auto">
-        <table className="w-full font-ui text-xs">
+        <table className="w-full text-xs">
           <thead>
-            <tr className="border-b border-gold/10 text-ink-muted uppercase tracking-wider text-[0.6rem]">
-              <th className="text-left py-2 px-2">Hora</th>
-              <th className="text-right py-2 px-2">Construy.</th>
-              <th className="text-right py-2 px-2">Atacaron</th>
-              <th className="text-right py-2 px-2">Carroñ.</th>
-              <th className="text-right py-2 px-2">Exped.</th>
-              <th className="text-right py-2 px-2">E.Resuel.</th>
-              <th className="text-right py-2 px-2">Combates</th>
+            <tr className="border-b border-gold/10 font-ui text-ink-muted uppercase tracking-wider text-[0.6rem]">
+              <th className="text-left py-2 px-3">Hora</th>
+              <th className="text-right py-2 px-3">Construy.</th>
+              <th className="text-right py-2 px-3">Atacaron</th>
+              <th className="text-right py-2 px-3">Exped.</th>
+              <th className="text-right py-2 px-3">Carroñ.</th>
+              <th className="text-right py-2 px-3">Combates</th>
+              <th className="px-3 w-32 hidden sm:table-cell">Actividad</th>
             </tr>
           </thead>
           <tbody>
-            {rows.map((t, i) => (
-              <tr key={t.at} className={`border-b border-gold/5 ${i === 0 ? 'bg-gold/5' : 'hover:bg-parchment-warm/3'} transition-colors`}>
-                <td className="py-1.5 px-2 text-ink-muted tabular-nums">
-                  {formatTs(t.at)}
-                  {i === 0 && <span className="ml-2 text-[0.55rem] text-gold font-semibold uppercase">último</span>}
-                </td>
-                <td className="py-1.5 px-2 text-right tabular-nums text-ink">{t.grew}</td>
-                <td className={`py-1.5 px-2 text-right tabular-nums ${t.attacked > 0 ? 'text-crimson-light' : 'text-ink-muted'}`}>{t.attacked}</td>
-                <td className={`py-1.5 px-2 text-right tabular-nums ${t.scavenged > 0 ? 'text-forest-light' : 'text-ink-muted'}`}>{t.scavenged}</td>
-                <td className={`py-1.5 px-2 text-right tabular-nums ${t.expeditioned > 0 ? 'text-gold' : 'text-ink-muted'}`}>{t.expeditioned}</td>
-                <td className="py-1.5 px-2 text-right tabular-nums text-ink-muted">{t.npcExpeditionsResolved}</td>
-                <td className={`py-1.5 px-2 text-right tabular-nums ${t.npcVsNpcResolved > 0 ? 'text-ink' : 'text-ink-muted'}`}>{t.npcVsNpcResolved}</td>
-              </tr>
-            ))}
+            {rows.map((t, i) => {
+              const hasActivity = t.attacked > 0 || t.expeditioned > 0 || t.scavenged > 0 || t.npcVsNpcResolved > 0
+              return (
+                <tr key={t.at}
+                  className={`border-b border-gold/5 transition-colors ${i === 0 ? 'bg-gold/5' : 'hover:bg-parchment-warm/5'}`}>
+                  <td className="py-2 px-3 text-ink-muted tabular-nums">
+                    {formatTs(t.at)}
+                    {i === 0 && <span className="ml-2 font-ui text-[0.55rem] text-gold font-semibold uppercase">último</span>}
+                  </td>
+                  <td className="py-2 px-3 text-right text-ink tabular-nums font-semibold">{t.grew}</td>
+                  <td className={`py-2 px-3 text-right tabular-nums ${t.attacked > 0 ? 'text-crimson-light font-semibold' : 'text-ink-muted'}`}>{t.attacked}</td>
+                  <td className={`py-2 px-3 text-right tabular-nums ${t.expeditioned > 0 ? 'text-gold font-semibold' : 'text-ink-muted'}`}>{t.expeditioned}</td>
+                  <td className={`py-2 px-3 text-right tabular-nums ${t.scavenged > 0 ? 'text-forest-light font-semibold' : 'text-ink-muted'}`}>{t.scavenged}</td>
+                  <td className={`py-2 px-3 text-right tabular-nums ${t.npcVsNpcResolved > 0 ? 'text-crimson-light' : 'text-ink-muted'}`}>{t.npcVsNpcResolved}</td>
+                  <td className="py-2 px-3 hidden sm:table-cell">
+                    <div className="flex items-center gap-0.5 h-3">
+                      {/* Mini activity bar */}
+                      <div className="h-full rounded-sm bg-forest-light/60 transition-all"
+                        style={{ width: `${Math.round(t.grew / maxGrew * 32)}px`, minWidth: t.grew > 0 ? '2px' : '0' }} />
+                      {t.attacked > 0       && <div className="w-1.5 h-full rounded-sm bg-crimson-light/80" />}
+                      {t.expeditioned > 0   && <div className="w-1.5 h-full rounded-sm bg-gold/80" />}
+                      {t.scavenged > 0      && <div className="w-1.5 h-full rounded-sm bg-forest-light/80" />}
+                      {!hasActivity && t.grew === 0 && <span className="font-ui text-[0.55rem] text-ink-muted">—</span>}
+                    </div>
+                  </td>
+                </tr>
+              )
+            })}
           </tbody>
         </table>
       </div>
     </div>
   )
 }
+
+// ── Main tab ──────────────────────────────────────────────────────────────────
 
 export function NpcMonitorTab() {
   const now = Math.floor(Date.now() / 1000)
@@ -172,40 +247,159 @@ export function NpcMonitorTab() {
   if (isLoading) {
     return (
       <div className="space-y-4">
-        {Array.from({ length: 3 }).map((_, i) => (
-          <div key={i} className="skeleton h-24 rounded-lg" />
+        {[48, 32, 48, 32].map((h, i) => (
+          <div key={i} className={`skeleton h-${h} rounded-xl`} />
         ))}
       </div>
     )
   }
 
-  if (!data) return <p className="font-ui text-sm text-ink-muted text-center py-10">Sin datos todavía. El monitor se activa con el primer tick del cron.</p>
+  if (!data) {
+    return (
+      <div className="glass rounded-xl p-10 text-center">
+        <p className="font-ui text-sm text-ink-muted">Sin datos. Los registros se guardan a partir del primer tick del cron.</p>
+      </div>
+    )
+  }
 
-  const { lastTick, tickHistory, aggregate } = data
+  const { lastTick, tickHistory, aggregate: agg } = data
+
+  const attackActive  = (agg.missionCounts['attack:active']       ?? 0)
+  const expedActive   = (agg.missionCounts['expedition:active']    ?? 0)
+                      + (agg.missionCounts['expedition:exploring'] ?? 0)
+                      + (agg.missionCounts['expedition:returning'] ?? 0)
+  const scavActive    = (agg.missionCounts['scavenge:active']      ?? 0)
+  const totalMissions = attackActive + expedActive + scavActive
 
   return (
     <div className="space-y-6">
 
-      {/* Sin datos de tick aún */}
-      {!lastTick && (
-        <div className="glass rounded-lg p-6 text-center">
-          <p className="font-ui text-sm text-ink-muted">
-            Sin historial de ticks todavía. Los datos se guardan a partir del próximo tick del cron.
-          </p>
-        </div>
-      )}
+      {/* ── Status bar ─────────────────────────────────────────────────────── */}
+      {lastTick
+        ? <TickStatusBar tick={lastTick} now={now} />
+        : (
+          <div className="glass rounded-xl p-4 text-center font-ui text-xs text-ink-muted">
+            Sin historial de ticks aún — se registran a partir del próximo tick del cron.
+          </div>
+        )
+      }
 
-      {lastTick && <LastTickCard tick={lastTick} now={now} />}
-
-      {/* Aggregate stats actuales */}
-      <div className="glass rounded-lg p-4">
-        <h3 className="font-ui text-xs font-semibold uppercase tracking-widest text-ink-muted mb-4">
-          Estado actual — {aggregate.total} NPCs · {aggregate.bosses} jefe(s)
-        </h3>
-        <AggregatePanel agg={aggregate} />
+      {/* ── Overview metrics ───────────────────────────────────────────────── */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <MetricCard label="Total NPCs"    value={agg.total}    sub={`${agg.bosses} jefe(s)`} />
+        <MetricCard label="Con ejército"  value={`${pct(agg.withArmy, agg.total)}%`}
+          sub={`${agg.withArmy} de ${agg.total}`}
+          accent={agg.withArmy > agg.total * 0.5 ? 'text-forest-light' : 'text-gold'} />
+        <MetricCard label="Ejército avg"  value={agg.avgArmy}  sub={`max ${agg.maxArmy}`} />
+        <MetricCard label="Misiones act." value={totalMissions}
+          sub={`${attackActive} ataques · ${expedActive} exped.`}
+          accent={totalMissions > 0 ? 'text-gold' : 'text-ink'} />
       </div>
 
-      {tickHistory.length > 0 && <HistoryTable history={tickHistory} />}
+      {/* ── Buildings + Army ───────────────────────────────────────────────── */}
+      <div className="grid lg:grid-cols-2 gap-4">
+
+        {/* Buildings */}
+        <div className="card-medieval p-5 space-y-4">
+          <div className="card-corner-tr" /><div className="card-corner-bl" />
+          <h3 className="section-heading">Edificios (avg / max)</h3>
+          <div className="space-y-3">
+            <BuildingRow label="Aserradero"  avg={agg.avgSawmill}  max={agg.maxBarracks + 9} weight={15} />
+            <BuildingRow label="Cuartel"     avg={agg.avgBarracks} max={agg.maxBarracks}     weight={10} />
+            <BuildingRow label="Academia"    avg={agg.avgAcademy}  max={agg.maxAcademy}      weight={10} />
+            <BuildingRow label="Taller"      avg={agg.avgWorkshop} max={agg.maxBarracks}     weight={8}  />
+          </div>
+        </div>
+
+        {/* Army distribution */}
+        <div className="card-medieval p-5 space-y-4">
+          <div className="card-corner-tr" /><div className="card-corner-bl" />
+          <h3 className="section-heading">Distribución del ejército</h3>
+          <ArmyDistribution dist={agg.armyDistribution} total={agg.total} />
+          <div className="grid grid-cols-3 gap-2 pt-1">
+            <div className="glass rounded p-2.5 text-center">
+              <div className="font-ui text-base font-bold text-ink tabular-nums">{agg.avgArmy}</div>
+              <div className="font-ui text-[0.6rem] text-ink-muted uppercase tracking-wide mt-0.5">Avg</div>
+            </div>
+            <div className="glass rounded p-2.5 text-center">
+              <div className="font-ui text-base font-bold text-ink tabular-nums">{agg.maxArmy}</div>
+              <div className="font-ui text-[0.6rem] text-ink-muted uppercase tracking-wide mt-0.5">Máx</div>
+            </div>
+            <div className="glass rounded p-2.5 text-center">
+              <div className="font-ui text-base font-bold text-gold tabular-nums">{formatResource(agg.totalSquire)}</div>
+              <div className="font-ui text-[0.6rem] text-ink-muted uppercase tracking-wide mt-0.5">Escuderos</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Support units + Resources ───────────────────────────────────────── */}
+      <div className="grid lg:grid-cols-2 gap-4">
+
+        {/* Support units adoption */}
+        <div className="card-medieval p-5 space-y-4">
+          <div className="card-corner-tr" /><div className="card-corner-bl" />
+          <h3 className="section-heading">Unidades de apoyo</h3>
+          <div className="space-y-4">
+            <AdoptionRow label="Mercader"  withUnit={agg.withMerchant}  total={agg.total} totalUnits={agg.totalMerchant}  />
+            <AdoptionRow label="Caravana"  withUnit={agg.withCaravan}   total={agg.total} totalUnits={agg.totalCaravan}   />
+            <AdoptionRow label="Carroñero" withUnit={agg.withScavenger} total={agg.total} totalUnits={agg.totalScavenger} />
+          </div>
+          {agg.withMerchant === 0 && agg.withCaravan === 0 && agg.withScavenger === 0 && (
+            <p className="font-body text-xs text-ink-muted italic pt-1">
+              Los NPCs economía/equilibrado empezarán a entrenar Mercader en cuanto alcancen Cuartel lv2.
+            </p>
+          )}
+        </div>
+
+        {/* Resources */}
+        <div className="card-medieval p-5 space-y-4">
+          <div className="card-corner-tr" /><div className="card-corner-bl" />
+          <h3 className="section-heading">Recursos (avg por NPC)</h3>
+          <div className="space-y-3">
+            <ResourceRow label="Madera" avg={agg.avgWood}  capacity={50000} />
+            <ResourceRow label="Piedra" avg={agg.avgStone} capacity={50000} />
+            <ResourceRow label="Grano"  avg={agg.avgGrain} capacity={50000} />
+          </div>
+          <div className="grid grid-cols-3 gap-2 pt-1">
+            <div className="glass rounded p-2.5 text-center">
+              <div className="font-ui text-sm font-bold text-ink tabular-nums">{formatResource(agg.avgWood)}</div>
+              <div className="font-ui text-[0.6rem] text-ink-muted uppercase tracking-wide mt-0.5">Madera</div>
+            </div>
+            <div className="glass rounded p-2.5 text-center">
+              <div className="font-ui text-sm font-bold text-ink tabular-nums">{formatResource(agg.avgStone)}</div>
+              <div className="font-ui text-[0.6rem] text-ink-muted uppercase tracking-wide mt-0.5">Piedra</div>
+            </div>
+            <div className="glass rounded p-2.5 text-center">
+              <div className="font-ui text-sm font-bold text-ink tabular-nums">{formatResource(agg.avgGrain)}</div>
+              <div className="font-ui text-[0.6rem] text-ink-muted uppercase tracking-wide mt-0.5">Grano</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Active missions ─────────────────────────────────────────────────── */}
+      <div className="card-medieval p-5 space-y-3">
+        <div className="card-corner-tr" /><div className="card-corner-bl" />
+        <h3 className="section-heading">Misiones activas</h3>
+        <div className="grid grid-cols-3 gap-3">
+          <MissionBadge label="Ataques en curso"    count={attackActive} color="text-crimson-light" />
+          <MissionBadge label="Expediciones activas" count={expedActive}  color="text-gold" />
+          <MissionBadge label="Carroñeo activo"      count={scavActive}   color="text-forest-light" />
+        </div>
+      </div>
+
+      {/* ── Tick history ────────────────────────────────────────────────────── */}
+      {tickHistory.length > 0 && (
+        <div className="card-medieval p-5 space-y-3">
+          <div className="card-corner-tr" /><div className="card-corner-bl" />
+          <div className="flex items-center justify-between">
+            <h3 className="section-heading">Historial de ticks</h3>
+            <span className="font-ui text-[0.6rem] text-ink-muted">{tickHistory.length} entradas · refresca c/60s</span>
+          </div>
+          <TickHistoryTable history={tickHistory} />
+        </div>
+      )}
 
     </div>
   )
