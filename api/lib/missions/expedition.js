@@ -19,7 +19,7 @@ const OUTCOME_LABELS = {
 export async function processExpedition(mission, myKingdom, now) {
   const travelSecs   = mission.arrivalTime - mission.departureTime
   const holdingTime  = mission.holdingTime ?? 0
-  const returnTime   = now + travelSecs
+  const returnTime   = mission.arrivalTime + holdingTime + travelSecs
   const missionUnits = {}
   for (const k of UNIT_KEYS) missionUnits[k] = mission[k] ?? 0
 
