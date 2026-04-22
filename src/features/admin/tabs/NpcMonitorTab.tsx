@@ -126,23 +126,6 @@ function ArmyDistribution({ dist, total }: { dist: Record<string, number>; total
   )
 }
 
-function AdoptionRow({ label, withUnit, total, totalUnits }: {
-  label: string; withUnit: number; total: number; totalUnits: number
-}) {
-  const p = pct(withUnit, total)
-  return (
-    <div className="space-y-1">
-      <div className="flex items-center justify-between">
-        <span className="font-ui text-xs text-ink">{label}</span>
-        <div className="flex items-baseline gap-1.5">
-          <span className="font-ui text-xs font-semibold text-ink tabular-nums">{withUnit}<span className="text-ink-muted">/{total}</span></span>
-          <span className="font-ui text-[0.6rem] text-ink-muted">NPCs · {formatResource(totalUnits)} uds.</span>
-        </div>
-      </div>
-      <FillBar value={withUnit} max={total} color={p > 50 ? 'bg-forest-light' : p > 10 ? 'bg-gold' : 'bg-ink-muted/40'} />
-    </div>
-  )
-}
 
 function BuildingRow({ label, avg, max, weight }: { label: string; avg: number; max: number; weight: number }) {
   return (
@@ -151,9 +134,27 @@ function BuildingRow({ label, avg, max, weight }: { label: string; avg: number; 
       <div className="flex-1 space-y-0.5">
         <FillBar value={avg} max={weight} color="bg-gold/70" />
       </div>
-      <span className="font-ui text-xs tabular-nums text-ink w-14 text-right shrink-0">
-        {avg} <span className="text-ink-muted text-[0.6rem]">/ {max}</span>
+      <span className="font-ui text-xs tabular-nums text-ink w-20 text-right shrink-0">
+        <span className="text-ink-muted text-[0.6rem]">prom.</span> {avg} <span className="text-ink-muted text-[0.6rem]">máx.</span> {max}
       </span>
+    </div>
+  )
+}
+
+function UnitAdoptionRow({ label, withUnit, total, totalUnits, color = 'bg-gold' }: {
+  label: string; withUnit: number; total: number; totalUnits: number; color?: string
+}) {
+  const p = pct(withUnit, total)
+  return (
+    <div className="space-y-1">
+      <div className="flex items-center justify-between">
+        <span className="font-ui text-xs text-ink">{label}</span>
+        <div className="flex items-baseline gap-2">
+          <span className="font-ui text-[0.6rem] text-ink-muted">{withUnit}/{total} NPCs</span>
+          <span className="font-ui text-xs font-semibold text-ink tabular-nums">{formatResource(totalUnits)}</span>
+        </div>
+      </div>
+      <FillBar value={withUnit} max={total} color={p > 50 ? 'bg-forest-light' : p > 10 ? color : 'bg-ink-muted/40'} />
     </div>
   )
 }
@@ -333,17 +334,30 @@ export function NpcMonitorTab() {
         </div>
       </div>
 
-      {/* ── Support units + Resources ───────────────────────────────────────── */}
+      {/* ── Combat units + Support units ───────────────────────────────────── */}
       <div className="grid lg:grid-cols-2 gap-4">
+
+        {/* Combat units */}
+        <div className="card-medieval p-5 space-y-4">
+          <div className="card-corner-tr" /><div className="card-corner-bl" />
+          <h3 className="section-heading">Ejército de combate</h3>
+          <div className="space-y-3">
+            <UnitAdoptionRow label="Escudero"        withUnit={agg.withArmy}        total={agg.total} totalUnits={agg.totalSquire}       color="bg-gold/60" />
+            <UnitAdoptionRow label="Caballero"       withUnit={agg.withKnight}      total={agg.total} totalUnits={agg.totalKnight}       color="bg-gold/70" />
+            <UnitAdoptionRow label="Paladín"         withUnit={agg.withPaladin}     total={agg.total} totalUnits={agg.totalPaladin}      color="bg-gold" />
+            <UnitAdoptionRow label="Señor de guerra" withUnit={agg.withWarlord}     total={agg.total} totalUnits={agg.totalWarlord}      color="bg-gold" />
+            <UnitAdoptionRow label="Gran Caballero"  withUnit={agg.withGrandKnight} total={agg.total} totalUnits={agg.totalGrandKnight}  color="bg-forest-light" />
+          </div>
+        </div>
 
         {/* Support units adoption */}
         <div className="card-medieval p-5 space-y-4">
           <div className="card-corner-tr" /><div className="card-corner-bl" />
           <h3 className="section-heading">Unidades de apoyo</h3>
-          <div className="space-y-4">
-            <AdoptionRow label="Mercader"  withUnit={agg.withMerchant}  total={agg.total} totalUnits={agg.totalMerchant}  />
-            <AdoptionRow label="Caravana"  withUnit={agg.withCaravan}   total={agg.total} totalUnits={agg.totalCaravan}   />
-            <AdoptionRow label="Carroñero" withUnit={agg.withScavenger} total={agg.total} totalUnits={agg.totalScavenger} />
+          <div className="space-y-3">
+            <UnitAdoptionRow label="Mercader"  withUnit={agg.withMerchant}  total={agg.total} totalUnits={agg.totalMerchant}  />
+            <UnitAdoptionRow label="Caravana"  withUnit={agg.withCaravan}   total={agg.total} totalUnits={agg.totalCaravan}   />
+            <UnitAdoptionRow label="Carroñero" withUnit={agg.withScavenger} total={agg.total} totalUnits={agg.totalScavenger} />
           </div>
           {agg.withMerchant === 0 && agg.withCaravan === 0 && agg.withScavenger === 0 && (
             <p className="font-body text-xs text-ink-muted italic pt-1">
@@ -351,11 +365,30 @@ export function NpcMonitorTab() {
             </p>
           )}
         </div>
+      </div>
+
+      {/* ── Defenses + Resources ─────────────────────────────────────────────── */}
+      <div className="grid lg:grid-cols-2 gap-4">
+
+        {/* Defenses */}
+        <div className="card-medieval p-5 space-y-4">
+          <div className="card-corner-tr" /><div className="card-corner-bl" />
+          <h3 className="section-heading">Defensas</h3>
+          <div className="space-y-3">
+            <UnitAdoptionRow label="Arquero"         withUnit={agg.withArcher}      total={agg.total} totalUnits={agg.totalArcher}       color="bg-gold/60" />
+            <UnitAdoptionRow label="Ballestero"      withUnit={agg.withCrossbowman} total={agg.total} totalUnits={agg.totalCrossbowman}  color="bg-gold/70" />
+            <UnitAdoptionRow label="Ballista"        withUnit={agg.withBallista}    total={agg.total} totalUnits={agg.totalBallista}     color="bg-gold" />
+            <UnitAdoptionRow label="Trebuchet"       withUnit={agg.withTrebuchet}   total={agg.total} totalUnits={agg.totalTrebuchet}    color="bg-gold" />
+            <UnitAdoptionRow label="Torre Maga"      withUnit={agg.withMageTower}   total={agg.total} totalUnits={agg.totalMageTower}    color="bg-forest-light" />
+            <UnitAdoptionRow label="Muro"            withUnit={agg.withCastleWall}  total={agg.total} totalUnits={agg.totalCastleWall}   color="bg-ink-mid" />
+            <UnitAdoptionRow label="Foso"            withUnit={agg.withMoat}        total={agg.total} totalUnits={agg.totalMoat}         color="bg-ink-mid" />
+          </div>
+        </div>
 
         {/* Resources */}
         <div className="card-medieval p-5 space-y-4">
           <div className="card-corner-tr" /><div className="card-corner-bl" />
-          <h3 className="section-heading">Recursos (avg por NPC)</h3>
+          <h3 className="section-heading">Recursos (prom. por NPC)</h3>
           <div className="space-y-3">
             <ResourceRow label="Madera" avg={agg.avgWood}  capacity={50000} />
             <ResourceRow label="Piedra" avg={agg.avgStone} capacity={50000} />

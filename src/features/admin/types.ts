@@ -202,6 +202,28 @@ export interface NpcAggregate {
   totalMerchant: number
   totalCaravan: number
   totalScavenger: number
+  // Per-type combat
+  totalKnight: number
+  totalPaladin: number
+  totalWarlord: number
+  totalGrandKnight: number
+  totalSiegeMaster: number
+  totalWarMachine: number
+  totalDragonKnight: number
+  withKnight: number
+  withPaladin: number
+  withWarlord: number
+  withGrandKnight: number
+  // Defense units
+  totalArcher: number;      withArcher: number
+  totalCrossbowman: number; withCrossbowman: number
+  totalBallista: number;    withBallista: number
+  totalTrebuchet: number;   withTrebuchet: number
+  totalMageTower: number;   withMageTower: number
+  totalDragonCannon: number; withDragonCannon: number
+  totalCastleWall: number;  withCastleWall: number
+  totalMoat: number;        withMoat: number
+  totalCatapult: number;    withCatapult: number
   avgWood: number
   avgStone: number
   avgGrain: number

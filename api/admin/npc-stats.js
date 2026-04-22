@@ -8,8 +8,9 @@ const MOBILE_KEYS = [
   'siegeMaster','warMachine','dragonKnight',
   'merchant','caravan','colonist','scavenger','scout',
 ]
-const COMBAT_KEYS = ['squire','knight','paladin','warlord','grandKnight','siegeMaster','warMachine','dragonKnight']
+const COMBAT_KEYS  = ['squire','knight','paladin','warlord','grandKnight','siegeMaster','warMachine','dragonKnight']
 const SUPPORT_KEYS = ['merchant','caravan','scavenger']
+const DEFENSE_KEYS = ['archer','crossbowman','ballista','trebuchet','mageTower','dragonCannon','castleWall','moat','catapult']
 
 function avg(arr, fn) {
   if (!arr.length) return 0
@@ -101,6 +102,27 @@ export default async function handler(req, res) {
       '51-200': npcs.filter(n => { const a = mobileArmy(n); return a >= 51 && a <= 200 }).length,
       '200+':   npcs.filter(n => mobileArmy(n) > 200).length,
     },
+
+    // Per-type combat unit totals
+    totalKnight:      sum(npcs, n => n.knight),
+    totalPaladin:     sum(npcs, n => n.paladin),
+    totalWarlord:     sum(npcs, n => n.warlord),
+    totalGrandKnight: sum(npcs, n => n.grandKnight),
+    totalSiegeMaster: sum(npcs, n => n.siegeMaster),
+    totalWarMachine:  sum(npcs, n => n.warMachine),
+    totalDragonKnight: sum(npcs, n => n.dragonKnight),
+    withKnight:       npcs.filter(n => (n.knight      ?? 0) > 0).length,
+    withPaladin:      npcs.filter(n => (n.paladin     ?? 0) > 0).length,
+    withWarlord:      npcs.filter(n => (n.warlord     ?? 0) > 0).length,
+    withGrandKnight:  npcs.filter(n => (n.grandKnight ?? 0) > 0).length,
+
+    // Defense unit totals
+    ...DEFENSE_KEYS.reduce((acc, k) => {
+      const cap = k.charAt(0).toUpperCase() + k.slice(1)
+      acc[`total${cap}`] = sum(npcs, n => n[k])
+      acc[`with${cap}`]  = npcs.filter(n => (n[k] ?? 0) > 0).length
+      return acc
+    }, {}),
 
     missionCounts,
     now,
