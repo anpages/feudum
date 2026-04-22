@@ -1,8 +1,8 @@
 import postgres from 'postgres'
 import { readFileSync } from 'node:fs'
 
-const url = process.env.STORAGE_POSTGRES_URL_NON_POOLING || process.env.DATABASE_URL_UNPOOLED || process.env.STORAGE_POSTGRES_URL
-if (!url) { console.error('Missing STORAGE_POSTGRES_URL_NON_POOLING / DATABASE_URL_UNPOOLED'); process.exit(1) }
+const url = process.env.STORAGE_POSTGRES_URL_NON_POOLING || process.env.STORAGE_POSTGRES_URL
+if (!url) { console.error('Missing STORAGE_POSTGRES_URL_NON_POOLING'); process.exit(1) }
 
 const file = process.argv[2]
 if (!file) { console.error('Usage: node scripts/apply-migration.mjs <path>'); process.exit(1) }

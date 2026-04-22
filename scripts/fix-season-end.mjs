@@ -1,8 +1,8 @@
 // One-off script: recalculate season_end from season_start using 360/speed formula.
 // Usage: set -a && source .env.local && set +a && node scripts/fix-season-end.mjs
-import { neon } from '@neondatabase/serverless'
+import postgres from 'postgres'
 
-const sql = neon(process.env.DATABASE_URL)
+const sql = postgres(process.env.STORAGE_POSTGRES_URL, { prepare: false })
 
 const rows = await sql`SELECT key, value FROM settings WHERE key IN ('season_start','economy_speed','season_end')`
 const cfg  = Object.fromEntries(rows.map(r => [r.key, r.value]))
@@ -22,3 +22,4 @@ console.log(`new end      : ${new Date(newEnd * 1000).toISOString()}`)
 
 await sql`UPDATE settings SET value = ${String(newEnd)} WHERE key = 'season_end'`
 console.log('✓ season_end updated')
+await sql.end()

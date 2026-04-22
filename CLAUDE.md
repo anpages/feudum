@@ -34,7 +34,7 @@ npm run lint         # ESLint
 
 # Database — load env first: set -a && source .env.local && set +a
 npm run db:generate  # Generate migration SQL from schema changes in db/schema/
-npm run db:migrate   # Apply pending migrations to Neon
+npm run db:migrate   # Apply pending migrations to Supabase
 npm run db:studio    # Open Drizzle Studio browser UI
 
 # Deploy
@@ -100,7 +100,7 @@ minimum: 1 second
 | Data fetching | React Query — global polling every 10s (`staleTime: 5s`) |
 | State | Zustand (available for global UI state) |
 | Backend | Hono — all routes under `/api`, deployed as Vercel serverless functions |
-| Database | Neon (serverless PostgreSQL) via `@neondatabase/serverless` |
+| Database | Supabase (PostgreSQL) via `postgres` + Drizzle ORM |
 | ORM | Drizzle ORM — schema in `db/schema/`, migrations in `db/migrations/` |
 | Auth | Custom JWT: Node.js `crypto.scrypt` + `jose` (httpOnly cookie `feudum_session`, 30d) |
 | Deploy | Vercel — `vercel.json` rewrites `/api/*` → `api/index.ts` |
@@ -188,7 +188,7 @@ api/routes/               One file per feature domain
 api/lib/                  Shared backend helpers (buildings.js, units.js, battle.js, tick.js, config.js…)
 api/middleware/           session.ts (requireAuth), admin.ts
 db/schema/                Drizzle table definitions (one file per domain)
-db/index.ts               Neon connection + re-exports all schema types
+db/index.ts               DB connection + re-exports all schema types
 ```
 
 ### tsconfig split
@@ -313,7 +313,7 @@ Import from `@/components/ui` (barrel export).
 - [x] Project scaffolding: Vite + React + TypeScript + Tailwind v4
 - [x] Hono API entry point (Vercel serverless)
 - [x] Drizzle schema: users, kingdoms, research, queues, army_missions
-- [x] Neon database provisioned and migrated
+- [x] Supabase database provisioned and migrated
 - [x] Vercel deployment pipeline (push to main → auto-deploy)
 - [x] Resource bar with local ticker (1s interpolation)
 - [x] Navigation layout (Reino / Construcción / Academia / Cuartel / Mapa)

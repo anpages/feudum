@@ -1,6 +1,6 @@
 import postgres from 'postgres'
 
-const url = process.env.STORAGE_POSTGRES_URL_NON_POOLING || process.env.DATABASE_URL_UNPOOLED
+const url = process.env.STORAGE_POSTGRES_URL_NON_POOLING
 const client = postgres(url, { prepare: false, max: 1 })
 
 try {
