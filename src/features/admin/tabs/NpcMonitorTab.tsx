@@ -119,7 +119,7 @@ function AggregatePanel({ agg }: { agg: NpcAggregate }) {
   )
 }
 
-function HistoryTable({ history, now }: { history: NpcTickResult[]; now: number }) {
+function HistoryTable({ history }: { history: NpcTickResult[] }) {
   const rows = [...history].reverse()
   return (
     <div>
@@ -205,7 +205,7 @@ export function NpcMonitorTab() {
         <AggregatePanel agg={aggregate} />
       </div>
 
-      {tickHistory.length > 0 && <HistoryTable history={tickHistory} now={now} />}
+      {tickHistory.length > 0 && <HistoryTable history={tickHistory} />}
 
     </div>
   )
