@@ -1,15 +1,21 @@
 import { pgTable, uuid, integer, varchar, real, timestamp, text, jsonb } from 'drizzle-orm/pg-core'
 import { users } from './users'
+import { kingdoms } from './kingdoms'
 
 /**
  * units JSONB format: { squire: 10, knight: 5, ... }
  * Only non-zero quantities are stored. Missing key = 0.
+ *
+ * origin_kingdom_id: which specific kingdom dispatched this mission.
+ * start_* coordinates kept as snapshot for return-trip resolution
+ * even if the origin kingdom is later deleted.
  */
 export const armyMissions = pgTable('army_missions', {
-  id:          uuid('id').primaryKey().defaultRandom(),
-  userId:      uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
-  missionType: varchar('mission_type', { length: 20 }).notNull(),
-  state:       varchar('state', { length: 10 }).notNull().default('active'),
+  id:               uuid('id').primaryKey().defaultRandom(),
+  userId:           uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  originKingdomId:  uuid('origin_kingdom_id').references(() => kingdoms.id, { onDelete: 'set null' }),
+  missionType:      varchar('mission_type', { length: 20 }).notNull(),
+  state:            varchar('state', { length: 10 }).notNull().default('active'),
 
   startRealm:  integer('start_realm').notNull(),
   startRegion: integer('start_region').notNull(),

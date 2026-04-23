@@ -1,13 +1,15 @@
-import { pgTable, uuid, varchar, boolean, real, integer, timestamp } from 'drizzle-orm/pg-core'
+import { pgTable, uuid, varchar, real, integer, timestamp } from 'drizzle-orm/pg-core'
+import { kingdoms } from './kingdoms'
 
 export const battleLog = pgTable('battle_log', {
   id:                uuid('id').primaryKey().defaultRandom(),
-  attackerKingdomId: uuid('attacker_kingdom_id'),
+  // Nullable FKs: kingdom may be deleted but battle history must persist
+  attackerKingdomId: uuid('attacker_kingdom_id').references(() => kingdoms.id, { onDelete: 'set null' }),
   attackerName:      varchar('attacker_name', { length: 100 }).notNull(),
-  attackerIsNpc:     boolean('attacker_is_npc').default(false).notNull(),
-  defenderKingdomId: uuid('defender_kingdom_id'),
+  attackerCoord:     varchar('attacker_coord', { length: 30 }).notNull(),
+  defenderKingdomId: uuid('defender_kingdom_id').references(() => kingdoms.id, { onDelete: 'set null' }),
   defenderName:      varchar('defender_name', { length: 100 }).notNull(),
-  defenderIsNpc:     boolean('defender_is_npc').default(false).notNull(),
+  defenderCoord:     varchar('defender_coord', { length: 30 }).notNull(),
   missionType:       varchar('mission_type', { length: 20 }).notNull(),
   outcome:           varchar('outcome', { length: 10 }).notNull(),
   lootWood:          real('loot_wood').default(0).notNull(),
@@ -16,8 +18,6 @@ export const battleLog = pgTable('battle_log', {
   attackerLosses:    integer('attacker_losses').default(0).notNull(),
   defenderLosses:    integer('defender_losses').default(0).notNull(),
   rounds:            integer('rounds').default(0).notNull(),
-  attackerCoord:     varchar('attacker_coord', { length: 30 }).notNull(),
-  defenderCoord:     varchar('defender_coord', { length: 30 }).notNull(),
   createdAt:         timestamp('created_at').defaultNow().notNull(),
 })
 

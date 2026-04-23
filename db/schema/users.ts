@@ -5,7 +5,8 @@ export const userRoleEnum = pgEnum('user_role', ['human', 'npc', 'admin'])
 export const users = pgTable('users', {
   id:             uuid('id').primaryKey(),
   username:       varchar('username',  { length: 50  }).unique(),
-  email:          varchar('email',     { length: 255 }).notNull().unique(),
+  // Nullable: NPC users have no email (Google Auth only for humans)
+  email:          varchar('email',     { length: 255 }).unique(),
   avatarUrl:      varchar('avatar_url',{ length: 500 }),
   role:           userRoleEnum('role').default('human').notNull(),
   ether:          integer('ether').default(0).notNull(),
