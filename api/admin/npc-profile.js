@@ -36,7 +36,7 @@ export default async function handler(req, res) {
 
   if (!kingdom) return res.status(404).json({ error: 'No hay reino en esas coordenadas' })
 
-  // Enrich with buildings + units for calcPoints and npcVirtualResearch
+  // Enrich with buildings + units for calcPoints
   const enriched = await enrichKingdom(kingdom, { withUnits: true })
 
   const [activeMissions, recentMissions, battles, researchMap] = await Promise.all([
@@ -71,12 +71,20 @@ export default async function handler(req, res) {
     getResearchMap(kingdom.userId),
   ])
 
+  const RESEARCH_DEFAULTS = {
+    swordsmanship: 0, armoury: 0, fortification: 0,
+    horsemanship: 0, cartography: 0, tradeRoutes: 0,
+    alchemy: 0, pyromancy: 0, runemastery: 0, mysticism: 0, dragonlore: 0,
+    spycraft: 0, logistics: 0, exploration: 0, diplomaticNetwork: 0, divineBlessing: 0,
+  }
+  const fullResearch = { ...RESEARCH_DEFAULTS, ...researchMap }
+
   return res.json({
     kingdom: enriched,
     personality:     enriched.isNpc ? npcPersonality(enriched) : null,
     npcClass:        enriched.isNpc ? npcClass(enriched)        : null,
     virtualResearch: null,
-    research:        researchMap,
+    research:        fullResearch,
     points:          calcPoints(enriched, researchMap),
     activeMissions,
     recentMissions,
