@@ -541,6 +541,8 @@ async function attemptBuildWeighted(kingdom, personality, cfg, now) {
     .filter(Boolean)
     .sort((a, b) => a.score - b.score)
 
+  let bestSaving = null  // highest-priority building we can't yet afford
+
   for (const { id, def } of candidates) {
     if (def.requires?.length) {
       const blocked = def.requires.some(req =>
@@ -554,11 +556,16 @@ async function attemptBuildWeighted(kingdom, personality, cfg, now) {
     const cost      = buildCost(def.woodBase, def.stoneBase, def.factor, currentLv, def.grainBase ?? 0)
 
     if (kingdom.wood < cost.wood || kingdom.stone < cost.stone || kingdom.grain < (cost.grain ?? 0)) {
-      await setDecision(kingdom, `Ahorrando para ${id} lv${nextLv}`)
-      return { action: 'saving', building: id }
+      if (!bestSaving) bestSaving = { id, nextLv }
+      continue  // try cheaper alternatives before giving up
     }
 
     return await attemptBuild(kingdom, id, cfg, now, `Crecimiento: ${id} → lv${nextLv}`)
+  }
+
+  if (bestSaving) {
+    await setDecision(kingdom, `Ahorrando para ${bestSaving.id} lv${bestSaving.nextLv}`)
+    return { action: 'saving', building: bestSaving.id }
   }
 
   await setDecision(kingdom, 'Sin edificios disponibles (bloqueados por requisitos)')
@@ -598,7 +605,8 @@ async function growNpc(kingdom, cfg, now, researchMap, debrisRegions, colonizeAc
   const createdAtSec = kingdom.createdAt
     ? Math.floor(new Date(kingdom.createdAt).getTime() / 1000)
     : now
-  const ageHours = (now - createdAtSec) / 3600
+  const speedFactor = parseFloat(cfg.economy_speed ?? ECONOMY_SPEED)
+  const ageHours = (now - createdAtSec) / 3600 * speedFactor
 
   // Nivel -1: fleetsave defensivo
   const incomingAttack = await getIncomingAttack(kingdom, now)
