@@ -1,13 +1,12 @@
 import { eq, and } from 'drizzle-orm'
 import { db, armyMissions, debrisFields } from '../../_db.js'
 import { calcCargoCapacity } from '../battle.js'
-import { UNIT_KEYS } from './keys.js'
+import { extractMissionUnits, UNIT_KEYS } from './keys.js'
 
 export async function processScavenge(mission, myKingdom, now, targetKingdom) {
-  const travelSecs  = mission.arrivalTime - mission.departureTime
-  const returnTime  = now + travelSecs
-  const missionUnits = {}
-  for (const k of UNIT_KEYS) missionUnits[k] = mission[k] ?? 0
+  const travelSecs   = mission.arrivalTime - mission.departureTime
+  const returnTime   = now + travelSecs
+  const missionUnits = extractMissionUnits(mission, UNIT_KEYS)
   const cargo = calcCargoCapacity(missionUnits)
 
   const [debris] = await db.select().from(debrisFields).where(and(

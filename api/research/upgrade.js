@@ -1,10 +1,11 @@
 import { eq, and } from 'drizzle-orm'
-import { db, kingdoms, research as researchTable, researchQueue, users } from '../_db.js'
+import { db, kingdoms, researchQueue, users } from '../_db.js'
 import { getSessionUserId } from '../lib/handler.js'
 import { RESEARCH, researchCost, researchTime, requirementsMet } from '../lib/research.js'
 import { getSettings } from '../lib/settings.js'
 import { applyResourceTick } from '../lib/tick.js'
 import { processUserQueues } from '../lib/process-queues.js'
+import { enrichKingdom, getResearchMap } from '../lib/db-helpers.js'
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end()
@@ -20,19 +21,19 @@ export default async function handler(req, res) {
 
   await processUserQueues(userId)
 
-  const [[kingdom], [resRow], [userRow], cfg] = await Promise.all([
+  const [[kingdomRow], resMap, [userRow], cfg] = await Promise.all([
     db.select().from(kingdoms).where(eq(kingdoms.userId, userId)).limit(1),
-    db.select().from(researchTable).where(eq(researchTable.userId, userId)).limit(1),
+    getResearchMap(userId),
     db.select({ characterClass: users.characterClass }).from(users).where(eq(users.id, userId)).limit(1),
     getSettings(),
   ])
-  if (!kingdom) return res.status(404).json({ error: 'Reino no encontrado' })
-  if (!resRow)  return res.status(404).json({ error: 'Research no encontrado' })
+  if (!kingdomRow) return res.status(404).json({ error: 'Reino no encontrado' })
+  const kingdom = await enrichKingdom(kingdomRow)
 
-  // ── Queue limit (max 5, same as building queue) ───────────────────────────
+  // ── Queue limit (max 5) ────────────────────────────────────────────────────
   const existing = await db.select().from(researchQueue)
     .where(eq(researchQueue.userId, userId))
-  if (existing.some(q => q.research === researchId)) {
+  if (existing.some(q => q.researchType === researchId)) {
     return res.status(400).json({ error: 'Esta investigación ya está en cola' })
   }
   if (existing.length >= 5) {
@@ -40,12 +41,12 @@ export default async function handler(req, res) {
   }
 
   // ── Requirements ──────────────────────────────────────────────────────────
-  if (!requirementsMet(def, kingdom, resRow)) {
+  if (!requirementsMet(def, kingdom, resMap)) {
     return res.status(400).json({ error: 'Requisitos no cumplidos' })
   }
 
   // ── Cost ──────────────────────────────────────────────────────────────────
-  const currentLevel  = resRow[researchId] ?? 0
+  const currentLevel  = resMap[researchId] ?? 0
   const nextLevel     = currentLevel + 1
   const academyLevel  = kingdom.academy ?? 0
   const cost          = researchCost(def, currentLevel)
@@ -54,7 +55,7 @@ export default async function handler(req, res) {
   const timeSecs  = Math.max(1, Math.floor(baseTime * classMult))
 
   // ── Lazy resource tick ────────────────────────────────────────────────────
-  const { wood, stone, grain, now } = applyResourceTick(kingdom, cfg, userRow?.characterClass ?? null, resRow)
+  const { wood, stone, grain, now } = applyResourceTick(kingdom, cfg, userRow?.characterClass ?? null, resMap)
 
   // ── Check resources ───────────────────────────────────────────────────────
   if (wood  < cost.wood)  return res.status(400).json({ error: 'Madera insuficiente',  need: cost.wood,  have: Math.floor(wood) })
@@ -76,10 +77,6 @@ export default async function handler(req, res) {
     updatedAt: new Date(),
   }).where(and(
     eq(kingdoms.id, kingdom.id),
-    // See comment in api/buildings/upgrade.js: lastResourceUpdate eq is the
-    // concurrency guard; comparing raw stored resources against cost is wrong
-    // because the tick rate (basic income + dragonlore) can put the player
-    // above cost while the raw DB value is below it.
     eq(kingdoms.lastResourceUpdate, kingdom.lastResourceUpdate),
   )).returning({ id: kingdoms.id })
 
@@ -89,10 +86,10 @@ export default async function handler(req, res) {
 
   await db.insert(researchQueue).values({
     userId,
-    kingdomId:  kingdom.id,
-    research:   researchId,
-    level:      nextLevel,
-    startedAt:  startAt,
+    kingdomId:    kingdom.id,
+    researchType: researchId,
+    level:        nextLevel,
+    startedAt:    startAt,
     finishesAt,
   })
 

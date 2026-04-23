@@ -5,7 +5,7 @@
  * POST { action: "end_season" }   → force-end current season
  */
 import { eq } from 'drizzle-orm'
-import { db, kingdoms } from '../_db.js'
+import { db, kingdoms, npcState } from '../_db.js'
 import { getAdminUserId } from '../lib/admin.js'
 import { getSettings, setSetting } from '../lib/settings.js'
 import { startNewSeason } from '../lib/season.js'
@@ -20,8 +20,10 @@ export default async function handler(req, res) {
     const [bossKingdom] = await db.select({
       id: kingdoms.id, name: kingdoms.name,
       realm: kingdoms.realm, region: kingdoms.region, slot: kingdoms.slot,
-      dragonKnight: kingdoms.dragonKnight,
-    }).from(kingdoms).where(eq(kingdoms.isBoss, true)).limit(1)
+    }).from(kingdoms)
+      .innerJoin(npcState, eq(kingdoms.userId, npcState.userId))
+      .where(eq(npcState.isBoss, true))
+      .limit(1)
 
     return res.json({
       seasonNumber:          cfg.season_number           ?? null,

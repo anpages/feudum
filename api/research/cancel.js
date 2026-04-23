@@ -1,10 +1,11 @@
 import { eq } from 'drizzle-orm'
-import { db, kingdoms, research as researchTable, researchQueue, users } from '../_db.js'
+import { db, kingdoms, researchQueue, users } from '../_db.js'
 import { getSessionUserId } from '../lib/handler.js'
 import { RESEARCH, researchCost } from '../lib/research.js'
 import { applyResourceTick } from '../lib/tick.js'
 import { getSettings } from '../lib/settings.js'
 import { processUserQueues } from '../lib/process-queues.js'
+import { enrichKingdom, getResearchMap } from '../lib/db-helpers.js'
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end()
@@ -17,26 +18,27 @@ export default async function handler(req, res) {
 
   await processUserQueues(userId)
 
-  const [[kingdom], [resRow], [userRow], cfg] = await Promise.all([
+  const [[kingdomRow], resMap, [userRow], cfg] = await Promise.all([
     db.select().from(kingdoms).where(eq(kingdoms.userId, userId)).limit(1),
-    db.select().from(researchTable).where(eq(researchTable.userId, userId)).limit(1),
+    getResearchMap(userId),
     db.select({ characterClass: users.characterClass }).from(users).where(eq(users.id, userId)).limit(1),
     getSettings(),
   ])
-  if (!kingdom) return res.status(404).json({ error: 'Reino no encontrado' })
+  if (!kingdomRow) return res.status(404).json({ error: 'Reino no encontrado' })
+  const kingdom = await enrichKingdom(kingdomRow)
 
   const allQueue = await db.select().from(researchQueue)
     .where(eq(researchQueue.userId, userId))
   const item = allQueue.find(q => q.id === queueId)
   if (!item) return res.status(404).json({ error: 'Elemento de cola no encontrado' })
 
-  const def = RESEARCH.find(r => r.id === item.research)
+  const def = RESEARCH.find(r => r.id === item.researchType)
   if (!def) return res.status(404).json({ error: 'Investigación desconocida' })
 
   const currentLevel = item.level - 1
   const refund = researchCost(def, currentLevel)
 
-  const { wood, stone, grain, now } = applyResourceTick(kingdom, cfg, userRow?.characterClass ?? null, resRow ?? null)
+  const { wood, stone, grain, now } = applyResourceTick(kingdom, cfg, userRow?.characterClass ?? null, resMap)
 
   await db.delete(researchQueue).where(eq(researchQueue.id, queueId))
 
@@ -63,13 +65,12 @@ export default async function handler(req, res) {
   if (itemsAfter.length > 0) {
     const predecessor = cancelledIndex > 0 ? remaining[cancelledIndex - 1] : null
     let chainAt = predecessor ? predecessor.finishesAt : now
-
     for (const q of itemsAfter) {
       const duration = q.finishesAt - q.startedAt
       const newStartedAt  = Math.max(now, chainAt)
       const newFinishesAt = newStartedAt + duration
       await db.update(researchQueue)
-        .set({ startedAt: newStartedAt, finishesAt: newFinishesAt, updatedAt: new Date() })
+        .set({ startedAt: newStartedAt, finishesAt: newFinishesAt })
         .where(eq(researchQueue.id, q.id))
       chainAt = newFinishesAt
     }

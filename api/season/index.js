@@ -2,7 +2,7 @@
  * GET /api/season — public endpoint returning current season info.
  */
 import { eq } from 'drizzle-orm'
-import { db, kingdoms, users } from '../_db.js'
+import { db, kingdoms, users, npcState, units } from '../_db.js'
 import { getSettings } from '../lib/settings.js'
 import { getBossForSeason } from '../lib/bosses.js'
 
@@ -30,18 +30,24 @@ export default async function handler(req, res) {
   const timeLeft = Math.max(0, seasonEnd - now)
 
   // Boss kingdom data
-  const [bossKingdom] = await db.select({
-    id: kingdoms.id, name: kingdoms.name,
-    realm: kingdoms.realm, region: kingdoms.region, slot: kingdoms.slot,
-    squire: kingdoms.squire, knight: kingdoms.knight, paladin: kingdoms.paladin,
-    warlord: kingdoms.warlord, grandKnight: kingdoms.grandKnight,
-    siegeMaster: kingdoms.siegeMaster, warMachine: kingdoms.warMachine,
-    dragonKnight: kingdoms.dragonKnight,
-  }).from(kingdoms).where(eq(kingdoms.isBoss, true)).limit(1)
+  const [bossRow] = await db.select({ k: kingdoms })
+    .from(kingdoms)
+    .innerJoin(npcState, eq(kingdoms.userId, npcState.userId))
+    .where(eq(npcState.isBoss, true))
+    .limit(1)
 
-  const bossArmySize = bossKingdom
-    ? COMBAT_UNITS.reduce((s, u) => s + (bossKingdom[u] ?? 0), 0)
-    : 0
+  let bossKingdom = null
+  let bossArmySize = 0
+
+  if (bossRow) {
+    bossKingdom = bossRow.k
+    const bossUnits = await db.select({ type: units.type, quantity: units.quantity })
+      .from(units)
+      .where(eq(units.kingdomId, bossRow.k.id))
+    bossArmySize = bossUnits
+      .filter(u => COMBAT_UNITS.includes(u.type))
+      .reduce((s, u) => s + (u.quantity ?? 0), 0)
+  }
 
   // Winner info
   let winner = null

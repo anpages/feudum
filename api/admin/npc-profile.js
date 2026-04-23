@@ -1,7 +1,8 @@
 import { eq, and, or, desc, gte } from 'drizzle-orm'
-import { db, kingdoms, armyMissions, battleLog } from '../_db.js'
+import { db, armyMissions, battleLog } from '../_db.js'
 import { getAdminUserId } from '../lib/admin.js'
 import { calcPoints } from '../lib/points.js'
+import { getKingdomAt, enrichKingdom } from '../lib/db-helpers.js'
 
 function npcPersonality(k) {
   const h = ((k.realm * 374761 + k.region * 6271 + k.slot * 1013) >>> 0) % 3
@@ -54,11 +55,12 @@ export default async function handler(req, res) {
   const since = now - 7 * 86400
   const coord = `${realm}:${region}:${slot}`
 
-  const [kingdom] = await db.select().from(kingdoms)
-    .where(and(eq(kingdoms.realm, realm), eq(kingdoms.region, region), eq(kingdoms.slot, slot)))
-    .limit(1)
+  const kingdom = await getKingdomAt(realm, region, slot)
 
   if (!kingdom) return res.status(404).json({ error: 'No hay reino en esas coordenadas' })
+
+  // Enrich with buildings + units for calcPoints and npcVirtualResearch
+  const enriched = await enrichKingdom(kingdom, { withUnits: true })
 
   const [activeMissions, recentMissions, battles] = await Promise.all([
     // Active/exploring/returning missions launched FROM or heading TO this slot
@@ -91,11 +93,11 @@ export default async function handler(req, res) {
   ])
 
   return res.json({
-    kingdom,
-    personality:     kingdom.isNpc ? npcPersonality(kingdom) : null,
-    npcClass:        kingdom.isNpc ? npcClass(kingdom)        : null,
-    virtualResearch: kingdom.isNpc ? npcVirtualResearch(kingdom) : null,
-    points:          calcPoints(kingdom),
+    kingdom: enriched,
+    personality:     enriched.isNpc ? npcPersonality(enriched) : null,
+    npcClass:        enriched.isNpc ? npcClass(enriched)        : null,
+    virtualResearch: enriched.isNpc ? npcVirtualResearch(enriched) : null,
+    points:          calcPoints(enriched),
     activeMissions,
     recentMissions,
     battles,

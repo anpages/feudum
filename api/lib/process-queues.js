@@ -1,17 +1,22 @@
 import { eq, and, lte } from 'drizzle-orm'
 import {
-  db, kingdoms, research as researchTable,
-  buildingQueue, researchQueue, unitQueue,
+  db, kingdoms, buildingQueue, researchQueue, unitQueue,
 } from '../_db.js'
 import { applyBuildingEffect } from './buildings.js'
+import { getBuildingMap, getUnitMap, upsertBuilding, upsertUnit, upsertResearch } from './db-helpers.js'
+
+const KINGDOM_PRODUCTION_KEYS = new Set([
+  'woodProduction', 'stoneProduction', 'grainProduction',
+  'woodCapacity', 'stoneCapacity', 'grainCapacity',
+])
 
 /**
- * Apply every queue row whose finishesAt <= now to the kingdom/research rows,
+ * Apply every queue row whose finishesAt <= now to the buildings/units/research tables,
  * then delete the processed queue rows. Idempotent and safe to call repeatedly.
  *
- * Buildings: increment level + recompute production / capacity via applyBuildingEffect.
- * Research:  increment level on the research row (single row per user).
- * Units:     add `amount` to the corresponding kingdom column.
+ * Buildings: upsert level in buildings table + update kingdom production/capacity columns.
+ * Research:  upsert level in research table (normalized rows per user+type).
+ * Units:     add amount to units table (normalized rows per kingdom+type).
  *
  * Returns the number of rows processed across all three queues.
  */
@@ -34,59 +39,71 @@ export async function processKingdomQueues(kingdomId, userId) {
 
   if (bq.length === 0 && rq.length === 0 && uq.length === 0) return 0
 
-  // Reload kingdom (and research) after queries so the patch we build is consistent
-  const [[kingdom], [resRow]] = await Promise.all([
+  const [[kingdom]] = await Promise.all([
     db.select().from(kingdoms).where(eq(kingdoms.id, kingdomId)).limit(1),
-    userId
-      ? db.select().from(researchTable).where(eq(researchTable.userId, userId)).limit(1)
-      : Promise.resolve([null]),
   ])
   if (!kingdom) return 0
 
-  // ── Buildings: fold each completed item into a single patch ─────────────────
-  const projected = { ...kingdom }
-  const buildingPatch = {}
-  for (const row of bq) {
-    Object.assign(projected,     applyBuildingEffect(row.building, row.level, projected))
-    Object.assign(buildingPatch, applyBuildingEffect(row.building, row.level, projected))
+  // ── Buildings: apply effects, upsert level, update kingdom production/capacity ──
+  if (bq.length > 0) {
+    const bMap = await getBuildingMap(kingdomId)
+    const projected = { ...kingdom, ...bMap }
+    const kingdomProductionPatch = {}
+
+    for (const row of bq) {
+      const effect = applyBuildingEffect(row.buildingType, row.level, projected)
+      for (const [k, v] of Object.entries(effect)) {
+        if (KINGDOM_PRODUCTION_KEYS.has(k)) {
+          kingdomProductionPatch[k] = v
+          projected[k] = v
+        } else {
+          // k is the building type name — upsert into buildings table
+          await upsertBuilding(kingdomId, k, v)
+          projected[k] = v
+        }
+      }
+    }
+
+    if (Object.keys(kingdomProductionPatch).length > 0) {
+      await db.update(kingdoms)
+        .set({ ...kingdomProductionPatch, updatedAt: new Date() })
+        .where(eq(kingdoms.id, kingdomId))
+    }
+
+    await db.delete(buildingQueue).where(
+      and(eq(buildingQueue.kingdomId, kingdomId), lte(buildingQueue.finishesAt, now))
+    )
   }
 
-  // ── Units: add amount per row ───────────────────────────────────────────────
-  const unitPatch = {}
-  for (const row of uq) {
-    unitPatch[row.unit] = (unitPatch[row.unit] ?? kingdom[row.unit] ?? 0) + row.amount
+  // ── Units: add amount to units table ──────────────────────────────────────────
+  if (uq.length > 0) {
+    const currentUnitMap = await getUnitMap(kingdomId)
+    const deltaMap = {}
+    for (const row of uq) {
+      deltaMap[row.unitType] = (deltaMap[row.unitType] ?? 0) + row.amount
+    }
+    for (const [type, delta] of Object.entries(deltaMap)) {
+      await upsertUnit(kingdomId, type, (currentUnitMap[type] ?? 0) + delta)
+    }
+    await db.delete(unitQueue).where(
+      and(eq(unitQueue.kingdomId, kingdomId), lte(unitQueue.finishesAt, now))
+    )
   }
 
-  // ── Research: pick the highest level per techId ────────────────────────────
-  const researchPatch = {}
-  for (const row of rq) {
-    if ((researchPatch[row.research] ?? -1) < row.level) researchPatch[row.research] = row.level
+  // ── Research: upsert level in research table ──────────────────────────────────
+  if (rq.length > 0 && userId) {
+    const resMap = {}
+    for (const row of rq) {
+      if ((resMap[row.researchType] ?? -1) < row.level) resMap[row.researchType] = row.level
+    }
+    for (const [type, level] of Object.entries(resMap)) {
+      await upsertResearch(userId, type, level)
+    }
+    await db.delete(researchQueue).where(
+      and(eq(researchQueue.userId, userId), lte(researchQueue.finishesAt, now))
+    )
   }
 
-  // ── Persist + delete processed queue rows in parallel ───────────────────────
-  const ops = []
-
-  const kingdomPatch = { ...buildingPatch, ...unitPatch }
-  if (Object.keys(kingdomPatch).length > 0) {
-    ops.push(db.update(kingdoms)
-      .set({ ...kingdomPatch, updatedAt: new Date() })
-      .where(eq(kingdoms.id, kingdomId)))
-  }
-
-  if (Object.keys(researchPatch).length > 0 && resRow) {
-    ops.push(db.update(researchTable)
-      .set({ ...researchPatch, updatedAt: new Date() })
-      .where(eq(researchTable.userId, userId)))
-  }
-
-  if (bq.length > 0) ops.push(db.delete(buildingQueue).where(and(
-    eq(buildingQueue.kingdomId, kingdomId), lte(buildingQueue.finishesAt, now))))
-  if (rq.length > 0) ops.push(db.delete(researchQueue).where(and(
-    eq(researchQueue.userId, userId), lte(researchQueue.finishesAt, now))))
-  if (uq.length > 0) ops.push(db.delete(unitQueue).where(and(
-    eq(unitQueue.kingdomId, kingdomId), lte(unitQueue.finishesAt, now))))
-
-  await Promise.all(ops)
   return bq.length + rq.length + uq.length
 }
 

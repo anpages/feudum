@@ -1,7 +1,8 @@
 import { eq, and, inArray } from 'drizzle-orm'
-import { db, kingdoms, users, debrisFields, research } from '../_db.js'
+import { db, kingdoms, users, debrisFields, npcState } from '../_db.js'
 import { getSessionUserId } from '../lib/handler.js'
 import { calcPoints } from '../lib/points.js'
+import { getBuildingMap, getResearchMap } from '../lib/db-helpers.js'
 import { UNIVERSE } from '../lib/config.js'
 
 const MAX_REALM  = UNIVERSE.maxRealm
@@ -29,42 +30,46 @@ export default async function handler(req, res) {
   ])
   const debrisBySlot = Object.fromEntries(debrisRows.map(d => [d.slot, { wood: d.wood, stone: d.stone }]))
 
-  // Get all real kingdoms in this realm+region with full data for points calculation
+  // Get all kingdoms in this realm+region with user and npc_state data
   const realKingdoms = await db
-    .select()
+    .select({ k: kingdoms, u: users, ns: npcState })
     .from(kingdoms)
     .innerJoin(users, eq(kingdoms.userId, users.id))
+    .leftJoin(npcState, eq(kingdoms.userId, npcState.userId))
     .where(and(
       eq(kingdoms.realm,  realm),
       eq(kingdoms.region, region),
     ))
 
-  // Fetch research for point calculation (only if there are real kingdoms)
-  const playerUserIds = realKingdoms.map(r => r.kingdoms.userId)
-  const researchRows  = playerUserIds.length > 0
-    ? await db.select().from(research).where(inArray(research.userId, playerUserIds))
-    : []
-  const researchByUser = Object.fromEntries(researchRows.map(r => [r.userId, r]))
+  // Fetch research for point calculation (only for human players)
+  const humanUserIds = realKingdoms
+    .filter(r => r.u.role !== 'npc')
+    .map(r => r.k.userId)
+  const researchMaps = {}
+  for (const uid of humanUserIds) {
+    researchMaps[uid] = await getResearchMap(uid)
+  }
 
   // Build slots 1-15
-  const realBySlot = Object.fromEntries(realKingdoms.map(r => [r.kingdoms.slot, r]))
+  const realBySlot = Object.fromEntries(realKingdoms.map(r => [r.k.slot, r]))
 
   const slots = Array.from({ length: MAX_SLOT }, (_, i) => {
     const slot = i + 1
-
     const debris = debrisBySlot[slot] ?? null
 
     if (realBySlot[slot]) {
-      const { kingdoms: k, users: u } = realBySlot[slot]
-      const points = k.isNpc ? 0 : calcPoints(k, researchByUser[k.userId] ?? {})
+      const { k, u, ns } = realBySlot[slot]
+      const isNpc = u.role === 'npc'
+      const points = isNpc ? 0 : calcPoints(k, researchMaps[k.userId] ?? {})
       return {
         slot,
         kingdomId: k.id,
         name:      k.name,
-        username:  k.isNpc ? null : u.username,
+        username:  isNpc ? null : u.username,
         isPlayer:  k.userId === userId,
-        isNpc:     k.isNpc,
-        npcLevel:  k.isNpc ? k.npcLevel : undefined,
+        isNpc,
+        npcLevel:  isNpc ? (ns?.npcLevel ?? 1) : undefined,
+        isBoss:    isNpc ? (ns?.isBoss ?? false) : undefined,
         points,
         isEmpty:   false,
         debris,

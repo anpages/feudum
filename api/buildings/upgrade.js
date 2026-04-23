@@ -1,10 +1,11 @@
 import { eq, and } from 'drizzle-orm'
-import { db, kingdoms, buildingQueue, research, users } from '../_db.js'
+import { db, kingdoms, buildingQueue, users } from '../_db.js'
 import { getSessionUserId } from '../lib/handler.js'
 import { BUILDINGS, buildCost, buildTime, buildingRequirementsMet, calcFieldMax, calcFieldsUsed } from '../lib/buildings.js'
 import { getSettings } from '../lib/settings.js'
 import { applyResourceTick } from '../lib/tick.js'
 import { processUserQueues } from '../lib/process-queues.js'
+import { enrichKingdom, getResearchMap } from '../lib/db-helpers.js'
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end()
@@ -21,16 +22,18 @@ export default async function handler(req, res) {
   // Apply any completed queues so this mutation sees authoritative state.
   await processUserQueues(userId)
 
-  const [[kingdom], [researchRow], [userRow], cfg] = await Promise.all([
+  const [[kingdomRow], resMap, [userRow], cfg] = await Promise.all([
     db.select().from(kingdoms).where(eq(kingdoms.userId, userId)).limit(1),
-    db.select().from(research).where(eq(research.userId, userId)).limit(1),
+    getResearchMap(userId),
     db.select({ characterClass: users.characterClass }).from(users).where(eq(users.id, userId)).limit(1),
     getSettings(),
   ])
-  if (!kingdom) return res.status(404).json({ error: 'Reino no encontrado' })
+  if (!kingdomRow) return res.status(404).json({ error: 'Reino no encontrado' })
+
+  const kingdom = await enrichKingdom(kingdomRow)
 
   // ── Check requirements ────────────────────────────────────────────────────
-  if (!buildingRequirementsMet(def, kingdom, researchRow ?? {})) {
+  if (!buildingRequirementsMet(def, kingdom, resMap)) {
     return res.status(400).json({ error: 'Requisitos no cumplidos' })
   }
 
@@ -43,10 +46,10 @@ export default async function handler(req, res) {
     })
   }
 
-  // ── Check not already queued + queue limit (max 5, same as OGame-ref) ────────
+  // ── Check not already queued + queue limit (max 5) ────────────────────────
   const existing = await db.select().from(buildingQueue)
     .where(eq(buildingQueue.kingdomId, kingdom.id))
-  if (existing.some(q => q.building === buildingId)) {
+  if (existing.some(q => q.buildingType === buildingId)) {
     return res.status(400).json({ error: 'Este edificio ya está en cola' })
   }
   if (existing.length >= 5) {
@@ -62,7 +65,7 @@ export default async function handler(req, res) {
   const timeSecs      = buildTime(cost.wood, cost.stone, nextLevel, workshopLevel, egLevel, cfg.economy_speed)
 
   // ── Lazy resource tick ────────────────────────────────────────────────────
-  const { wood, stone, grain, now } = applyResourceTick(kingdom, cfg, userRow?.characterClass ?? null, researchRow ?? null)
+  const { wood, stone, grain, now } = applyResourceTick(kingdom, cfg, userRow?.characterClass ?? null, resMap)
 
   // ── Check sufficient resources ────────────────────────────────────────────
   if (wood  < cost.wood)  return res.status(400).json({ error: 'Madera insuficiente',  need: cost.wood,  have: Math.floor(wood)  })
@@ -70,7 +73,6 @@ export default async function handler(req, res) {
   if (grain < cost.grain) return res.status(400).json({ error: 'Grano insuficiente',   need: cost.grain, have: Math.floor(grain) })
 
   // ── Deduct resources and create queue entry ───────────────────────────────
-  // Chain after the last queued item so the queue is processed in series
   const lastQueuedAt = existing.length > 0
     ? Math.max(...existing.map(q => q.finishesAt))
     : now
@@ -85,12 +87,6 @@ export default async function handler(req, res) {
     updatedAt: new Date(),
   }).where(and(
     eq(kingdoms.id, kingdom.id),
-    // Concurrency guard: lastResourceUpdate eq already serializes mutations —
-    // only the first to write wins, a second racing request sees the new
-    // timestamp and its UPDATE affects 0 rows. We deliberately do NOT compare
-    // raw stored wood/stone/grain here: those values may be below cost when
-    // uninterpolated basic income + dragonlore bonus on the tick put the
-    // player above cost. The tick check above is the source of truth.
     eq(kingdoms.lastResourceUpdate, kingdom.lastResourceUpdate),
   )).returning({ id: kingdoms.id })
 
@@ -99,10 +95,10 @@ export default async function handler(req, res) {
   }
 
   await db.insert(buildingQueue).values({
-    kingdomId:  kingdom.id,
-    building:   buildingId,
-    level:      nextLevel,
-    startedAt:  startAt,
+    kingdomId:    kingdom.id,
+    buildingType: buildingId,
+    level:        nextLevel,
+    startedAt:    startAt,
     finishesAt,
   })
 

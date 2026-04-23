@@ -1,10 +1,11 @@
-import { eq, and, gte, ne } from 'drizzle-orm'
-import { db, kingdoms, armyMissions, research, users } from '../_db.js'
+import { eq, and, ne } from 'drizzle-orm'
+import { db, kingdoms, armyMissions, users } from '../_db.js'
 import { getSessionUserId } from '../lib/handler.js'
 import { calcDistance, calcDuration, calcCargoCapacity } from '../lib/speed.js'
 import { getSettings } from '../lib/settings.js'
 import { applyResourceTick } from '../lib/tick.js'
 import { processUserQueues } from '../lib/process-queues.js'
+import { enrichKingdom, getResearchMap, getUnitMap, upsertUnit } from '../lib/db-helpers.js'
 import { sendPush } from '../lib/push.js'
 
 const UNIT_KEYS = [
@@ -51,18 +52,20 @@ export default async function handler(req, res) {
 
   await processUserQueues(userId)
 
-  // ── Load player kingdom + research + class ───────────────────────────────
-  const [[kingdom], [researchRow], [userRow], cfg] = await Promise.all([
+  // ── Load player kingdom (enriched with buildings + units) + research + class ──
+  const [[kingdomRow], resMap, [userRow], cfg] = await Promise.all([
     db.select().from(kingdoms).where(eq(kingdoms.userId, userId)).limit(1),
-    db.select().from(research).where(eq(research.userId, userId)).limit(1),
+    getResearchMap(userId),
     db.select({ characterClass: users.characterClass }).from(users).where(eq(users.id, userId)).limit(1),
     getSettings(),
   ])
-  if (!kingdom) return res.status(404).json({ error: 'Reino no encontrado' })
+  if (!kingdomRow) return res.status(404).json({ error: 'Reino no encontrado' })
+
+  const kingdom = await enrichKingdom(kingdomRow, { withUnits: true })
 
   // ── Fleet slot limit (Logistics research) — missiles don't use slots ──────
   if (!isMissile) {
-    const logistics = researchRow?.logistics ?? 0
+    const logistics = resMap.logistics ?? 0
     const maxSlots  = 1 + logistics
     const allActive = await db
       .select({ missionType: armyMissions.missionType })
@@ -83,7 +86,7 @@ export default async function handler(req, res) {
 
   // ── Missile mission — separate validation path ────────────────────────────
   if (isMissile) {
-    const cartography = researchRow?.cartography ?? 0
+    const cartography = resMap.cartography ?? 0
     if (cartography < 1) {
       return res.status(400).json({ error: 'Necesitas al menos Cartografía nivel 1 para lanzar misiles' })
     }
@@ -107,10 +110,12 @@ export default async function handler(req, res) {
     const travelSecs = 60 + Math.floor(Math.random() * 60)  // 60–120 s near-instant
     const arrivalTime = now + travelSecs
 
-    const { wood, stone, grain } = applyResourceTick(kingdom, cfg, userRow?.characterClass ?? null, researchRow ?? null)
+    const { wood, stone, grain } = applyResourceTick(kingdom, cfg, userRow?.characterClass ?? null, resMap)
+
+    // Deduct ballistic from units table
+    await upsertUnit(kingdom.id, 'ballistic', Math.max(0, (kingdom.ballistic ?? 0) - ballisticCount))
 
     await db.update(kingdoms).set({
-      ballistic: (kingdom.ballistic ?? 0) - ballisticCount,
       wood, stone, grain,
       lastResourceUpdate: now,
       updatedAt: new Date(),
@@ -118,6 +123,7 @@ export default async function handler(req, res) {
 
     const [inserted] = await db.insert(armyMissions).values({
       userId,
+      originKingdomId: kingdom.id,
       missionType: 'missile',
       state: 'active',
       startRealm:  kingdom.realm,
@@ -130,15 +136,17 @@ export default async function handler(req, res) {
       arrivalTime,
       returnTime: null,
       woodLoad: 0, stoneLoad: 0, grainLoad: 0,
-      ballistic: ballisticCount,
+      units: { ballistic: ballisticCount },
     }).returning({ id: armyMissions.id })
 
     // Notify target player
-    db.select({ userId: kingdoms.userId, isNpc: kingdoms.isNpc }).from(kingdoms)
+    db.select({ userId: kingdoms.userId, role: users.role })
+      .from(kingdoms)
+      .innerJoin(users, eq(kingdoms.userId, users.id))
       .where(and(eq(kingdoms.realm, tRealm), eq(kingdoms.region, tRegion), eq(kingdoms.slot, tSlot)))
       .limit(1)
       .then(([tk]) => {
-        if (tk && !tk.isNpc && tk.userId !== userId) {
+        if (tk && tk.role !== 'npc' && tk.userId !== userId) {
           sendPush(tk.userId, {
             title: '🪨 ¡Bombardeo entrante!',
             body: `${kingdom.name} lanza misiles hacia tu reino.`,
@@ -190,13 +198,13 @@ export default async function handler(req, res) {
     }
   }
 
-  // Colonize missions: exactly 1 colonist required; other units may escort (they return after)
+  // Colonize missions: exactly 1 colonist required
   if (missionType === 'colonize') {
     if (units.colonist !== 1) {
       return res.status(400).json({ error: 'Las misiones de colonización requieren exactamente 1 Colonista' })
     }
     // Colony limit: floor(cartography / 2) + 1 total kingdoms
-    const cartography = researchRow?.cartography ?? 0
+    const cartography = resMap.cartography ?? 0
     const maxKingdoms = Math.floor(cartography / 2) + 1
     const ownedKingdoms = await db
       .select({ id: kingdoms.id })
@@ -214,7 +222,7 @@ export default async function handler(req, res) {
   // Expedition missions: limited by floor(√cartography), minimum 1; holdingHours required
   let holdingHours = 0
   if (isExpedition) {
-    const cartographyLevel = researchRow?.cartography ?? 0
+    const cartographyLevel = resMap.cartography ?? 0
     const maxExpeditions = Math.max(1, Math.floor(Math.sqrt(cartographyLevel)))
     const activeExpeditions = await db.select({ id: armyMissions.id, state: armyMissions.state }).from(armyMissions)
       .where(and(
@@ -244,17 +252,17 @@ export default async function handler(req, res) {
 
   // Deploy missions: target must be own kingdom (different slot)
   if (missionType === 'deploy') {
-    const [target] = await db.select({ userId: kingdoms.userId }).from(kingdoms)
+    const [targetK] = await db.select({ userId: kingdoms.userId }).from(kingdoms)
       .where(and(
         eq(kingdoms.realm,  tRealm),
         eq(kingdoms.region, tRegion),
         eq(kingdoms.slot,   tSlot),
       )).limit(1)
-    if (!target) return res.status(400).json({ error: 'No existe un reino en ese slot' })
-    if (target.userId !== userId) return res.status(400).json({ error: 'Solo puedes desplegar a tus propios reinos' })
+    if (!targetK) return res.status(400).json({ error: 'No existe un reino en ese slot' })
+    if (targetK.userId !== userId) return res.status(400).json({ error: 'Solo puedes desplegar a tus propios reinos' })
   }
 
-// ── Resources to carry (transport) ────────────────────────────────────────
+  // ── Resources to carry (transport / deploy) ────────────────────────────────
   let woodLoad  = 0
   let stoneLoad = 0
   let grainLoad = 0
@@ -284,14 +292,14 @@ export default async function handler(req, res) {
   let universeSpeed = isWar
     ? parseFloat(cfg.fleet_speed_war ?? 1)
     : parseFloat(cfg.fleet_speed_peaceful ?? 1)
-  // Deploy missions travel 10% faster than normal (OGame "holding" fleet speed bonus)
+  // Deploy missions travel 10% faster than normal
   if (missionType === 'deploy') universeSpeed *= 1.1
 
-  // speedPct: player-chosen 10–100, default 100 (Feudum has no fuel cost)
+  // speedPct: player-chosen 10–100, default 100
   const speedPct = Math.min(100, Math.max(10, parseInt(rawSpeedPct ?? 100, 10) || 100))
 
   const distance   = calcDistance(origin, dest)
-  const travelSecs = calcDuration(distance, units, speedPct, universeSpeed, researchRow ?? {}, userRow?.characterClass ?? null)
+  const travelSecs = calcDuration(distance, units, speedPct, universeSpeed, resMap, userRow?.characterClass ?? null)
 
   if (travelSecs === 0) {
     return res.status(400).json({ error: 'No se pudo calcular el tiempo de viaje' })
@@ -299,45 +307,46 @@ export default async function handler(req, res) {
 
   const now         = Math.floor(Date.now() / 1000)
   const arrivalTime = now + travelSecs
-  // Expedition: fleet stays at target for holdingHours before returning
   const holdingTimeSecs = isExpedition ? holdingHours * 3600 : 0
   const returnTime  = arrivalTime + holdingTimeSecs + travelSecs
 
   // ── Deduct units and resources atomically ────────────────────────────────
-  const { wood, stone, grain } = applyResourceTick(kingdom, cfg, userRow?.characterClass ?? null, researchRow ?? null)
+  const { wood, stone, grain } = applyResourceTick(kingdom, cfg, userRow?.characterClass ?? null, resMap)
 
-  const patch = {
+  // Update kingdom resources (optimistic lock via lastResourceUpdate)
+  const updated = await db.update(kingdoms).set({
     wood:  wood  - woodLoad,
     stone: stone - stoneLoad,
     grain: grain - grainLoad,
     lastResourceUpdate: now,
     updatedAt: new Date(),
-  }
-  for (const k of UNIT_KEYS) {
-    if (units[k] > 0) patch[k] = (kingdom[k] ?? 0) - units[k]
-  }
-
-  // Optimistic lock: only update if kingdom hasn't been modified concurrently.
-  // lastResourceUpdate acts as version — concurrent requests will see 0 rows updated.
-  const unitWhereConditions = UNIT_KEYS
-    .filter(k => units[k] > 0)
-    .map(k => gte(kingdoms[k], units[k]))
-
-  const updated = await db.update(kingdoms).set(patch)
-    .where(and(
-      eq(kingdoms.id, kingdom.id),
-      eq(kingdoms.lastResourceUpdate, kingdom.lastResourceUpdate),
-      ...unitWhereConditions,
-    ))
-    .returning({ id: kingdoms.id })
+  }).where(and(
+    eq(kingdoms.id, kingdom.id),
+    eq(kingdoms.lastResourceUpdate, kingdom.lastResourceUpdate),
+  )).returning({ id: kingdoms.id })
 
   if (updated.length === 0) {
     return res.status(409).json({ error: 'Conflicto de concurrencia, inténtalo de nuevo' })
   }
 
+  // Deduct units from units table
+  const currentUnitMap = await getUnitMap(kingdom.id)
+  for (const k of UNIT_KEYS) {
+    if (units[k] > 0) {
+      await upsertUnit(kingdom.id, k, Math.max(0, (currentUnitMap[k] ?? 0) - units[k]))
+    }
+  }
+
   // ── Create mission ────────────────────────────────────────────────────────
-  const missionRow = {
+  // Build filtered units object (only non-zero values)
+  const filteredUnits = {}
+  for (const k of UNIT_KEYS) {
+    if (units[k] > 0) filteredUnits[k] = units[k]
+  }
+
+  const [inserted] = await db.insert(armyMissions).values({
     userId,
+    originKingdomId: kingdom.id,
     missionType,
     state: 'active',
     startRealm:  kingdom.realm,
@@ -353,27 +362,27 @@ export default async function handler(req, res) {
     woodLoad,
     stoneLoad,
     grainLoad,
-    ...Object.fromEntries(UNIT_KEYS.map(k => [k, units[k]])),
-  }
-
-  const [inserted] = await db.insert(armyMissions).values(missionRow).returning({ id: armyMissions.id })
+    units: filteredUnits,
+  }).returning({ id: armyMissions.id })
 
   // Notify target player of incoming hostile mission
   if (['attack', 'spy'].includes(missionType)) {
-    const [targetKingdom] = await db
-      .select({ userId: kingdoms.userId, isNpc: kingdoms.isNpc })
+    db.select({ userId: kingdoms.userId, role: users.role })
       .from(kingdoms)
+      .innerJoin(users, eq(kingdoms.userId, users.id))
       .where(and(eq(kingdoms.realm, tRealm), eq(kingdoms.region, tRegion), eq(kingdoms.slot, tSlot)))
       .limit(1)
-    if (targetKingdom && !targetKingdom.isNpc && targetKingdom.userId !== userId) {
-      const eta = Math.round(travelSecs / 60)
-      sendPush(targetKingdom.userId, {
-        title: missionType === 'attack' ? '⚔️ ¡Ataque entrante!' : '🕵️ ¡Espía detectado!',
-        body: `${kingdom.name} ${missionType === 'attack' ? 'te ataca' : 'espía tu reino'}. Llega en ~${eta} min.`,
-        url: '/armies',
-        tag: 'incoming-attack',
+      .then(([tk]) => {
+        if (tk && tk.role !== 'npc' && tk.userId !== userId) {
+          const eta = Math.round(travelSecs / 60)
+          sendPush(tk.userId, {
+            title: missionType === 'attack' ? '⚔️ ¡Ataque entrante!' : '🕵️ ¡Espía detectado!',
+            body: `${kingdom.name} ${missionType === 'attack' ? 'te ataca' : 'espía tu reino'}. Llega en ~${eta} min.`,
+            url: '/armies',
+            tag: 'incoming-attack',
+          }).catch(() => {})
+        }
       }).catch(() => {})
-    }
   }
 
   return res.json({

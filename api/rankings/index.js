@@ -1,7 +1,8 @@
-import { eq } from 'drizzle-orm'
-import { db, kingdoms, users, research, npcResearch } from '../_db.js'
+import { eq, ne } from 'drizzle-orm'
+import { db, kingdoms, users, npcState } from '../_db.js'
 import { getSessionUserId } from '../lib/handler.js'
 import { calcPointsBreakdown } from '../lib/points.js'
+import { getBuildingMap, getResearchMap } from '../lib/db-helpers.js'
 import { EMPTY_RESEARCH } from '../lib/npc-engine.js'
 
 const VALID_CATEGORIES = ['total', 'buildings', 'research', 'units', 'economy']
@@ -16,40 +17,44 @@ export default async function handler(req, res) {
   const playerType = req.query.type === 'npcs' ? 'npcs' : 'players'
   const showNpcs   = playerType === 'npcs'
 
-  const [allKingdoms, allResearch, allNpcResearch] = await Promise.all([
-    db.select().from(kingdoms)
-      .innerJoin(users, eq(kingdoms.userId, users.id))
-      .where(eq(kingdoms.isNpc, showNpcs)),
-    db.select().from(research),
-    db.select().from(npcResearch),
-  ])
+  // Fetch all kingdoms joined with users and npc_state
+  const allKingdomRows = await db
+    .select({ k: kingdoms, u: users, ns: npcState })
+    .from(kingdoms)
+    .innerJoin(users, eq(kingdoms.userId, users.id))
+    .leftJoin(npcState, eq(kingdoms.userId, npcState.userId))
+    .where(showNpcs ? eq(users.role, 'npc') : ne(users.role, 'npc'))
 
-  const researchByUser     = Object.fromEntries(allResearch.map(r => [r.userId, r]))
-  const npcResearchByKingdomId = Object.fromEntries(allNpcResearch.map(r => [r.kingdomId, r]))
+  const ranked = await Promise.all(allKingdomRows.map(async ({ k, u, ns }) => {
+    // Enrich kingdom with building map
+    const bMap = await getBuildingMap(k.id)
+    const enrichedKingdom = { ...k, ...bMap }
 
-  const ranked = allKingdoms
-    .map(({ kingdoms: k, users: u }) => {
-      const res = k.isNpc
-        ? (npcResearchByKingdomId[k.id] ?? EMPTY_RESEARCH)
-        : (researchByUser[k.userId] ?? {})
-      const breakdown = calcPointsBreakdown(k, res)
-      return {
-        kingdomId: k.id,
-        name:      k.name,
-        username:  u.username,
-        realm:     k.realm,
-        region:    k.region,
-        slot:      k.slot,
-        isNpc:     k.isNpc,
-        isBoss:    k.isBoss,
-        npcLevel:  k.npcLevel,
-        points:    breakdown[category],
-        breakdown,
-        isMe:      k.userId === userId,
-      }
-    })
-    .sort((a, b) => b.points - a.points)
-    .map((entry, i) => ({ ...entry, rank: i + 1 }))
+    // Get research map
+    const resMap = await getResearchMap(k.userId)
+    // For NPCs with no research rows, use EMPTY_RESEARCH fallback
+    const resObj = { ...EMPTY_RESEARCH, ...resMap }
+
+    const breakdown = calcPointsBreakdown(enrichedKingdom, resObj)
+
+    return {
+      kingdomId: k.id,
+      name:      k.name,
+      username:  u.username,
+      realm:     k.realm,
+      region:    k.region,
+      slot:      k.slot,
+      isNpc:     u.role === 'npc',
+      isBoss:    ns?.isBoss   ?? false,
+      npcLevel:  ns?.npcLevel ?? 1,
+      points:    breakdown[category],
+      breakdown,
+      isMe:      k.userId === userId,
+    }
+  }))
+
+  ranked.sort((a, b) => b.points - a.points)
+  ranked.forEach((entry, i) => { entry.rank = i + 1 })
 
   return res.json({ rankings: ranked, category, playerType })
 }

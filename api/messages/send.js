@@ -26,9 +26,10 @@ export default async function handler(req, res) {
 
   await db.insert(messages).values({
     userId:  recipient.id,
+    senderId: userId,
     type:    'player',
     subject: subject.trim(),
-    data:    JSON.stringify({ body: body.trim(), fromUsername: sender?.username ?? 'Desconocido' }),
+    data:    { body: body.trim(), fromUsername: sender?.username ?? 'Desconocido' },
   })
 
   return res.json({ ok: true })

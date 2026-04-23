@@ -1,10 +1,12 @@
 import { eq } from 'drizzle-orm'
-import { db, kingdoms, armyMissions, research, messages } from '../../_db.js'
+import { db, kingdoms, armyMissions, messages } from '../../_db.js'
 import { UNIT_STATS } from '../battle.js'
 import { DEFENSE_KEYS } from './keys.js'
+import { getResearchMap, enrichKingdom, batchUpsertUnits } from '../db-helpers.js'
 
 export async function processMissile(mission, myKingdom, now, targetKingdom) {
-  const sentMissiles = mission.ballistic ?? 0
+  const missionUnits = mission.units ?? {}
+  const sentMissiles = missionUnits.ballistic ?? 0
 
   const complete = (result) =>
     db.update(armyMissions).set({
@@ -16,15 +18,16 @@ export async function processMissile(mission, myKingdom, now, targetKingdom) {
     return
   }
 
-  const [atkResearch] = await db.select().from(research)
-    .where(eq(research.userId, myKingdom.userId)).limit(1)
-  const [defResearch] = await db.select().from(research)
-    .where(eq(research.userId, targetKingdom.userId)).limit(1)
+  const [atkResMap, defResMap, enrichedTarget] = await Promise.all([
+    getResearchMap(myKingdom.userId),
+    getResearchMap(targetKingdom.userId),
+    enrichKingdom(targetKingdom, { withUnits: true }),
+  ])
 
-  const swordsmanship = atkResearch?.swordsmanship ?? 0
-  const armouryRes    = defResearch?.armoury       ?? 0
+  const swordsmanship = atkResMap.swordsmanship ?? 0
+  const armouryRes    = defResMap.armoury       ?? 0
 
-  const trebs       = targetKingdom.trebuchet ?? 0
+  const trebs       = enrichedTarget.trebuchet ?? 0
   const intercepted = Math.min(trebs, sentMissiles)
   const remaining   = sentMissiles - intercepted
   const damageDealt = {}
@@ -38,23 +41,23 @@ export async function processMissile(mission, myKingdom, now, targetKingdom) {
       return aArmor - bArmor
     })
 
-    const defPatch = { updatedAt: new Date() }
+    const defUnitPatch = {}
     for (const k of defenseOrder) {
       if (damagePool <= 0) break
-      const count = targetKingdom[k] ?? 0
+      const count = enrichedTarget[k] ?? 0
       if (count === 0) continue
       const armor = ((UNIT_STATS[k]?.hull ?? 0) * (1 + 0.1 * armouryRes)) / 10
       if (armor <= 0) continue
       const destroyed = Math.min(count, Math.floor(damagePool / armor))
       if (destroyed > 0) {
-        damageDealt[k] = destroyed
-        defPatch[k]    = count - destroyed
-        damagePool    -= destroyed * armor
+        damageDealt[k]  = destroyed
+        defUnitPatch[k] = count - destroyed
+        damagePool     -= destroyed * armor
       }
     }
 
-    if (Object.keys(defPatch).length > 1) {
-      await db.update(kingdoms).set(defPatch).where(eq(kingdoms.id, targetKingdom.id))
+    if (Object.keys(defUnitPatch).length > 0) {
+      await batchUpsertUnits(targetKingdom.id, defUnitPatch)
     }
   }
 
@@ -64,14 +67,14 @@ export async function processMissile(mission, myKingdom, now, targetKingdom) {
   await db.insert(messages).values({
     userId: myKingdom.userId, type: 'battle',
     subject: `🚀 Bombardeo sobre ${targetKingdom.name}`,
-    data: JSON.stringify(result),
+    data: result,
   })
 
   if (!targetKingdom.isNpc) {
     await db.insert(messages).values({
       userId: targetKingdom.userId, type: 'battle',
       subject: '💥 Tu reino fue bombardeado',
-      data: JSON.stringify(result),
+      data: result,
     })
   }
 }

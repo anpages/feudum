@@ -1,5 +1,5 @@
 import { eq } from 'drizzle-orm'
-import { db, kingdoms } from '../_db.js'
+import { db, kingdoms, users, npcState } from '../_db.js'
 import { getAdminUserId } from '../lib/admin.js'
 import { npcPersonality } from '../lib/npc-engine.js'
 
@@ -25,11 +25,14 @@ export default async function handler(req, res) {
     realm:        kingdoms.realm,
     region:       kingdoms.region,
     slot:         kingdoms.slot,
-    lastDecision: kingdoms.lastDecision,
-    npcNextCheck: kingdoms.npcNextCheck,
-    npcLevel:     kingdoms.npcLevel,
-    isBoss:       kingdoms.isBoss,
-  }).from(kingdoms).where(eq(kingdoms.isNpc, true))
+    lastDecision: npcState.lastDecision,
+    nextCheck:    npcState.nextCheck,
+    npcLevel:     npcState.npcLevel,
+    isBoss:       npcState.isBoss,
+  }).from(kingdoms)
+    .innerJoin(users, eq(kingdoms.userId, users.id))
+    .innerJoin(npcState, eq(kingdoms.userId, npcState.userId))
+    .where(eq(users.role, 'npc'))
 
   const filterFn = FILTERS[filter]
 
@@ -42,10 +45,10 @@ export default async function handler(req, res) {
       region:       r.region,
       slot:         r.slot,
       lastDecision: r.lastDecision ?? null,
-      npcNextCheck: r.npcNextCheck ?? null,
+      npcNextCheck: r.nextCheck ?? null,
       npcLevel:     r.npcLevel ?? 1,
       personality:  npcPersonality(r),
-      secsUntilNext: r.npcNextCheck ? Math.max(0, r.npcNextCheck - now) : 0,
+      secsUntilNext: r.nextCheck ? Math.max(0, r.nextCheck - now) : 0,
     }))
     .filter(r => !filterFn || filterFn((r.lastDecision ?? '').toLowerCase()))
     .sort((a, b) => a.secsUntilNext - b.secsUntilNext)

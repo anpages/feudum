@@ -1,4 +1,4 @@
-import { desc, eq, and, gte, or, ne } from 'drizzle-orm'
+import { desc, eq, and, gte, or } from 'drizzle-orm'
 import { db, armyMissions, kingdoms, users } from '../_db.js'
 import { getAdminUserId } from '../lib/admin.js'
 
@@ -100,16 +100,18 @@ export default async function handler(req, res) {
     ? await db.select({
         userId: kingdoms.userId, name: kingdoms.name,
         realm: kingdoms.realm, region: kingdoms.region, slot: kingdoms.slot,
-        isNpc: kingdoms.isNpc,
+        userRole: users.role,
       }).from(kingdoms)
+        .innerJoin(users, eq(kingdoms.userId, users.id))
         .where(or(...userIds.map(id => eq(kingdoms.userId, id))))
     : []
 
   const kingdomByUser = {}
   const kingdomByPos  = {}
   for (const k of kingdomRows) {
-    if (!kingdomByUser[k.userId]) kingdomByUser[k.userId] = k
-    kingdomByPos[`${k.realm}:${k.region}:${k.slot}`] = k
+    const entry = { ...k, isNpc: k.userRole === 'npc' }
+    if (!kingdomByUser[k.userId]) kingdomByUser[k.userId] = entry
+    kingdomByPos[`${k.realm}:${k.region}:${k.slot}`] = entry
   }
 
   const enrich = m => {

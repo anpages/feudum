@@ -5,12 +5,7 @@
 import { eq, and, gte } from 'drizzle-orm'
 import { db, armyMissions, kingdoms, messages, users } from '../_db.js'
 import { getSessionUserId } from '../lib/handler.js'
-
-const UNIT_KEYS = [
-  'squire','knight','paladin','warlord','grandKnight',
-  'siegeMaster','warMachine','dragonKnight',
-  'merchant','caravan','colonist','scavenger','scout',
-]
+import { getUnitMap, upsertUnit } from '../lib/db-helpers.js'
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end()
@@ -47,13 +42,14 @@ export default async function handler(req, res) {
 
   if (!homeKingdom) return res.status(404).json({ error: 'Reino de origen no encontrado' })
 
-  const kingdomPatch = { updatedAt: new Date() }
-
-  // Return expedition units regardless of accept/decline
-  for (const k of UNIT_KEYS) {
-    const n = mission[k] ?? 0
-    if (n > 0) kingdomPatch[k] = (homeKingdom[k] ?? 0) + n
+  // Return expedition units regardless of accept/decline (units from JSONB field)
+  const missionUnits = mission.units ?? {}
+  const currentUnitMap = await getUnitMap(homeKingdom.id)
+  for (const [type, count] of Object.entries(missionUnits)) {
+    if (count > 0) await upsertUnit(homeKingdom.id, type, (currentUnitMap[type] ?? 0) + count)
   }
+
+  const kingdomPatch = { updatedAt: new Date() }
 
   if (accept) {
     // Check player has enough resources to give
@@ -108,12 +104,12 @@ export default async function handler(req, res) {
     subject: accept
       ? '🏪 Mercader — intercambio completado'
       : '🏪 Mercader — oferta rechazada',
-    data: JSON.stringify({
+    data: {
       type: 'expedition',
       outcome: 'merchant',
       accepted: accept,
       offer,
-    }),
+    },
   })
 
   return res.json({ ok: true, accepted: accept })

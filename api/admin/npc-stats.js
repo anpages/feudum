@@ -1,5 +1,5 @@
-import { eq, and, inArray } from 'drizzle-orm'
-import { db, kingdoms, armyMissions, users } from '../_db.js'
+import { eq, inArray } from 'drizzle-orm'
+import { db, kingdoms, users, npcState, buildings, units, armyMissions } from '../_db.js'
 import { getAdminUserId } from '../lib/admin.js'
 import { getStringSetting } from '../lib/settings.js'
 
@@ -35,21 +35,56 @@ export default async function handler(req, res) {
   const lastTick    = lastTickRaw ? JSON.parse(lastTickRaw) : null
   const tickHistory = historyRaw  ? JSON.parse(historyRaw)  : []
 
-  // Load all NPC kingdoms
-  const rows = await db.select().from(kingdoms).where(eq(kingdoms.isNpc, true))
-  const npcs = rows.filter(r => !r.isBoss)
-  const boss = rows.filter(r => r.isBoss)
+  // Load NPC kingdoms + npcState
+  const npcRows = await db.select({ k: kingdoms, ns: npcState })
+    .from(kingdoms)
+    .innerJoin(users, eq(kingdoms.userId, users.id))
+    .leftJoin(npcState, eq(kingdoms.userId, npcState.userId))
+    .where(eq(users.role, 'npc'))
 
-  // Load NPC user id for mission query
-  const [npcUser] = await db.select({ id: users.id }).from(users)
-    .where(eq(users.isNpc, true)).limit(1)
+  const npcKingdomIds = npcRows.map(r => r.k.id)
+  const npcUserIds    = npcRows.map(r => r.k.userId)
 
-  // Active missions breakdown
-  const missions = npcUser
+  // Batch load buildings and units
+  const [allBuildings, allUnits] = await Promise.all([
+    npcKingdomIds.length
+      ? db.select().from(buildings).where(inArray(buildings.kingdomId, npcKingdomIds))
+      : [],
+    npcKingdomIds.length
+      ? db.select().from(units).where(inArray(units.kingdomId, npcKingdomIds))
+      : [],
+  ])
+
+  // Build lookup maps
+  const buildingsByKingdom = {}
+  for (const b of allBuildings) {
+    if (!buildingsByKingdom[b.kingdomId]) buildingsByKingdom[b.kingdomId] = {}
+    buildingsByKingdom[b.kingdomId][b.type] = b.level
+  }
+  const unitsByKingdom = {}
+  for (const u of allUnits) {
+    if (!unitsByKingdom[u.kingdomId]) unitsByKingdom[u.kingdomId] = {}
+    unitsByKingdom[u.kingdomId][u.type] = u.quantity
+  }
+
+  // Enrich kingdoms — merge buildings, units, and npcState
+  const allRows = npcRows.map(({ k, ns }) => ({
+    ...k,
+    ...(buildingsByKingdom[k.id] ?? {}),
+    ...(unitsByKingdom[k.id] ?? {}),
+    isBoss:   ns?.isBoss   ?? false,
+    npcLevel: ns?.npcLevel ?? 1,
+  }))
+
+  const npcs = allRows.filter(r => !r.isBoss)
+  const boss = allRows.filter(r => r.isBoss)
+
+  // Load missions for all NPC users
+  const missions = npcUserIds.length
     ? await db.select({
         missionType: armyMissions.missionType,
         state:       armyMissions.state,
-      }).from(armyMissions).where(eq(armyMissions.userId, npcUser.id))
+      }).from(armyMissions).where(inArray(armyMissions.userId, npcUserIds))
     : []
 
   const missionCounts = {}

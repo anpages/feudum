@@ -1,11 +1,10 @@
 import { eq, and } from 'drizzle-orm'
-import { db, kingdoms, armyMissions, research, messages } from '../../_db.js'
+import { db, kingdoms, armyMissions, messages } from '../../_db.js'
 import { UNIT_KEYS, DEFENSE_KEYS } from './keys.js'
+import { getResearchMap, enrichKingdom } from '../db-helpers.js'
 
 export async function processSpy(mission, myKingdom, now) {
-  const missionUnits = {}
-  for (const k of UNIT_KEYS) missionUnits[k] = mission[k] ?? 0
-
+  const missionUnits = mission.units ?? {}
   const scouts      = missionUnits.scout ?? 0
   const travelSecs  = mission.arrivalTime - mission.departureTime
   const returnTime  = now + travelSecs
@@ -16,9 +15,8 @@ export async function processSpy(mission, myKingdom, now) {
     eq(kingdoms.slot,   mission.targetSlot),
   )).limit(1)
 
-  const [atkRes] = await db.select().from(research)
-    .where(eq(research.userId, myKingdom.userId)).limit(1)
-  const atkSpy = atkRes?.spycraft ?? 0
+  const atkResMap = await getResearchMap(myKingdom.userId)
+  const atkSpy = atkResMap.spycraft ?? 0
 
   let report
   if (!target) {
@@ -32,9 +30,11 @@ export async function processSpy(mission, myKingdom, now) {
       buildings: null, researchData: null, detected: false,
     }
   } else {
-    const [defRes] = await db.select().from(research)
-      .where(eq(research.userId, target.userId)).limit(1)
-    const defSpy = defRes?.spycraft ?? 0
+    const [enrichedTarget, defResMap] = await Promise.all([
+      enrichKingdom(target, { withUnits: true }),
+      getResearchMap(target.userId),
+    ])
+    const defSpy = defResMap.spycraft ?? 0
 
     const techDiff    = Math.max(0, defSpy - atkSpy)
     const extraNeeded = techDiff * techDiff
@@ -43,7 +43,7 @@ export async function processSpy(mission, myKingdom, now) {
     const canSee = (threshold, levelAdv) =>
       remaining >= threshold || atkSpy - levelAdv >= defSpy
 
-    const defenderShips = UNIT_KEYS.reduce((s, k) => s + (target[k] ?? 0), 0)
+    const defenderShips = UNIT_KEYS.reduce((s, k) => s + (enrichedTarget[k] ?? 0), 0)
     const detectionChance = defenderShips > 0
       ? Math.min(100, Math.max(0, (defenderShips * (defSpy - atkSpy + 1)) / (scouts * 4) * 100))
       : 0
@@ -51,39 +51,46 @@ export async function processSpy(mission, myKingdom, now) {
 
     const pick = (keys) => {
       const obj = {}
-      for (const k of keys) if ((target[k] ?? 0) > 0) obj[k] = target[k]
+      for (const k of keys) if ((enrichedTarget[k] ?? 0) > 0) obj[k] = enrichedTarget[k]
       return Object.keys(obj).length ? obj : null
     }
 
-    const [tgtRes] = await db.select().from(research)
-      .where(eq(research.userId, target.userId)).limit(1)
-
     report = {
-      type: 'spy', isNpc: false, targetName: target.name,
+      type: 'spy', isNpc: target.isNpc ?? false, targetName: target.name,
       resources: { wood: target.wood, stone: target.stone, grain: target.grain },
       units:       canSee(2, 1) ? pick(UNIT_KEYS)    : null,
       defense:     canSee(3, 2) ? pick(DEFENSE_KEYS) : null,
       buildings:   canSee(5, 3) ? {
-        sawmill: target.sawmill, quarry: target.quarry, grainFarm: target.grainFarm,
-        windmill: target.windmill, workshop: target.workshop, barracks: target.barracks,
-        academy: target.academy,
+        sawmill:   enrichedTarget.sawmill   ?? 0,
+        quarry:    enrichedTarget.quarry    ?? 0,
+        grainFarm: enrichedTarget.grainFarm ?? 0,
+        windmill:  enrichedTarget.windmill  ?? 0,
+        workshop:  enrichedTarget.workshop  ?? 0,
+        barracks:  enrichedTarget.barracks  ?? 0,
+        academy:   enrichedTarget.academy   ?? 0,
       } : null,
-      researchData: canSee(7, 4) && tgtRes ? {
-        alchemy: tgtRes.alchemy, pyromancy: tgtRes.pyromancy, runemastery: tgtRes.runemastery,
-        mysticism: tgtRes.mysticism, dragonlore: tgtRes.dragonlore,
-        swordsmanship: tgtRes.swordsmanship, armoury: tgtRes.armoury,
-        fortification: tgtRes.fortification, horsemanship: tgtRes.horsemanship,
-        cartography: tgtRes.cartography, logistics: tgtRes.logistics,
-        spycraft: tgtRes.spycraft,
+      researchData: canSee(7, 4) ? {
+        alchemy:       defResMap.alchemy       ?? 0,
+        pyromancy:     defResMap.pyromancy     ?? 0,
+        runemastery:   defResMap.runemastery   ?? 0,
+        mysticism:     defResMap.mysticism     ?? 0,
+        dragonlore:    defResMap.dragonlore    ?? 0,
+        swordsmanship: defResMap.swordsmanship ?? 0,
+        armoury:       defResMap.armoury       ?? 0,
+        fortification: defResMap.fortification ?? 0,
+        horsemanship:  defResMap.horsemanship  ?? 0,
+        cartography:   defResMap.cartography   ?? 0,
+        logistics:     defResMap.logistics     ?? 0,
+        spycraft:      defResMap.spycraft      ?? 0,
       } : null,
       detected, detectionChance: Math.round(detectionChance),
     }
 
-    if (detected && target.userId && !target.isNpc) {
+    if (detected && target.userId && !(target.isNpc ?? false)) {
       await db.insert(messages).values({
         userId: target.userId, type: 'spy',
         subject: 'Espía detectado en tu reino',
-        data: JSON.stringify({ type: 'spy_detected', spycraft: atkSpy, scouts }),
+        data: { type: 'spy_detected', spycraft: atkSpy, scouts },
       })
     }
   }
@@ -91,7 +98,7 @@ export async function processSpy(mission, myKingdom, now) {
   await db.insert(messages).values({
     userId: myKingdom.userId, type: 'spy',
     subject: `Informe de espionaje: ${report.targetName}`,
-    data: JSON.stringify(report),
+    data: report,
   })
 
   await db.update(armyMissions).set({

@@ -1,21 +1,22 @@
 import { eq, and, inArray } from 'drizzle-orm'
 import { db, kingdoms, research, messages, armyMissions, userAchievements } from '../_db.js'
 import { ACHIEVEMENTS, ACH_BY_ID, checkConditions } from '../../src/lib/game/achievements.js'
+import { getBuildingMap, getUnitMap } from './db-helpers.js'
 
 export { ACHIEVEMENTS, ACH_BY_ID }
 
 export async function checkAndUnlock(userId) {
   const [
     allKingdoms,
-    [resRow],
+    allResearchRows,
     battleMsgs,
     spyMsgs,
     seasonMsgs,
     missionCounts,
     alreadyUnlocked,
   ] = await Promise.all([
-    db.select().from(kingdoms).where(and(eq(kingdoms.userId, userId), eq(kingdoms.isNpc, false))),
-    db.select().from(research).where(eq(research.userId, userId)).limit(1),
+    db.select().from(kingdoms).where(eq(kingdoms.userId, userId)),
+    db.select().from(research).where(eq(research.userId, userId)),
     db.select({ data: messages.data }).from(messages)
       .where(and(eq(messages.userId, userId), eq(messages.type, 'battle'))),
     db.select({ id: messages.id }).from(messages)
@@ -29,29 +30,38 @@ export async function checkAndUnlock(userId) {
       .from(userAchievements).where(eq(userAchievements.userId, userId)),
   ])
 
+  const res = Object.fromEntries(allResearchRows.map(r => [r.type, r.level]))
+
   const unlockedSet = new Set(alreadyUnlocked.map(a => a.achievementId))
-  const k = allKingdoms[0] ?? {}
+
+  let k = {}
+  if (allKingdoms.length > 0) {
+    const primary = allKingdoms[0]
+    const [bMap, uMap] = await Promise.all([
+      getBuildingMap(primary.id),
+      getUnitMap(primary.id),
+    ])
+    k = { ...primary, ...bMap, ...uMap }
+  }
 
   // Battle stats
   let winCount = 0
   let loot10k  = false
   let bigLoot  = false
   for (const m of battleMsgs) {
-    try {
-      const d = JSON.parse(m.data)
-      if (d.outcome === 'victory') {
-        winCount++
-        const total = (d.loot?.wood ?? 0) + (d.loot?.stone ?? 0) + (d.loot?.grain ?? 0)
-        if (total >= 10000) loot10k = true
-        if (total >= 50000) bigLoot = true
-      }
-    } catch { /* ignore malformed */ }
+    const d = m.data
+    if (d?.outcome === 'victory') {
+      winCount++
+      const total = (d.loot?.wood ?? 0) + (d.loot?.stone ?? 0) + (d.loot?.grain ?? 0)
+      if (total >= 10000) loot10k = true
+      if (total >= 50000) bigLoot = true
+    }
   }
 
   // Season stats
-  const bossKilled   = seasonMsgs.some(m => { try { return !!JSON.parse(m.data ?? '{}').seasonVictory } catch { return false } })
-  const bossSpy      = seasonMsgs.some(m => { try { return !!JSON.parse(m.data ?? '{}').bossSpied     } catch { return false } })
-  const bossAttacked = seasonMsgs.some(m => { try { return !!JSON.parse(m.data ?? '{}').bossAttacked  } catch { return false } })
+  const bossKilled   = seasonMsgs.some(m => !!(m.data?.seasonVictory))
+  const bossSpy      = seasonMsgs.some(m => !!(m.data?.bossSpied))
+  const bossAttacked = seasonMsgs.some(m => !!(m.data?.bossAttacked))
 
   // Mission counts by type
   const missionsByType = {}
@@ -61,7 +71,7 @@ export async function checkAndUnlock(userId) {
 
   const data = {
     k,
-    res:             resRow ?? null,
+    res,
     winCount,
     loot10k,
     bigLoot,

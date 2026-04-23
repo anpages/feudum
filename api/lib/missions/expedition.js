@@ -1,9 +1,10 @@
-import { eq, desc, and } from 'drizzle-orm'
+import { eq, and } from 'drizzle-orm'
 import { db, armyMissions, research, messages, users, etherTransactions, kingdoms, debrisFields } from '../../_db.js'
 import { resolveExpedition } from '../expedition.js'
 import { calculateDebris } from '../battle.js'
-import { UNIT_KEYS } from './keys.js'
+import { extractMissionUnits, UNIT_KEYS } from './keys.js'
 import { calcPoints } from '../points.js'
+import { getResearchMap } from '../db-helpers.js'
 
 const OUTCOME_LABELS = {
   nothing:   '🌑 Tierras Ignotas — expedición vacía',
@@ -20,11 +21,10 @@ export async function processExpedition(mission, myKingdom, now) {
   const travelSecs   = mission.arrivalTime - mission.departureTime
   const holdingTime  = mission.holdingTime ?? 0
   const returnTime   = mission.arrivalTime + holdingTime + travelSecs
-  const missionUnits = {}
-  for (const k of UNIT_KEYS) missionUnits[k] = mission[k] ?? 0
+  const missionUnits = extractMissionUnits(mission, UNIT_KEYS)
 
-  const [[researchRow], [userRow], allKingdoms] = await Promise.all([
-    db.select().from(research).where(eq(research.userId, myKingdom.userId)).limit(1),
+  const [resMap, [userRow], allKingdoms] = await Promise.all([
+    getResearchMap(myKingdom.userId),
     db.select({ characterClass: users.characterClass }).from(users).where(eq(users.id, myKingdom.userId)).limit(1),
     db.select().from(kingdoms),
   ])
@@ -37,7 +37,7 @@ export async function processExpedition(mission, myKingdom, now) {
   const combatMultiplier = isDiscoverer ? 0.5 : 1.0
 
   const { outcome, result, unitPatch, returnTimeDelta, etherGained, destroyed, merchantOffer } =
-    resolveExpedition(missionUnits, researchRow ?? {}, travelSecs, now, {
+    resolveExpedition(missionUnits, resMap, travelSecs, now, {
       top1Points, combatMultiplier, holdingTime, discoverer: isDiscoverer,
     })
 
@@ -83,7 +83,7 @@ export async function processExpedition(mission, myKingdom, now) {
       subject: outcome === 'black_hole'
         ? '🌀 Tormenta Arcana — tu flota ha desaparecido'
         : `⚔️ Tierras Ignotas — ${outcome === 'bandits' ? 'Merodeadores' : 'Bestias Oscuras'} — derrota`,
-      data: JSON.stringify({ type: 'expedition', outcome, ...result }),
+      data: { type: 'expedition', outcome, ...result },
     })
     return
   }
@@ -96,7 +96,8 @@ export async function processExpedition(mission, myKingdom, now) {
   const grainLoad = result.found?.grain ?? 0
 
   await db.update(armyMissions).set({
-    ...finalUnits, state: 'returning',
+    units: finalUnits,
+    state: 'returning',
     returnTime: Math.max(now + 1, returnTime + returnTimeDelta),
     woodLoad, stoneLoad, grainLoad,
     result: JSON.stringify({ type: 'expedition', outcome, ...result }),
@@ -118,6 +119,6 @@ export async function processExpedition(mission, myKingdom, now) {
   await db.insert(messages).values({
     userId: myKingdom.userId, type: 'expedition',
     subject: OUTCOME_LABELS[outcome] ?? '🌑 Tierras Ignotas — expedición completada',
-    data: JSON.stringify({ type: 'expedition', outcome, ...result }),
+    data: { type: 'expedition', outcome, ...result },
   })
 }

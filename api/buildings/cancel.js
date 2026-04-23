@@ -1,10 +1,11 @@
 import { eq, and } from 'drizzle-orm'
-import { db, kingdoms, buildingQueue, research, users } from '../_db.js'
+import { db, kingdoms, buildingQueue, users } from '../_db.js'
 import { getSessionUserId } from '../lib/handler.js'
 import { BUILDINGS, buildCost } from '../lib/buildings.js'
 import { applyResourceTick } from '../lib/tick.js'
 import { getSettings } from '../lib/settings.js'
 import { processUserQueues } from '../lib/process-queues.js'
+import { enrichKingdom, getResearchMap } from '../lib/db-helpers.js'
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end()
@@ -17,34 +18,30 @@ export default async function handler(req, res) {
 
   await processUserQueues(userId)
 
-  const [[kingdom], [resRow], [userRow], cfg] = await Promise.all([
+  const [[kingdomRow], resMap, [userRow], cfg] = await Promise.all([
     db.select().from(kingdoms).where(eq(kingdoms.userId, userId)).limit(1),
-    db.select().from(research).where(eq(research.userId, userId)).limit(1),
+    getResearchMap(userId),
     db.select({ characterClass: users.characterClass }).from(users).where(eq(users.id, userId)).limit(1),
     getSettings(),
   ])
-  if (!kingdom) return res.status(404).json({ error: 'Reino no encontrado' })
+  if (!kingdomRow) return res.status(404).json({ error: 'Reino no encontrado' })
+  const kingdom = await enrichKingdom(kingdomRow)
 
-  // Find the queue item and verify it belongs to this kingdom
   const allQueue = await db.select().from(buildingQueue)
     .where(eq(buildingQueue.kingdomId, kingdom.id))
   const item = allQueue.find(q => q.id === queueId)
   if (!item) return res.status(404).json({ error: 'Elemento de cola no encontrado' })
 
-  const def = BUILDINGS.find(b => b.id === item.building)
+  const def = BUILDINGS.find(b => b.id === item.buildingType)
   if (!def) return res.status(404).json({ error: 'Edificio desconocido' })
 
-  // Cost to refund: cost to go from (targetLevel - 1) to targetLevel
   const currentLevel = item.level - 1
   const refund = buildCost(def.woodBase, def.stoneBase, def.factor, currentLevel, def.grainBase)
 
-  // Tick resources so the kingdom row is up to date before we add the refund
-  const { wood, stone, grain, now } = applyResourceTick(kingdom, cfg, userRow?.characterClass ?? null, resRow ?? null)
+  const { wood, stone, grain, now } = applyResourceTick(kingdom, cfg, userRow?.characterClass ?? null, resMap)
 
-  // Delete the item
   await db.delete(buildingQueue).where(eq(buildingQueue.id, queueId))
 
-  // Refund resources — capped at capacity
   const newWood  = Math.min(wood  + refund.wood,  kingdom.woodCapacity  ?? 999999)
   const newStone = Math.min(stone + refund.stone, kingdom.stoneCapacity ?? 999999)
   const newGrain = Math.min(grain + refund.grain, kingdom.grainCapacity ?? 999999)
@@ -55,7 +52,7 @@ export default async function handler(req, res) {
     updatedAt: new Date(),
   }).where(eq(kingdoms.id, kingdom.id))
 
-  // Rechain subsequent items: items that were after the cancelled one need new timestamps
+  // Rechain subsequent items: items after the cancelled one need new timestamps
   const remaining = allQueue
     .filter(q => q.id !== queueId)
     .sort((a, b) => a.finishesAt - b.finishesAt)
@@ -74,7 +71,7 @@ export default async function handler(req, res) {
       const newStartedAt  = Math.max(now, chainAt)
       const newFinishesAt = newStartedAt + duration
       await db.update(buildingQueue)
-        .set({ startedAt: newStartedAt, finishesAt: newFinishesAt, updatedAt: new Date() })
+        .set({ startedAt: newStartedAt, finishesAt: newFinishesAt })
         .where(eq(buildingQueue.id, q.id))
       chainAt = newFinishesAt
     }

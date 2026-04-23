@@ -3,8 +3,12 @@
  * Vercel Cron: every 20 minutes ("*/20 * * * *").
  * Runs on ALL NPCs (no npcNextCheck filter); per-unit cooldowns prevent spam.
  */
-import { eq, and, gte, lte, or } from 'drizzle-orm'
-import { db, users, kingdoms, armyMissions, debrisFields, npcResearch } from '../_db.js'
+import { eq, and, gte, inArray, ne, or } from 'drizzle-orm'
+import {
+  db, users, kingdoms, npcState, buildings, units, research,
+  armyMissions, debrisFields,
+} from '../_db.js'
+import { upsertUnit } from '../lib/db-helpers.js'
 import { NPC_AGGRESSION, NPC_ATTACK_INTERVAL_HOURS, NPC_BASH_LIMIT } from '../lib/config.js'
 import { calcDistance, calcDuration } from '../lib/speed.js'
 import { sendPush } from '../lib/push.js'
@@ -50,7 +54,7 @@ async function attackAI(npcKingdom, researchRow, allKingdoms, bashMap, now, cfg)
   if (armySize < threshold) return false
 
   const intervalSecs = NPC_ATTACK_INTERVAL_HOURS * 3600
-  const lastAttack = npcKingdom.npcLastAttackAt ?? 0
+  const lastAttack = npcKingdom.lastAttackAt ?? 0
   if (now - lastAttack < intervalSecs) return false
 
   const activeMissions = await db.select({ id: armyMissions.id })
@@ -135,12 +139,17 @@ async function attackAI(npcKingdom, researchRow, allKingdoms, bashMap, now, cfg)
     targetSlot:   target.slot,
     departureTime: now,
     arrivalTime,
-    ...force,
+    units: force,
   })
 
-  const deduct = { npcLastAttackAt: now, updatedAt: new Date() }
-  for (const [u, n] of Object.entries(force)) deduct[u] = (npcKingdom[u] ?? 0) - n
-  await db.update(kingdoms).set(deduct).where(eq(kingdoms.id, npcKingdom.id))
+  // Update npcState.lastAttackAt
+  await db.update(npcState).set({ lastAttackAt: now, updatedAt: new Date() })
+    .where(eq(npcState.userId, npcKingdom.userId))
+
+  // Deduct units from units table
+  for (const [u, n] of Object.entries(force)) {
+    await upsertUnit(npcKingdom.id, u, (npcKingdom[u] ?? 0) - n)
+  }
 
   if (!target.isNpc && target.userId) {
     const eta = Math.round(travelSecs / 60)
@@ -202,11 +211,10 @@ async function scavengeAI(npcKingdom, allDebris, now, cfg) {
     targetSlot:   target.slot,
     departureTime: now,
     arrivalTime,
-    scavenger: scavengerCount,
+    units: { scavenger: scavengerCount },
   })
 
-  await db.update(kingdoms).set({ scavenger: 0, updatedAt: new Date() })
-    .where(eq(kingdoms.id, npcKingdom.id))
+  await upsertUnit(npcKingdom.id, 'scavenger', 0)
   npcKingdom.scavenger = 0
 
   return target.id
@@ -280,13 +288,14 @@ async function expeditionAI(npcKingdom, researchRow, depletionMap, now, cfg) {
     departureTime: now,
     arrivalTime,
     holdingTime,
-    ...force,
+    units: force,
   })
 
-  const deduct = { updatedAt: new Date() }
-  for (const [u, n] of Object.entries(force)) deduct[u] = (npcKingdom[u] ?? 0) - n
-  await db.update(kingdoms).set(deduct).where(eq(kingdoms.id, npcKingdom.id))
-  Object.assign(npcKingdom, deduct)
+  // Deduct units from units table
+  for (const [u, n] of Object.entries(force)) {
+    await upsertUnit(npcKingdom.id, u, (npcKingdom[u] ?? 0) - n)
+    npcKingdom[u] = (npcKingdom[u] ?? 0) - n
+  }
 
   const key = `${REALM}:${bestRegion}`
   depletionMap[key] = (depletionMap[key] ?? 0) + 1
@@ -307,35 +316,86 @@ export default async function handler(req, res) {
   const now = Math.floor(Date.now() / 1000)
   const cfg = await getSettings()
 
-  const [npcUser] = await db.select({ id: users.id })
-    .from(users).where(eq(users.isNpc, true)).limit(1)
-  if (!npcUser) return res.json({ ok: true, skipped: 'no_npc_user' })
+  // ── Batch load all NPC kingdoms with their npcState ──────────────────────
+  const npcRows = await db.select({ k: kingdoms, ns: npcState })
+    .from(kingdoms)
+    .innerJoin(users, eq(kingdoms.userId, users.id))
+    .leftJoin(npcState, eq(npcState.userId, users.id))
+    .where(eq(users.role, 'npc'))
 
-  const allNpcKingdoms = await db.select().from(kingdoms)
-    .where(eq(kingdoms.isNpc, true))
+  if (npcRows.length === 0) return res.json({ ok: true, skipped: 'no_npc_kingdoms' })
 
-  if (allNpcKingdoms.length === 0) return res.json({ ok: true, skipped: 'no_npc_kingdoms' })
+  const npcKingdomIds = npcRows.map(r => r.k.id)
+  const npcUserIds    = npcRows.map(r => r.k.userId)
 
-  const playerKingdoms = await db.select({
-    id: kingdoms.id, userId: kingdoms.userId, name: kingdoms.name,
-    isNpc: kingdoms.isNpc, isBoss: kingdoms.isBoss,
-    realm: kingdoms.realm, region: kingdoms.region, slot: kingdoms.slot,
-    wood: kingdoms.wood, stone: kingdoms.stone, grain: kingdoms.grain,
-  }).from(kingdoms).where(eq(kingdoms.isNpc, false))
+  const [allBuildings, allUnitsRows, allResearchRows] = await Promise.all([
+    db.select().from(buildings).where(inArray(buildings.kingdomId, npcKingdomIds)),
+    db.select().from(units).where(inArray(units.kingdomId, npcKingdomIds)),
+    db.select().from(research).where(inArray(research.userId, npcUserIds)),
+  ])
+
+  // Build lookup maps
+  const buildingsByKingdom = {}
+  for (const b of allBuildings) {
+    if (!buildingsByKingdom[b.kingdomId]) buildingsByKingdom[b.kingdomId] = {}
+    buildingsByKingdom[b.kingdomId][b.type] = b.level
+  }
+  const unitsByKingdom = {}
+  for (const u of allUnitsRows) {
+    if (!unitsByKingdom[u.kingdomId]) unitsByKingdom[u.kingdomId] = {}
+    unitsByKingdom[u.kingdomId][u.type] = u.quantity
+  }
+  const researchByUser = {}
+  for (const r of allResearchRows) {
+    if (!researchByUser[r.userId]) researchByUser[r.userId] = {}
+    researchByUser[r.userId][r.type] = r.level
+  }
+
+  // Enrich NPC kingdoms (merge buildings + units + npcState fields)
+  const allNpcKingdoms = npcRows.map(({ k, ns }) => ({
+    ...k,
+    ...(buildingsByKingdom[k.id] ?? {}),
+    ...(unitsByKingdom[k.id] ?? {}),
+    isBoss:              ns?.isBoss              ?? false,
+    npcLevel:            ns?.npcLevel            ?? 1,
+    buildAvailableAt:    ns?.buildAvailableAt     ?? null,
+    nextCheck:           ns?.nextCheck            ?? null,
+    currentResearch:     ns?.currentResearch      ?? null,
+    researchAvailableAt: ns?.researchAvailableAt  ?? null,
+    lastAttackAt:        ns?.lastAttackAt         ?? 0,
+    lastDecision:        ns?.lastDecision         ?? null,
+  }))
+
+  // ── Load player kingdoms ─────────────────────────────────────────────────
+  const playerRows = await db.select({ k: kingdoms, userRole: users.role })
+    .from(kingdoms)
+    .innerJoin(users, eq(kingdoms.userId, users.id))
+    .where(ne(users.role, 'npc'))
+
+  const playerKingdoms = playerRows.map(({ k, userRole }) => ({
+    ...k,
+    isNpc: userRole === 'npc',
+    isBoss: false,
+  }))
 
   const allKingdoms = [
     ...playerKingdoms,
     ...allNpcKingdoms.map(k => ({
       id: k.id, userId: k.userId, name: k.name,
-      isNpc: true, isBoss: k.isBoss ?? false,
+      isNpc: true, isBoss: k.isBoss,
       realm: k.realm, region: k.region, slot: k.slot,
       wood: k.wood, stone: k.stone, grain: k.grain,
     })),
   ]
 
+  // ── Bash limit map (attacks last 24h) ────────────────────────────────────
   const recentAttacks = await db.select({
-    startRealm: armyMissions.startRealm, startRegion: armyMissions.startRegion, startSlot: armyMissions.startSlot,
-    targetRealm: armyMissions.targetRealm, targetRegion: armyMissions.targetRegion, targetSlot: armyMissions.targetSlot,
+    startRealm:   armyMissions.startRealm,
+    startRegion:  armyMissions.startRegion,
+    startSlot:    armyMissions.startSlot,
+    targetRealm:  armyMissions.targetRealm,
+    targetRegion: armyMissions.targetRegion,
+    targetSlot:   armyMissions.targetSlot,
   }).from(armyMissions)
     .where(and(
       eq(armyMissions.missionType, 'attack'),
@@ -347,6 +407,7 @@ export default async function handler(req, res) {
     bashMap[key] = (bashMap[key] ?? 0) + 1
   }
 
+  // ── Debris fields ────────────────────────────────────────────────────────
   const allDebris = await db.select({
     id: debrisFields.id, realm: debrisFields.realm, region: debrisFields.region, slot: debrisFields.slot,
     wood: debrisFields.wood, stone: debrisFields.stone,
@@ -354,14 +415,12 @@ export default async function handler(req, res) {
 
   const depletionMap = await getExpeditionDepletion(now)
 
-  const allResearchRows = await db.select().from(npcResearch)
-  const researchByKingdomId = Object.fromEntries(allResearchRows.map(r => [r.kingdomId, r]))
-
+  // ── Per-NPC AI loop ──────────────────────────────────────────────────────
   let attacked = 0, scavenged = 0, expeditioned = 0
 
   for (const kingdom of allNpcKingdoms) {
     try {
-      const researchRow = researchByKingdomId[kingdom.id] ?? EMPTY_RESEARCH
+      const researchRow = researchByUser[kingdom.userId] ?? EMPTY_RESEARCH
 
       if (NPC_AGGRESSION > 0 && allKingdoms.length > 1) {
         const launched = await attackAI(kingdom, researchRow, allKingdoms, bashMap, now, cfg)

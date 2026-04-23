@@ -1,5 +1,5 @@
-import { eq, and, ne, or, inArray } from 'drizzle-orm'
-import { db, kingdoms, armyMissions, messages, research, users } from '../_db.js'
+import { eq, and, ne, or, inArray, sql } from 'drizzle-orm'
+import { db, kingdoms, armyMissions, messages, users } from '../_db.js'
 import { calcPoints } from '../lib/points.js'
 import { getSessionUserId } from '../lib/handler.js'
 import { resolveIncomingNpcAttacks } from '../lib/npc-resolve.js'
@@ -10,17 +10,13 @@ import { processAttack }     from '../lib/missions/attack.js'
 import { processColonize }   from '../lib/missions/colonize.js'
 import { processScavenge }   from '../lib/missions/scavenge.js'
 import { processDeploy }     from '../lib/missions/deploy.js'
-
 import { processExpedition } from '../lib/missions/expedition.js'
 import { processMissile }    from '../lib/missions/missile.js'
+import { getResearchMap, getUnitMap, upsertUnit } from '../lib/db-helpers.js'
 
 async function resolveTargetKingdom(mission) {
-  const [target] = await db.select().from(kingdoms).where(and(
-    eq(kingdoms.realm,  mission.targetRealm),
-    eq(kingdoms.region, mission.targetRegion),
-    eq(kingdoms.slot,   mission.targetSlot),
-  )).limit(1)
-  return target ?? null
+  const { getKingdomAt } = await import('../lib/db-helpers.js')
+  return getKingdomAt(mission.targetRealm, mission.targetRegion, mission.targetSlot)
 }
 
 async function processArrival(mission, myKingdom, now) {
@@ -39,7 +35,6 @@ async function processArrival(mission, myKingdom, now) {
     case 'colonize':   return processColonize(mission,   myKingdom, now, targetKingdom)
     case 'scavenge':   return processScavenge(mission,   myKingdom, now, targetKingdom)
     case 'deploy':     return processDeploy(mission,     myKingdom, now, targetKingdom)
-
     case 'expedition':
       await db.update(armyMissions).set({ state: 'exploring', updatedAt: new Date() })
         .where(eq(armyMissions.id, mission.id))
@@ -55,35 +50,27 @@ async function processArrival(mission, myKingdom, now) {
 }
 
 async function processReturn(mission, kingdom, now) {
-  const patch = { updatedAt: new Date() }
-
-  for (const k of UNIT_KEYS) {
-    const count = mission[k] ?? 0
-    if (count > 0) patch[k] = (kingdom[k] ?? 0) + count
+  // Return units from JSONB field
+  const missionUnits = mission.units ?? {}
+  const currentUnitMap = await getUnitMap(kingdom.id)
+  for (const [type, count] of Object.entries(missionUnits)) {
+    if (count > 0) await upsertUnit(kingdom.id, type, (currentUnitMap[type] ?? 0) + count)
   }
 
+  const patch = { updatedAt: new Date() }
   if (mission.woodLoad  > 0) patch.wood  = Math.min((kingdom.wood  ?? 0) + mission.woodLoad,  kingdom.woodCapacity)
   if (mission.stoneLoad > 0) patch.stone = Math.min((kingdom.stone ?? 0) + mission.stoneLoad, kingdom.stoneCapacity)
   if (mission.grainLoad > 0) patch.grain = Math.min((kingdom.grain ?? 0) + mission.grainLoad, kingdom.grainCapacity)
 
-  // Artifacts from battle victory (stored in result JSON)
-  if (mission.result && kingdom.civilization) {
-    try {
-      const r = JSON.parse(mission.result)
-      if (r.artifactsGained > 0) {
-        patch.artifacts = Math.min(3600, (kingdom.artifacts ?? 0) + r.artifactsGained)
-      }
-    } catch { /* ignore */ }
+  if (Object.keys(patch).length > 1) {
+    await db.update(kingdoms).set(patch).where(eq(kingdoms.id, kingdom.id))
+    Object.assign(kingdom, patch)
   }
-
-  await db.update(kingdoms).set(patch).where(eq(kingdoms.id, kingdom.id))
-  Object.assign(kingdom, patch)
 
   // Expeditions are kept as 'completed' so the admin log can show results.
   // All other missions are deleted immediately on return.
   if (mission.missionType === 'expedition') {
-    await db.update(armyMissions)
-      .set({ state: 'completed', updatedAt: new Date() })
+    await db.update(armyMissions).set({ state: 'completed', updatedAt: new Date() })
       .where(eq(armyMissions.id, mission.id))
   } else {
     await db.delete(armyMissions).where(eq(armyMissions.id, mission.id))
@@ -118,7 +105,6 @@ async function expireMerchantOffers(userId, active, now) {
     const expiresAt = parsed?.merchantOffer?.expiresAt ?? 0
     if (now < expiresAt) continue
 
-    const patch = { updatedAt: new Date() }
     const [homeKingdom] = await db.select().from(kingdoms).where(and(
       eq(kingdoms.userId, userId),
       eq(kingdoms.realm,   m.startRealm),
@@ -126,17 +112,17 @@ async function expireMerchantOffers(userId, active, now) {
       eq(kingdoms.slot,    m.startSlot),
     )).limit(1)
     if (homeKingdom) {
-      for (const k of UNIT_KEYS) {
-        const n = m[k] ?? 0
-        if (n > 0) patch[k] = (homeKingdom[k] ?? 0) + n
+      const currentUnitMap = await getUnitMap(homeKingdom.id)
+      const missionUnits = m.units ?? {}
+      for (const [type, count] of Object.entries(missionUnits)) {
+        if (count > 0) await upsertUnit(homeKingdom.id, type, (currentUnitMap[type] ?? 0) + count)
       }
-      await db.update(kingdoms).set(patch).where(eq(kingdoms.id, homeKingdom.id))
     }
     await db.delete(armyMissions).where(eq(armyMissions.id, m.id))
     await db.insert(messages).values({
       userId, type: 'expedition',
       subject: '🏪 Mercader — oferta expirada',
-      data: JSON.stringify({ type: 'expedition', outcome: 'merchant', expired: true }),
+      data: { type: 'expedition', outcome: 'merchant', expired: true },
     })
   }
 }
@@ -149,13 +135,13 @@ export default async function handler(req, res) {
   const userId = await getSessionUserId(req)
   if (!userId) return res.status(401).json({ error: 'No autenticado' })
 
-  const [[kingdom], [researchRow], allKingdoms, [userRow]] = await Promise.all([
+  const [[kingdomRow], resMap, [userRow]] = await Promise.all([
     db.select().from(kingdoms).where(eq(kingdoms.userId, userId)).limit(1),
-    db.select({ logistics: research.logistics }).from(research).where(eq(research.userId, userId)).limit(1),
-    db.select().from(kingdoms).where(eq(kingdoms.isNpc, false)),
+    getResearchMap(userId),
     db.select({ characterClass: users.characterClass }).from(users).where(eq(users.id, userId)).limit(1),
   ])
-  if (!kingdom) return res.status(404).json({ error: 'Reino no encontrado' })
+  if (!kingdomRow) return res.status(404).json({ error: 'Reino no encontrado' })
+  const kingdom = kingdomRow
 
   const resolvedMissions = await processMissions(userId, kingdom)
 
@@ -182,9 +168,7 @@ export default async function handler(req, res) {
       return now < (p?.merchantOffer?.expiresAt ?? 0)
     })
     .map(m => {
-      const missionUnits = {}
-      for (const k of UNIT_KEYS) if ((m[k] ?? 0) > 0) missionUnits[k] = m[k]
-      if (m.missionType === 'missile' && (m.ballistic ?? 0) > 0) missionUnits.ballistic = m.ballistic
+      const missionUnits = m.units ?? {}
 
       const eta = m.state === 'returning'
         ? Math.max(0, (m.returnTime ?? 0) - now)
@@ -211,10 +195,17 @@ export default async function handler(req, res) {
       }
     })
 
-  const logistics    = researchRow?.logistics ?? 0
+  const logistics    = resMap.logistics ?? 0
   const maxSlots     = 1 + logistics
   const slotsUsed    = missions.filter(m => m.missionType !== 'missile').length
-  const top1Points   = allKingdoms.reduce((max, k) => Math.max(max, calcPoints(k)), 0)
+
+  // Fetch all human kingdoms for top1Points calculation
+  const allHumanKingdoms = await db
+    .select({ k: kingdoms })
+    .from(kingdoms)
+    .innerJoin(users, eq(kingdoms.userId, users.id))
+    .where(ne(users.role, 'npc'))
+  const top1Points   = allHumanKingdoms.reduce((max, r) => Math.max(max, calcPoints(r.k)), 0)
   const characterClass = userRow?.characterClass ?? null
 
   // ── Incoming enemy missions ───────────────────────────────────────────────
@@ -249,22 +240,18 @@ export default async function handler(req, res) {
       const nameByCoord = {}
       for (const k of attackerKingdoms) nameByCoord[`${k.realm}:${k.region}:${k.slot}`] = k.name
 
-      incomingMissions = incomingRaw.map(m => {
-        const missionUnits = {}
-        for (const k of UNIT_KEYS) if ((m[k] ?? 0) > 0) missionUnits[k] = m[k]
-        return {
-          id: m.id,
-          missionType: m.missionType,
-          state: 'active',
-          origin: { realm: m.startRealm,  region: m.startRegion,  slot: m.startSlot },
-          target: { realm: m.targetRealm, region: m.targetRegion, slot: m.targetSlot },
-          arrivalTime: m.arrivalTime,
-          eta: Math.max(0, m.arrivalTime - now),
-          units: missionUnits,
-          threatLevel: HOSTILE_TYPES.has(m.missionType) ? 'hostile' : 'neutral',
-          attackerName: nameByCoord[`${m.startRealm}:${m.startRegion}:${m.startSlot}`] ?? null,
-        }
-      })
+      incomingMissions = incomingRaw.map(m => ({
+        id: m.id,
+        missionType: m.missionType,
+        state: 'active',
+        origin: { realm: m.startRealm,  region: m.startRegion,  slot: m.startSlot },
+        target: { realm: m.targetRealm, region: m.targetRegion, slot: m.targetSlot },
+        arrivalTime: m.arrivalTime,
+        eta: Math.max(0, m.arrivalTime - now),
+        units: m.units ?? {},
+        threatLevel: HOSTILE_TYPES.has(m.missionType) ? 'hostile' : 'neutral',
+        attackerName: nameByCoord[`${m.startRealm}:${m.startRegion}:${m.startSlot}`] ?? null,
+      }))
 
       underAttack = incomingMissions.some(m => m.threatLevel === 'hostile')
     }

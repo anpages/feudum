@@ -1,10 +1,14 @@
 /**
  * npc-builder — resource tick + cascade growth AI for NPC kingdoms.
  * Vercel Cron: every minute ("* * * * *").
- * Only processes NPCs whose npcNextCheck has expired (staggered 8–12 min windows).
+ * Only processes NPCs whose nextCheck has expired (staggered 8–12 min windows).
+ *
+ * Schema: normalized — buildings/units/research are separate tables.
+ * NPC AI state lives in npc_state (PK: userId), not in kingdoms.
  */
-import { eq, and, gte, or } from 'drizzle-orm'
-import { db, users, kingdoms, armyMissions, npcResearch } from '../_db.js'
+import { eq, and, gte, or, inArray } from 'drizzle-orm'
+import { db, users, kingdoms, npcState, buildings, units, research, armyMissions } from '../_db.js'
+import { upsertBuilding, upsertUnit, upsertResearch } from '../lib/db-helpers.js'
 import { applyResourceTick } from '../lib/tick.js'
 import {
   BUILDINGS, buildCost, buildTime, applyBuildingEffect,
@@ -24,10 +28,11 @@ import {
 
 // ── DB helpers ────────────────────────────────────────────────────────────────
 
-async function setDecision(kingdomId, msg) {
-  await db.update(kingdoms)
+// kingdom.userId is the NPC's own user ID — npcState PK is userId
+async function setDecision(kingdom, msg) {
+  await db.update(npcState)
     .set({ lastDecision: msg, updatedAt: new Date() })
-    .where(eq(kingdoms.id, kingdomId))
+    .where(eq(npcState.userId, kingdom.userId))
 }
 
 async function getIncomingAttack(kingdom, now) {
@@ -48,40 +53,41 @@ async function getIncomingAttack(kingdom, now) {
 // ── Research queue ────────────────────────────────────────────────────────────
 
 // Completes the current research and updates in-memory objects.
-async function completeNpcResearch(kingdom, researchRow) {
-  const researchId = kingdom.npcCurrentResearch
+async function completeNpcResearch(kingdom, researchMap) {
+  const researchId = kingdom.currentResearch
   if (!researchId) return
 
-  const currentLevel = researchRow[researchId] ?? 0
+  const currentLevel = researchMap[researchId] ?? 0
   const newLevel = currentLevel + 1
 
-  await db.update(npcResearch)
-    .set({ [researchId]: newLevel, updatedAt: new Date() })
-    .where(eq(npcResearch.kingdomId, kingdom.id))
+  // Write to unified research table (by userId)
+  await upsertResearch(kingdom.userId, researchId, newLevel)
 
-  await db.update(kingdoms).set({
-    npcCurrentResearch:     null,
-    npcResearchAvailableAt: null,
+  // Clear npcState research queue
+  await db.update(npcState).set({
+    currentResearch:     null,
+    researchAvailableAt: null,
     lastDecision: `Investigación completada: ${researchId} lv${newLevel}`,
     updatedAt: new Date(),
-  }).where(eq(kingdoms.id, kingdom.id))
+  }).where(eq(npcState.userId, kingdom.userId))
 
-  researchRow[researchId] = newLevel
-  kingdom.npcCurrentResearch     = null
-  kingdom.npcResearchAvailableAt = null
+  // Update in-memory
+  researchMap[researchId]       = newLevel
+  kingdom.currentResearch       = null
+  kingdom.researchAvailableAt   = null
 }
 
 // Queues research for researchId. Chains through prerequisites automatically.
 // depth prevents infinite loops in deeply nested tech trees.
-async function attemptResearch(kingdom, researchId, researchRow, cfg, now, depth = 0) {
+async function attemptResearch(kingdom, researchId, researchMap, cfg, now, depth = 0) {
   if (depth > 6) {
-    await setDecision(kingdom.id, `Cadena de investigación demasiado profunda: ${researchId}`)
+    await setDecision(kingdom, `Cadena de investigación demasiado profunda: ${researchId}`)
     return { action: 'error' }
   }
 
   // Already researching something different — wait
-  if (kingdom.npcCurrentResearch && kingdom.npcCurrentResearch !== researchId) {
-    await setDecision(kingdom.id, `Investigación en curso: ${kingdom.npcCurrentResearch}`)
+  if (kingdom.currentResearch && kingdom.currentResearch !== researchId) {
+    await setDecision(kingdom, `Investigación en curso: ${kingdom.currentResearch}`)
     return { action: 'research_busy' }
   }
 
@@ -98,46 +104,55 @@ async function attemptResearch(kingdom, researchId, researchRow, cfg, now, depth
         )
       }
     } else if (req.type === 'research') {
-      if ((researchRow[req.id] ?? 0) < req.level) {
-        return await attemptResearch(kingdom, req.id, researchRow, cfg, now, depth + 1)
+      if ((researchMap[req.id] ?? 0) < req.level) {
+        return await attemptResearch(kingdom, req.id, researchMap, cfg, now, depth + 1)
       }
     }
   }
 
-  const currentLevel = researchRow[researchId] ?? 0
+  const currentLevel = researchMap[researchId] ?? 0
   const cost = researchCost(def, currentLevel)
 
   if (kingdom.wood < cost.wood || kingdom.stone < cost.stone || kingdom.grain < (cost.grain ?? 0)) {
     const d = `Ahorrando para investigar ${researchId} lv${currentLevel + 1} ` +
       `(faltan: ${Math.max(0, cost.wood - kingdom.wood).toFixed(0)}m ` +
       `${Math.max(0, cost.stone - kingdom.stone).toFixed(0)}p)`
-    await setDecision(kingdom.id, d)
+    await setDecision(kingdom, d)
     return { action: 'saving', research: researchId }
   }
 
-  const speed   = parseFloat(cfg.economy_speed ?? ECONOMY_SPEED)
-  const cls     = npcClass(kingdom)
-  const timeSecs = researchTime(cost.wood, cost.stone, kingdom.academy ?? 0, speed)
+  const speed     = parseFloat(cfg.economy_speed ?? ECONOMY_SPEED)
+  const cls       = npcClass(kingdom)
+  const timeSecs  = researchTime(cost.wood, cost.stone, kingdom.academy ?? 0, speed)
   // Discoverer class researches faster
   const timeBonus = cls === 'discoverer' ? 0.75 : 1.0
   const finalTime = Math.max(30, Math.floor(timeSecs * timeBonus))
 
+  const newWood  = kingdom.wood  - cost.wood
+  const newStone = kingdom.stone - cost.stone
+  const newGrain = kingdom.grain - (cost.grain ?? 0)
+
   await db.update(kingdoms).set({
-    wood:  kingdom.wood  - cost.wood,
-    stone: kingdom.stone - cost.stone,
-    grain: kingdom.grain - (cost.grain ?? 0),
-    npcCurrentResearch:     researchId,
-    npcResearchAvailableAt: now + finalTime,
-    lastDecision: `Investigando ${researchId} lv${currentLevel + 1} (${Math.round(finalTime / 60)} min)`,
-    updatedAt: new Date(),
+    wood:               newWood,
+    stone:              newStone,
+    grain:              newGrain,
+    lastResourceUpdate: now,
+    updatedAt:          new Date(),
   }).where(eq(kingdoms.id, kingdom.id))
 
-  // Update in-memory kingdom so cascade cascade knows the queue is now busy
-  kingdom.wood  -= cost.wood
-  kingdom.stone -= cost.stone
-  kingdom.grain -= (cost.grain ?? 0)
-  kingdom.npcCurrentResearch     = researchId
-  kingdom.npcResearchAvailableAt = now + finalTime
+  await db.update(npcState).set({
+    currentResearch:     researchId,
+    researchAvailableAt: now + finalTime,
+    lastDecision: `Investigando ${researchId} lv${currentLevel + 1} (${Math.round(finalTime / 60)} min)`,
+    updatedAt: new Date(),
+  }).where(eq(npcState.userId, kingdom.userId))
+
+  // Update in-memory kingdom so cascade knows the queue is now busy
+  kingdom.wood               = newWood
+  kingdom.stone              = newStone
+  kingdom.grain              = newGrain
+  kingdom.currentResearch    = researchId
+  kingdom.researchAvailableAt = now + finalTime
 
   return { action: 'researching', research: researchId }
 }
@@ -153,7 +168,7 @@ async function attemptFleetsave(kingdom, cfg, now, incomingAttack) {
     or(eq(armyMissions.state, 'active'), eq(armyMissions.state, 'exploring')),
   )).limit(1)
   if (existing.length > 0) {
-    await setDecision(kingdom.id, `Fleetsave ya activo — unidades en camino`)
+    await setDecision(kingdom, `Fleetsave ya activo — unidades en camino`)
     return { action: 'fleetsave_already' }
   }
 
@@ -164,7 +179,7 @@ async function attemptFleetsave(kingdom, cfg, now, incomingAttack) {
     if (n > 0) { force[u] = n; totalSent += n }
   }
   if (totalSent === 0) {
-    await setDecision(kingdom.id, `Ataque entrante — sin unidades que salvar`)
+    await setDecision(kingdom, `Ataque entrante — sin unidades que salvar`)
     return { action: 'no_fleetsave' }
   }
 
@@ -178,6 +193,7 @@ async function attemptFleetsave(kingdom, cfg, now, incomingAttack) {
   const arrivalTime = now + travelSecs
   const holdingTime = Math.max(1800, (incomingAttack.arrivalTime - now) + 600)
 
+  // Insert mission with JSONB units field
   await db.insert(armyMissions).values({
     userId:       kingdom.userId,
     missionType:  'expedition',
@@ -191,17 +207,30 @@ async function attemptFleetsave(kingdom, cfg, now, incomingAttack) {
     departureTime: now,
     arrivalTime,
     holdingTime,
-    ...force,
+    units: force,  // JSONB {squire: 10, knight: 5, ...}
   })
 
-  const deduct = { lastDecision: `Fleetsave: ${totalSent} unidades a zona segura`, updatedAt: new Date() }
-  for (const u of Object.keys(force)) deduct[u] = 0
-  await db.update(kingdoms).set(deduct).where(eq(kingdoms.id, kingdom.id))
+  // Deduct units from units table
+  for (const u of Object.keys(force)) {
+    await upsertUnit(kingdom.id, u, 0)  // removes unit row (qty <= 0)
+    kingdom[u] = 0
+  }
+
+  await db.update(npcState).set({
+    lastDecision: `Fleetsave: ${totalSent} unidades a zona segura`,
+    updatedAt: new Date(),
+  }).where(eq(npcState.userId, kingdom.userId))
 
   return { action: 'fleetsave', units: totalSent }
 }
 
 // ── Cascade AI helpers ────────────────────────────────────────────────────────
+
+// Keys that belong to kingdoms table (production/capacity) vs buildings table (levels)
+const KINGDOM_PRODUCTION_KEYS = new Set([
+  'woodProduction', 'stoneProduction', 'grainProduction',
+  'woodCapacity', 'stoneCapacity', 'grainCapacity',
+])
 
 async function attemptBuild(kingdom, buildingId, cfg, now, reason) {
   const def = BUILDINGS.find(b => b.id === buildingId)
@@ -227,7 +256,7 @@ async function attemptBuild(kingdom, buildingId, cfg, now, reason) {
     const d = `Ahorrando para ${buildingId} lv${nextLv} ` +
       `(faltan: ${Math.max(0, cost.wood - kingdom.wood).toFixed(0)}m ` +
       `${Math.max(0, cost.stone - kingdom.stone).toFixed(0)}p)`
-    await setDecision(kingdom.id, d)
+    await setDecision(kingdom, d)
     return { action: 'saving', building: buildingId }
   }
 
@@ -242,20 +271,41 @@ async function attemptBuild(kingdom, buildingId, cfg, now, reason) {
   const rawTime   = buildTime(cost.wood, cost.stone, nextLv, kingdom.workshop ?? 0, kingdom.engineersGuild ?? 0, speed)
   const timeBonus = isBoss ? 0.5 : (cls === 'discoverer' ? 0.75 : 1.0)
 
-  await db.update(kingdoms).set({
-    ...effect,
+  // Split effect: production/capacity keys → kingdoms table; building level → buildings table
+  const kingdomPatch = {
     wood: newWood, stone: newStone, grain: newGrain,
-    npcBuildAvailableAt: now + Math.max(30, Math.floor(rawTime * timeBonus)),
-    lastDecision: reason,
+    lastResourceUpdate: now,
     updatedAt: new Date(),
-  }).where(eq(kingdoms.id, kingdom.id))
+  }
+  for (const [k, v] of Object.entries(effect)) {
+    if (KINGDOM_PRODUCTION_KEYS.has(k)) kingdomPatch[k] = v
+  }
+
+  await db.update(kingdoms).set(kingdomPatch).where(eq(kingdoms.id, kingdom.id))
+
+  // Update building level in normalized buildings table
+  await upsertBuilding(kingdom.id, buildingId, nextLv)
+
+  // Update npcState for build timer
+  await db.update(npcState).set({
+    buildAvailableAt: now + Math.max(30, Math.floor(rawTime * timeBonus)),
+    lastDecision:     reason,
+    updatedAt:        new Date(),
+  }).where(eq(npcState.userId, kingdom.userId))
+
+  // Update in-memory so cascade logic sees updated values
+  kingdom.wood  = newWood
+  kingdom.stone = newStone
+  kingdom.grain = newGrain
+  Object.assign(kingdom, effect)
+  kingdom.buildAvailableAt = now + Math.max(30, Math.floor(rawTime * timeBonus))
 
   return { action: 'built', building: buildingId, level: nextLv }
 }
 
 // Trains the highest-priority unit whose requirements are met.
 // If the first eligible unit needs research it doesn't have, queues that research.
-async function attemptTrainTroops(kingdom, personality, cls, researchRow, cfg, now) {
+async function attemptTrainTroops(kingdom, personality, cls, researchMap, cfg, now) {
   const costMult     = cls === 'general' ? 0.9 : 1.0
   const maxUnitTypes = cls === 'general' ? 2 : 1
   const batchCap     = 50
@@ -286,16 +336,16 @@ async function attemptTrainTroops(kingdom, personality, cls, researchRow, cfg, n
       if (req.type === 'building' && (kingdom[req.id] ?? 0) < req.level) {
         blockedByBuilding = true; break
       }
-      if (req.type === 'research' && (researchRow[req.id] ?? 0) < req.level) {
+      if (req.type === 'research' && (researchMap[req.id] ?? 0) < req.level) {
         missingResearch = req.id; break
       }
     }
 
     if (blockedByBuilding) continue
 
-    // Research missing: set it as Current Priority and stop
+    // Research missing: set it as current priority and stop
     if (missingResearch) {
-      return await attemptResearch(kingdom, missingResearch, researchRow, cfg, now)
+      return await attemptResearch(kingdom, missingResearch, researchMap, cfg, now)
     }
 
     const cost = UNIT_COSTS[unitId]
@@ -332,16 +382,32 @@ async function attemptTrainTroops(kingdom, personality, cls, researchRow, cfg, n
         `(faltan: ${Math.max(0, firstAffordable.effWood - kingdom.wood).toFixed(0)}m ` +
         `${Math.max(0, firstAffordable.effStone - kingdom.stone).toFixed(0)}p)`
       : `${UNIT_PRIORITY[personality][0]} (sin requisitos)`
-    await setDecision(kingdom.id, `Ahorrando para ${target}`)
+    await setDecision(kingdom, `Ahorrando para ${target}`)
     return { action: 'saving' }
   }
 
-  const d = `Entrenando ${lastUnit} (+${totalTrained})`
+  // Deduct resources from kingdoms table
   await db.update(kingdoms).set({
-    ...patch, wood, stone, grain,
-    lastDecision: d,
+    wood, stone, grain,
+    lastResourceUpdate: now,
     updatedAt: new Date(),
   }).where(eq(kingdoms.id, kingdom.id))
+
+  // Upsert each trained unit type in units table
+  for (const [unitId, newCount] of Object.entries(patch)) {
+    await upsertUnit(kingdom.id, unitId, newCount)
+    kingdom[unitId] = newCount
+  }
+
+  kingdom.wood  = wood
+  kingdom.stone = stone
+  kingdom.grain = grain
+
+  const d = `Entrenando ${lastUnit} (+${totalTrained})`
+  await db.update(npcState).set({
+    lastDecision: d,
+    updatedAt: new Date(),
+  }).where(eq(npcState.userId, kingdom.userId))
 
   return {
     action:    'trained',
@@ -378,30 +444,30 @@ async function attemptBuildWeighted(kingdom, personality, cfg, now) {
     const cost      = buildCost(def.woodBase, def.stoneBase, def.factor, currentLv, def.grainBase ?? 0)
 
     if (kingdom.wood < cost.wood || kingdom.stone < cost.stone || kingdom.grain < (cost.grain ?? 0)) {
-      await setDecision(kingdom.id, `Ahorrando para ${id} lv${nextLv}`)
+      await setDecision(kingdom, `Ahorrando para ${id} lv${nextLv}`)
       return { action: 'saving', building: id }
     }
 
     return await attemptBuild(kingdom, id, cfg, now, `Crecimiento: ${id} → lv${nextLv}`)
   }
 
-  await setDecision(kingdom.id, 'Sin edificios disponibles (bloqueados por requisitos)')
+  await setDecision(kingdom, 'Sin edificios disponibles (bloqueados por requisitos)')
   return { action: 'blocked' }
 }
 
 // ── Boss growth ───────────────────────────────────────────────────────────────
 
-async function growNpcBoss(kingdom, cfg, now, researchRow) {
-  if (now < (kingdom.npcBuildAvailableAt ?? 0)) return { action: 'waiting' }
-  const result = await attemptTrainTroops(kingdom, 'military', 'general', researchRow, cfg, now)
+async function growNpcBoss(kingdom, cfg, now, researchMap) {
+  if (now < (kingdom.buildAvailableAt ?? 0)) return { action: 'waiting' }
+  const result = await attemptTrainTroops(kingdom, 'military', 'general', researchMap, cfg, now)
   if (result.action === 'trained') return result
   return await attemptBuildWeighted(kingdom, 'military', cfg, now)
 }
 
 // ── Cascade state machine ─────────────────────────────────────────────────────
 
-async function growNpc(kingdom, cfg, now, researchRow) {
-  if (kingdom.isBoss) return await growNpcBoss(kingdom, cfg, now, researchRow)
+async function growNpc(kingdom, cfg, now, researchMap) {
+  if (kingdom.isBoss) return await growNpcBoss(kingdom, cfg, now, researchMap)
 
   const personality = npcPersonality(kingdom)
   const cls         = npcClass(kingdom)
@@ -413,26 +479,26 @@ async function growNpc(kingdom, cfg, now, researchRow) {
     if (!sleeping || Math.random() < 0.5) {
       return await attemptFleetsave(kingdom, cfg, now, incomingAttack)
     }
-    await setDecision(kingdom.id, `Ataque entrante ignorado — comandante durmiendo`)
+    await setDecision(kingdom, `Ataque entrante ignorado — comandante durmiendo`)
     return { action: 'sleeping' }
   }
 
   // Nivel 0-A: cola de construcción ocupada
-  const buildAvailable = kingdom.npcBuildAvailableAt ?? 0
+  const buildAvailable = kingdom.buildAvailableAt ?? 0
   if (now < buildAvailable) {
     const minsLeft = Math.ceil((buildAvailable - now) / 60)
-    await setDecision(kingdom.id, `En cola de construcción (${minsLeft} min)`)
+    await setDecision(kingdom, `En cola de construcción (${minsLeft} min)`)
     return { action: 'waiting' }
   }
 
   // Nivel 0-R: cola de investigación
-  if (kingdom.npcCurrentResearch) {
-    if (now >= (kingdom.npcResearchAvailableAt ?? 0)) {
-      await completeNpcResearch(kingdom, researchRow)
+  if (kingdom.currentResearch) {
+    if (now >= (kingdom.researchAvailableAt ?? 0)) {
+      await completeNpcResearch(kingdom, researchMap)
       // Fall through — research just completed, take next action this tick
     } else {
-      const minsLeft = Math.ceil(((kingdom.npcResearchAvailableAt ?? now) - now) / 60)
-      await setDecision(kingdom.id, `Investigando ${kingdom.npcCurrentResearch} (${minsLeft} min)`)
+      const minsLeft = Math.ceil(((kingdom.researchAvailableAt ?? now) - now) / 60)
+      await setDecision(kingdom, `Investigando ${kingdom.currentResearch} (${minsLeft} min)`)
       return { action: 'researching' }
     }
   }
@@ -479,7 +545,7 @@ async function growNpc(kingdom, cfg, now, researchRow) {
   // Nivel 2: gasto de personalidad post-hitos
   const flavor = getTickFlavor(personality, kingdom, ageHours)
   if (flavor === 'troops') {
-    return await attemptTrainTroops(kingdom, personality, cls, researchRow, cfg, now)
+    return await attemptTrainTroops(kingdom, personality, cls, researchMap, cfg, now)
   } else {
     return await attemptBuildWeighted(kingdom, personality, cfg, now)
   }
@@ -498,28 +564,69 @@ export default async function handler(req, res) {
   const now = Math.floor(Date.now() / 1000)
   const cfg = await getSettings()
 
-  const [npcUser] = await db.select({ id: users.id })
-    .from(users).where(eq(users.isNpc, true)).limit(1)
-  if (!npcUser) return res.json({ ok: true, skipped: 'no_npc_user' })
+  // Batch load all NPC kingdoms with their npcState in one query
+  const npcRows = await db.select({ k: kingdoms, ns: npcState })
+    .from(kingdoms)
+    .innerJoin(users, eq(kingdoms.userId, users.id))
+    .leftJoin(npcState, eq(npcState.userId, users.id))
+    .where(eq(users.role, 'npc'))
 
-  const allNpcKingdoms = await db.select().from(kingdoms)
-    .where(eq(kingdoms.isNpc, true))
+  if (npcRows.length === 0) return res.json({ ok: true, skipped: 'no_npc_kingdoms' })
 
-  if (allNpcKingdoms.length === 0) return res.json({ ok: true, skipped: 'no_npc_kingdoms' })
+  const npcKingdomIds = npcRows.map(r => r.k.id)
+  const npcUserIds    = npcRows.map(r => r.k.userId)
 
-  // Load all npc_research rows, indexed by kingdomId
-  const allResearchRows = await db.select().from(npcResearch)
-  const researchByKingdomId = Object.fromEntries(allResearchRows.map(r => [r.kingdomId, r]))
+  // Batch load buildings, units, research — avoids N+1 queries
+  const [allBuildings, allUnits, allResearch] = await Promise.all([
+    db.select().from(buildings).where(inArray(buildings.kingdomId, npcKingdomIds)),
+    db.select().from(units).where(inArray(units.kingdomId, npcKingdomIds)),
+    db.select().from(research).where(inArray(research.userId, npcUserIds)),
+  ])
 
-  // Only process NPCs whose window has expired
-  const npcsDue = allNpcKingdoms.filter(k => !k.npcNextCheck || k.npcNextCheck <= now)
+  // Build per-kingdom / per-user lookup maps
+  const buildingsByKingdom = {}
+  for (const b of allBuildings) {
+    if (!buildingsByKingdom[b.kingdomId]) buildingsByKingdom[b.kingdomId] = {}
+    buildingsByKingdom[b.kingdomId][b.type] = b.level
+  }
+
+  const unitsByKingdom = {}
+  for (const u of allUnits) {
+    if (!unitsByKingdom[u.kingdomId]) unitsByKingdom[u.kingdomId] = {}
+    unitsByKingdom[u.kingdomId][u.type] = u.quantity
+  }
+
+  const researchByUser = {}
+  for (const r of allResearch) {
+    if (!researchByUser[r.userId]) researchByUser[r.userId] = {}
+    researchByUser[r.userId][r.type] = r.level
+  }
+
+  // Enrich NPC kingdoms — merge buildings, units, and npcState fields into a single object
+  const allNpcKingdoms = npcRows.map(({ k, ns }) => ({
+    ...k,
+    ...(buildingsByKingdom[k.id] ?? {}),
+    ...(unitsByKingdom[k.id]    ?? {}),
+    // NPC AI state fields (from npc_state, using new column names):
+    isBoss:              ns?.isBoss              ?? false,
+    npcLevel:            ns?.npcLevel            ?? 1,
+    buildAvailableAt:    ns?.buildAvailableAt    ?? null,
+    nextCheck:           ns?.nextCheck           ?? null,
+    currentResearch:     ns?.currentResearch     ?? null,
+    researchAvailableAt: ns?.researchAvailableAt ?? null,
+    lastAttackAt:        ns?.lastAttackAt        ?? 0,
+    lastDecision:        ns?.lastDecision        ?? null,
+  }))
+
+  // Only process NPCs whose check window has expired
+  const npcsDue = allNpcKingdoms.filter(k => !k.nextCheck || k.nextCheck <= now)
 
   let ticked = 0, builtBuilding = 0, trainedCombat = 0, trainedDefense = 0, trainedSupport = 0
   let saved = 0, waiting = 0, fleetsaved = 0, sleeping = 0, researching = 0
 
   for (const kingdom of npcsDue) {
     try {
-      const cls = npcClass(kingdom)
+      const cls        = npcClass(kingdom)
       const tickResult = applyResourceTick(kingdom, cfg, cls === 'collector' ? 'collector' : null)
 
       if (
@@ -541,31 +648,32 @@ export default async function handler(req, res) {
         ticked++
       }
 
-      // Use real research row (fallback to empty if row is missing — should not happen)
-      const researchRow = researchByKingdomId[kingdom.id] ?? { ...EMPTY_RESEARCH }
+      // Use pre-loaded research map for this NPC's userId
+      const researchMap = { ...EMPTY_RESEARCH, ...(researchByUser[kingdom.userId] ?? {}) }
 
-      const growResult = await growNpc(kingdom, cfg, now, researchRow)
-      if (growResult?.action === 'built')       builtBuilding++
+      const growResult = await growNpc(kingdom, cfg, now, researchMap)
+      if (growResult?.action === 'built')     builtBuilding++
       if (growResult?.action === 'trained') {
         if (growResult.isCombat)  trainedCombat++
         if (growResult.isSupport) trainedSupport++
         if (growResult.isDefense) trainedDefense++
       }
-      if (growResult?.action === 'saving')      saved++
-      if (growResult?.action === 'waiting')     waiting++
-      if (growResult?.action === 'fleetsave')   fleetsaved++
-      if (growResult?.action === 'sleeping')    sleeping++
+      if (growResult?.action === 'saving')    saved++
+      if (growResult?.action === 'waiting')   waiting++
+      if (growResult?.action === 'fleetsave') fleetsaved++
+      if (growResult?.action === 'sleeping')  sleeping++
       if (growResult?.action === 'researching') researching++
 
       const delay = getNpcDelay(now)
       const nextCheck = (growResult?.action === 'waiting')
-        ? Math.min(now + delay, (kingdom.npcBuildAvailableAt ?? now) + 60)
+        ? Math.min(now + delay, (kingdom.buildAvailableAt ?? now) + 60)
         : (growResult?.action === 'researching')
-          ? Math.min(now + delay, (kingdom.npcResearchAvailableAt ?? now) + 60)
+          ? Math.min(now + delay, (kingdom.researchAvailableAt ?? now) + 60)
           : now + delay
-      await db.update(kingdoms)
-        .set({ npcNextCheck: nextCheck })
-        .where(eq(kingdoms.id, kingdom.id))
+
+      await db.update(npcState)
+        .set({ nextCheck, updatedAt: new Date() })
+        .where(eq(npcState.userId, kingdom.userId))
     } catch (err) {
       console.error(`[npc-builder] kingdom ${kingdom.id} error:`, err?.message ?? err)
     }

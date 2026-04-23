@@ -2,11 +2,11 @@
  * combat-engine — mission resolution + season management + IntrusionDetector.
  * Vercel Cron: every minute ("* * * * *").
  * Handles: NPC returns, scavenges, NPC-vs-NPC battles, expeditions, purge, season.
- * IntrusionDetector: sets npcNextCheck=0 for NPCs with imminent attacks (ETA ≤ 15 min)
+ * IntrusionDetector: sets npc_state.nextCheck=0 for NPCs with imminent attacks (ETA ≤ 15 min)
  * so npc-builder reacts on the next run.
  */
-import { eq, and, lte, gte, lt, or } from 'drizzle-orm'
-import { db, users, kingdoms, armyMissions, npcResearch } from '../_db.js'
+import { eq, and, lte, gte, lt, inArray } from 'drizzle-orm'
+import { db, users, kingdoms, npcState, units, research, armyMissions } from '../_db.js'
 import {
   buildBattleUnits, runBattle, calculateLoot,
   repairDefenses, calcCargoCapacity,
@@ -14,12 +14,12 @@ import {
 import { insertBattleLog, sumLosses } from '../lib/battle_log.js'
 import { processScavenge } from '../lib/missions/scavenge.js'
 import { resolveExpedition } from '../lib/expedition.js'
-import { calcPoints } from '../lib/points.js'
 import { getSettings, setSetting } from '../lib/settings.js'
 import { startNewSeason, repairSeasonNpcsIfMissing } from '../lib/season.js'
+import { upsertUnit } from '../lib/db-helpers.js'
 import {
-  UNIT_KEYS, NPC_UNIT_KEYS, NPC_DEFENSE_KEYS,
-  npcClass, EMPTY_RESEARCH, extractK,
+  NPC_UNIT_KEYS, NPC_DEFENSE_KEYS,
+  npcClass, EMPTY_RESEARCH,
 } from '../lib/npc-engine.js'
 
 // ── Season management ─────────────────────────────────────────────────────────
@@ -49,10 +49,10 @@ async function manageSeason(cfg, now) {
 
 // ── Process NPC return missions ───────────────────────────────────────────────
 
-async function processNpcReturns(npcUserId, npcKingdomsById, now) {
+async function processNpcReturns(npcUserIds, npcKingdomsById, now) {
   const returning = await db.select().from(armyMissions)
     .where(and(
-      eq(armyMissions.userId, npcUserId),
+      inArray(armyMissions.userId, npcUserIds),
       eq(armyMissions.state,  'returning'),
       lte(armyMissions.returnTime, now),
     ))
@@ -64,16 +64,22 @@ async function processNpcReturns(npcUserId, npcKingdomsById, now) {
       continue
     }
 
-    const patch = { updatedAt: new Date() }
-    for (const u of UNIT_KEYS) {
-      const n = m[u] ?? 0
-      if (n > 0) patch[u] = (npcKingdom[u] ?? 0) + n
+    // Return units via upsertUnit (JSONB mission units)
+    const missionUnits = m.units ?? {}
+    for (const [u, n] of Object.entries(missionUnits)) {
+      if (n > 0) await upsertUnit(npcKingdom.id, u, (npcKingdom[u] ?? 0) + n)
     }
-    if ((m.woodLoad  ?? 0) > 0) patch.wood  = Math.min((npcKingdom.wood  ?? 0) + m.woodLoad,  npcKingdom.woodCapacity)
-    if ((m.stoneLoad ?? 0) > 0) patch.stone = Math.min((npcKingdom.stone ?? 0) + m.stoneLoad, npcKingdom.stoneCapacity)
-    if ((m.grainLoad ?? 0) > 0) patch.grain = Math.min((npcKingdom.grain ?? 0) + m.grainLoad, npcKingdom.grainCapacity)
 
-    await db.update(kingdoms).set(patch).where(eq(kingdoms.id, npcKingdom.id))
+    // Return resource loads
+    const resourcePatch = { updatedAt: new Date() }
+    if ((m.woodLoad  ?? 0) > 0) resourcePatch.wood  = Math.min((npcKingdom.wood  ?? 0) + m.woodLoad,  npcKingdom.woodCapacity)
+    if ((m.stoneLoad ?? 0) > 0) resourcePatch.stone = Math.min((npcKingdom.stone ?? 0) + m.stoneLoad, npcKingdom.stoneCapacity)
+    if ((m.grainLoad ?? 0) > 0) resourcePatch.grain = Math.min((npcKingdom.grain ?? 0) + m.grainLoad, npcKingdom.grainCapacity)
+
+    if (Object.keys(resourcePatch).length > 1) {
+      await db.update(kingdoms).set(resourcePatch).where(eq(kingdoms.id, npcKingdom.id))
+      Object.assign(npcKingdom, resourcePatch)
+    }
 
     if (m.missionType === 'expedition') {
       await db.update(armyMissions)
@@ -82,13 +88,12 @@ async function processNpcReturns(npcUserId, npcKingdomsById, now) {
     } else {
       await db.delete(armyMissions).where(eq(armyMissions.id, m.id))
     }
-    Object.assign(npcKingdom, patch)
   }
 }
 
 // ── Resolve NPC-vs-NPC battles ────────────────────────────────────────────────
 
-async function resolveNpcVsNpcAttacks(npcKingdomsById, researchByKingdomId, now) {
+async function resolveNpcVsNpcAttacks(npcKingdomsById, researchByUser, now) {
   let resolved = 0
 
   const arrivedAll = await db.select().from(armyMissions)
@@ -114,13 +119,18 @@ async function resolveNpcVsNpcAttacks(npcKingdomsById, researchByKingdomId, now)
       const atkKingdom = npcKingdomsById[atkKey]
       if (!atkKingdom) continue  // player-initiated attack, handled by resolveIncomingNpcAttacks
 
-      const missionUnits  = extractK(m, NPC_UNIT_KEYS)
-      const atkResearch   = researchByKingdomId[atkKingdom.id] ?? EMPTY_RESEARCH
-      const defResearch   = researchByKingdomId[defKingdom.id] ?? EMPTY_RESEARCH
+      const missionUnits  = m.units ?? {}
+      const atkResearch   = researchByUser[atkKingdom.userId] ?? EMPTY_RESEARCH
+      const defResearch   = researchByUser[defKingdom.userId] ?? EMPTY_RESEARCH
       const attackerUnits = buildBattleUnits(missionUnits, atkResearch)
-      const defenderUnits = buildBattleUnits(
-        { ...extractK(defKingdom, NPC_UNIT_KEYS), ...extractK(defKingdom, NPC_DEFENSE_KEYS) }, defResearch
-      )
+
+      // Build defender unit map from enriched kingdom (unit counts merged in)
+      const allDefUnits = {}
+      for (const k of [...NPC_UNIT_KEYS, ...NPC_DEFENSE_KEYS]) {
+        const n = defKingdom[k] ?? 0
+        if (n > 0) allDefUnits[k] = n
+      }
+      const defenderUnits = buildBattleUnits(allDefUnits, defResearch)
 
       const { outcome, rounds, survivingAtk, lostAtk, lostDef } = runBattle(attackerUnits, defenderUnits)
       const cargo = calcCargoCapacity(missionUnits)
@@ -131,23 +141,33 @@ async function resolveNpcVsNpcAttacks(npcKingdomsById, researchByKingdomId, now)
       const travelSecs = m.arrivalTime - m.departureTime
       const returnTime = now + travelSecs
 
-      const defPatch = { updatedAt: new Date() }
+      // Update defender resources
+      const defResourcePatch = { updatedAt: new Date() }
       if (outcome === 'victory') {
-        defPatch.wood  = Math.max(0, (defKingdom.wood  ?? 0) - loot.wood)
-        defPatch.stone = Math.max(0, (defKingdom.stone ?? 0) - loot.stone)
-        defPatch.grain = Math.max(0, (defKingdom.grain ?? 0) - loot.grain)
+        defResourcePatch.wood  = Math.max(0, (defKingdom.wood  ?? 0) - loot.wood)
+        defResourcePatch.stone = Math.max(0, (defKingdom.stone ?? 0) - loot.stone)
+        defResourcePatch.grain = Math.max(0, (defKingdom.grain ?? 0) - loot.grain)
       }
+      await db.update(kingdoms).set(defResourcePatch).where(eq(kingdoms.id, defKingdom.id))
+      Object.assign(defKingdom, defResourcePatch)
+
+      // Update defender units via upsertUnit
       const repaired = repairDefenses(Object.fromEntries(NPC_DEFENSE_KEYS.map(k => [k, lostDef[k] ?? 0])))
-      for (const k of NPC_UNIT_KEYS)    defPatch[k] = Math.max(0, (defKingdom[k] ?? 0) - (lostDef[k] ?? 0))
-      for (const k of NPC_DEFENSE_KEYS) defPatch[k] = Math.max(0, (defKingdom[k] ?? 0) - (lostDef[k] ?? 0) + (repaired[k] ?? 0))
-      await db.update(kingdoms).set(defPatch).where(eq(kingdoms.id, defKingdom.id))
-      Object.assign(defKingdom, defPatch)
+      for (const k of NPC_UNIT_KEYS) {
+        const newQty = Math.max(0, (defKingdom[k] ?? 0) - (lostDef[k] ?? 0))
+        await upsertUnit(defKingdom.id, k, newQty)
+        defKingdom[k] = newQty
+      }
+      for (const k of NPC_DEFENSE_KEYS) {
+        const newQty = Math.max(0, (defKingdom[k] ?? 0) - (lostDef[k] ?? 0) + (repaired[k] ?? 0))
+        await upsertUnit(defKingdom.id, k, newQty)
+        defKingdom[k] = newQty
+      }
 
       if (outcome === 'victory') {
-        const survivorPatch = {}
-        for (const k of NPC_UNIT_KEYS) survivorPatch[k] = survivingAtk[k] ?? 0
         await db.update(armyMissions).set({
-          ...survivorPatch, state: 'returning', returnTime,
+          units: survivingAtk,
+          state: 'returning', returnTime,
           woodLoad: loot.wood, stoneLoad: loot.stone, grainLoad: loot.grain,
           updatedAt: new Date(),
         }).where(eq(armyMissions.id, m.id))
@@ -156,8 +176,8 @@ async function resolveNpcVsNpcAttacks(npcKingdomsById, researchByKingdomId, now)
       }
 
       await insertBattleLog({
-        attackerKingdomId: atkKingdom.id, attackerName: atkKingdom.name, attackerIsNpc: true,
-        defenderKingdomId: defKingdom.id, defenderName: defKingdom.name, defenderIsNpc: true,
+        attackerKingdomId: atkKingdom.id, attackerName: atkKingdom.name,
+        defenderKingdomId: defKingdom.id, defenderName: defKingdom.name,
         missionType: 'attack', outcome,
         lootWood: loot.wood, lootStone: loot.stone, lootGrain: loot.grain,
         attackerLosses: sumLosses(lostAtk), defenderLosses: sumLosses(lostDef), rounds,
@@ -173,12 +193,12 @@ async function resolveNpcVsNpcAttacks(npcKingdomsById, researchByKingdomId, now)
 
 // ── Resolve NPC expeditions ───────────────────────────────────────────────────
 
-async function resolveNpcExpeditions(npcUserId, npcKingdomsById, now) {
+async function resolveNpcExpeditions(npcUserIds, npcKingdomsById, now) {
   let resolved = 0
 
   // active → exploring
   const arrivedActive = await db.select({ id: armyMissions.id }).from(armyMissions).where(and(
-    eq(armyMissions.userId,      npcUserId),
+    inArray(armyMissions.userId,      npcUserIds),
     eq(armyMissions.missionType, 'expedition'),
     eq(armyMissions.state,       'active'),
     lte(armyMissions.arrivalTime, now),
@@ -187,7 +207,7 @@ async function resolveNpcExpeditions(npcUserId, npcKingdomsById, now) {
     await db.update(armyMissions)
       .set({ state: 'exploring', updatedAt: new Date() })
       .where(and(
-        eq(armyMissions.userId,      npcUserId),
+        inArray(armyMissions.userId,      npcUserIds),
         eq(armyMissions.missionType, 'expedition'),
         eq(armyMissions.state,       'active'),
         lte(armyMissions.arrivalTime, now),
@@ -196,15 +216,16 @@ async function resolveNpcExpeditions(npcUserId, npcKingdomsById, now) {
 
   // exploring → resolve → returning
   const exploring = await db.select().from(armyMissions).where(and(
-    eq(armyMissions.userId,      npcUserId),
+    inArray(armyMissions.userId,      npcUserIds),
     eq(armyMissions.missionType, 'expedition'),
     eq(armyMissions.state,       'exploring'),
   ))
 
   if (exploring.length === 0) return resolved
 
-  const allKingdoms = await db.select().from(kingdoms)
-  const top1Points = allKingdoms.reduce((max, k) => Math.max(max, calcPoints(k)), 0)
+  // top1Points is a scaling factor for expedition rewards — use 0 to avoid
+  // expensive full-kingdom enrichment (all buildings would need loading)
+  const top1Points = 0
 
   for (const m of exploring) {
     if (m.arrivalTime + (m.holdingTime ?? 0) > now) continue
@@ -215,8 +236,7 @@ async function resolveNpcExpeditions(npcUserId, npcKingdomsById, now) {
       continue
     }
 
-    const missionUnits = {}
-    for (const k of UNIT_KEYS) missionUnits[k] = m[k] ?? 0
+    const missionUnits = m.units ?? {}
 
     const travelSecs = m.arrivalTime - m.departureTime
     const cls        = npcClass(npcKingdom)
@@ -257,8 +277,9 @@ async function resolveNpcExpeditions(npcUserId, npcKingdomsById, now) {
     if (outcome === 'ether' && result.amount) grainLoad = result.amount * 10
 
     await db.update(armyMissions).set({
-      ...finalUnits, state: 'returning',
-      returnTime, woodLoad, stoneLoad, grainLoad,
+      units: finalUnits,
+      state: 'returning', returnTime,
+      woodLoad, stoneLoad, grainLoad,
       result: JSON.stringify({ type: 'expedition', outcome: effectiveOutcome }),
       updatedAt: new Date(),
     }).where(eq(armyMissions.id, m.id))
@@ -284,7 +305,7 @@ async function purgeOldExpeditions(now) {
 
 // ── IntrusionDetector ─────────────────────────────────────────────────────────
 // Finds incoming attacks with ETA ≤ 15 min targeting NPC kingdoms.
-// Sets npcNextCheck = 0 → npc-builder will process them on its next run (fleetsave).
+// Sets npc_state.nextCheck = 0 → npc-builder will process them on its next run (fleetsave).
 
 async function runIntrusionDetector(npcKingdomsById, now) {
   const eta15 = now + 900  // 15 min window
@@ -304,11 +325,12 @@ async function runIntrusionDetector(npcKingdomsById, now) {
   const triggered = new Set()
   for (const r of incomingAttacks) {
     const key = `${r.targetRealm}:${r.targetRegion}:${r.targetSlot}`
-    if (npcKingdomsById[key] && !triggered.has(key)) {
+    const npcKingdom = npcKingdomsById[key]
+    if (npcKingdom && !triggered.has(key)) {
       triggered.add(key)
-      await db.update(kingdoms)
-        .set({ npcNextCheck: 0, updatedAt: new Date() })
-        .where(eq(kingdoms.id, npcKingdomsById[key].id))
+      await db.update(npcState)
+        .set({ nextCheck: 0, updatedAt: new Date() })
+        .where(eq(npcState.userId, npcKingdom.userId))
     }
   }
 
@@ -331,30 +353,60 @@ export default async function handler(req, res) {
   const seasonAction = await manageSeason(cfg, now)
   const repairAction = await repairSeasonNpcsIfMissing(now)
 
-  const [npcUser] = await db.select({ id: users.id })
-    .from(users).where(eq(users.isNpc, true)).limit(1)
-  if (!npcUser) return res.json({ ok: true, skipped: 'no_npc_user', seasonAction, repairAction })
+  // Load all NPC kingdoms with their npcState
+  const npcRows = await db.select({ k: kingdoms, ns: npcState })
+    .from(kingdoms)
+    .innerJoin(users, eq(kingdoms.userId, users.id))
+    .leftJoin(npcState, eq(npcState.userId, users.id))
+    .where(eq(users.role, 'npc'))
 
-  const npcUserId = npcUser.id
-
-  const allNpcKingdoms = await db.select().from(kingdoms)
-    .where(eq(kingdoms.isNpc, true))
-
-  if (allNpcKingdoms.length === 0) {
+  if (npcRows.length === 0) {
     return res.json({ ok: true, skipped: 'no_npc_kingdoms', seasonAction, repairAction })
   }
 
+  const npcKingdomIds = npcRows.map(r => r.k.id)
+  const npcUserIds    = npcRows.map(r => r.k.userId)
+
+  // Batch load all NPC units and research
+  const [allUnits, allResearch] = await Promise.all([
+    db.select().from(units).where(inArray(units.kingdomId, npcKingdomIds)),
+    db.select().from(research).where(inArray(research.userId, npcUserIds)),
+  ])
+
+  // Build unit map by kingdom id
+  const unitsByKingdom = {}
+  for (const u of allUnits) {
+    if (!unitsByKingdom[u.kingdomId]) unitsByKingdom[u.kingdomId] = {}
+    unitsByKingdom[u.kingdomId][u.type] = u.quantity
+  }
+
+  // Build research map by user id
+  const researchByUser = {}
+  for (const r of allResearch) {
+    if (!researchByUser[r.userId]) researchByUser[r.userId] = {}
+    researchByUser[r.userId][r.type] = r.level
+  }
+
+  // Enrich NPC kingdoms with unit counts and npcState fields
+  const allNpcKingdoms = npcRows.map(({ k, ns }) => ({
+    ...k,
+    ...(unitsByKingdom[k.id] ?? {}),
+    isBoss:    ns?.isBoss    ?? false,
+    npcLevel:  ns?.npcLevel  ?? 1,
+    nextCheck: ns?.nextCheck ?? null,
+  }))
+
+  // Index by coord key
   const npcKingdomsById = {}
-  for (const k of allNpcKingdoms) npcKingdomsById[`${k.realm}:${k.region}:${k.slot}`] = k
+  for (const k of allNpcKingdoms) {
+    npcKingdomsById[`${k.realm}:${k.region}:${k.slot}`] = k
+  }
 
-  const allResearchRows = await db.select().from(npcResearch)
-  const researchByKingdomId = Object.fromEntries(allResearchRows.map(r => [r.kingdomId, r]))
-
-  await processNpcReturns(npcUserId, npcKingdomsById, now)
+  await processNpcReturns(npcUserIds, npcKingdomsById, now)
 
   // Resolve arrived scavenges
   const arrivedScavenges = await db.select().from(armyMissions).where(and(
-    eq(armyMissions.userId,      npcUserId),
+    inArray(armyMissions.userId,      npcUserIds),
     eq(armyMissions.missionType, 'scavenge'),
     eq(armyMissions.state,       'active'),
     lte(armyMissions.arrivalTime, now),
@@ -364,10 +416,10 @@ export default async function handler(req, res) {
     if (npcKingdom) await processScavenge(m, npcKingdom, now, null)
   }
 
-  const npcVsNpcResolved     = await resolveNpcVsNpcAttacks(npcKingdomsById, researchByKingdomId, now)
-  const npcExpeditionsResolved = await resolveNpcExpeditions(npcUserId, npcKingdomsById, now)
-  const purged               = await purgeOldExpeditions(now)
-  const intruderCount        = await runIntrusionDetector(npcKingdomsById, now)
+  const npcVsNpcResolved       = await resolveNpcVsNpcAttacks(npcKingdomsById, researchByUser, now)
+  const npcExpeditionsResolved = await resolveNpcExpeditions(npcUserIds, npcKingdomsById, now)
+  const purged                 = await purgeOldExpeditions(now)
+  const intruderCount          = await runIntrusionDetector(npcKingdomsById, now)
 
   return res.json({
     ok: true,

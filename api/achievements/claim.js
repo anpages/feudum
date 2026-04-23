@@ -37,7 +37,7 @@ export default async function handler(req, res) {
     const [k] = await db
       .select()
       .from(kingdoms)
-      .where(and(eq(kingdoms.userId, userId), eq(kingdoms.isNpc, false)))
+      .where(eq(kingdoms.userId, userId))
       .orderBy(kingdoms.createdAt)
       .limit(1)
 

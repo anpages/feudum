@@ -1,8 +1,8 @@
 import { db, battleLog } from '../_db.js'
 
 export async function insertBattleLog({
-  attackerKingdomId, attackerName, attackerIsNpc,
-  defenderKingdomId, defenderName, defenderIsNpc,
+  attackerKingdomId, attackerName,
+  defenderKingdomId, defenderName,
   missionType, outcome,
   lootWood, lootStone, lootGrain,
   attackerLosses, defenderLosses, rounds,
@@ -12,10 +12,10 @@ export async function insertBattleLog({
     await db.insert(battleLog).values({
       attackerKingdomId: attackerKingdomId ?? null,
       attackerName,
-      attackerIsNpc: attackerIsNpc ?? false,
+      attackerCoord: attackerCoord ?? '',
       defenderKingdomId: defenderKingdomId ?? null,
       defenderName,
-      defenderIsNpc: defenderIsNpc ?? false,
+      defenderCoord: defenderCoord ?? '',
       missionType,
       outcome,
       lootWood:       lootWood       ?? 0,
@@ -24,8 +24,6 @@ export async function insertBattleLog({
       attackerLosses: attackerLosses ?? 0,
       defenderLosses: defenderLosses ?? 0,
       rounds:         rounds         ?? 0,
-      attackerCoord,
-      defenderCoord,
     })
   } catch (_) {
     // Non-critical — don't let logging failures break the game

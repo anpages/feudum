@@ -1,10 +1,11 @@
 import { eq, and } from 'drizzle-orm'
-import { db, kingdoms, research as researchTable, unitQueue, users } from '../_db.js'
+import { db, kingdoms, unitQueue, users } from '../_db.js'
 import { getSessionUserId } from '../lib/handler.js'
 import { ALL_UNITS, unitBuildTime, unitRequirementsMet } from '../lib/units.js'
 import { getSettings } from '../lib/settings.js'
 import { applyResourceTick } from '../lib/tick.js'
 import { processUserQueues } from '../lib/process-queues.js'
+import { enrichKingdom, getResearchMap } from '../lib/db-helpers.js'
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end()
@@ -24,17 +25,17 @@ export default async function handler(req, res) {
 
   await processUserQueues(userId)
 
-  const [[kingdom], [resRow], [userRow], cfg] = await Promise.all([
+  const [[kingdomRow], resMap, [userRow], cfg] = await Promise.all([
     db.select().from(kingdoms).where(eq(kingdoms.userId, userId)).limit(1),
-    db.select().from(researchTable).where(eq(researchTable.userId, userId)).limit(1),
+    getResearchMap(userId),
     db.select({ characterClass: users.characterClass }).from(users).where(eq(users.id, userId)).limit(1),
     getSettings(),
   ])
-  if (!kingdom) return res.status(404).json({ error: 'Reino no encontrado' })
-  if (!resRow)  return res.status(404).json({ error: 'Research no encontrado' })
+  if (!kingdomRow) return res.status(404).json({ error: 'Reino no encontrado' })
+  const kingdom = await enrichKingdom(kingdomRow, { withUnits: true })
 
   // ── Requirements ──────────────────────────────────────────────────────────
-  if (!unitRequirementsMet(def, kingdom, resRow)) {
+  if (!unitRequirementsMet(def, kingdom, resMap)) {
     return res.status(400).json({ error: 'Requisitos no cumplidos' })
   }
 
@@ -43,7 +44,7 @@ export default async function handler(req, res) {
     .where(eq(unitQueue.kingdomId, kingdom.id))
 
   // ── Lazy resource tick ────────────────────────────────────────────────────
-  const { wood, stone, grain, now } = applyResourceTick(kingdom, cfg, userRow?.characterClass ?? null, resRow)
+  const { wood, stone, grain, now } = applyResourceTick(kingdom, cfg, userRow?.characterClass ?? null, resMap)
 
   const totalWood  = def.woodBase  * amount
   const totalStone = def.stoneBase * amount
@@ -71,9 +72,6 @@ export default async function handler(req, res) {
     updatedAt: new Date(),
   }).where(and(
     eq(kingdoms.id, kingdom.id),
-    // See api/buildings/upgrade.js: lastResourceUpdate eq is the only correct
-    // concurrency guard — the raw stored wood/stone/grain may legitimately be
-    // below cost when the tick rate puts the player above it.
     eq(kingdoms.lastResourceUpdate, kingdom.lastResourceUpdate),
   )).returning({ id: kingdoms.id })
 
@@ -83,7 +81,7 @@ export default async function handler(req, res) {
 
   await db.insert(unitQueue).values({
     kingdomId: kingdom.id,
-    unit:      unitId,
+    unitType:  unitId,
     amount,
     startedAt: startAt,
     finishesAt,

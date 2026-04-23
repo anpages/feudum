@@ -1,13 +1,14 @@
 import { eq, and } from 'drizzle-orm'
-import { db, kingdoms, armyMissions, research, messages, debrisFields } from '../../_db.js'
+import { db, kingdoms, armyMissions, messages, debrisFields } from '../../_db.js'
 import {
   buildBattleUnits, runBattle, calculateLoot,
   calculateDebris, repairDefenses, calcCargoCapacity,
 } from '../battle.js'
-import { UNIT_KEYS, DEFENSE_KEYS, extractUnits } from './keys.js'
+import { UNIT_KEYS, DEFENSE_KEYS, extractUnits, extractMissionUnits } from './keys.js'
 import { setSetting, getStringSetting } from '../settings.js'
 import { sendPush } from '../push.js'
 import { insertBattleLog, sumLosses } from '../battle_log.js'
+import { getResearchMap, enrichKingdom, batchUpsertUnits } from '../db-helpers.js'
 
 async function upsertDebris(realm, region, slot, debris) {
   if (debris.wood <= 0 && debris.stone <= 0) return
@@ -27,32 +28,24 @@ async function upsertDebris(realm, region, slot, debris) {
   }
 }
 
-function applyDefenderPatch(targetKingdom, lostDef, repaired) {
-  const patch = { updatedAt: new Date() }
-  for (const k of UNIT_KEYS)    patch[k] = Math.max(0, (targetKingdom[k] ?? 0) - (lostDef[k] ?? 0))
-  for (const k of DEFENSE_KEYS) patch[k] = Math.max(0, (targetKingdom[k] ?? 0) - (lostDef[k] ?? 0) + (repaired[k] ?? 0))
-  return patch
-}
-
 export async function processAttack(mission, myKingdom, now, targetKingdom) {
   const travelSecs   = mission.arrivalTime - mission.departureTime
   const returnTime   = now + travelSecs
-  const missionUnits = extractUnits(mission, UNIT_KEYS)
+  const missionUnits = extractMissionUnits(mission, UNIT_KEYS)
 
-  const [atkResearch] = await db.select().from(research)
-    .where(eq(research.userId, myKingdom.userId)).limit(1)
-
-  const attackerUnits = buildBattleUnits(missionUnits, atkResearch ?? {})
+  const atkResMap = await getResearchMap(myKingdom.userId)
+  const attackerUnits = buildBattleUnits(missionUnits, atkResMap)
 
   let defenderUnits = []
   let defRes        = { wood: 0, stone: 0, grain: 0 }
+  let enrichedTarget = null
 
   if (targetKingdom) {
-    const [defResearch] = await db.select().from(research)
-      .where(eq(research.userId, targetKingdom.userId)).limit(1)
+    enrichedTarget = await enrichKingdom(targetKingdom, { withUnits: true })
+    const defResMap = await getResearchMap(targetKingdom.userId)
     defenderUnits = buildBattleUnits(
-      { ...extractUnits(targetKingdom, UNIT_KEYS), ...extractUnits(targetKingdom, DEFENSE_KEYS) },
-      defResearch ?? {}
+      { ...extractUnits(enrichedTarget, UNIT_KEYS), ...extractUnits(enrichedTarget, DEFENSE_KEYS) },
+      defResMap
     )
     defRes = { wood: targetKingdom.wood, stone: targetKingdom.stone, grain: targetKingdom.grain }
   } else {
@@ -70,21 +63,32 @@ export async function processAttack(mission, myKingdom, now, targetKingdom) {
     const cargo = calcCargoCapacity(missionUnits)
     const loot  = outcome === 'victory' ? calculateLoot(defRes, cargo) : { wood: 0, stone: 0, grain: 0 }
 
-    if (targetKingdom) {
-      const repaired  = repairDefenses(extractUnits(lostDef, DEFENSE_KEYS))
-      await db.update(kingdoms).set(applyDefenderPatch(targetKingdom, lostDef, repaired))
-        .where(eq(kingdoms.id, targetKingdom.id))
-    }
+    if (enrichedTarget) {
+      // Update defender units: subtract losses, add repaired defenses
+      const repaired = repairDefenses(extractUnits(lostDef, DEFENSE_KEYS))
+      const defUnitPatch = {}
+      for (const k of UNIT_KEYS)    defUnitPatch[k] = Math.max(0, (enrichedTarget[k] ?? 0) - (lostDef[k] ?? 0))
+      for (const k of DEFENSE_KEYS) defUnitPatch[k] = Math.max(0, (enrichedTarget[k] ?? 0) - (lostDef[k] ?? 0) + (repaired[k] ?? 0))
+      await batchUpsertUnits(targetKingdom.id, defUnitPatch)
 
-    const survivorPatch = {}
-    for (const k of UNIT_KEYS) survivorPatch[k] = survivingAtk[k] ?? 0
+      // Deduct loot from defender resources
+      if (outcome === 'victory') {
+        await db.update(kingdoms).set({
+          wood:  Math.max(0, targetKingdom.wood  - loot.wood),
+          stone: Math.max(0, targetKingdom.stone - loot.stone),
+          grain: Math.max(0, targetKingdom.grain - loot.grain),
+          updatedAt: new Date(),
+        }).where(eq(kingdoms.id, targetKingdom.id))
+      }
+    }
 
     const battleResult = { type: 'attack', outcome, rounds, loot, debris, lostAtk, lostDef }
 
     await upsertDebris(mission.targetRealm, mission.targetRegion, mission.targetSlot, debris)
 
     await db.update(armyMissions).set({
-      ...survivorPatch, state: 'returning', returnTime,
+      units: survivingAtk,
+      state: 'returning', returnTime,
       woodLoad: loot.wood, stoneLoad: loot.stone, grainLoad: loot.grain,
       result: JSON.stringify(battleResult), updatedAt: new Date(),
     }).where(eq(armyMissions.id, mission.id))
@@ -102,7 +106,7 @@ export async function processAttack(mission, myKingdom, now, targetKingdom) {
         await db.insert(messages).values({
           userId: myKingdom.userId, type: 'season',
           subject: '🏆 ¡Victoria de Temporada! — El Jefe Final ha caído',
-          data: JSON.stringify({ seasonVictory: true, condition: 'boss_defeated', bossName: targetName }),
+          data: { seasonVictory: true, condition: 'boss_defeated', bossName: targetName },
         })
         sendPush(myKingdom.userId, {
           title: '🏆 ¡Campeón de Temporada!',
@@ -113,8 +117,8 @@ export async function processAttack(mission, myKingdom, now, targetKingdom) {
     }
 
     insertBattleLog({
-      attackerKingdomId: myKingdom.id,      attackerName: myKingdom.name,    attackerIsNpc: false,
-      defenderKingdomId: targetKingdom?.id, defenderName: targetName,        defenderIsNpc: targetKingdom?.isNpc ?? false,
+      attackerKingdomId: myKingdom.id,      attackerName: myKingdom.name,
+      defenderKingdomId: targetKingdom?.id, defenderName: targetName,
       missionType: 'attack', outcome,
       lootWood: loot.wood, lootStone: loot.stone, lootGrain: loot.grain,
       attackerLosses: sumLosses(lostAtk), defenderLosses: sumLosses(lostDef), rounds,
@@ -125,14 +129,14 @@ export async function processAttack(mission, myKingdom, now, targetKingdom) {
     await db.insert(messages).values({
       userId: myKingdom.userId, type: 'battle',
       subject: `${outcome === 'victory' ? '⚔️ Victoria' : '🤝 Empate'} contra ${targetName}`,
-      data: JSON.stringify(battleResult),
+      data: battleResult,
     })
     if (targetKingdom?.userId && !targetKingdom.isNpc) {
       const defOutcome = outcome === 'victory' ? 'defeat' : outcome
       await db.insert(messages).values({
         userId: targetKingdom.userId, type: 'battle',
         subject: '🛡️ Tu reino fue atacado',
-        data: JSON.stringify({ ...battleResult, outcome: defOutcome }),
+        data: { ...battleResult, outcome: defOutcome },
       })
       sendPush(targetKingdom.userId, {
         title: defOutcome === 'defeat' ? '💀 Tu reino fue saqueado' : '🛡️ Ataque repelido',
@@ -142,28 +146,28 @@ export async function processAttack(mission, myKingdom, now, targetKingdom) {
     }
   } else {
     // Defeat
-    if (targetKingdom) {
+    if (enrichedTarget) {
       const repaired = repairDefenses(extractUnits(lostDef, DEFENSE_KEYS))
-      await db.update(kingdoms).set(applyDefenderPatch(targetKingdom, lostDef, repaired))
-        .where(eq(kingdoms.id, targetKingdom.id))
+      const defUnitPatch = {}
+      for (const k of UNIT_KEYS)    defUnitPatch[k] = Math.max(0, (enrichedTarget[k] ?? 0) - (lostDef[k] ?? 0))
+      for (const k of DEFENSE_KEYS) defUnitPatch[k] = Math.max(0, (enrichedTarget[k] ?? 0) - (lostDef[k] ?? 0) + (repaired[k] ?? 0))
+      await batchUpsertUnits(targetKingdom.id, defUnitPatch)
     }
-
-    const zeroPatch = {}
-    for (const k of UNIT_KEYS) zeroPatch[k] = 0
 
     const battleResult = { type: 'attack', outcome: 'defeat', rounds, lostAtk, lostDef, debris }
 
     await upsertDebris(mission.targetRealm, mission.targetRegion, mission.targetSlot, debris)
 
     await db.update(armyMissions).set({
-      ...zeroPatch, state: 'returning', returnTime,
+      units: {},
+      state: 'returning', returnTime,
       woodLoad: 0, stoneLoad: 0, grainLoad: 0,
       result: JSON.stringify(battleResult), updatedAt: new Date(),
     }).where(eq(armyMissions.id, mission.id))
 
     insertBattleLog({
-      attackerKingdomId: myKingdom.id,      attackerName: myKingdom.name, attackerIsNpc: false,
-      defenderKingdomId: targetKingdom?.id, defenderName: targetName,     defenderIsNpc: targetKingdom?.isNpc ?? false,
+      attackerKingdomId: myKingdom.id,      attackerName: myKingdom.name,
+      defenderKingdomId: targetKingdom?.id, defenderName: targetName,
       missionType: 'attack', outcome: 'defeat',
       lootWood: 0, lootStone: 0, lootGrain: 0,
       attackerLosses: sumLosses(lostAtk), defenderLosses: sumLosses(lostDef), rounds,
@@ -174,13 +178,13 @@ export async function processAttack(mission, myKingdom, now, targetKingdom) {
     await db.insert(messages).values({
       userId: myKingdom.userId, type: 'battle',
       subject: `💀 Derrota contra ${targetName}`,
-      data: JSON.stringify(battleResult),
+      data: battleResult,
     })
     if (targetKingdom?.userId && !targetKingdom.isNpc) {
       await db.insert(messages).values({
         userId: targetKingdom.userId, type: 'battle',
         subject: '🛡️ Defensa exitosa — atacante derrotado',
-        data: JSON.stringify({ ...battleResult, outcome: 'victory' }),
+        data: { ...battleResult, outcome: 'victory' },
       })
     }
   }

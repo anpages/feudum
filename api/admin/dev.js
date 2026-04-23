@@ -1,5 +1,5 @@
-import { eq } from 'drizzle-orm'
-import { db, users, kingdoms, research, buildingQueue, researchQueue, unitQueue } from '../_db.js'
+import { eq, and, inArray } from 'drizzle-orm'
+import { db, users, kingdoms, units, research, buildingQueue, researchQueue, unitQueue } from '../_db.js'
 import { getAdminUserId } from '../lib/admin.js'
 import { applyBuildingEffect } from '../lib/buildings.js'
 
@@ -76,10 +76,19 @@ export default async function handler(req, res) {
       'palisade','castleWall','moat','catapult','ballistic',
     ]
     if (!UNIT_KEYS.includes(unit)) return res.status(400).json({ error: 'invalid_unit' })
-    const result = await db.update(kingdoms)
-      .set({ [unit]: 0, updatedAt: new Date() })
-      .where(eq(kingdoms.isNpc, true))
-    return res.json({ ok: true, unit, affected: result.rowCount ?? '?' })
+    const npcKingdomRows = await db.select({ id: kingdoms.id })
+      .from(kingdoms)
+      .innerJoin(users, eq(kingdoms.userId, users.id))
+      .where(eq(users.role, 'npc'))
+    const npcIds = npcKingdomRows.map(r => r.id)
+    let affected = 0
+    if (npcIds.length > 0) {
+      const deleted = await db.delete(units)
+        .where(and(inArray(units.kingdomId, npcIds), eq(units.type, unit)))
+        .returning({ id: units.id })
+      affected = deleted.length
+    }
+    return res.json({ ok: true, unit, affected })
   }
 
   res.status(400).json({ error: 'unknown_action' })
