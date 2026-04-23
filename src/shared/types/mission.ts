@@ -87,4 +87,5 @@ export interface SendArmyParams {
   resources?: Resources
   holdingHours?: number
   speedPct?: number
+  kingdomId?: string | null
 }

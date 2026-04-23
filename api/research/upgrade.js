@@ -1,4 +1,4 @@
-import { eq, and } from 'drizzle-orm'
+import { eq, and, asc } from 'drizzle-orm'
 import { db, kingdoms, researchQueue, users } from '../_db.js'
 import { getSessionUserId } from '../lib/handler.js'
 import { RESEARCH, researchCost, researchTime, requirementsMet } from '../lib/research.js'
@@ -13,7 +13,7 @@ export default async function handler(req, res) {
   const userId = await getSessionUserId(req)
   if (!userId) return res.status(401).json({ error: 'No autenticado' })
 
-  const { research: researchId } = req.body ?? {}
+  const { research: researchId, kingdomId: reqKingdomId } = req.body ?? {}
   if (!researchId) return res.status(400).json({ error: 'Falta el parámetro research' })
 
   const def = RESEARCH.find(r => r.id === researchId)
@@ -21,8 +21,12 @@ export default async function handler(req, res) {
 
   await processUserQueues(userId)
 
+  const kingdomQuery = reqKingdomId
+    ? db.select().from(kingdoms).where(and(eq(kingdoms.id, reqKingdomId), eq(kingdoms.userId, userId))).limit(1)
+    : db.select().from(kingdoms).where(eq(kingdoms.userId, userId)).orderBy(asc(kingdoms.createdAt)).limit(1)
+
   const [[kingdomRow], resMap, [userRow], cfg] = await Promise.all([
-    db.select().from(kingdoms).where(eq(kingdoms.userId, userId)).limit(1),
+    kingdomQuery,
     getResearchMap(userId),
     db.select({ characterClass: users.characterClass }).from(users).where(eq(users.id, userId)).limit(1),
     getSettings(),

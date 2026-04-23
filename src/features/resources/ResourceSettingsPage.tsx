@@ -36,20 +36,22 @@ export function ResourceSettingsPage() {
     setDraft(d => ({ ...d, [key]: Math.max(0, Math.min(10, raw)) }))
   }
 
+  const cfg = { economy_speed: settings?.economySpeed ?? 1 }
+
   // Live preview using draft percents
   const preview = useMemo(() => {
     if (!kingdom) return null
     const draftKingdom = { ...kingdom, ...draft }
     const res = researchData?.research ? Object.fromEntries(researchData.research.map((r: { id: string; level: number }) => [r.id, r.level])) : {}
-    return effectiveProduction(draftKingdom, res, { economy_speed: 1 })
-  }, [kingdom, draft, researchData])
+    return effectiveProduction(draftKingdom, res, cfg)
+  }, [kingdom, draft, researchData, cfg])
 
   // Current production with saved settings
   const current = useMemo(() => {
     if (!kingdom) return null
     const res = researchData?.research ? Object.fromEntries(researchData.research.map((r: { id: string; level: number }) => [r.id, r.level])) : {}
-    return effectiveProduction(kingdom, res, { economy_speed: 1 })
-  }, [kingdom, researchData])
+    return effectiveProduction(kingdom, res, cfg)
+  }, [kingdom, researchData, cfg])
 
   const energyOk   = (preview?.energyProd ?? 0) >= (preview?.energyCons ?? 0)
   const energyCons = preview?.energyCons ?? 0

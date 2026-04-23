@@ -34,17 +34,14 @@ export const barracksService = {
     if (!user) throw new Error('No autenticado')
 
     // Phase 1: kingdom + settings (parallel, don't need kingdom id yet)
-    const [{ data: kingdomRows }, { data: settingsRows }] = await Promise.all([
+    const [{ data: kingdomRows }, cfgRaw] = await Promise.all([
       supabase.rpc('my_kingdom', { kid: activeKingdomId ?? null }),
-      supabase.from('settings').select('key, value'),
+      http.get<{ economySpeed: number }>('/resources/settings').catch(() => ({ economySpeed: 1 })),
     ])
     const kingdomRow = Array.isArray(kingdomRows) ? kingdomRows[0] : null
     if (!kingdomRow) throw new Error('Reino no encontrado')
 
-    let economySpeed = 1
-    for (const r of settingsRows ?? []) {
-      if (r.key === 'economy_speed') economySpeed = parseFloat(r.value as string)
-    }
+    const economySpeed = (cfgRaw as { economySpeed: number }).economySpeed ?? 1
 
     // Phase 2: buildings, units, research (all normalized tables), queues
     const [
@@ -115,6 +112,6 @@ export const barracksService = {
     }
   },
 
-  train: (unit: string, amount: number) =>
-    http.post<TrainUnitResponse>('/barracks/train', { unit, amount }),
+  train: (unit: string, amount: number, kingdomId?: string | null) =>
+    http.post<TrainUnitResponse>('/barracks/train', { unit, amount, kingdomId }),
 }

@@ -11,7 +11,13 @@ export default async function handler(req, res) {
   if (!userId) return res.status(401).json({ error: 'No autenticado' })
 
   const cfg = await getSettings()
-  const payload = { ...RESOURCE_DEFAULTS, economySpeed: cfg.economy_speed }
+  const payload = {
+    ...RESOURCE_DEFAULTS,
+    economySpeed:      cfg.economy_speed,
+    researchSpeed:     cfg.research_speed,
+    fleetSpeedWar:     cfg.fleet_speed_war,
+    fleetSpeedPeaceful: cfg.fleet_speed_peaceful,
+  }
 
   if (req.method === 'GET') return res.json(payload)
 

@@ -29,7 +29,7 @@ export function useSendArmy() {
 
   return useMutation({
     mutationKey: ['mutate', 'army'],
-    mutationFn: (params: SendArmyParams) => armiesService.send(params),
+    mutationFn: (params: SendArmyParams) => armiesService.send({ ...params, kingdomId: activeId }),
 
     onMutate: async (params) => {
       await Promise.all([
@@ -81,6 +81,22 @@ export function useSendArmy() {
       }
 
       return { prevKingdom, prevArmies }
+    },
+
+    onSuccess: (data) => {
+      if (!data?.arrivalTime) return
+      const now = Math.floor(Date.now() / 1000)
+      qc.setQueryData<ArmiesResponse>(armiesKey, (prev) => {
+        if (!prev) return prev
+        return {
+          ...prev,
+          missions: prev.missions.map(m =>
+            m.id.startsWith('optim_')
+              ? { ...m, id: data.missionId, arrivalTime: data.arrivalTime, returnTime: data.returnTime ?? null, eta: Math.max(0, data.arrivalTime - now) }
+              : m
+          ),
+        }
+      })
     },
 
     onError: (_err, _vars, context) => {

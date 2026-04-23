@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/Badge'
 import { useArmies, useSendArmy, type MissionType } from '@/features/armies/useArmies'
 import { useKingdom } from '@/features/kingdom/useKingdom'
 import { useResearch } from '@/features/research/useResearch'
-import { useAdminSettings } from '@/features/admin/useAdmin'
+import { useResourceSettings } from '@/features/resources/useResources'
 import { ALL_UNIT_META, MISSION_META } from './armiesMeta'
 import { CoordPicker } from './components/CoordPicker'
 import { calcDistance, calcDuration, calcCargoCapacity, UNIT_CAPACITY } from '@/lib/game/speed'
@@ -119,7 +119,7 @@ export function SendMissionPage() {
   const { data: kingdom } = useKingdom()
   const { data: researchData } = useResearch()
   const { data: armies } = useArmies()
-  const { data: adminSettings } = useAdminSettings()
+  const { data: serverSettings } = useResourceSettings()
   const send = useSendArmy()
 
   const [missionType, setMissionType] = useState<MissionType>(initType)
@@ -174,8 +174,8 @@ export function SendMissionPage() {
 
   const isWarMission = missionType === 'attack' || missionType === 'missile'
   const universeSpeed = isWarMission
-    ? (adminSettings?.fleet_speed_war    ?? 1)
-    : (adminSettings?.fleet_speed_peaceful ?? 1)
+    ? (serverSettings?.fleetSpeedWar     ?? 1)
+    : (serverSettings?.fleetSpeedPeaceful ?? 1)
 
   const travelPreview = useMemo(() => {
     if (!kingdom) return null

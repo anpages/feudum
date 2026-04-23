@@ -1,11 +1,15 @@
 import { http } from '@/shared/services/http'
 
 export interface ResourceSettings {
-  sawmillPercent:   number
-  quarryPercent:    number
-  grainFarmPercent: number
-  windmillPercent:  number
-  cathedralPercent: number
+  sawmillPercent:    number
+  quarryPercent:     number
+  grainFarmPercent:  number
+  windmillPercent:   number
+  cathedralPercent:  number
+  economySpeed?:      number
+  researchSpeed?:     number
+  fleetSpeedWar?:     number
+  fleetSpeedPeaceful?: number
 }
 
 export const resourcesService = {

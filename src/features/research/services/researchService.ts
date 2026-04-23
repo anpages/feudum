@@ -24,20 +24,16 @@ export const researchService = {
     if (!user) throw new Error('No autenticado')
 
     // Phase 1: kingdom + user character class + settings (parallel)
-    const [{ data: kingdomRows }, { data: userRow }, { data: settingsRows }] = await Promise.all([
+    const [{ data: kingdomRows }, { data: userRow }, cfgRaw] = await Promise.all([
       supabase.rpc('my_kingdom', { kid: activeKingdomId ?? null }),
       supabase.from('users').select('character_class').eq('id', user.id).maybeSingle(),
-      supabase.from('settings').select('key, value'),
+      http.get<{ researchSpeed: number }>('/resources/settings').catch(() => ({ researchSpeed: 1 })),
     ])
     const kingdomRow = Array.isArray(kingdomRows) ? kingdomRows[0] : null
     if (!kingdomRow) throw new Error('Reino no encontrado')
 
     const characterClass = userRow?.character_class as string | null
-
-    let researchSpeed = 1
-    for (const r of settingsRows ?? []) {
-      if (r.key === 'research_speed') researchSpeed = parseFloat(r.value as string)
-    }
+    const researchSpeed = (cfgRaw as { researchSpeed: number }).researchSpeed ?? 1
 
     // Phase 2: normalized tables + queues (need kingdom id from phase 1)
     const [
@@ -100,8 +96,8 @@ export const researchService = {
     return { research: result }
   },
 
-  upgrade: (researchId: string) =>
-    http.post<UpgradeResearchResponse>('/research/upgrade', { research: researchId }),
+  upgrade: (researchId: string, kingdomId?: string | null) =>
+    http.post<UpgradeResearchResponse>('/research/upgrade', { research: researchId, kingdomId }),
 
   cancel: (queueId: string) =>
     http.post<{ ok: boolean; refund: { wood: number; stone: number; grain: number } }>('/research/cancel', { queueId }),

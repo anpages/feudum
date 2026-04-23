@@ -6,17 +6,20 @@ import type { KingdomSummary } from '@/shared/types'
 import type { Kingdom } from '@/../db/schema'
 
 async function fetchSettings() {
-  const { data } = await supabase.from('settings').select('key, value')
-  const NUM = new Set(['economy_speed','research_speed','fleet_speed_war','fleet_speed_peaceful','basic_wood','basic_stone'])
-  const map: Record<string, string | number> = {
-    economy_speed: 1, research_speed: 1, basic_wood: 30, basic_stone: 15,
+  const cfg = await http.get<{
+    economySpeed: number; researchSpeed: number
+    fleetSpeedWar: number; fleetSpeedPeaceful: number
+  }>('/resources/settings').catch(() => ({
+    economySpeed: 1, researchSpeed: 1, fleetSpeedWar: 1, fleetSpeedPeaceful: 1,
+  }))
+  return {
+    economy_speed:        cfg.economySpeed      ?? 1,
+    research_speed:       cfg.researchSpeed     ?? 1,
+    fleet_speed_war:      cfg.fleetSpeedWar     ?? 1,
+    fleet_speed_peaceful: cfg.fleetSpeedPeaceful ?? 1,
+    basic_wood:  30,
+    basic_stone: 15,
   }
-  for (const r of data ?? []) {
-    const k = r.key as string
-    const v = r.value as string
-    map[k] = NUM.has(k) ? parseFloat(v) : v
-  }
-  return map
 }
 
 async function fetchUserAndResearch(userId: string) {

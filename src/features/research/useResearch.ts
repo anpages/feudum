@@ -53,7 +53,7 @@ export function useUpgradeResearch() {
 
   return useMutation({
     mutationKey: ['mutate', 'research'],
-    mutationFn: (researchId: string) => researchService.upgrade(researchId),
+    mutationFn: (researchId: string) => researchService.upgrade(researchId, activeId),
 
     onMutate: async (researchId: string) => {
       await qc.cancelQueries({ queryKey: key })
@@ -62,16 +62,31 @@ export function useUpgradeResearch() {
       if (prev) {
         const item = prev.research.find(r => r.id === researchId)
         if (item) {
-          const finishesAt = Math.floor(Date.now() / 1000) + item.timeSeconds
+          const now = Math.floor(Date.now() / 1000)
+          const finishesAt = now + item.timeSeconds
           qc.setQueryData<ResearchResponse>(key, {
             research: prev.research.map(r =>
-              r.id === researchId ? { ...r, inQueue: { id: '', level: r.level + 1, startedAt: Math.floor(Date.now() / 1000), finishesAt } } : r
+              r.id === researchId ? { ...r, inQueue: { id: '', level: r.level + 1, startedAt: now, finishesAt } } : r
             ),
           })
         }
       }
 
       return { prev }
+    },
+
+    onSuccess: (data, researchId) => {
+      if (!data?.finishesAt) return
+      qc.setQueryData<ResearchResponse>(key, (prev) => {
+        if (!prev) return prev
+        return {
+          research: prev.research.map(r =>
+            r.id === researchId && r.inQueue
+              ? { ...r, inQueue: { ...r.inQueue, startedAt: data.finishesAt - data.timeSeconds, finishesAt: data.finishesAt } }
+              : r
+          ),
+        }
+      })
     },
 
     onError: (_err, _id, context) => {

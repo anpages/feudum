@@ -1,4 +1,4 @@
-import { eq, and, ne } from 'drizzle-orm'
+import { eq, and, ne, asc } from 'drizzle-orm'
 import { db, kingdoms, armyMissions, users } from '../_db.js'
 import { getSessionUserId } from '../lib/handler.js'
 import { calcDistance, calcDuration, calcCargoCapacity } from '../lib/speed.js'
@@ -22,7 +22,7 @@ export default async function handler(req, res) {
   const userId = await getSessionUserId(req)
   if (!userId) return res.status(401).json({ error: 'No autenticado' })
 
-  const { missionType, target, units: rawUnits, resources: rawResources, holdingHours: rawHoldingHours, speedPct: rawSpeedPct } = req.body ?? {}
+  const { missionType, target, units: rawUnits, resources: rawResources, holdingHours: rawHoldingHours, speedPct: rawSpeedPct, kingdomId: reqKingdomId } = req.body ?? {}
 
   // ── Validate mission type ─────────────────────────────────────────────────
   if (!MISSION_TYPES.includes(missionType)) {
@@ -53,8 +53,12 @@ export default async function handler(req, res) {
   await processUserQueues(userId)
 
   // ── Load player kingdom (enriched with buildings + units) + research + class ──
+  const kingdomQuery = reqKingdomId
+    ? db.select().from(kingdoms).where(and(eq(kingdoms.id, reqKingdomId), eq(kingdoms.userId, userId))).limit(1)
+    : db.select().from(kingdoms).where(eq(kingdoms.userId, userId)).orderBy(asc(kingdoms.createdAt)).limit(1)
+
   const [[kingdomRow], resMap, [userRow], cfg] = await Promise.all([
-    db.select().from(kingdoms).where(eq(kingdoms.userId, userId)).limit(1),
+    kingdomQuery,
     getResearchMap(userId),
     db.select({ characterClass: users.characterClass }).from(users).where(eq(users.id, userId)).limit(1),
     getSettings(),

@@ -42,7 +42,7 @@ export function useTrainUnit() {
   return useMutation({
     mutationKey: ['mutate', 'unit'],
     mutationFn: ({ unit, amount }: { unit: string; amount: number }) =>
-      barracksService.train(unit, amount),
+      barracksService.train(unit, amount, activeId),
 
     onMutate: async ({ unit, amount }) => {
       await qc.cancelQueries({ queryKey: key })
@@ -66,6 +66,16 @@ export function useTrainUnit() {
       }
 
       return { prev }
+    },
+
+    onSuccess: (data, { unit }) => {
+      if (!data?.finishesAt) return
+      qc.setQueryData<BarracksResponse>(key, (prev) => {
+        if (!prev) return prev
+        const fix = (list: UnitInfo[]) =>
+          list.map(u => u.id === unit && u.inQueue ? { ...u, inQueue: { ...u.inQueue, finishesAt: data.finishesAt } } : u)
+        return { units: fix(prev.units), support: fix(prev.support), defenses: fix(prev.defenses), missiles: fix(prev.missiles ?? []) }
+      })
     },
 
     onError: (_err, _vars, context) => {
