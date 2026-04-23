@@ -9,7 +9,7 @@ import {
   armyMissions, debrisFields,
 } from '../_db.js'
 import { upsertUnit } from '../lib/db-helpers.js'
-import { NPC_AGGRESSION, NPC_ATTACK_INTERVAL_HOURS, NPC_BASH_LIMIT } from '../lib/config.js'
+import { NPC_AGGRESSION, NPC_ATTACK_INTERVAL_HOURS, NPC_BASH_LIMIT, UNIVERSE } from '../lib/config.js'
 import { calcDistance, calcDuration } from '../lib/speed.js'
 import { sendPush } from '../lib/push.js'
 import { getSettings, setSetting } from '../lib/settings.js'
@@ -18,6 +18,10 @@ import {
   UNIT_COSTS, ATTACK_THRESHOLD,
   npcPersonality, npcClass, totalArmy, depletionFactor, EMPTY_RESEARCH,
 } from '../lib/npc-engine.js'
+
+const FLEET_RESERVE   = 0.20   // fraction of combat fleet kept home before any mission
+const SCAVENGER_CARGO = 20000  // cargo per scavenger unit
+const MIN_DEBRIS      = 500    // minimum total debris (wood+stone) worth dispatching scavengers
 
 // ── Expedition depletion ──────────────────────────────────────────────────────
 
@@ -107,9 +111,10 @@ async function attackAI(npcKingdom, researchRow, allKingdoms, bashMap, spyMap, n
     if (rand <= 0) { target = p; break }
   }
 
-  const minRatio = cls === 'general' ? 0.70 : personality === 'economy' ? 0.50 : 0.55
-  const maxRatio = cls === 'general' ? 0.90 : personality === 'economy' ? 0.70 : 0.75
-  const sendRatio = minRatio + Math.random() * (maxRatio - minRatio)
+  const minRatio  = cls === 'general' ? 0.70 : personality === 'economy' ? 0.50 : 0.55
+  const maxRatio  = cls === 'general' ? 0.90 : personality === 'economy' ? 0.70 : 0.75
+  // Cap at (1 - FLEET_RESERVE) so the NPC always keeps ≥20% of its combat fleet home
+  const sendRatio = Math.min(minRatio + Math.random() * (maxRatio - minRatio), 1 - FLEET_RESERVE)
 
   const force = {}
   let totalSent = 0
@@ -237,7 +242,14 @@ async function scavengeAI(npcKingdom, allDebris, now, cfg, probability = 0.40) {
     (d.wood + d.stone) > (best.wood + best.stone) ? d : best
   )
 
-  const force = { scavenger: scavengerCount }
+  const debrisTotal = (target.wood ?? 0) + (target.stone ?? 0)
+  if (debrisTotal < MIN_DEBRIS) return false
+
+  // Don't over-commit scavengers: cap at enough to carry 10× the available debris
+  const maxUseful   = Math.ceil((debrisTotal * 10) / SCAVENGER_CARGO)
+  const sendCount   = Math.min(scavengerCount, Math.max(1, maxUseful))
+
+  const force = { scavenger: sendCount }
   const universeSpeed = parseFloat(cfg.fleet_speed_peaceful ?? cfg.fleet_speed_war ?? 1)
   const origin = { realm: npcKingdom.realm, region: npcKingdom.region, slot: npcKingdom.slot }
   const dest   = { realm: target.realm,     region: target.region,     slot: target.slot   }
@@ -257,11 +269,11 @@ async function scavengeAI(npcKingdom, allDebris, now, cfg, probability = 0.40) {
     targetSlot:   target.slot,
     departureTime: now,
     arrivalTime,
-    units: { scavenger: scavengerCount },
+    units: { scavenger: sendCount },
   })
 
-  await upsertUnit(npcKingdom.id, 'scavenger', 0)
-  npcKingdom.scavenger = 0
+  await upsertUnit(npcKingdom.id, 'scavenger', scavengerCount - sendCount)
+  npcKingdom.scavenger = scavengerCount - sendCount
 
   return target.id
 }
@@ -290,7 +302,7 @@ async function expeditionAI(npcKingdom, researchRow, depletionMap, now, cfg) {
   const REALM = npcKingdom.realm
   let bestRegion = npcKingdom.region
   let bestFactor = -1
-  for (let r = 1; r <= 10; r++) {
+  for (let r = 1; r <= UNIVERSE.maxRegion; r++) {
     const count  = depletionMap[`${REALM}:${r}`] ?? 0
     const factor = depletionFactor(count)
     if (
@@ -313,10 +325,15 @@ async function expeditionAI(npcKingdom, researchRow, depletionMap, now, cfg) {
   }
   if (totalSent < 2) return false
 
+  // Fleet reserve: ensure at least FLEET_RESERVE of combat units remains home
+  const combatHome = [...UNIT_COMBAT_SET].reduce((s, u) => s + (npcKingdom[u] ?? 0), 0)
+  const combatSent = Object.entries(force).filter(([u]) => UNIT_COMBAT_SET.has(u)).reduce((s, [, n]) => s + n, 0)
+  if (combatHome > 0 && (combatHome - combatSent) < combatHome * FLEET_RESERVE) return false
+
   const holdingTime   = 1800 + Math.floor(Math.random() * 1800)
   const universeSpeed = parseFloat(cfg.fleet_speed_peaceful ?? cfg.fleet_speed_war ?? 1)
   const origin = { realm: npcKingdom.realm, region: npcKingdom.region, slot: npcKingdom.slot }
-  const target = { realm: REALM, region: bestRegion, slot: 16 }
+  const target = { realm: REALM, region: bestRegion, slot: UNIVERSE.maxSlot + 1 }
   const dist        = calcDistance(origin, target)
   const travelSecs  = calcDuration(dist, force, 100, universeSpeed, researchRow, null)
   const arrivalTime = now + travelSecs
@@ -330,7 +347,7 @@ async function expeditionAI(npcKingdom, researchRow, depletionMap, now, cfg) {
     startSlot:    npcKingdom.slot,
     targetRealm:  REALM,
     targetRegion: bestRegion,
-    targetSlot:   16,
+    targetSlot:   UNIVERSE.maxSlot + 1,
     departureTime: now,
     arrivalTime,
     holdingTime,
@@ -366,8 +383,8 @@ async function colonizeAI(npcKingdom, allKingdoms, colonizeActiveSet, colonizePe
   let targetCoord = null
   outer: for (let offset = 0; offset <= 3 && !targetCoord; offset++) {
     for (const r of [...new Set([region, region + offset, region - offset])]) {
-      if (r < 1 || r > 10) continue
-      for (let slot = 1; slot <= 15; slot++) {
+      if (r < 1 || r > UNIVERSE.maxRegion) continue
+      for (let slot = 1; slot <= UNIVERSE.maxSlot; slot++) {
         const key = `${realm}:${r}:${slot}`
         if (!takenSlots.has(key) && !colonizePendingSlots.has(key)) {
           targetCoord = { realm, region: r, slot }

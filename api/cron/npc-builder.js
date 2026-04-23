@@ -15,7 +15,7 @@ import {
 } from '../lib/buildings.js'
 import { ALL_UNITS, unitBuildTime } from '../lib/units.js'
 import { RESEARCH, researchCost, researchTime } from '../lib/research.js'
-import { ECONOMY_SPEED } from '../lib/config.js'
+import { ECONOMY_SPEED, UNIVERSE } from '../lib/config.js'
 import { calcDistance, calcDuration } from '../lib/speed.js'
 import { getSettings, setSetting } from '../lib/settings.js'
 import {
@@ -203,7 +203,7 @@ async function attemptFleetsave(kingdom, cfg, now, incomingAttack) {
 
   const universeSpeed = parseFloat(cfg.fleet_speed_peaceful ?? cfg.fleet_speed_war ?? 1)
   const origin = { realm: kingdom.realm, region: kingdom.region, slot: kingdom.slot }
-  const dest   = { realm: kingdom.realm, region: kingdom.region, slot: 16 }
+  const dest   = { realm: kingdom.realm, region: kingdom.region, slot: UNIVERSE.maxSlot + 1 }
   const cls        = npcClass(kingdom)
   const dist       = calcDistance(origin, dest)
   // Fleetsave uses EMPTY_RESEARCH (travel time is safe to under-estimate here)
@@ -698,7 +698,7 @@ async function growNpc(kingdom, cfg, now, researchMap, debrisRegions, colonizeAc
     (kingdomCountByUser[kingdom.userId] ?? 1) < 2
   ) {
     const r = await attemptTrainTroops(kingdom, personality, cls, researchMap, cfg, now, ['colonist'], true)
-    if (r.action === 'trained' || r.action === 'saving') return r
+    if (r.action === 'trained') return r
   }
 
   // Nivel 2: ejecución en paralelo — edificio + tropa en el mismo tick.
