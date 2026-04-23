@@ -1,4 +1,4 @@
-import { eq, and } from 'drizzle-orm'
+import { eq, and, inArray } from 'drizzle-orm'
 import { db, buildings, units, research, npcState, users, kingdoms } from '../_db.js'
 
 export async function getBuildingMap(kingdomId) {
@@ -52,6 +52,42 @@ export async function getKingdomAt(realm, region, slot) {
     isBoss:   ns?.isBoss   ?? false,
     npcLevel: ns?.npcLevel ?? 1,
   }
+}
+
+// Bulk variants — fetch all rows for multiple IDs in a single query.
+// Returns a map: { [id]: { [type]: value } }
+
+export async function getBuildingMaps(kingdomIds) {
+  if (!kingdomIds.length) return {}
+  const rows = await db.select().from(buildings).where(inArray(buildings.kingdomId, kingdomIds))
+  const result = {}
+  for (const r of rows) {
+    if (!result[r.kingdomId]) result[r.kingdomId] = {}
+    result[r.kingdomId][r.type] = r.level
+  }
+  return result
+}
+
+export async function getUnitMaps(kingdomIds) {
+  if (!kingdomIds.length) return {}
+  const rows = await db.select().from(units).where(inArray(units.kingdomId, kingdomIds))
+  const result = {}
+  for (const r of rows) {
+    if (!result[r.kingdomId]) result[r.kingdomId] = {}
+    result[r.kingdomId][r.type] = r.quantity
+  }
+  return result
+}
+
+export async function getResearchMaps(userIds) {
+  if (!userIds.length) return {}
+  const rows = await db.select().from(research).where(inArray(research.userId, userIds))
+  const result = {}
+  for (const r of rows) {
+    if (!result[r.userId]) result[r.userId] = {}
+    result[r.userId][r.type] = r.level
+  }
+  return result
 }
 
 export async function upsertBuilding(kingdomId, type, level) {

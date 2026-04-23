@@ -16,7 +16,7 @@ import { ECONOMY_SPEED, NPC_DENSITY, UNIVERSE } from './config.js'
 import { npcClass } from './npc-engine.js'
 import { setSetting } from './settings.js'
 import { calcPointsBreakdown } from './points.js'
-import { getBuildingMap, getResearchMap, getUnitMap } from './db-helpers.js'
+import { getBuildingMaps, getResearchMaps, getUnitMaps } from './db-helpers.js'
 
 // ── NPC name generation ───────────────────────────────────────────────────────
 
@@ -84,19 +84,21 @@ export async function snapshotSeason(seasonNumber) {
   .groupBy(userAchievements.userId)
   const achMap = new Map(achRows.map(r => [r.userId, r.count]))
 
-  // Compute points for each player
+  // Bulk-fetch all buildings, units and research in 3 queries
+  const allKingdomIds = humanKingdoms.map(({ k }) => k.id)
+  const [bMaps, uMaps, resMaps] = await Promise.all([
+    getBuildingMaps(allKingdomIds),
+    getUnitMaps(allKingdomIds),
+    getResearchMaps(userIds),
+  ])
+
   const entries = []
   for (const { userId, username, kingdoms: playerKingdoms } of playerMap.values()) {
-    const resMap = await getResearchMap(userId)
-
-    // Research counted once per user
-    const resBreakdown = calcPointsBreakdown({}, resMap)
+    const resBreakdown = calcPointsBreakdown({}, resMaps[userId] ?? {})
     let totalBuilding = 0, totalUnit = 0
 
     for (const k of playerKingdoms) {
-      const bMap = await getBuildingMap(k.id)
-      const uMap = await getUnitMap(k.id)
-      const bd   = calcPointsBreakdown({ ...k, ...bMap, ...uMap }, {})
+      const bd = calcPointsBreakdown({ ...k, ...(bMaps[k.id] ?? {}), ...(uMaps[k.id] ?? {}) }, {})
       totalBuilding += bd.buildings
       totalUnit     += bd.units
     }
@@ -105,7 +107,7 @@ export async function snapshotSeason(seasonNumber) {
       userId,
       username,
       seasonNumber,
-      rank:             0,  // assigned below after sort
+      rank:             0,
       points:           totalBuilding + resBreakdown.research + totalUnit,
       buildingPoints:   totalBuilding,
       researchPoints:   resBreakdown.research,

@@ -8,7 +8,7 @@ import { db, kingdoms, users } from '../_db.js'
 import { getSessionUserId } from '../lib/handler.js'
 import { getSettings } from '../lib/settings.js'
 import { calcPointsBreakdown } from '../lib/points.js'
-import { getBuildingMap, getResearchMap } from '../lib/db-helpers.js'
+import { getBuildingMaps, getResearchMaps } from '../lib/db-helpers.js'
 import { EMPTY_RESEARCH } from '../lib/npc-engine.js'
 
 export default async function handler(req, res) {
@@ -46,20 +46,28 @@ export default async function handler(req, res) {
     .innerJoin(users, eq(kingdoms.userId, users.id))
     .where(ne(users.role, 'npc'))
 
-  const ranked = await Promise.all(allKingdoms.map(async ({ k, u }) => {
-    const bMap = await getBuildingMap(k.id)
-    const resMap = await getResearchMap(k.userId)
-    const bd = calcPointsBreakdown({ ...k, ...bMap }, { ...EMPTY_RESEARCH, ...resMap })
+  const kingdomIds = allKingdoms.map(({ k }) => k.id)
+  const userIds    = [...new Set(allKingdoms.map(({ k }) => k.userId))]
+  const [bMaps, resMaps] = await Promise.all([
+    getBuildingMaps(kingdomIds),
+    getResearchMaps(userIds),
+  ])
+
+  const ranked = allKingdoms.map(({ k, u }) => {
+    const bd = calcPointsBreakdown(
+      { ...k, ...(bMaps[k.id] ?? {}) },
+      { ...EMPTY_RESEARCH, ...(resMaps[k.userId] ?? {}) },
+    )
     return {
-      userId:        k.userId,
-      username:      u.username,
-      points:        bd.total,
+      userId:         k.userId,
+      username:       u.username,
+      points:         bd.total,
       buildingPoints: bd.buildings,
       researchPoints: bd.research,
-      unitPoints:    bd.units,
-      isMe:          k.userId === userId,
+      unitPoints:     bd.units,
+      isMe:           k.userId === userId,
     }
-  }))
+  })
 
   ranked.sort((a, b) => b.points - a.points)
   ranked.forEach((e, i) => { e.rank = i + 1 })

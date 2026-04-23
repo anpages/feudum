@@ -2,7 +2,7 @@ import { eq, ne } from 'drizzle-orm'
 import { db, kingdoms, users, npcState } from '../_db.js'
 import { getSessionUserId } from '../lib/handler.js'
 import { calcPointsBreakdown } from '../lib/points.js'
-import { getBuildingMap, getResearchMap } from '../lib/db-helpers.js'
+import { getBuildingMaps, getResearchMaps } from '../lib/db-helpers.js'
 import { EMPTY_RESEARCH } from '../lib/npc-engine.js'
 
 const VALID_CATEGORIES = ['total', 'buildings', 'research', 'units', 'economy']
@@ -25,18 +25,18 @@ export default async function handler(req, res) {
     .leftJoin(npcState, eq(kingdoms.userId, npcState.userId))
     .where(showNpcs ? eq(users.role, 'npc') : ne(users.role, 'npc'))
 
-  const ranked = await Promise.all(allKingdomRows.map(async ({ k, u, ns }) => {
-    // Enrich kingdom with building map
-    const bMap = await getBuildingMap(k.id)
-    const enrichedKingdom = { ...k, ...bMap }
+  const kingdomIds = allKingdomRows.map(({ k }) => k.id)
+  const userIds    = [...new Set(allKingdomRows.map(({ k }) => k.userId))]
+  const [bMaps, resMaps] = await Promise.all([
+    getBuildingMaps(kingdomIds),
+    getResearchMaps(userIds),
+  ])
 
-    // Get research map
-    const resMap = await getResearchMap(k.userId)
-    // For NPCs with no research rows, use EMPTY_RESEARCH fallback
-    const resObj = { ...EMPTY_RESEARCH, ...resMap }
-
-    const breakdown = calcPointsBreakdown(enrichedKingdom, resObj)
-
+  const ranked = allKingdomRows.map(({ k, u, ns }) => {
+    const breakdown = calcPointsBreakdown(
+      { ...k, ...(bMaps[k.id] ?? {}) },
+      { ...EMPTY_RESEARCH, ...(resMaps[k.userId] ?? {}) },
+    )
     return {
       kingdomId: k.id,
       name:      k.name,
@@ -51,7 +51,7 @@ export default async function handler(req, res) {
       breakdown,
       isMe:      k.userId === userId,
     }
-  }))
+  })
 
   ranked.sort((a, b) => b.points - a.points)
   ranked.forEach((entry, i) => { entry.rank = i + 1 })
