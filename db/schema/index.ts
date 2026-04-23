@@ -1,5 +1,6 @@
 export * from './users'
 export * from './kingdoms'
+export * from './npc_state'
 export * from './buildings'
 export * from './units'
 export * from './research'
