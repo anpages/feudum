@@ -8,6 +8,11 @@ import { useKingdom } from '@/features/kingdom/useKingdom'
 import { useResearch } from '@/features/research/useResearch'
 import { formatResource } from '@/lib/format'
 import { effectiveProduction } from '@/lib/game/production'
+import {
+  woodProduction as rawWoodProd,
+  stoneProduction as rawStoneProd,
+  grainProduction as rawGrainProd,
+} from '@/lib/game/buildings'
 
 const MINES = [
   { key: 'sawmillPercent',   label: 'Aserradero',      icon: <TreePine  size={16} className="text-forest-light" /> },
@@ -36,22 +41,44 @@ export function ResourceSettingsPage() {
     setDraft(d => ({ ...d, [key]: Math.max(0, Math.min(10, raw)) }))
   }
 
-  const cfg = { economy_speed: settings?.economySpeed ?? 1 }
+  // Full server config — effectiveProduction needs basic_wood/basic_stone too
+  const cfg = {
+    economy_speed: settings?.economySpeed ?? 1,
+    basic_wood:    (settings as (ResourceSettings & { basicWood?: number }) | undefined)?.basicWood  ?? 0,
+    basic_stone:   (settings as (ResourceSettings & { basicStone?: number }) | undefined)?.basicStone ?? 0,
+  }
 
-  // Live preview using draft percents
+  const resMap = useMemo(
+    () => researchData?.research
+      ? Object.fromEntries(researchData.research.map((r: { id: string; level: number }) => [r.id, r.level]))
+      : {},
+    [researchData],
+  )
+
+  // Live preview using draft percents.
+  // kingdom.woodProduction is EFFECTIVE (speed+energy already applied) so we rebuild
+  // raw rates from building levels before passing them to effectiveProduction.
   const preview = useMemo(() => {
     if (!kingdom) return null
-    const draftKingdom = { ...kingdom, ...draft }
-    const res = researchData?.research ? Object.fromEntries(researchData.research.map((r: { id: string; level: number }) => [r.id, r.level])) : {}
-    return effectiveProduction(draftKingdom, res, cfg)
-  }, [kingdom, draft, researchData, cfg])
+    const k = kingdom as Record<string, unknown>
+    const rawKingdom = {
+      ...kingdom,
+      woodProduction:  rawWoodProd ((k.sawmill   as number) ?? 0),
+      stoneProduction: rawStoneProd((k.quarry    as number) ?? 0),
+      grainProduction: rawGrainProd((k.grainFarm as number) ?? 0, (k.tempAvg as number) ?? 0),
+    }
+    return effectiveProduction({ ...rawKingdom, ...draft }, resMap, cfg)
+  }, [kingdom, draft, resMap, cfg])
 
-  // Current production with saved settings
+  // Current effective production is already on the kingdom object — use it directly.
   const current = useMemo(() => {
     if (!kingdom) return null
-    const res = researchData?.research ? Object.fromEntries(researchData.research.map((r: { id: string; level: number }) => [r.id, r.level])) : {}
-    return effectiveProduction(kingdom, res, cfg)
-  }, [kingdom, researchData, cfg])
+    return {
+      wood:  (kingdom as Record<string, unknown>).woodProduction  as number ?? 0,
+      stone: (kingdom as Record<string, unknown>).stoneProduction as number ?? 0,
+      grain: (kingdom as Record<string, unknown>).grainProduction as number ?? 0,
+    }
+  }, [kingdom])
 
   const energyOk   = (preview?.energyProd ?? 0) >= (preview?.energyCons ?? 0)
   const energyCons = preview?.energyCons ?? 0

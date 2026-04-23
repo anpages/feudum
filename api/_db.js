@@ -37,6 +37,7 @@ export const kingdoms = pgTable('kingdoms', {
   grainProduction:    real('grain_production').default(0).notNull(),
   grainCapacity:      real('grain_capacity').default(10000).notNull(),
   lastResourceUpdate: integer('last_resource_update').default(0).notNull(),
+  productionSettings: jsonb('production_settings').default({}).notNull(),
 
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),

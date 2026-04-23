@@ -68,7 +68,18 @@ export const kingdomService = {
     const buildingMap: Record<string, number> = {}
     for (const r of buildingRows ?? []) buildingMap[(r as { type: string; level: number }).type] = (r as { type: string; level: number }).level
 
-    const enriched = { ...kingdom, ...buildingMap }
+    // Per-kingdom production percentages (0–10, default 10 = 100%).
+    // Stored as productionSettings JSONB on the kingdom row.
+    const pct = ((kingdom as Record<string, unknown>).productionSettings ?? {}) as Record<string, number>
+    const percents = {
+      sawmillPercent:   pct.sawmillPercent   ?? 10,
+      quarryPercent:    pct.quarryPercent    ?? 10,
+      grainFarmPercent: pct.grainFarmPercent ?? 10,
+      windmillPercent:  pct.windmillPercent  ?? 10,
+      cathedralPercent: pct.cathedralPercent ?? 10,
+    }
+
+    const enriched = { ...kingdom, ...buildingMap, ...percents }
     const eff = effectiveProduction(enriched, ctx.research, settings, ctx.characterClass)
 
     return {
