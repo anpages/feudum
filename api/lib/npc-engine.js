@@ -110,33 +110,42 @@ export const ATTACK_THRESHOLD = {
 
 export const MILESTONES = {
   economy: [
-    { hours: 0,   sawmill: 2,  quarry: 1,  grainFarm: 0, windmill: 2,  workshop: 0, barracks: 0 },
-    { hours: 24,  sawmill: 6,  quarry: 4,  grainFarm: 2, windmill: 6,  workshop: 1, barracks: 0 },
-    { hours: 72,  sawmill: 9,  quarry: 6,  grainFarm: 4, windmill: 10, workshop: 1, barracks: 0 },
-    { hours: 120, sawmill: 10, quarry: 7,  grainFarm: 5, windmill: 11, workshop: 1, barracks: 1 },
-    { hours: 168, sawmill: 12, quarry: 8,  grainFarm: 6, windmill: 13, workshop: 2, barracks: 2 },
-    { hours: 336, sawmill: 15, quarry: 11, grainFarm: 8, windmill: 16, workshop: 2, barracks: 3 },
-    { hours: 672, sawmill: 18, quarry: 14, grainFarm:10, windmill: 19, workshop: 3, barracks: 4 },
+    { hours: 0,    sawmill: 2,  quarry: 1,  grainFarm: 0,  windmill: 2,  workshop: 0, barracks: 0  },
+    { hours: 24,   sawmill: 6,  quarry: 4,  grainFarm: 2,  windmill: 6,  workshop: 1, barracks: 0  },
+    { hours: 72,   sawmill: 9,  quarry: 6,  grainFarm: 4,  windmill: 10, workshop: 1, barracks: 0  },
+    { hours: 120,  sawmill: 10, quarry: 7,  grainFarm: 5,  windmill: 11, workshop: 1, barracks: 1  },
+    { hours: 168,  sawmill: 12, quarry: 8,  grainFarm: 6,  windmill: 13, workshop: 2, barracks: 2  },
+    { hours: 336,  sawmill: 15, quarry: 11, grainFarm: 8,  windmill: 16, workshop: 2, barracks: 3  },
+    { hours: 672,  sawmill: 18, quarry: 14, grainFarm: 10, windmill: 19, workshop: 3, barracks: 4  },
+    { hours: 720,  sawmill: 19, quarry: 15, grainFarm: 11, windmill: 20, workshop: 3, barracks: 5,  engineersGuild: 1, armoury: 0 },
+    { hours: 1080, sawmill: 21, quarry: 17, grainFarm: 12, windmill: 22, workshop: 3, barracks: 6,  engineersGuild: 2, armoury: 1 },
+    { hours: 1440, sawmill: 24, quarry: 19, grainFarm: 14, windmill: 25, workshop: 4, barracks: 7,  engineersGuild: 3, armoury: 2 },
   ],
   military: [
-    { hours: 0,   sawmill: 2,  quarry: 1,  grainFarm: 0, windmill: 2,  workshop: 0, barracks: 0 },
-    { hours: 24,  sawmill: 4,  quarry: 3,  grainFarm: 1, windmill: 4,  workshop: 1, barracks: 0 },
-    { hours: 72,  sawmill: 6,  quarry: 4,  grainFarm: 2, windmill: 7,  workshop: 1, barracks: 2 },
-    { hours: 168, sawmill: 8,  quarry: 5,  grainFarm: 3, windmill: 10, workshop: 2, barracks: 3 },
-    { hours: 336, sawmill: 11, quarry: 7,  grainFarm: 5, windmill: 13, workshop: 2, barracks: 4 },
-    { hours: 672, sawmill: 14, quarry: 10, grainFarm: 7, windmill: 16, workshop: 3, barracks: 5 },
+    { hours: 0,    sawmill: 2,  quarry: 1,  grainFarm: 0,  windmill: 2,  workshop: 0, barracks: 0  },
+    { hours: 24,   sawmill: 4,  quarry: 3,  grainFarm: 1,  windmill: 4,  workshop: 1, barracks: 0  },
+    { hours: 72,   sawmill: 6,  quarry: 4,  grainFarm: 2,  windmill: 7,  workshop: 1, barracks: 2  },
+    { hours: 168,  sawmill: 8,  quarry: 5,  grainFarm: 3,  windmill: 10, workshop: 2, barracks: 3  },
+    { hours: 336,  sawmill: 11, quarry: 7,  grainFarm: 5,  windmill: 13, workshop: 2, barracks: 4  },
+    { hours: 672,  sawmill: 14, quarry: 10, grainFarm: 7,  windmill: 16, workshop: 3, barracks: 5  },
+    { hours: 720,  sawmill: 15, quarry: 11, grainFarm: 8,  windmill: 17, workshop: 3, barracks: 7,  engineersGuild: 1, armoury: 3 },
+    { hours: 1080, sawmill: 17, quarry: 13, grainFarm: 9,  windmill: 19, workshop: 3, barracks: 9,  engineersGuild: 2, armoury: 5 },
+    { hours: 1440, sawmill: 20, quarry: 16, grainFarm: 11, windmill: 22, workshop: 4, barracks: 11, engineersGuild: 3, armoury: 7 },
   ],
   balanced: [
-    { hours: 0,   sawmill: 2,  quarry: 1,  grainFarm: 0, windmill: 2,  workshop: 0, barracks: 0 },
-    { hours: 24,  sawmill: 5,  quarry: 3,  grainFarm: 1, windmill: 5,  workshop: 1, barracks: 0 },
-    { hours: 72,  sawmill: 7,  quarry: 5,  grainFarm: 3, windmill: 8,  workshop: 1, barracks: 1 },
-    { hours: 168, sawmill: 10, quarry: 7,  grainFarm: 5, windmill: 11, workshop: 2, barracks: 3 },
-    { hours: 336, sawmill: 13, quarry: 9,  grainFarm: 7, windmill: 14, workshop: 2, barracks: 4 },
-    { hours: 672, sawmill: 16, quarry: 12, grainFarm: 9, windmill: 17, workshop: 3, barracks: 5 },
+    { hours: 0,    sawmill: 2,  quarry: 1,  grainFarm: 0,  windmill: 2,  workshop: 0, barracks: 0  },
+    { hours: 24,   sawmill: 5,  quarry: 3,  grainFarm: 1,  windmill: 5,  workshop: 1, barracks: 0  },
+    { hours: 72,   sawmill: 7,  quarry: 5,  grainFarm: 3,  windmill: 8,  workshop: 1, barracks: 1  },
+    { hours: 168,  sawmill: 10, quarry: 7,  grainFarm: 5,  windmill: 11, workshop: 2, barracks: 3  },
+    { hours: 336,  sawmill: 13, quarry: 9,  grainFarm: 7,  windmill: 14, workshop: 2, barracks: 4  },
+    { hours: 672,  sawmill: 16, quarry: 12, grainFarm: 9,  windmill: 17, workshop: 3, barracks: 5  },
+    { hours: 720,  sawmill: 17, quarry: 13, grainFarm: 10, windmill: 18, workshop: 3, barracks: 7,  engineersGuild: 1, armoury: 2 },
+    { hours: 1080, sawmill: 19, quarry: 15, grainFarm: 11, windmill: 20, workshop: 3, barracks: 9,  engineersGuild: 2, armoury: 4 },
+    { hours: 1440, sawmill: 22, quarry: 18, grainFarm: 13, windmill: 23, workshop: 4, barracks: 10, engineersGuild: 3, armoury: 6 },
   ],
 }
 
-export const MILESTONE_ORDER = ['windmill', 'sawmill', 'quarry', 'grainFarm', 'workshop', 'barracks']
+export const MILESTONE_ORDER = ['windmill', 'sawmill', 'quarry', 'grainFarm', 'workshop', 'barracks', 'engineersGuild', 'armoury']
 
 // ── Pure helpers ──────────────────────────────────────────────────────────────
 
