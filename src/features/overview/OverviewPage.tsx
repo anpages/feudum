@@ -1,7 +1,7 @@
 import { type ReactNode, useState, useEffect } from 'react'
-import { Clock, TrendingUp, Hammer, FlaskConical, Swords, Send, Shield, ChevronRight, Zap, TreePine, Mountain, Wheat, AlertTriangle } from 'lucide-react'
+import { Clock, TrendingUp, Hammer, FlaskConical, Swords, Send, Shield, ChevronRight, Zap, TreePine, Mountain, Wheat, AlertTriangle, Timer, Trophy } from 'lucide-react'
 import {
-  GiAnvil, GiSpellBook, GiCrossedSwords,
+  GiAnvil, GiSpellBook, GiCrossedSwords, GiDragonHead, GiLaurelCrown,
 } from 'react-icons/gi'
 import { useNavigate } from 'react-router-dom'
 import { useKingdom } from '@/features/kingdom/useKingdom'
@@ -11,12 +11,23 @@ import { useBuildings } from '@/features/buildings/useBuildings'
 import { useBarracks } from '@/features/barracks/useBarracks'
 import { useArmies } from '@/features/armies/useArmies'
 import { useAuth } from '@/features/auth/useAuth'
+import { useSeason } from '@/features/season/useSeason'
 import { formatResource, formatDuration } from '@/lib/format'
 import { label as unitLabel } from '@/lib/labels'
 import { tempLabel } from '@/lib/terrain'
 import { Card } from '@/components/ui/Card'
 import { Sheet } from '@/components/ui/Sheet'
-import { SeasonCard } from '@/features/season/SeasonCard'
+
+function formatSeasonTime(seconds: number): string {
+  const months  = Math.floor(seconds / (30 * 86400))
+  const days    = Math.floor((seconds % (30 * 86400)) / 86400)
+  const hours   = Math.floor((seconds % 86400) / 3600)
+  const minutes = Math.floor((seconds % 3600) / 60)
+  if (months > 0) return `${months}M ${days}d`
+  if (days   > 0) return `${days}d ${hours}h`
+  if (hours  > 0) return `${hours}h ${minutes}m`
+  return `${minutes}m`
+}
 
 const CLASS_INFO: Record<string, { emoji: string; label: string; color: string }> = {
   collector:  { emoji: '⛏️', label: 'Coleccionista', color: 'text-forest-light' },
@@ -86,13 +97,21 @@ export function OverviewPage() {
   const tempAvg = (kingdom as Record<string, unknown> | null)?.tempAvg as number | undefined
   const charClass = user?.characterClass ? CLASS_INFO[user.characterClass] : null
 
+  const { data: season } = useSeason()
+  const [seasonTimeLeft, setSeasonTimeLeft] = useState(() =>
+    Math.max(0, (season?.seasonEnd ?? 0) - Math.floor(Date.now() / 1000))
+  )
+  useEffect(() => {
+    const end = season?.seasonEnd ?? 0
+    if (!end) return
+    const id = setInterval(() => setSeasonTimeLeft(Math.max(0, end - Math.floor(Date.now() / 1000))), 1000)
+    return () => clearInterval(id)
+  }, [season?.seasonEnd])
+
   if (isLoading) return <OverviewSkeleton />
 
   return (
     <div className="space-y-6">
-
-      {/* ── Season card ── */}
-      <SeasonCard />
 
       {/* ── Under attack banner ── */}
       {underAttack && (
@@ -141,6 +160,32 @@ export function OverviewPage() {
               Elige una clase de personaje →
             </button>
           )}
+          {season?.seasonNumber && (() => {
+            const ended = season.seasonState === 'ended'
+            return (
+              <>
+                <span className={`inline-flex items-center gap-1.5 font-ui text-xs px-2.5 py-1 rounded-full border ${ended ? 'text-gold border-gold/25 bg-gold/5' : 'text-crimson-light border-crimson/25 bg-crimson/5'}`}>
+                  {ended
+                    ? <GiLaurelCrown size={11} />
+                    : <GiDragonHead  size={11} />
+                  }
+                  T{season.seasonNumber} — {ended ? 'Finalizada' : 'En curso'}
+                </span>
+                {!ended && seasonTimeLeft > 0 && (
+                  <span className="inline-flex items-center gap-1.5 font-ui text-xs px-2.5 py-1 rounded-full border text-ink-muted/60 border-gold/15 bg-gold/4">
+                    <Timer size={11} />
+                    {formatSeasonTime(seasonTimeLeft)}
+                  </span>
+                )}
+                {ended && season.winner && (
+                  <span className="inline-flex items-center gap-1.5 font-ui text-xs px-2.5 py-1 rounded-full border text-gold border-gold/25 bg-gold/5">
+                    <Trophy size={11} />
+                    {season.winner.username}
+                  </span>
+                )}
+              </>
+            )
+          })()}
         </div>
       </Card>
 
