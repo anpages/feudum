@@ -31,10 +31,9 @@ export const researchService = {
       supabase.from('settings').select('key, value'),
     ])
     const kingdomRow = Array.isArray(kingdomRows) ? kingdomRows[0] : null
-    if (!kingdomRow)  throw new Error('Reino no encontrado')
-    if (!researchRow) throw new Error('Research no encontrado')
+    if (!kingdomRow) throw new Error('Reino no encontrado')
 
-    const research = snakeToCamel<Record<string, number>>(researchRow)
+    const research = researchRow ? snakeToCamel<Record<string, number>>(researchRow) : {}
     const characterClass = userRow?.character_class as string | null
 
     let researchSpeed = 1
