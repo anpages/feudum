@@ -25,7 +25,7 @@ export default async function handler(req, res) {
     return res.json({ active: false, seasonNumber: 0, seasonState: null })
   }
 
-  const boss     = seasonNumber > 0 ? getBossForSeason(seasonNumber) : null
+  const boss     = (seasonNumber > 0 && bossSlug) ? getBossForSeason(seasonNumber) : null
   const now      = Math.floor(Date.now() / 1000)
   const timeLeft = Math.max(0, seasonEnd - now)
 
