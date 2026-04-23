@@ -415,14 +415,26 @@ function LiveCountdown({ finishAt }: { finishAt: number }) {
   return <span className="tabular-nums">{fmtMMSS(secs)}</span>
 }
 
+// Extract building/unit id from "Crecimiento: X → lvN" or "Hito: X → lvN" decisions
+function extractBuildFromDecision(text: string | null): { id: string; level: number } | null {
+  if (!text) return null
+  const m = text.match(/^(?:Crecimiento|Hito|Almacén|Requisito[^:]*):?\s+(\w+)\s*→\s*lv(\d+)/i)
+  if (m) return { id: m[1], level: parseInt(m[2], 10) }
+  return null
+}
+
 // Shows build + research slots as colored badges in the decision column
 function DecisionCell({ d, translated }: { d: NpcDecision; translated: string }) {
   const task: NpcCurrentTask | null = d.currentTask
-  const hasTask     = !!task && task.finishAt > Math.floor(Date.now() / 1000)
+  const now       = Math.floor(Date.now() / 1000)
+  const hasTask   = !!task && task.finishAt > now
   const hasResearch = !!d.currentResearch && !!d.researchAvailableAt &&
-    d.researchAvailableAt > Math.floor(Date.now() / 1000)
+    d.researchAvailableAt > now
 
-  if (!hasTask && !hasResearch) {
+  // When no active deferred task, try to extract a completed build from lastDecision
+  const completedBuild = !hasTask ? extractBuildFromDecision(d.lastDecision) : null
+
+  if (!hasTask && !hasResearch && !completedBuild) {
     return translated
       ? <span className={`font-ui text-wrap break-words ${decisionColor(translated)}`}>{translated}</span>
       : <span className="text-ink-muted italic">sin decisión</span>
@@ -443,6 +455,15 @@ function DecisionCell({ d, translated }: { d: NpcDecision; translated: string })
           </span>
         </div>
       )}
+      {!hasTask && completedBuild && (
+        <div className="inline-flex items-center gap-1.5 bg-gold/5 border border-gold/15 rounded px-1.5 py-0.5 w-fit">
+          <span className="font-ui text-[0.6rem] uppercase tracking-wider text-gold-dim shrink-0">Edif.</span>
+          <span className="font-ui text-xs text-ink-mid font-medium">
+            {label(completedBuild.id)} lv{completedBuild.level}
+          </span>
+          <span className="font-ui text-[0.6rem] text-gold-dim ml-0.5">✓</span>
+        </div>
+      )}
       {hasResearch && d.currentResearch && d.researchAvailableAt && (
         <div className="inline-flex items-center gap-1.5 bg-forest/10 border border-forest/25 rounded px-1.5 py-0.5 w-fit">
           <span className="font-ui text-[0.6rem] uppercase tracking-wider text-forest shrink-0">Inv.</span>
@@ -451,9 +472,6 @@ function DecisionCell({ d, translated }: { d: NpcDecision; translated: string })
             <LiveCountdown finishAt={d.researchAvailableAt} />
           </span>
         </div>
-      )}
-      {!hasTask && !hasResearch && translated && (
-        <span className={`font-ui text-wrap break-words ${decisionColor(translated)}`}>{translated}</span>
       )}
     </div>
   )

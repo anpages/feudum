@@ -251,6 +251,7 @@ export interface NpcDecision {
   currentTask: NpcCurrentTask | null
   currentResearch: string | null
   researchAvailableAt: number | null
+  buildAvailableAt: number | null
 }
 
 export interface NpcDecisionsResponse {

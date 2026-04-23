@@ -32,6 +32,7 @@ export default async function handler(req, res) {
     currentTask:         npcState.currentTask,
     currentResearch:     npcState.currentResearch,
     researchAvailableAt: npcState.researchAvailableAt,
+    buildAvailableAt:    npcState.buildAvailableAt,
   }).from(kingdoms)
     .innerJoin(users, eq(kingdoms.userId, users.id))
     .innerJoin(npcState, eq(kingdoms.userId, npcState.userId))
@@ -55,6 +56,7 @@ export default async function handler(req, res) {
       currentTask:         r.currentTask ?? null,
       currentResearch:     r.currentResearch ?? null,
       researchAvailableAt: r.researchAvailableAt ?? null,
+      buildAvailableAt:    r.buildAvailableAt ?? null,
     }))
     .filter(r => !filterFn || filterFn((r.lastDecision ?? '').toLowerCase()))
     .sort((a, b) => a.secsUntilNext - b.secsUntilNext)
