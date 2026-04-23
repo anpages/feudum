@@ -9,16 +9,18 @@ async function fetchSettings() {
   const cfg = await http.get<{
     economySpeed: number; researchSpeed: number
     fleetSpeedWar: number; fleetSpeedPeaceful: number
+    basicWood: number; basicStone: number
   }>('/resources/settings').catch(() => ({
     economySpeed: 1, researchSpeed: 1, fleetSpeedWar: 1, fleetSpeedPeaceful: 1,
+    basicWood: 30, basicStone: 15,
   }))
   return {
     economy_speed:        cfg.economySpeed      ?? 1,
     research_speed:       cfg.researchSpeed     ?? 1,
     fleet_speed_war:      cfg.fleetSpeedWar     ?? 1,
     fleet_speed_peaceful: cfg.fleetSpeedPeaceful ?? 1,
-    basic_wood:  30,
-    basic_stone: 15,
+    basic_wood:           cfg.basicWood         ?? 30,
+    basic_stone:          cfg.basicStone        ?? 15,
   }
 }
 

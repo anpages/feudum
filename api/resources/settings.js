@@ -17,6 +17,8 @@ export default async function handler(req, res) {
     researchSpeed:     cfg.research_speed,
     fleetSpeedWar:     cfg.fleet_speed_war,
     fleetSpeedPeaceful: cfg.fleet_speed_peaceful,
+    basicWood:         cfg.basic_wood,
+    basicStone:        cfg.basic_stone,
   }
 
   if (req.method === 'GET') return res.json(payload)

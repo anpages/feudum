@@ -531,6 +531,11 @@ async function attemptBuildWeighted(kingdom, personality, cfg, now) {
     .map(([id, weight]) => {
       const def = BUILDINGS.find(x => x.id === id)
       if (!def) return null
+      // Almacenes: solo entran en candidatos si el recurso supera el 70% de capacidad.
+      // Bajo ese umbral el almacén está vacío — no tiene sentido bloquear el ahorro en él.
+      if (id === 'granary'    && (kingdom.wood  ?? 0) < (kingdom.woodCapacity  ?? 10000) * 0.70) return null
+      if (id === 'stonehouse' && (kingdom.stone ?? 0) < (kingdom.stoneCapacity ?? 10000) * 0.70) return null
+      if (id === 'silo'       && (kingdom.grain ?? 0) < (kingdom.grainCapacity ?? 10000) * 0.70) return null
       return { id, def, score: (kingdom[id] ?? 0) / weight }
     })
     .filter(Boolean)
@@ -696,13 +701,34 @@ async function growNpc(kingdom, cfg, now, researchMap, debrisRegions, colonizeAc
     if (r.action === 'trained' || r.action === 'saving') return r
   }
 
-  // Nivel 2: gasto de personalidad post-hitos
-  const flavor = getTickFlavor(personality, kingdom, ageHours)
-  if (flavor === 'troops') {
-    return await attemptTrainTroops(kingdom, personality, cls, researchMap, cfg, now)
+  // Nivel 2: ejecución en paralelo — edificio + tropa en el mismo tick.
+  // El sabor determina el orden; ambas acciones se intentan siempre.
+  // Si la primaria no puede pagarse, se intenta la secundaria con los recursos libres.
+  const flavor    = getTickFlavor(personality, kingdom, ageHours)
+  const hasTroops = (kingdom.barracks ?? 0) >= 1
+
+  let buildResult, trainResult
+
+  if (flavor === 'troops' || flavor === 'research') {
+    // Primero tropas/investigación, luego construye con lo que sobre
+    if (hasTroops) {
+      trainResult = await attemptTrainTroops(kingdom, personality, cls, researchMap, cfg, now)
+    }
+    if (!kingdom.currentTask) {
+      buildResult = await attemptBuildWeighted(kingdom, personality, cfg, now)
+    }
   } else {
-    return await attemptBuildWeighted(kingdom, personality, cfg, now)
+    // Primero edificio, luego entrena con los recursos restantes (ahorro inteligente)
+    buildResult = await attemptBuildWeighted(kingdom, personality, cfg, now)
+    if (hasTroops && !kingdom.currentTask) {
+      trainResult = await attemptTrainTroops(kingdom, personality, cls, researchMap, cfg, now)
+    }
   }
+
+  const isActive = (r) => r && !['saving', 'blocked', 'waiting', 'error', 'research_busy'].includes(r?.action)
+  if (isActive(buildResult)) return buildResult
+  if (isActive(trainResult)) return trainResult
+  return buildResult ?? trainResult ?? { action: 'saving' }
 }
 
 // ── Handler ───────────────────────────────────────────────────────────────────

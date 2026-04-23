@@ -163,12 +163,19 @@ export function getTargetLevels(personality, ageHours) {
   return target
 }
 
-export function getTickFlavor(personality, kingdom, ageHours) {
-  const tickIdx  = Math.floor(ageHours)
-  const posShift = ((kingdom.realm * 17 + kingdom.region * 7 + kingdom.slot * 3) >>> 0) % 10
-  const adjusted = (tickIdx + posShift) % 10
-  const troopTicks = { military: 6, economy: 1, balanced: 5 }
-  return adjusted < (troopTicks[personality] ?? 5) ? 'troops' : 'buildings'
+export function getTickFlavor(personality, kingdom, _ageHours) {
+  // Rota cada minuto: buildings → troops → research (ciclo de 3).
+  // posShift desincroniza NPCs para que no actúen todos igual en el mismo minuto.
+  const minute   = new Date().getMinutes()
+  const posShift = ((kingdom.realm * 17 + kingdom.region * 7 + kingdom.slot * 3) >>> 0) % 3
+  const phase    = (minute + posShift) % 3
+  // El ciclo varía por personalidad para preservar el carácter de cada NPC.
+  const cycles = {
+    military: ['troops',    'buildings', 'troops'   ],  // 2/3 enfocado en ejército
+    economy:  ['buildings', 'buildings', 'research' ],  // 2/3 en producción
+    balanced: ['buildings', 'troops',   'research'  ],  // uno de cada
+  }
+  return (cycles[personality] ?? cycles.balanced)[phase]
 }
 
 export function calcEnergyBalance(kingdom) {
