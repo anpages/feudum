@@ -1,6 +1,6 @@
 /**
  * npc-military-ai — NPC attack, scavenge and expedition dispatch.
- * Vercel Cron: every 20 minutes ("*/20 * * * *").
+ * Vercel Cron: every 20 minutes (vercel.json schedule: every-20 min).
  * Runs on ALL NPCs (no npcNextCheck filter); per-unit cooldowns prevent spam.
  */
 import { eq, and, gte, inArray, ne, or } from 'drizzle-orm'

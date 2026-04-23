@@ -27,11 +27,13 @@ export function applyResourceTick(kingdom, cfg, characterClass = null, res = nul
   const dl         = res?.dragonlore ?? 0
   const classBonus = characterClass === 'collector' ? 1.25 : 1.0
 
-  const sawPct   = (kingdom.sawmillPercent    ?? 10) / 10
-  const quarPct  = (kingdom.quarryPercent     ?? 10) / 10
-  const grainPct = (kingdom.grainFarmPercent  ?? 10) / 10
-  const windPct  = (kingdom.windmillPercent   ?? 10) / 10
-  const catPct   = (kingdom.cathedralPercent  ?? 10) / 10
+  // Support both flat keys (from kingdomService) and nested productionSettings (from DB row)
+  const ps = kingdom.productionSettings ?? {}
+  const sawPct   = ((kingdom.sawmillPercent    ?? ps.sawmillPercent   ?? 10)) / 10
+  const quarPct  = ((kingdom.quarryPercent     ?? ps.quarryPercent    ?? 10)) / 10
+  const grainPct = ((kingdom.grainFarmPercent  ?? ps.grainFarmPercent ?? 10)) / 10
+  const windPct  = ((kingdom.windmillPercent   ?? ps.windmillPercent  ?? 10)) / 10
+  const catPct   = ((kingdom.cathedralPercent  ?? ps.cathedralPercent ?? 10)) / 10
 
   const energyProd = windmillEnergy(kingdom.windmill  ?? 0) * windPct
                    + cathedralEnergy(kingdom.cathedral ?? 0, alchLv) * catPct

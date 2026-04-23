@@ -95,8 +95,14 @@ export function useUpgradeBuilding() {
       })
     },
 
-    onError: (_err, _buildingId, context) => {
+    onError: (err, _buildingId, context) => {
       if (context?.prev) qc.setQueryData<BuildingsResponse>(key, context.prev)
+      try {
+        const body = JSON.parse((err as Error).message)
+        toast.error(body.error ?? 'Error al iniciar construcción')
+      } catch {
+        toast.error('Error al iniciar construcción')
+      }
     },
 
     onSettled: () => {

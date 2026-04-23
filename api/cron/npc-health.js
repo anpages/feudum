@@ -1,6 +1,6 @@
 /**
  * npc-health — snapshot horario de salud del crecimiento NPC.
- * Vercel Cron: cada 4 horas ("0 */4 * * *").
+ * Vercel Cron: cada 4 horas (vercel.json schedule: 0 each-4h).
  * Guarda npc_health_history en settings (últimos 72 reportes = 12 días).
  * Detecta bloqueos, estancamiento y anomalías usando contexto histórico.
  */
