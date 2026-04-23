@@ -4,7 +4,7 @@
  * Runs on ALL NPCs (no npcNextCheck filter); per-unit cooldowns prevent spam.
  */
 import { eq, and, gte, lte, or } from 'drizzle-orm'
-import { db, users, kingdoms, armyMissions, debrisFields } from '../_db.js'
+import { db, users, kingdoms, armyMissions, debrisFields, npcResearch } from '../_db.js'
 import { NPC_AGGRESSION, NPC_ATTACK_INTERVAL_HOURS, NPC_BASH_LIMIT } from '../lib/config.js'
 import { calcDistance, calcDuration } from '../lib/speed.js'
 import { sendPush } from '../lib/push.js'
@@ -12,7 +12,7 @@ import { getSettings } from '../lib/settings.js'
 import {
   UNIT_KEYS, UNIT_COMBAT_SET, UNIT_SUPPORT_SET, UNIT_DEFENSE_SET, UNIT_PRIORITY,
   UNIT_COSTS, ATTACK_THRESHOLD,
-  npcPersonality, npcClass, npcResearch, totalArmy, depletionFactor,
+  npcPersonality, npcClass, totalArmy, depletionFactor, EMPTY_RESEARCH,
 } from '../lib/npc-engine.js'
 
 // ── Expedition depletion ──────────────────────────────────────────────────────
@@ -37,7 +37,7 @@ async function getExpeditionDepletion(now) {
 
 // ── Attack AI ─────────────────────────────────────────────────────────────────
 
-async function attackAI(npcKingdom, allKingdoms, bashMap, now, cfg) {
+async function attackAI(npcKingdom, researchRow, allKingdoms, bashMap, now, cfg) {
   if (npcKingdom.isBoss) return false
   if (NPC_AGGRESSION === 0) return false
 
@@ -120,8 +120,7 @@ async function attackAI(npcKingdom, allKingdoms, bashMap, now, cfg) {
   const universeSpeed = parseFloat(cfg.fleet_speed_war ?? 1)
   const dist          = calcDistance(npcKingdom, target)
   const npcCharClass  = cls === 'general' ? 'general' : null
-  const research      = npcResearch(npcKingdom)
-  const travelSecs    = calcDuration(dist, force, 100, universeSpeed, research, npcCharClass)
+  const travelSecs    = calcDuration(dist, force, 100, universeSpeed, researchRow, npcCharClass)
   const arrivalTime   = now + travelSecs
 
   await db.insert(armyMissions).values({
@@ -215,7 +214,7 @@ async function scavengeAI(npcKingdom, allDebris, now, cfg) {
 
 // ── Expedition AI ─────────────────────────────────────────────────────────────
 
-async function expeditionAI(npcKingdom, depletionMap, now, cfg) {
+async function expeditionAI(npcKingdom, researchRow, depletionMap, now, cfg) {
   if (npcKingdom.isBoss) return false
   const cls         = npcClass(npcKingdom)
   const personality = npcPersonality(npcKingdom)
@@ -265,8 +264,7 @@ async function expeditionAI(npcKingdom, depletionMap, now, cfg) {
   const origin = { realm: npcKingdom.realm, region: npcKingdom.region, slot: npcKingdom.slot }
   const target = { realm: REALM, region: bestRegion, slot: 16 }
   const dist        = calcDistance(origin, target)
-  const research    = npcResearch(npcKingdom)
-  const travelSecs  = calcDuration(dist, force, 100, universeSpeed, research, null)
+  const travelSecs  = calcDuration(dist, force, 100, universeSpeed, researchRow, null)
   const arrivalTime = now + travelSecs
 
   await db.insert(armyMissions).values({
@@ -356,12 +354,17 @@ export default async function handler(req, res) {
 
   const depletionMap = await getExpeditionDepletion(now)
 
+  const allResearchRows = await db.select().from(npcResearch)
+  const researchByKingdomId = Object.fromEntries(allResearchRows.map(r => [r.kingdomId, r]))
+
   let attacked = 0, scavenged = 0, expeditioned = 0
 
   for (const kingdom of allNpcKingdoms) {
     try {
+      const researchRow = researchByKingdomId[kingdom.id] ?? EMPTY_RESEARCH
+
       if (NPC_AGGRESSION > 0 && allKingdoms.length > 1) {
-        const launched = await attackAI(kingdom, allKingdoms, bashMap, now, cfg)
+        const launched = await attackAI(kingdom, researchRow, allKingdoms, bashMap, now, cfg)
         if (launched) attacked++
       }
 
@@ -372,7 +375,7 @@ export default async function handler(req, res) {
         if (idx >= 0) allDebris.splice(idx, 1)
       }
 
-      const didExpedition = await expeditionAI(kingdom, depletionMap, now, cfg)
+      const didExpedition = await expeditionAI(kingdom, researchRow, depletionMap, now, cfg)
       if (didExpedition) expeditioned++
     } catch (err) {
       console.error(`[npc-military-ai] kingdom ${kingdom.id} error:`, err?.message ?? err)

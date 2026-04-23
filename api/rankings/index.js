@@ -1,8 +1,8 @@
 import { eq } from 'drizzle-orm'
-import { db, kingdoms, users, research } from '../_db.js'
+import { db, kingdoms, users, research, npcResearch } from '../_db.js'
 import { getSessionUserId } from '../lib/handler.js'
 import { calcPointsBreakdown } from '../lib/points.js'
-import { npcResearch as npcResearchLevels } from '../lib/npc-engine.js'
+import { EMPTY_RESEARCH } from '../lib/npc-engine.js'
 
 const VALID_CATEGORIES = ['total', 'buildings', 'research', 'units', 'economy']
 
@@ -16,18 +16,22 @@ export default async function handler(req, res) {
   const playerType = req.query.type === 'npcs' ? 'npcs' : 'players'
   const showNpcs   = playerType === 'npcs'
 
-  const [allKingdoms, allResearch] = await Promise.all([
+  const [allKingdoms, allResearch, allNpcResearch] = await Promise.all([
     db.select().from(kingdoms)
       .innerJoin(users, eq(kingdoms.userId, users.id))
       .where(eq(kingdoms.isNpc, showNpcs)),
     db.select().from(research),
+    db.select().from(npcResearch),
   ])
 
-  const researchByUser = Object.fromEntries(allResearch.map(r => [r.userId, r]))
+  const researchByUser     = Object.fromEntries(allResearch.map(r => [r.userId, r]))
+  const npcResearchByKingdomId = Object.fromEntries(allNpcResearch.map(r => [r.kingdomId, r]))
 
   const ranked = allKingdoms
     .map(({ kingdoms: k, users: u }) => {
-      const res = k.isNpc ? npcResearchLevels(k) : (researchByUser[k.userId] ?? {})
+      const res = k.isNpc
+        ? (npcResearchByKingdomId[k.id] ?? EMPTY_RESEARCH)
+        : (researchByUser[k.userId] ?? {})
       const breakdown = calcPointsBreakdown(k, res)
       return {
         kingdomId: k.id,

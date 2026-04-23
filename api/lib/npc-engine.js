@@ -18,28 +18,12 @@ export function npcClass(kingdom) {
   return ['collector', 'general', 'discoverer'][h]
 }
 
-export function npcResearch(kingdom) {
-  const b = kingdom.barracks ?? 0
-  const a = kingdom.academy  ?? 0
-  const r = kingdom.armoury  ?? 0
-  return {
-    horsemanship:      b,
-    swordsmanship:     b,
-    fortification:     r,
-    armoury:           r,
-    cartography:       a,
-    tradeRoutes:       Math.max(0, a - 2),
-    alchemy:           a,
-    pyromancy:         Math.max(0, a - 1),
-    runemastery:       Math.max(0, a - 3),
-    mysticism:         Math.max(0, a - 4),
-    dragonlore:        Math.max(0, a - 7),
-    spycraft:          a,
-    logistics:         a,
-    exploration:       a,
-    diplomaticNetwork: a,
-    divineBlessing:    Math.max(0, a - 9),
-  }
+// Fallback research row with all levels at 0 — used when no DB row exists yet
+export const EMPTY_RESEARCH = {
+  swordsmanship: 0, armoury: 0, fortification: 0,
+  horsemanship: 0, cartography: 0, tradeRoutes: 0,
+  alchemy: 0, pyromancy: 0, runemastery: 0, mysticism: 0, dragonlore: 0,
+  spycraft: 0, logistics: 0, exploration: 0, diplomaticNetwork: 0, divineBlessing: 0,
 }
 
 // ── Unit / defense key lists ──────────────────────────────────────────────────

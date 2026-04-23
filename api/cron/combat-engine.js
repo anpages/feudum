@@ -6,7 +6,7 @@
  * so npc-builder reacts on the next run.
  */
 import { eq, and, lte, gte, lt, or } from 'drizzle-orm'
-import { db, users, kingdoms, armyMissions } from '../_db.js'
+import { db, users, kingdoms, armyMissions, npcResearch } from '../_db.js'
 import {
   buildBattleUnits, runBattle, calculateLoot,
   repairDefenses, calcCargoCapacity,
@@ -19,7 +19,7 @@ import { getSettings, setSetting } from '../lib/settings.js'
 import { startNewSeason, repairSeasonNpcsIfMissing } from '../lib/season.js'
 import {
   UNIT_KEYS, NPC_UNIT_KEYS, NPC_DEFENSE_KEYS,
-  npcClass, npcResearch, extractK,
+  npcClass, EMPTY_RESEARCH, extractK,
 } from '../lib/npc-engine.js'
 
 // ── Season management ─────────────────────────────────────────────────────────
@@ -88,7 +88,7 @@ async function processNpcReturns(npcUserId, npcKingdomsById, now) {
 
 // ── Resolve NPC-vs-NPC battles ────────────────────────────────────────────────
 
-async function resolveNpcVsNpcAttacks(npcKingdomsById, now) {
+async function resolveNpcVsNpcAttacks(npcKingdomsById, researchByKingdomId, now) {
   let resolved = 0
 
   const arrivedAll = await db.select().from(armyMissions)
@@ -115,8 +115,8 @@ async function resolveNpcVsNpcAttacks(npcKingdomsById, now) {
       if (!atkKingdom) continue  // player-initiated attack, handled by resolveIncomingNpcAttacks
 
       const missionUnits  = extractK(m, NPC_UNIT_KEYS)
-      const atkResearch   = npcResearch(atkKingdom)
-      const defResearch   = npcResearch(defKingdom)
+      const atkResearch   = researchByKingdomId[atkKingdom.id] ?? EMPTY_RESEARCH
+      const defResearch   = researchByKingdomId[defKingdom.id] ?? EMPTY_RESEARCH
       const attackerUnits = buildBattleUnits(missionUnits, atkResearch)
       const defenderUnits = buildBattleUnits(
         { ...extractK(defKingdom, NPC_UNIT_KEYS), ...extractK(defKingdom, NPC_DEFENSE_KEYS) }, defResearch
@@ -347,6 +347,9 @@ export default async function handler(req, res) {
   const npcKingdomsById = {}
   for (const k of allNpcKingdoms) npcKingdomsById[`${k.realm}:${k.region}:${k.slot}`] = k
 
+  const allResearchRows = await db.select().from(npcResearch)
+  const researchByKingdomId = Object.fromEntries(allResearchRows.map(r => [r.kingdomId, r]))
+
   await processNpcReturns(npcUserId, npcKingdomsById, now)
 
   // Resolve arrived scavenges
@@ -361,7 +364,7 @@ export default async function handler(req, res) {
     if (npcKingdom) await processScavenge(m, npcKingdom, now, null)
   }
 
-  const npcVsNpcResolved     = await resolveNpcVsNpcAttacks(npcKingdomsById, now)
+  const npcVsNpcResolved     = await resolveNpcVsNpcAttacks(npcKingdomsById, researchByKingdomId, now)
   const npcExpeditionsResolved = await resolveNpcExpeditions(npcUserId, npcKingdomsById, now)
   const purged               = await purgeOldExpeditions(now)
   const intruderCount        = await runIntrusionDetector(npcKingdomsById, now)

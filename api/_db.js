@@ -133,9 +133,13 @@ export const kingdoms = pgTable('kingdoms', {
   isBoss:   boolean('is_boss').default(false).notNull(),
   npcLevel: integer('npc_level').default(0).notNull(),
 
-  npcBuildAvailableAt: integer('npc_build_available_at').default(0),
-  npcLastBuildAt:      integer('npc_last_build_at').default(0).notNull(),
-  npcLastAttackAt:     integer('npc_last_attack_at').default(0).notNull(),
+  npcBuildAvailableAt:    integer('npc_build_available_at').default(0),
+  npcLastBuildAt:         integer('npc_last_build_at').default(0).notNull(),
+  npcLastAttackAt:        integer('npc_last_attack_at').default(0).notNull(),
+  npcNextCheck:           integer('npc_next_check'),
+  lastDecision:           varchar('last_decision', { length: 255 }),
+  npcResearchAvailableAt: integer('npc_research_available_at'),
+  npcCurrentResearch:     varchar('npc_current_research', { length: 50 }),
 
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
@@ -294,6 +298,36 @@ export const pushSubscriptions = pgTable('push_subscriptions', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
 })
 
+// ── NPC Research (per kingdom, not per user) ──────────────────────────────────
+
+export const npcResearch = pgTable('npc_research', {
+  id:        uuid('id').primaryKey().defaultRandom(),
+  kingdomId: uuid('kingdom_id').notNull().unique().references(() => kingdoms.id, { onDelete: 'cascade' }),
+
+  swordsmanship:     integer('swordsmanship').default(0).notNull(),
+  armoury:           integer('armoury').default(0).notNull(),
+  fortification:     integer('fortification').default(0).notNull(),
+
+  horsemanship:      integer('horsemanship').default(0).notNull(),
+  cartography:       integer('cartography').default(0).notNull(),
+  tradeRoutes:       integer('trade_routes').default(0).notNull(),
+
+  alchemy:           integer('alchemy').default(0).notNull(),
+  pyromancy:         integer('pyromancy').default(0).notNull(),
+  runemastery:       integer('runemastery').default(0).notNull(),
+  mysticism:         integer('mysticism').default(0).notNull(),
+  dragonlore:        integer('dragonlore').default(0).notNull(),
+
+  spycraft:          integer('spycraft').default(0).notNull(),
+  logistics:         integer('logistics').default(0).notNull(),
+  exploration:       integer('exploration').default(0).notNull(),
+  diplomaticNetwork: integer('diplomatic_network').default(0).notNull(),
+  divineBlessing:    integer('divine_blessing').default(0).notNull(),
+
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+})
+
 // Deterministic UUID for the system NPC user (no auth.users row backing it)
 export const NPC_USER_ID = '00000000-0000-0000-0000-000000000001'
 
@@ -301,4 +335,4 @@ export const NPC_USER_ID = '00000000-0000-0000-0000-000000000001'
 
 // prepare: false required for PgBouncer transaction pooling
 const client = postgres(process.env.STORAGE_POSTGRES_URL, { prepare: false })
-export const db = drizzle(client, { schema: { users, kingdoms, research, researchQueue, buildingQueue, unitQueue, armyMissions, messages, debrisFields, settings, userAchievements, pushSubscriptions, etherTransactions, battleLog } })
+export const db = drizzle(client, { schema: { users, kingdoms, research, npcResearch, researchQueue, buildingQueue, unitQueue, armyMissions, messages, debrisFields, settings, userAchievements, pushSubscriptions, etherTransactions, battleLog } })

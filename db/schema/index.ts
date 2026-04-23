@@ -1,6 +1,7 @@
 export * from './users'
 export * from './kingdoms'
 export * from './research'
+export * from './npc_research'
 export * from './queues'
 export * from './fleets'
 export * from './messages'

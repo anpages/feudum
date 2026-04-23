@@ -7,7 +7,7 @@ import { eq, and, isNotNull } from 'drizzle-orm'
 import {
   db, users, kingdoms, armyMissions, debrisFields,
   research, buildingQueue, researchQueue, unitQueue,
-  userAchievements, NPC_USER_ID,
+  userAchievements, npcResearch, NPC_USER_ID,
 } from '../_db.js'
 import { ECONOMY_SPEED, NPC_DENSITY, UNIVERSE } from './config.js'
 import { getBossForSeason, getBossPosition } from './bosses.js'
@@ -102,6 +102,16 @@ export async function seedNpcs(npcUserId, takenSlots, now) {
   for (let i = 0; i < batch.length; i += 50)
     await db.insert(kingdoms).values(batch.slice(i, i + 50))
 
+  // Create npc_research rows for all seeded kingdoms (onConflictDoNothing for idempotency)
+  const seededKingdoms = await db.select({ id: kingdoms.id })
+    .from(kingdoms)
+    .where(and(eq(kingdoms.isNpc, true), eq(kingdoms.isBoss, false)))
+  for (let i = 0; i < seededKingdoms.length; i += 50) {
+    await db.insert(npcResearch)
+      .values(seededKingdoms.slice(i, i + 50).map(k => ({ kingdomId: k.id })))
+      .onConflictDoNothing()
+  }
+
   return batch.length
 }
 
@@ -149,7 +159,7 @@ export async function startNewSeason(seasonNumber, economySpeed) {
   takenSlots.add(`${bossSlot.realm}:${bossSlot.region}:${bossSlot.slot}`)
 
   const diff = boss.difficulty
-  await db.insert(kingdoms).values({
+  const [bossKingdom] = await db.insert(kingdoms).values({
     userId: npcUserId, name: boss.name, ...bossSlot,
     isNpc: true, isBoss: true, npcLevel: 3,
     wood:  Math.round(500000 * diff), stone: Math.round(400000 * diff), grain: Math.round(100000 * diff),
@@ -171,7 +181,27 @@ export async function startNewSeason(seasonNumber, economySpeed) {
     palisade: 1, castleWall: 1,
     woodProduction: 0, stoneProduction: 0, grainProduction: 0,
     lastResourceUpdate: now,
-  })
+  }).returning({ id: kingdoms.id })
+
+  // Seed boss research proportional to difficulty
+  await db.insert(npcResearch).values({
+    kingdomId:     bossKingdom.id,
+    swordsmanship: Math.round(8 * diff),
+    fortification: Math.round(8 * diff),
+    armoury:       Math.round(6 * diff),
+    horsemanship:  Math.round(8 * diff),
+    cartography:   Math.round(6 * diff),
+    tradeRoutes:   Math.round(4 * diff),
+    alchemy:       Math.round(5 * diff),
+    pyromancy:     Math.round(4 * diff),
+    runemastery:   Math.round(3 * diff),
+    mysticism:     Math.round(2 * diff),
+    dragonlore:    Math.round(1 * diff),
+    spycraft:      Math.round(3 * diff),
+    logistics:     Math.round(3 * diff),
+    exploration:   Math.round(2 * diff),
+    diplomaticNetwork: 0, divineBlessing: 0,
+  }).onConflictDoNothing()
 
   // Fresh kingdom per player
   const playerUsers = await db.select({ id: users.id, username: users.username })
