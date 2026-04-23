@@ -157,9 +157,107 @@ function totalArmy(k) {
   return UNIT_KEYS.reduce((s, u) => s + (k[u] ?? 0), 0)
 }
 
+// ── Sleep schedule helpers ────────────────────────────────────────────────────
+// Server time is UTC. Sleep window 01:00–08:00 UTC mirrors low-activity hours.
+
+function isSleepTime(now) {
+  const hour = new Date(now * 1000).getUTCHours()
+  return hour >= 1 && hour < 8
+}
+
+// Returns seconds until the NPC should be processed again.
+// Sleep window: 60–120 min (NPC commander is offline).
+// Daytime: standard 8–12 min.
+function getNpcDelay(now) {
+  if (isSleepTime(now)) {
+    return 3600 + Math.floor(Math.random() * 3600) // 60–120 min
+  }
+  return 480 + Math.floor(Math.random() * 240) // 8–12 min
+}
+
+// ── Fleetsave helpers ─────────────────────────────────────────────────────────
+
+// Returns the first incoming attack with ETA > 10 min, or null.
+async function getIncomingAttack(kingdom, now) {
+  const rows = await db.select({ id: armyMissions.id, arrivalTime: armyMissions.arrivalTime })
+    .from(armyMissions)
+    .where(and(
+      eq(armyMissions.missionType, 'attack'),
+      eq(armyMissions.state,       'active'),
+      eq(armyMissions.targetRealm, kingdom.realm),
+      eq(armyMissions.targetRegion, kingdom.region),
+      eq(armyMissions.targetSlot,  kingdom.slot),
+      gte(armyMissions.arrivalTime, now + 600),
+    ))
+    .limit(1)
+  return rows[0] ?? null
+}
+
+// Sends all available combat units on an expedition (slot 16) to get them off the
+// planet before the attack arrives. holdingTime ensures they stay away until safe.
+async function attemptFleetsave(kingdom, cfg, now, incomingAttack) {
+  // Skip if already has a fleetsave expedition in flight
+  const existing = await db.select({ id: armyMissions.id }).from(armyMissions).where(and(
+    eq(armyMissions.missionType, 'expedition'),
+    eq(armyMissions.startRealm,  kingdom.realm),
+    eq(armyMissions.startRegion, kingdom.region),
+    eq(armyMissions.startSlot,   kingdom.slot),
+    or(eq(armyMissions.state, 'active'), eq(armyMissions.state, 'exploring')),
+  )).limit(1)
+  if (existing.length > 0) {
+    await setDecision(kingdom.id, `Fleetsave ya activo — unidades en camino`)
+    return { action: 'fleetsave_already' }
+  }
+
+  // Compose force: all combat units
+  const force = {}
+  let totalSent = 0
+  for (const u of UNIT_COMBAT_SET) {
+    const n = kingdom[u] ?? 0
+    if (n > 0) { force[u] = n; totalSent += n }
+  }
+  if (totalSent === 0) {
+    await setDecision(kingdom.id, `Ataque entrante — sin unidades que salvar`)
+    return { action: 'no_fleetsave' }
+  }
+
+  const universeSpeed = parseFloat(cfg.fleet_speed_peaceful ?? cfg.fleet_speed_war ?? 1)
+  const origin = { realm: kingdom.realm, region: kingdom.region, slot: kingdom.slot }
+  const dest   = { realm: kingdom.realm, region: kingdom.region, slot: 16 }
+  const dist       = calcDistance(origin, dest)
+  const cls        = npcClass(kingdom)
+  const research   = npcResearch(kingdom)
+  const travelSecs = calcDuration(dist, force, 100, universeSpeed, research, cls === 'general' ? 'general' : null)
+  const arrivalTime = now + travelSecs
+  // Stay away until at least 10 min after the attack arrives
+  const holdingTime = Math.max(1800, (incomingAttack.arrivalTime - now) + 600)
+
+  await db.insert(armyMissions).values({
+    userId:       kingdom.userId,
+    missionType:  'expedition',
+    state:        'active',
+    startRealm:   kingdom.realm,
+    startRegion:  kingdom.region,
+    startSlot:    kingdom.slot,
+    targetRealm:  kingdom.realm,
+    targetRegion: kingdom.region,
+    targetSlot:   16,
+    departureTime: now,
+    arrivalTime,
+    holdingTime,
+    ...force,
+  })
+
+  const deduct = { lastDecision: `Fleetsave: ${totalSent} unidades a zona segura`, updatedAt: new Date() }
+  for (const u of Object.keys(force)) deduct[u] = 0
+  await db.update(kingdoms).set(deduct).where(eq(kingdoms.id, kingdom.id))
+
+  return { action: 'fleetsave', units: totalSent }
+}
+
 // ── Cascade Growth AI ─────────────────────────────────────────────────────────
 // Regla del Único Camino: un NPC hace UNA acción por tick y retorna inmediatamente.
-// Jerarquía: cola ocupada → energía → almacenes → hitos → personalidad (tropas/edificios).
+// Jerarquía: fleetsave → cola ocupada → energía → almacenes → hitos → personalidad.
 // Si no puede ejecutar su objetivo de turno, ahorra y no gasta en alternativas.
 
 // ── Hitos por personalidad (horas → niveles objetivo) ────────────────────────
@@ -434,6 +532,20 @@ async function growNpc(kingdom, cfg, now) {
 
   const personality = npcPersonality(kingdom)
   const cls         = npcClass(kingdom)
+
+  // ── Nivel -1: fleetsave defensivo ────────────────────────────────────────
+  // Si hay un ataque entrante con ETA > 10 min, el NPC intenta salvar sus tropas.
+  // Durante horario de sueño (01–08 UTC) hay un 50% de probabilidad de que el
+  // comandante no haya visto la alerta y NO reaccione.
+  const incomingAttack = await getIncomingAttack(kingdom, now)
+  if (incomingAttack) {
+    const sleeping = isSleepTime(now)
+    if (!sleeping || Math.random() < 0.5) {
+      return await attemptFleetsave(kingdom, cfg, now, incomingAttack)
+    }
+    await setDecision(kingdom.id, `Ataque entrante ignorado — comandante durmiendo`)
+    return { action: 'sleeping' }
+  }
 
   // ── Nivel 0-A: cola de construcción ocupada ──────────────────────────────
   const buildAvailable = kingdom.npcBuildAvailableAt ?? 0
@@ -1199,7 +1311,7 @@ export default async function handler(req, res) {
 
   // ── Per-NPC tick, growth, attack, scavenge and expedition ─────────────────
   let ticked = 0, builtBuilding = 0, trainedCombat = 0, trainedDefense = 0, trainedSupport = 0
-  let attacked = 0, scavenged = 0, expeditioned = 0, saved = 0, waiting = 0
+  let attacked = 0, scavenged = 0, expeditioned = 0, saved = 0, waiting = 0, fleetsaved = 0, sleeping = 0
 
   for (const kingdom of npcsDue) {
     try {
@@ -1237,12 +1349,14 @@ export default async function handler(req, res) {
         if (growResult.isSupport) trainedSupport++
         if (growResult.isDefense) trainedDefense++
       }
-      if (growResult?.action === 'saving')  saved++
-      if (growResult?.action === 'waiting') waiting++
+      if (growResult?.action === 'saving')   saved++
+      if (growResult?.action === 'waiting')  waiting++
+      if (growResult?.action === 'fleetsave') fleetsaved++
+      if (growResult?.action === 'sleeping') sleeping++
 
-      // Schedule next AI processing window (8–12 min)
-      // Waiting NPCs get checked shortly after build completes instead of random delay
-      const delay = 480 + Math.floor(Math.random() * 240)
+      // Schedule next AI processing window via getNpcDelay (sleep-aware).
+      // Waiting NPCs are checked shortly after their build completes.
+      const delay = getNpcDelay(now)
       const nextCheck = (growResult?.action === 'waiting')
         ? Math.min(now + delay, (kingdom.npcBuildAvailableAt ?? now) + 60)
         : now + delay
@@ -1288,7 +1402,7 @@ export default async function handler(req, res) {
     at: now,
     npcCount: allNpcKingdoms.length, processed: npcsDue.length, ticked,
     builtBuilding, trainedCombat, trainedDefense, trainedSupport,
-    saved, waiting,
+    saved, waiting, fleetsaved, sleeping,
     attacked, scavenged, expeditioned, npcExpeditionsResolved, npcVsNpcResolved, purged,
   }
   const MAX_HISTORY = 48
