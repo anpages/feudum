@@ -600,36 +600,93 @@ export function NpcMonitorTab() {
           accent={totalMissions > 0 ? 'text-gold' : 'text-ink'} />
       </div>
 
-      {/* ── Buildings + Army ───────────────────────────────────────────────────── */}
-      <div className="grid lg:grid-cols-2 gap-4">
+      {/* ── Buildings ──────────────────────────────────────────────────────────── */}
+      <div className="card-medieval p-5 space-y-4">
+        <div className="card-corner-tr" /><div className="card-corner-bl" />
+        <h3 className="section-heading">Edificios (prom / máx)</h3>
+        <div className="grid sm:grid-cols-2 gap-x-8 gap-y-3">
+          {([
+            ['Aserradero',          agg.avgSawmill,        agg.maxSawmill,        15],
+            ['Cantera',             agg.avgQuarry,         agg.maxQuarry,         15],
+            ['Granja de Grano',     agg.avgGrainFarm,      agg.maxGrainFarm,      15],
+            ['Molino de Viento',    agg.avgWindmill,       agg.maxWindmill,       15],
+            ['Catedral',            agg.avgCathedral,      agg.maxCathedral,      10],
+            ['Taller',              agg.avgWorkshop,       agg.maxWorkshop,       10],
+            ['Gremio de Ingenieros',agg.avgEngineersGuild, agg.maxEngineersGuild,  8],
+            ['Barracones',          agg.avgBarracks,       agg.maxBarracks,       10],
+            ['Academia',            agg.avgAcademy,        agg.maxAcademy,        10],
+            ['Granero',             agg.avgGranary,        agg.maxGranary,        10],
+            ['Casa de Piedra',      agg.avgStonehouse,     agg.maxStonehouse,     10],
+            ['Silo',                agg.avgSilo,           agg.maxSilo,           10],
+            ['Expansor de Dominio', agg.avgAlchemistTower, agg.maxAlchemistTower,  5],
+            ['Salón Embajadores',   agg.avgAmbassadorHall, agg.maxAmbassadorHall,  8],
+            ['Armería',             agg.avgArmoury,        agg.maxArmoury,         8],
+          ] as [string, number, number, number][]).map(([lbl, avgVal, maxVal, weight]) => (
+            <BuildingRow key={lbl} label={lbl} avg={avgVal} max={maxVal} weight={weight} />
+          ))}
+        </div>
+      </div>
+
+      {/* ── Research progression ───────────────────────────────────────────────── */}
+      {agg.researchStats && (
         <div className="card-medieval p-5 space-y-4">
           <div className="card-corner-tr" /><div className="card-corner-bl" />
-          <h3 className="section-heading">Edificios (avg / max)</h3>
-          <div className="space-y-3">
-            <BuildingRow label="Aserradero"  avg={agg.avgSawmill}  max={agg.maxBarracks + 9} weight={15} />
-            <BuildingRow label="Cuartel"     avg={agg.avgBarracks} max={agg.maxBarracks}     weight={10} />
-            <BuildingRow label="Academia"    avg={agg.avgAcademy}  max={agg.maxAcademy}      weight={10} />
-            <BuildingRow label="Taller"      avg={agg.avgWorkshop} max={agg.maxBarracks}     weight={8}  />
+          <h3 className="section-heading">Investigaciones NPC (prom / máx · adopción)</h3>
+          <div className="grid sm:grid-cols-2 gap-x-8 gap-y-3">
+            {([
+              ['Alquimia',             'alchemy',           8],
+              ['Piromancia',           'pyromancy',         6],
+              ['Maestría Rúnica',      'runemastery',       5],
+              ['Misticismo',           'mysticism',         4],
+              ['Conocimiento Dracónico','dragonlore',       3],
+              ['Esgrima',              'swordsmanship',     8],
+              ['Armadura',             'armoury',           8],
+              ['Fortificación',        'fortification',     8],
+              ['Equitación',           'horsemanship',      6],
+              ['Cartografía',          'cartography',       6],
+              ['Rutas Comerciales',    'tradeRoutes',       5],
+              ['Logística',            'logistics',         5],
+              ['Arte del Espionaje',   'spycraft',          4],
+              ['Exploración',          'exploration',       3],
+              ['Red Diplomática',      'diplomaticNetwork', 3],
+            ] as [string, string, number][]).map(([lbl, key, weight]) => {
+              const cap = key.charAt(0).toUpperCase() + key.slice(1)
+              const avgVal  = (agg.researchStats[`avg${cap}`] ?? 0) as number
+              const maxVal  = (agg.researchStats[`max${cap}`] ?? 0) as number
+              const withVal = (agg.researchStats[`with${cap}`] ?? 0) as number
+              return (
+                <div key={key} className="flex items-center gap-3">
+                  <span className="font-ui text-xs text-ink-muted w-36 shrink-0">{lbl}</span>
+                  <div className="flex-1 space-y-0.5"><FillBar value={avgVal} max={weight} color="bg-gold/70" /></div>
+                  <span className="font-ui text-xs tabular-nums text-ink w-28 text-right shrink-0">
+                    <span className="text-ink-muted text-[0.6rem]">pr.</span> {avgVal}{' '}
+                    <span className="text-ink-muted text-[0.6rem]">máx.</span> {maxVal}{' '}
+                    <span className="text-ink-muted text-[0.6rem]">({withVal}/{agg.total})</span>
+                  </span>
+                </div>
+              )
+            })}
           </div>
         </div>
+      )}
 
-        <div className="card-medieval p-5 space-y-4">
-          <div className="card-corner-tr" /><div className="card-corner-bl" />
-          <h3 className="section-heading">Distribución del ejército</h3>
-          <ArmyDistribution dist={agg.armyDistribution} total={agg.total} />
-          <div className="grid grid-cols-3 gap-2 pt-1">
-            <div className="glass rounded p-2.5 text-center">
-              <div className="font-ui text-base font-bold text-ink tabular-nums">{agg.avgArmy}</div>
-              <div className="font-ui text-[0.6rem] text-ink-muted uppercase tracking-wide mt-0.5">Avg</div>
-            </div>
-            <div className="glass rounded p-2.5 text-center">
-              <div className="font-ui text-base font-bold text-ink tabular-nums">{agg.maxArmy}</div>
-              <div className="font-ui text-[0.6rem] text-ink-muted uppercase tracking-wide mt-0.5">Máx</div>
-            </div>
-            <div className="glass rounded p-2.5 text-center">
-              <div className="font-ui text-base font-bold text-gold tabular-nums">{formatResource(agg.totalSquire)}</div>
-              <div className="font-ui text-[0.6rem] text-ink-muted uppercase tracking-wide mt-0.5">Escuderos</div>
-            </div>
+      {/* ── Army distribution ──────────────────────────────────────────────────── */}
+      <div className="card-medieval p-5 space-y-4">
+        <div className="card-corner-tr" /><div className="card-corner-bl" />
+        <h3 className="section-heading">Distribución del ejército</h3>
+        <ArmyDistribution dist={agg.armyDistribution} total={agg.total} />
+        <div className="grid grid-cols-3 gap-2 pt-1">
+          <div className="glass rounded p-2.5 text-center">
+            <div className="font-ui text-base font-bold text-ink tabular-nums">{agg.avgArmy}</div>
+            <div className="font-ui text-[0.6rem] text-ink-muted uppercase tracking-wide mt-0.5">Avg</div>
+          </div>
+          <div className="glass rounded p-2.5 text-center">
+            <div className="font-ui text-base font-bold text-ink tabular-nums">{agg.maxArmy}</div>
+            <div className="font-ui text-[0.6rem] text-ink-muted uppercase tracking-wide mt-0.5">Máx</div>
+          </div>
+          <div className="glass rounded p-2.5 text-center">
+            <div className="font-ui text-base font-bold text-gold tabular-nums">{formatResource(agg.totalSquire)}</div>
+            <div className="font-ui text-[0.6rem] text-ink-muted uppercase tracking-wide mt-0.5">Escuderos</div>
           </div>
         </div>
       </div>

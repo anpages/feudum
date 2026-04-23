@@ -253,12 +253,24 @@ export interface NpcAggregate {
   withMerchant: number
   withCaravan: number
   withScavenger: number
-  avgBarracks: number
-  avgAcademy: number
-  avgWorkshop: number
-  avgSawmill: number
-  maxBarracks: number
-  maxAcademy: number
+  // All 15 buildings avg/max
+  avgSawmill: number;       maxSawmill: number
+  avgQuarry: number;        maxQuarry: number
+  avgGrainFarm: number;     maxGrainFarm: number
+  avgWindmill: number;      maxWindmill: number
+  avgCathedral: number;     maxCathedral: number
+  avgWorkshop: number;      maxWorkshop: number
+  avgEngineersGuild: number; maxEngineersGuild: number
+  avgBarracks: number;      maxBarracks: number
+  avgAcademy: number;       maxAcademy: number
+  avgGranary: number;       maxGranary: number
+  avgStonehouse: number;    maxStonehouse: number
+  avgSilo: number;          maxSilo: number
+  avgAlchemistTower: number; maxAlchemistTower: number
+  avgAmbassadorHall: number; maxAmbassadorHall: number
+  avgArmoury: number;       maxArmoury: number
+  // Research progression
+  researchStats: Record<string, number>
   avgArmy: number
   maxArmy: number
   totalSquire: number

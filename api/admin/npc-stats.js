@@ -1,7 +1,21 @@
 import { eq, inArray } from 'drizzle-orm'
-import { db, kingdoms, users, npcState, buildings, units, armyMissions } from '../_db.js'
+import { db, kingdoms, users, npcState, buildings, units, research, armyMissions } from '../_db.js'
 import { getAdminUserId } from '../lib/admin.js'
 import { getStringSetting, getSettings } from '../lib/settings.js'
+
+const ALL_BUILDINGS = [
+  'sawmill','quarry','grainFarm','windmill','cathedral',
+  'workshop','engineersGuild','barracks','academy',
+  'granary','stonehouse','silo',
+  'alchemistTower','ambassadorHall','armoury',
+]
+
+const ALL_RESEARCH = [
+  'alchemy','pyromancy','runemastery','mysticism','dragonlore',
+  'fortification','swordsmanship','armoury',
+  'horsemanship','cartography','tradeRoutes','logistics',
+  'spycraft','exploration','diplomaticNetwork',
+]
 
 const MOBILE_KEYS = [
   'squire','knight','paladin','warlord','grandKnight',
@@ -60,13 +74,16 @@ export default async function handler(req, res) {
   const npcKingdomIds = npcRows.map(r => r.k.id)
   const npcUserIds    = npcRows.map(r => r.k.userId)
 
-  // Batch load buildings and units
-  const [allBuildings, allUnits] = await Promise.all([
+  // Batch load buildings, units, and research
+  const [allBuildings, allUnits, allResearch] = await Promise.all([
     npcKingdomIds.length
       ? db.select().from(buildings).where(inArray(buildings.kingdomId, npcKingdomIds))
       : [],
     npcKingdomIds.length
       ? db.select().from(units).where(inArray(units.kingdomId, npcKingdomIds))
+      : [],
+    npcUserIds.length
+      ? db.select().from(research).where(inArray(research.userId, npcUserIds))
       : [],
   ])
 
@@ -82,11 +99,18 @@ export default async function handler(req, res) {
     unitsByKingdom[u.kingdomId][u.type] = u.quantity
   }
 
-  // Enrich kingdoms — merge buildings, units, and npcState
+  const researchByUser = {}
+  for (const r of allResearch) {
+    if (!researchByUser[r.userId]) researchByUser[r.userId] = {}
+    researchByUser[r.userId][r.type] = r.level
+  }
+
+  // Enrich kingdoms — merge buildings, units, research, and npcState
   const allRows = npcRows.map(({ k, ns }) => ({
     ...k,
     ...(buildingsByKingdom[k.id] ?? {}),
     ...(unitsByKingdom[k.id] ?? {}),
+    _research: researchByUser[k.userId] ?? {},
     isBoss:   ns?.isBoss   ?? false,
     npcLevel: ns?.npcLevel ?? 1,
   }))
@@ -118,6 +142,23 @@ export default async function handler(req, res) {
   const withCaravan   = npcs.filter(n => (n.caravan   ?? 0) > 0).length
   const withScavenger = npcs.filter(n => (n.scavenger ?? 0) > 0).length
 
+  // Building avg/max for all 15 buildings
+  const buildingStats = {}
+  for (const b of ALL_BUILDINGS) {
+    const cap = b.charAt(0).toUpperCase() + b.slice(1)
+    buildingStats[`avg${cap}`] = parseFloat(avg(npcs, n => n[b]).toFixed(1))
+    buildingStats[`max${cap}`] = npcs.reduce((m, n) => Math.max(m, n[b] ?? 0), 0)
+  }
+
+  // Research avg/max for all research types
+  const researchStats = {}
+  for (const r of ALL_RESEARCH) {
+    const cap = r.charAt(0).toUpperCase() + r.slice(1)
+    researchStats[`avg${cap}`] = parseFloat(avg(npcs, n => n._research[r] ?? 0).toFixed(1))
+    researchStats[`max${cap}`] = npcs.reduce((m, n) => Math.max(m, n._research[r] ?? 0), 0)
+    researchStats[`with${cap}`] = npcs.filter(n => (n._research[r] ?? 0) > 0).length
+  }
+
   const aggregate = {
     total:   npcs.length,
     bosses:  boss.length,
@@ -126,12 +167,8 @@ export default async function handler(req, res) {
     withCaravan,
     withScavenger,
 
-    avgBarracks:  parseFloat(avg(npcs, n => n.barracks).toFixed(1)),
-    avgAcademy:   parseFloat(avg(npcs, n => n.academy).toFixed(1)),
-    avgWorkshop:  parseFloat(avg(npcs, n => n.workshop).toFixed(1)),
-    avgSawmill:   parseFloat(avg(npcs, n => n.sawmill).toFixed(1)),
-    maxBarracks:  npcs.reduce((m, n) => Math.max(m, n.barracks ?? 0), 0),
-    maxAcademy:   npcs.reduce((m, n) => Math.max(m, n.academy  ?? 0), 0),
+    ...buildingStats,
+    researchStats,
 
     avgArmy:      parseFloat(avg(npcs, mobileArmy).toFixed(1)),
     maxArmy:      npcs.reduce((m, n) => Math.max(m, mobileArmy(n)), 0),
