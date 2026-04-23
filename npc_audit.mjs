@@ -10,13 +10,17 @@
 import './api/lib/env.js'
 import { eq, inArray } from 'drizzle-orm'
 import { db, users, kingdoms, npcState, buildings, units, research, armyMissions } from './api/_db.js'
-import { npcPersonality, getTargetLevels, MILESTONE_ORDER } from './api/lib/npc-engine.js'
+import { npcPersonality, getTargetLevels, MILESTONE_ORDER, isSleepTime, calcEnergyBalance } from './api/lib/npc-engine.js'
 import { getSettings } from './api/lib/settings.js'
+import { NPC_AGGRESSION } from './api/lib/config.js'
 
 const now = Math.floor(Date.now() / 1000)
 const cfg = await getSettings()
 const speedFactor = parseFloat(cfg.economy_speed ?? '1')
+const basicWood   = parseFloat(cfg.basic_wood  ?? '30')
+const basicStone  = parseFloat(cfg.basic_stone ?? '15')
 const seasonActive = cfg.season_state === 'active'
+const sleeping = isSleepTime(now)
 
 const npcRows = await db.select({ k: kingdoms, ns: npcState })
   .from(kingdoms)
@@ -107,7 +111,9 @@ const activos         = classified.filter(c => c.status === 'activo')
 console.log('\n══════════════════════════════════════════════════')
 console.log(`  AUDITORÍA NPC  —  ${new Date().toISOString()}`)
 console.log(`  economy_speed: ${speedFactor}  |  temporada: ${cfg.season_state ?? 'no configurada'}`)
+console.log(`  basic_wood: ${basicWood}/h  basic_stone: ${basicStone}/h  |  agresión NPC: ${NPC_AGGRESSION}`)
 if (!seasonActive) console.log('  ⚠ TEMPORADA NO ACTIVA — los crons están parados')
+if (sleeping)      console.log('  💤 HORA DE SUEÑO (1h–8h UTC) — npc-builder reduce actividad')
 console.log('══════════════════════════════════════════════════')
 console.log(`\nTotal NPCs: ${npcs.length}  |  Bosses: ${bosses.length}`)
 console.log(`Con ejército:  ${npcs.filter(n=>army(n)>0).length} (${pct(npcs.filter(n=>army(n)>0).length, npcs.length)})`)
@@ -187,10 +193,30 @@ for (const b of BUILDINGS_LIST) {
 
 // ── Recursos ──────────────────────────────────────────────────────────────────
 
+// Producción efectiva = producción de edificios + basic bonus del servidor
+const avgWoodEff  = Math.round(avg(npcs, n => (n.woodProduction  ?? 0)) + basicWood)
+const avgStoneEff = Math.round(avg(npcs, n => (n.stoneProduction ?? 0)) + basicStone)
+
+// Utilización de almacenamiento
+function storePct(n, res, cap) {
+  const c = n[cap] ?? 1
+  return c > 0 ? Math.round((n[res] ?? 0) / c * 100) : 0
+}
+const avgWoodPct  = Math.round(avg(npcs, n => storePct(n, 'wood',  'woodCapacity')))
+const avgStonePct = Math.round(avg(npcs, n => storePct(n, 'stone', 'stoneCapacity')))
+const avgGrainPct = Math.round(avg(npcs, n => storePct(n, 'grain', 'grainCapacity')))
+const atWoodCap   = npcs.filter(n => storePct(n, 'wood',  'woodCapacity')  >= 90).length
+const atStoneCap  = npcs.filter(n => storePct(n, 'stone', 'stoneCapacity') >= 90).length
+
+// Balance energético
+const avgEnergy      = Math.round(avg(npcs, n => calcEnergyBalance(n)))
+const negEnergyCount = npcs.filter(n => calcEnergyBalance(n) < 0).length
+
 console.log('\n── Recursos avg ──')
-console.log(`  Madera:  ${Math.round(avg(npcs,n=>n.wood)).toLocaleString()}  (prod: ${Math.round(avg(npcs,n=>n.woodProduction))}/h)`)
-console.log(`  Piedra:  ${Math.round(avg(npcs,n=>n.stone)).toLocaleString()}  (prod: ${Math.round(avg(npcs,n=>n.stoneProduction))}/h)`)
-console.log(`  Grano:   ${Math.round(avg(npcs,n=>n.grain)).toLocaleString()}`)
+console.log(`  Madera:  ${Math.round(avg(npcs,n=>n.wood)).toLocaleString().padStart(8)}  prod efectiva: ~${avgWoodEff}/h (edificios + ${basicWood} base)  almac: ${avgWoodPct}% avg  [${atWoodCap} al límite]`)
+console.log(`  Piedra:  ${Math.round(avg(npcs,n=>n.stone)).toLocaleString().padStart(8)}  prod efectiva: ~${avgStoneEff}/h (edificios + ${basicStone} base)  almac: ${avgStonePct}% avg  [${atStoneCap} al límite]`)
+console.log(`  Grano:   ${Math.round(avg(npcs,n=>n.grain)).toLocaleString().padStart(8)}  almac: ${avgGrainPct}% avg`)
+console.log(`  Energía: balance avg ${avgEnergy > 0 ? '+' : ''}${avgEnergy}  |  ${negEnergyCount} NPCs con energía negativa (producción throttleada)`)
 
 // ── Ejército ──────────────────────────────────────────────────────────────────
 
@@ -248,8 +274,14 @@ if (avg(npcs,n=>n.quarry??0) < 2)
   anomalies.push(`⚠ Cantera avg < 2 — piedra insuficiente`)
 if (!npcs.some(n=>army(n)>0))
   anomalies.push(`⚠ Ningún NPC tiene ejército`)
-if (avg(npcs,n=>n.woodProduction??0) < 10)
-  anomalies.push(`⚠ woodProduction avg < 10/h`)
+if (avgWoodEff < 40)
+  anomalies.push(`⚠ producción efectiva de madera avg < 40/h (edificios + base)`)
+if (negEnergyCount > npcs.length * 0.3)
+  anomalies.push(`⚠ ${negEnergyCount} NPCs con energía negativa — producción throttleada`)
+if (atWoodCap > npcs.length * 0.3)
+  anomalies.push(`⚠ ${atWoodCap} NPCs con madera ≥90% cap — almacenamiento insuficiente`)
+if (atStoneCap > npcs.length * 0.3)
+  anomalies.push(`⚠ ${atStoneCap} NPCs con piedra ≥90% cap — almacenamiento insuficiente`)
 const avgAge = classified.length ? classified.reduce((s,c)=>s+c.ageHours,0)/classified.length : 0
 if (avgAge >= 48 && !npcs.some(n=>army(n)>0))
   anomalies.push(`⚠ Sin ejército tras ${avgAge.toFixed(0)}h de edad media`)
