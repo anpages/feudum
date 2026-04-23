@@ -12,7 +12,8 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio",
-    "format": "prettier --write 'src/**/*.{ts,tsx}' 'api/**/*.js'"
+    "format": "prettier --write 'src/**/*.{ts,tsx}' 'api/**/*.js'",
+    "postinstall": "patch-package"
   },
   "dependencies": {
     "@supabase/ssr": "^0.10.2",
@@ -46,6 +47,7 @@
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.5.2",
     "globals": "^17.4.0",
+    "patch-package": "^8.0.1",
     "prettier": "^3.8.3",
     "tailwindcss": "^4.2.2",
     "typescript": "~6.0.2",
