@@ -1,6 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { adminService } from './services/adminService'
-import type { AdminSettings, AdminUser, AdminMission } from './types'
+import type { AdminSettings, AdminUser, AdminMission, NpcDecisionsResponse } from './types'
+
+export type { NpcDecisionsResponse }
 
 export type { AdminSettings, AdminUser, AdminMission }
 
@@ -72,5 +74,15 @@ export function useSeedNpcs() {
 export function useResetNpcs() {
   return useMutation({
     mutationFn: () => adminService.resetNpcs(),
+  })
+}
+
+export function useNpcDecisions(filter: string) {
+  return useQuery({
+    queryKey: ['admin', 'npc-decisions', filter],
+    queryFn: () => adminService.getNpcDecisions(filter),
+    staleTime: 20_000,
+    refetchInterval: 30_000,
+    retry: false,
   })
 }

@@ -3,10 +3,13 @@
  * Called by Vercel Cron: schedule "0 * * * *"
  * Secured with CRON_SECRET header.
  */
-import { eq, and, lte, gte, or, lt } from 'drizzle-orm'
+import { eq, and, lte, gte, or, lt, isNull } from 'drizzle-orm'
 import { db, users, kingdoms, armyMissions, messages, debrisFields } from '../_db.js'
 import { applyResourceTick } from '../lib/tick.js'
-import { BUILDINGS, buildCost, buildTime, applyBuildingEffect } from '../lib/buildings.js'
+import {
+  BUILDINGS, buildCost, buildTime, applyBuildingEffect,
+  windmillEnergy, cathedralEnergy, sawmillEnergy, quarryEnergy, grainFarmEnergy,
+} from '../lib/buildings.js'
 import { ALL_UNITS } from '../lib/units.js'
 import { ECONOMY_SPEED, NPC_AGGRESSION, NPC_ATTACK_INTERVAL_HOURS, NPC_BASH_LIMIT } from '../lib/config.js'
 import { calcDistance, calcDuration } from '../lib/speed.js'
@@ -154,44 +157,150 @@ function totalArmy(k) {
   return UNIT_KEYS.reduce((s, u) => s + (k[u] ?? 0), 0)
 }
 
-// ── Growth AI — infinite, exponential, no ceiling ────────────────────────────
-// Buildings: always upgrade the building most "behind" its priority weight.
-// Units: always train more of the highest-priority unit the barracks supports.
-// Growth is naturally exponential: more production → more resources → faster builds.
-// Boss kingdoms use military personality + no batch limit + 2× build speed.
+// ── Cascade Growth AI ─────────────────────────────────────────────────────────
+// Regla del Único Camino: un NPC hace UNA acción por tick y retorna inmediatamente.
+// Jerarquía: cola ocupada → energía → almacenes → hitos → personalidad (tropas/edificios).
+// Si no puede ejecutar su objetivo de turno, ahorra y no gasta en alternativas.
 
-async function growNpc(kingdom, cfg, now) {
-  const isBoss      = kingdom.isBoss ?? false
-  const personality = isBoss ? 'military' : npcPersonality(kingdom)
-  const cls         = isBoss ? 'general'  : npcClass(kingdom)
-  const weights     = BUILD_WEIGHTS[personality]
-  const speed       = parseFloat(cfg.economy_speed ?? ECONOMY_SPEED)
-  const npcLv       = Math.max(1, kingdom.npcLevel ?? 1)
+// ── Hitos por personalidad (horas → niveles objetivo) ────────────────────────
+// El NPC debe alcanzar estos niveles antes de gastar en objetivos de personalidad.
+const MILESTONES = {
+  economy: [
+    { hours: 0,   sawmill: 2,  quarry: 1,  grainFarm: 0, windmill: 2,  workshop: 0, barracks: 0 },
+    { hours: 24,  sawmill: 6,  quarry: 4,  grainFarm: 2, windmill: 6,  workshop: 1, barracks: 0 },
+    { hours: 72,  sawmill: 9,  quarry: 6,  grainFarm: 4, windmill: 10, workshop: 1, barracks: 0 },
+    { hours: 120, sawmill: 10, quarry: 7,  grainFarm: 5, windmill: 11, workshop: 1, barracks: 1 },
+    { hours: 168, sawmill: 12, quarry: 8,  grainFarm: 6, windmill: 13, workshop: 2, barracks: 2 },
+    { hours: 336, sawmill: 15, quarry: 11, grainFarm: 8, windmill: 16, workshop: 2, barracks: 3 },
+    { hours: 672, sawmill: 18, quarry: 14, grainFarm:10, windmill: 19, workshop: 3, barracks: 4 },
+  ],
+  military: [
+    { hours: 0,   sawmill: 2,  quarry: 1,  grainFarm: 0, windmill: 2,  workshop: 0, barracks: 0 },
+    { hours: 24,  sawmill: 4,  quarry: 3,  grainFarm: 1, windmill: 4,  workshop: 1, barracks: 0 },
+    { hours: 72,  sawmill: 6,  quarry: 4,  grainFarm: 2, windmill: 7,  workshop: 1, barracks: 2 },
+    { hours: 168, sawmill: 8,  quarry: 5,  grainFarm: 3, windmill: 10, workshop: 2, barracks: 3 },
+    { hours: 336, sawmill: 11, quarry: 7,  grainFarm: 5, windmill: 13, workshop: 2, barracks: 4 },
+    { hours: 672, sawmill: 14, quarry: 10, grainFarm: 7, windmill: 16, workshop: 3, barracks: 5 },
+  ],
+  balanced: [
+    { hours: 0,   sawmill: 2,  quarry: 1,  grainFarm: 0, windmill: 2,  workshop: 0, barracks: 0 },
+    { hours: 24,  sawmill: 5,  quarry: 3,  grainFarm: 1, windmill: 5,  workshop: 1, barracks: 0 },
+    { hours: 72,  sawmill: 7,  quarry: 5,  grainFarm: 3, windmill: 8,  workshop: 1, barracks: 1 },
+    { hours: 168, sawmill: 10, quarry: 7,  grainFarm: 5, windmill: 11, workshop: 2, barracks: 3 },
+    { hours: 336, sawmill: 13, quarry: 9,  grainFarm: 7, windmill: 14, workshop: 2, barracks: 4 },
+    { hours: 672, sawmill: 16, quarry: 12, grainFarm: 9, windmill: 17, workshop: 3, barracks: 5 },
+  ],
+}
 
-  const buildAvailable = kingdom.npcBuildAvailableAt ?? 0
-  const canBuild = now >= buildAvailable
+// Orden de prioridad dentro de los hitos: energía primero, luego producción
+const MILESTONE_ORDER = ['windmill', 'sawmill', 'quarry', 'grainFarm', 'workshop', 'barracks']
 
-  let { wood, stone, grain } = kingdom
-  let patch = {}
+function getTargetLevels(personality, ageHours) {
+  const rows = MILESTONES[personality] ?? MILESTONES.balanced
+  let target = rows[0]
+  for (const row of rows) {
+    if (ageHours >= row.hours) target = row
+  }
+  return target
+}
 
-  let trainedCombat  = false
-  let trainedDefense = false
-  let trainedSupport = false
-  let builtBuilding  = false
+// Sabor del tick post-hito: determinista por posición + edad (no hay estado mutable)
+// military: 6/10 son ticks de tropas (60%); economy: 1/10 (10%); balanced: 5/10 (50%)
+function getTickFlavor(personality, kingdom, ageHours) {
+  const tickIdx  = Math.floor(ageHours)
+  const posShift = ((kingdom.realm * 17 + kingdom.region * 7 + kingdom.slot * 3) >>> 0) % 10
+  const adjusted = (tickIdx + posShift) % 10
+  const troopTicks = { military: 6, economy: 1, balanced: 5 }
+  return adjusted < (troopTicks[personality] ?? 5) ? 'troops' : 'buildings'
+}
+
+// Balance energético: producción (molino+catedral) - consumo (minas)
+function calcEnergyBalance(kingdom) {
+  const prod = windmillEnergy(kingdom.windmill  ?? 0)
+             + cathedralEnergy(kingdom.cathedral ?? 0, 0)
+  const cons = sawmillEnergy(kingdom.sawmill   ?? 0)
+             + quarryEnergy(kingdom.quarry     ?? 0)
+             + grainFarmEnergy(kingdom.grainFarm ?? 0)
+  return prod - cons
+}
+
+// Escribe lastDecision sin tocar ningún otro campo
+async function setDecision(kingdomId, msg) {
+  await db.update(kingdoms)
+    .set({ lastDecision: msg, updatedAt: new Date() })
+    .where(eq(kingdoms.id, kingdomId))
+}
+
+// Intenta construir buildingId. Si no puede pagarlo, guarda sin gastar nada.
+// Si hay un requisito de edificio sin cumplir, pivota a construirlo primero (recursivo 1 nivel).
+async function attemptBuild(kingdom, buildingId, cfg, now, reason) {
+  const def = BUILDINGS.find(b => b.id === buildingId)
+  if (!def) return { action: 'error', building: buildingId }
+
+  // Comprobar requisitos de edificio — pivotar al requisito si falta (máx 1 nivel de recursión)
+  if (def.requires?.length) {
+    const missingReq = def.requires.find(req =>
+      req.type === 'building' && (kingdom[req.id] ?? 0) < req.level
+    )
+    if (missingReq) {
+      return await attemptBuild(
+        kingdom, missingReq.id, cfg, now,
+        `Requisito para ${buildingId}: necesita ${missingReq.id} lv${missingReq.level}`
+      )
+    }
+  }
+
+  const currentLv = kingdom[buildingId] ?? 0
+  const nextLv    = currentLv + 1
+  const cost      = buildCost(def.woodBase, def.stoneBase, def.factor, currentLv, def.grainBase ?? 0)
+
+  if (kingdom.wood < cost.wood || kingdom.stone < cost.stone || kingdom.grain < (cost.grain ?? 0)) {
+    const d = `Ahorrando para ${buildingId} lv${nextLv} ` +
+      `(faltan: ${Math.max(0, cost.wood - kingdom.wood).toFixed(0)}m ` +
+      `${Math.max(0, cost.stone - kingdom.stone).toFixed(0)}p)`
+    await setDecision(kingdom.id, d)
+    return { action: 'saving', building: buildingId }
+  }
+
+  const newWood  = kingdom.wood  - cost.wood
+  const newStone = kingdom.stone - cost.stone
+  const newGrain = kingdom.grain - (cost.grain ?? 0)
+  const effect   = applyBuildingEffect(buildingId, nextLv, kingdom)
+
+  const cls       = npcClass(kingdom)
+  const isBoss    = kingdom.isBoss ?? false
+  const speed     = parseFloat(cfg.economy_speed ?? ECONOMY_SPEED)
+  const rawTime   = buildTime(cost.wood, cost.stone, nextLv, kingdom.workshop ?? 0, kingdom.engineersGuild ?? 0, speed)
+  const timeBonus = isBoss ? 0.5 : (cls === 'discoverer' ? 0.75 : 1.0)
+
+  await db.update(kingdoms).set({
+    ...effect,
+    wood: newWood, stone: newStone, grain: newGrain,
+    npcBuildAvailableAt: now + Math.max(30, Math.floor(rawTime * timeBonus)),
+    lastDecision: reason,
+    updatedAt: new Date(),
+  }).where(eq(kingdoms.id, kingdom.id))
+
+  return { action: 'built', building: buildingId, level: nextLv }
+}
+
+// Intenta entrenar la unidad de mayor prioridad que el NPC puede permitirse.
+// Si no puede pagarse ninguna, guarda sin gastar nada.
+async function attemptTrainTroops(kingdom, personality, cls) {
+  const costMult     = cls === 'general' ? 0.9 : 1.0
+  const maxUnitTypes = cls === 'general' ? 2 : 1
+  const batchCap     = 50
 
   const combatTotal    = [...UNIT_COMBAT_SET].reduce((s, u) => s + (kingdom[u] ?? 0), 0)
   const needMoreCombat = combatTotal < ATTACK_THRESHOLD[personality]
+  const researchLevels = npcResearch(kingdom)
 
-  // ── Unit training (combat first, then support+defense only after threshold) ─
-  // Support (merchant/caravan) and defense are blocked until the NPC has real
-  // combat units — otherwise cheap support units count towards armySize and
-  // NPCs "attack" with merchants, or crossbowmen drain wood before squire.
-  const maxUnitTypes = isBoss ? 3 : (cls === 'general' ? 2 : 1)
-  const batchCap     = isBoss ? 200 : 50
-  const costMult     = (isBoss || cls === 'general') ? 0.9 : 1.0
+  let { wood, stone, grain } = kingdom
+  const patch = {}
+  let totalTrained  = 0
+  let lastUnit      = ''
   let unitTypesTrained = 0
-
-  const researchLevels = npcResearch({ ...kingdom })
+  let firstAffordable = null  // primera unidad asequible encontrada (para el mensaje de ahorro)
 
   for (const unitId of UNIT_PRIORITY[personality]) {
     if (unitTypesTrained >= maxUnitTypes) break
@@ -216,6 +325,9 @@ async function growNpc(kingdom, cfg, now) {
     const effWood  = Math.ceil(cost.wood  * costMult)
     const effStone = Math.ceil(cost.stone * costMult)
     const effGrain = Math.ceil((cost.grain ?? 0) * costMult)
+
+    if (!firstAffordable) firstAffordable = { unitId, effWood, effStone }
+
     if (effWood > wood || effStone > stone || effGrain > grain) continue
 
     const canAfford = Math.min(
@@ -230,73 +342,157 @@ async function growNpc(kingdom, cfg, now) {
     stone -= effStone * batch
     grain -= effGrain * batch
     patch[unitId] = (kingdom[unitId] ?? 0) + batch
+    totalTrained  += batch
+    lastUnit       = unitId
     unitTypesTrained++
-
-    if      (UNIT_COMBAT_SET.has(unitId))  trainedCombat  = true
-    else if (UNIT_SUPPORT_SET.has(unitId)) trainedSupport = true
-    else if (UNIT_DEFENSE_SET.has(unitId)) trainedDefense = true
   }
 
-  // ── Building upgrade (after units, reserving squire cost while combat is low) ─
-  // When the NPC still needs combat units, buildings only get wood that is
-  // surplus above squireCost — so squire saving is never blocked by a build.
-  if (canBuild) {
-    const squireWoodReserve  = needMoreCombat ? Math.ceil((UNIT_COSTS.squire?.wood  ?? 3000) * costMult) : 0
-    const squireStoneReserve = needMoreCombat ? Math.ceil((UNIT_COSTS.squire?.stone ?? 1000) * costMult) : 0
-    const buildableWood  = wood  - squireWoodReserve
-    const buildableStone = stone - squireStoneReserve
+  if (totalTrained === 0) {
+    const target = firstAffordable
+      ? `${firstAffordable.unitId} ` +
+        `(faltan: ${Math.max(0, firstAffordable.effWood - kingdom.wood).toFixed(0)}m ` +
+        `${Math.max(0, firstAffordable.effStone - kingdom.stone).toFixed(0)}p)`
+      : `${UNIT_PRIORITY[personality][0]} (sin requisitos)`
+    const d = `Ahorrando para ${target}`
+    await setDecision(kingdom.id, d)
+    return { action: 'saving' }
+  }
 
-    const candidates = Object.entries(weights)
-      .map(([id, weight]) => {
-        const def = BUILDINGS.find(x => x.id === id)
-        if (!def) return null
-        const currentLv = kingdom[id] ?? 0
-        return { id, def, currentLv, score: currentLv / weight }
-      })
-      .filter(Boolean)
-      .sort((a, b) => a.score - b.score)
+  const d = `Entrenando ${lastUnit} (+${totalTrained})`
+  await db.update(kingdoms).set({
+    ...patch,
+    wood, stone, grain,
+    lastDecision: d,
+    updatedAt: new Date(),
+  }).where(eq(kingdoms.id, kingdom.id))
 
-    for (const { id, def, currentLv } of candidates) {
-      if (def.requires?.length) {
-        const blocked = def.requires.some(req => {
-          if (req.type !== 'building') return false
-          return (kingdom[req.id] ?? 0) < req.level
-        })
-        if (blocked) continue
-      }
+  return {
+    action:  'trained',
+    unit:    lastUnit,
+    count:   totalTrained,
+    isCombat:  UNIT_COMBAT_SET.has(lastUnit),
+    isSupport: UNIT_SUPPORT_SET.has(lastUnit),
+    isDefense: UNIT_DEFENSE_SET.has(lastUnit),
+  }
+}
 
-      const nextLv = currentLv + 1
-      const cost = buildCost(def.woodBase, def.stoneBase, def.factor, nextLv - 1, def.grainBase ?? 0)
+// Elige el edificio con mayor prioridad por peso. Si no puede pagarlo, ahorra sin gastar.
+async function attemptBuildWeighted(kingdom, personality, cfg, now) {
+  const weights = BUILD_WEIGHTS[personality]
 
-      if (buildableWood >= cost.wood && buildableStone >= cost.stone && grain >= (cost.grain ?? 0)) {
-        wood  -= cost.wood
-        stone -= cost.stone
-        grain -= (cost.grain ?? 0)
+  const candidates = Object.entries(weights)
+    .map(([id, weight]) => {
+      const def = BUILDINGS.find(x => x.id === id)
+      if (!def) return null
+      return { id, def, score: (kingdom[id] ?? 0) / weight }
+    })
+    .filter(Boolean)
+    .sort((a, b) => a.score - b.score)
 
-        const effect = applyBuildingEffect(id, nextLv, { ...kingdom, ...patch })
-        Object.assign(patch, effect)
+  for (const { id, def } of candidates) {
+    // Saltar si hay requisito de edificio no cumplido
+    if (def.requires?.length) {
+      const blocked = def.requires.some(req =>
+        req.type === 'building' && (kingdom[req.id] ?? 0) < req.level
+      )
+      if (blocked) continue
+    }
 
-        const workshopLv       = (patch.workshop       ?? kingdom.workshop)       ?? 0
-        const engineersGuildLv = (patch.engineersGuild ?? kingdom.engineersGuild) ?? 0
-        const rawTime  = buildTime(cost.wood, cost.stone, nextLv, workshopLv, engineersGuildLv, speed)
-        const timeBonus = isBoss ? 0.5 : (cls === 'discoverer' ? 0.75 : 1.0)
-        patch.npcBuildAvailableAt = now + Math.max(30, Math.floor(rawTime * timeBonus))
-        builtBuilding = true
-        break
-      }
+    const currentLv = kingdom[id] ?? 0
+    const nextLv    = currentLv + 1
+    const cost      = buildCost(def.woodBase, def.stoneBase, def.factor, currentLv, def.grainBase ?? 0)
+
+    if (kingdom.wood < cost.wood || kingdom.stone < cost.stone || kingdom.grain < (cost.grain ?? 0)) {
+      // No puede pagar el top candidato → ahorra (sin caer a uno más barato)
+      const d = `Ahorrando para ${id} lv${nextLv}`
+      await setDecision(kingdom.id, d)
+      return { action: 'saving', building: id }
+    }
+
+    return await attemptBuild(kingdom, id, cfg, now, `Crecimiento: ${id} → lv${nextLv}`)
+  }
+
+  const d = 'Sin edificios disponibles (bloqueados por requisitos)'
+  await setDecision(kingdom.id, d)
+  return { action: 'blocked' }
+}
+
+// ── Crecimiento del boss — sin hitos, máxima agresividad ──────────────────────
+async function growNpcBoss(kingdom, cfg, now) {
+  if (now < (kingdom.npcBuildAvailableAt ?? 0)) {
+    return { action: 'waiting' }
+  }
+  // Boss siempre intenta entrenar y si no puede, construye (sin ahorro forzado)
+  const result = await attemptTrainTroops(kingdom, 'military', 'general')
+  if (result.action === 'trained') return result
+  return await attemptBuildWeighted(kingdom, 'military', cfg, now)
+}
+
+// ── Máquina de estados en cascada — un NPC, una acción por tick ───────────────
+async function growNpc(kingdom, cfg, now) {
+  if (kingdom.isBoss) return await growNpcBoss(kingdom, cfg, now)
+
+  const personality = npcPersonality(kingdom)
+  const cls         = npcClass(kingdom)
+
+  // ── Nivel 0-A: cola de construcción ocupada ──────────────────────────────
+  const buildAvailable = kingdom.npcBuildAvailableAt ?? 0
+  if (now < buildAvailable) {
+    const minsLeft = Math.ceil((buildAvailable - now) / 60)
+    await setDecision(kingdom.id, `En cola de construcción (${minsLeft} min)`)
+    return { action: 'waiting' }
+  }
+
+  // ── Nivel 0-B: supervivencia — energía negativa ──────────────────────────
+  const energyBalance = calcEnergyBalance(kingdom)
+  if (energyBalance < 0) {
+    return await attemptBuild(
+      kingdom, 'windmill', cfg, now,
+      `Energía negativa (${energyBalance.toFixed(0)}): subir molino`
+    )
+  }
+
+  // ── Nivel 0-C: supervivencia — almacén al 90% ────────────────────────────
+  const storageChecks = [
+    { res: 'wood',  store: 'granary',    cap: 'woodCapacity'  },
+    { res: 'stone', store: 'stonehouse', cap: 'stoneCapacity' },
+    { res: 'grain', store: 'silo',       cap: 'grainCapacity' },
+  ]
+  for (const { res, store, cap } of storageChecks) {
+    if ((kingdom[res] ?? 0) >= (kingdom[cap] ?? 10000) * 0.9) {
+      return await attemptBuild(
+        kingdom, store, cfg, now,
+        `Almacén ${res} al 90%: subir ${store}`
+      )
     }
   }
 
-  if (Object.keys(patch).length > 0) {
-    await db.update(kingdoms).set({
-      ...patch,
-      wood, stone, grain,
-      lastResourceUpdate: now,
-      updatedAt: new Date(),
-    }).where(eq(kingdoms.id, kingdom.id))
+  // ── Nivel 1: hitos de personalidad ───────────────────────────────────────
+  const createdAtSec = kingdom.createdAt
+    ? Math.floor(new Date(kingdom.createdAt).getTime() / 1000)
+    : now
+  const ageHours = (now - createdAtSec) / 3600
+  const targets  = getTargetLevels(personality, ageHours)
+
+  for (const buildId of MILESTONE_ORDER) {
+    const targetLv  = targets[buildId] ?? 0
+    const currentLv = kingdom[buildId] ?? 0
+    if (currentLv < targetLv) {
+      return await attemptBuild(
+        kingdom, buildId, cfg, now,
+        `Hito: ${buildId} → lv${targetLv} (actual: ${currentLv})`
+      )
+    }
   }
 
-  return { builtBuilding, trainedCombat, trainedDefense, trainedSupport }
+  // ── Nivel 2: gasto de personalidad post-hitos ────────────────────────────
+  const flavor = getTickFlavor(personality, kingdom, ageHours)
+
+  if (flavor === 'troops') {
+    return await attemptTrainTroops(kingdom, personality, cls)
+  } else {
+    return await attemptBuildWeighted(kingdom, personality, cfg, now)
+  }
 }
 
 // ── Attack AI ─────────────────────────────────────────────────────────────────
@@ -924,15 +1120,18 @@ export default async function handler(req, res) {
 
   const npcUserId = npcUser.id
 
-  // Load all NPC kingdoms
-  const npcKingdoms = await db.select().from(kingdoms)
+  // Load ALL NPC kingdoms — needed for resolutions, resource tick and attack targeting
+  const allNpcKingdoms = await db.select().from(kingdoms)
     .where(eq(kingdoms.isNpc, true))
 
-  if (npcKingdoms.length === 0) return res.json({ ok: true, skipped: 'no_npc_kingdoms', seasonAction, repairAction })
+  if (allNpcKingdoms.length === 0) return res.json({ ok: true, skipped: 'no_npc_kingdoms', seasonAction, repairAction })
 
-  // Build lookup map by position
+  // Build lookup map by position (uses all kingdoms)
   const npcKingdomsById = {}
-  for (const k of npcKingdoms) npcKingdomsById[`${k.realm}:${k.region}:${k.slot}`] = k
+  for (const k of allNpcKingdoms) npcKingdomsById[`${k.realm}:${k.region}:${k.slot}`] = k
+
+  // NPCs due for AI processing this tick (npcNextCheck IS NULL or expired)
+  const npcsDue = allNpcKingdoms.filter(k => !k.npcNextCheck || k.npcNextCheck <= now)
 
   // Load all player kingdoms for attack target selection
   const playerKingdoms = await db.select({
@@ -945,7 +1144,7 @@ export default async function handler(req, res) {
   // All kingdoms (player + NPC) as attack targets, excluding the boss
   const allKingdoms = [
     ...playerKingdoms,
-    ...npcKingdoms.map(k => ({
+    ...allNpcKingdoms.map(k => ({
       id: k.id, userId: k.userId, name: k.name,
       isNpc: true, isBoss: k.isBoss ?? false,
       realm: k.realm, region: k.region, slot: k.slot,
@@ -1000,9 +1199,9 @@ export default async function handler(req, res) {
 
   // ── Per-NPC tick, growth, attack, scavenge and expedition ─────────────────
   let ticked = 0, builtBuilding = 0, trainedCombat = 0, trainedDefense = 0, trainedSupport = 0
-  let attacked = 0, scavenged = 0, expeditioned = 0
+  let attacked = 0, scavenged = 0, expeditioned = 0, saved = 0, waiting = 0
 
-  for (const kingdom of npcKingdoms) {
+  for (const kingdom of npcsDue) {
     try {
       // Resource tick — pass npcClass so tick.js applies collector +25% via same path as players
       const cls = npcClass(kingdom)
@@ -1030,12 +1229,26 @@ export default async function handler(req, res) {
         ticked++
       }
 
-      // Growth AI — returns what actions were taken
+      // Growth AI (cascade state machine) — one action per NPC per tick
       const growResult = await growNpc(kingdom, cfg, now)
-      if (growResult?.builtBuilding) builtBuilding++
-      if (growResult?.trainedCombat)  trainedCombat++
-      if (growResult?.trainedDefense) trainedDefense++
-      if (growResult?.trainedSupport) trainedSupport++
+      if (growResult?.action === 'built')   builtBuilding++
+      if (growResult?.action === 'trained') {
+        if (growResult.isCombat)  trainedCombat++
+        if (growResult.isSupport) trainedSupport++
+        if (growResult.isDefense) trainedDefense++
+      }
+      if (growResult?.action === 'saving')  saved++
+      if (growResult?.action === 'waiting') waiting++
+
+      // Schedule next AI processing window (8–12 min)
+      // Waiting NPCs get checked shortly after build completes instead of random delay
+      const delay = 480 + Math.floor(Math.random() * 240)
+      const nextCheck = (growResult?.action === 'waiting')
+        ? Math.min(now + delay, (kingdom.npcBuildAvailableAt ?? now) + 60)
+        : now + delay
+      await db.update(kingdoms)
+        .set({ npcNextCheck: nextCheck })
+        .where(eq(kingdoms.id, kingdom.id))
 
       // Attack AI
       if (NPC_AGGRESSION > 0 && allKingdoms.length > 1) {
@@ -1065,7 +1278,7 @@ export default async function handler(req, res) {
   // ── Debug breakdown ────────────────────────────────────────────────────────
   const byPersonality = { economy: 0, military: 0, balanced: 0 }
   const byClass = { collector: 0, general: 0, discoverer: 0 }
-  for (const k of npcKingdoms) {
+  for (const k of allNpcKingdoms) {
     byPersonality[npcPersonality(k)]++
     byClass[npcClass(k)]++
   }
@@ -1073,8 +1286,9 @@ export default async function handler(req, res) {
   // ── Persist tick result for admin monitor ─────────────────────────────────
   const tickResult = {
     at: now,
-    npcCount: npcKingdoms.length, ticked,
+    npcCount: allNpcKingdoms.length, processed: npcsDue.length, ticked,
     builtBuilding, trainedCombat, trainedDefense, trainedSupport,
+    saved, waiting,
     attacked, scavenged, expeditioned, npcExpeditionsResolved, npcVsNpcResolved, purged,
   }
   const MAX_HISTORY = 48

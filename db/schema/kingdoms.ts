@@ -82,6 +82,8 @@ export const kingdoms = pgTable('kingdoms', {
   npcBuildAvailableAt: integer('npc_build_available_at').default(0),
   npcLastBuildAt:      integer('npc_last_build_at').default(0).notNull(),
   npcLastAttackAt:     integer('npc_last_attack_at').default(0).notNull(),
+  npcNextCheck:        integer('npc_next_check'),
+  lastDecision:        varchar('last_decision', { length: 255 }),
 
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),

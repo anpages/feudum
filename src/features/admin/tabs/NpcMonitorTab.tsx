@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { adminService } from '../services/adminService'
 import { formatResource } from '@/lib/format'
-import type { NpcTickResult } from '../types'
+import type { NpcTickResult, NpcDecision } from '../types'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -256,6 +256,133 @@ function TickHistoryTable({ history }: { history: NpcTickResult[] }) {
   )
 }
 
+// ── NPC Decisions card ────────────────────────────────────────────────────────
+
+const DECISION_FILTERS = [
+  { key: 'all',      label: 'Todos'       },
+  { key: 'saving',   label: 'Ahorrando'   },
+  { key: 'waiting',  label: 'En cola'     },
+  { key: 'building', label: 'Construyendo' },
+  { key: 'training', label: 'Entrenando'  },
+] as const
+
+const PERSONALITY_BADGE: Record<string, { label: string; cls: string }> = {
+  economy:  { label: 'Eco', cls: 'text-forest-light bg-forest/10 border-forest/20' },
+  military: { label: 'Mil', cls: 'text-crimson-light bg-crimson/10 border-crimson/20' },
+  balanced: { label: 'Bal', cls: 'text-gold bg-gold/10 border-gold/20' },
+}
+
+function formatCountdown(secs: number) {
+  if (secs <= 0) return 'ahora'
+  if (secs < 60) return `${secs}s`
+  return `${Math.floor(secs / 60)}m ${secs % 60}s`
+}
+
+function decisionColor(text: string | null) {
+  if (!text) return 'text-ink-muted'
+  const t = text.toLowerCase()
+  if (t.startsWith('ahorrando'))   return 'text-ink-muted'
+  if (t.startsWith('en cola'))     return 'text-gold'
+  if (t.startsWith('entrenando'))  return 'text-crimson-light'
+  if (t.startsWith('energía'))     return 'text-crimson-light'
+  return 'text-forest-light'
+}
+
+function NpcDecisionsCard() {
+  const [filter, setFilter] = useState<string>('all')
+  const { data, isLoading } = useQuery({
+    queryKey: ['admin', 'npc-decisions', filter],
+    queryFn: () => adminService.getNpcDecisions(filter),
+    staleTime: 20_000,
+    refetchInterval: 30_000,
+    retry: false,
+  })
+
+  const totals = data?.totalByFilter ?? {}
+  const decisions: NpcDecision[] = data?.decisions ?? []
+
+  return (
+    <div className="card-medieval p-5 space-y-4">
+      <div className="card-corner-tr" /><div className="card-corner-bl" />
+
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h3 className="section-heading">Decisiones NPC</h3>
+        <span className="font-ui text-[0.6rem] text-ink-muted">refresca c/30s</span>
+      </div>
+
+      {/* Filter tabs */}
+      <div className="flex flex-wrap gap-1.5">
+        {DECISION_FILTERS.map(f => (
+          <button
+            key={f.key}
+            onClick={() => setFilter(f.key)}
+            className={`px-3 py-1 rounded-full font-ui text-xs border transition-colors ${
+              filter === f.key
+                ? 'bg-gold text-parchment border-gold font-semibold'
+                : 'bg-transparent text-ink-muted border-gold/20 hover:border-gold/50 hover:text-ink'
+            }`}
+          >
+            {f.label}
+            {totals[f.key] != null && (
+              <span className={`ml-1.5 tabular-nums ${filter === f.key ? 'text-parchment/80' : 'text-ink-muted'}`}>
+                {totals[f.key]}
+              </span>
+            )}
+          </button>
+        ))}
+      </div>
+
+      {/* Table */}
+      {isLoading ? (
+        <div className="skeleton h-32 rounded-lg" />
+      ) : decisions.length === 0 ? (
+        <p className="font-ui text-xs text-ink-muted text-center py-6">Sin NPCs en esta categoría.</p>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="border-b border-gold/10 font-ui text-ink-muted uppercase tracking-wider text-[0.6rem]">
+                <th className="text-left py-2 px-2">NPC</th>
+                <th className="text-left py-2 px-2 hidden sm:table-cell">Coord.</th>
+                <th className="text-left py-2 px-2">Decisión</th>
+                <th className="text-right py-2 px-2 whitespace-nowrap">Próx. check</th>
+              </tr>
+            </thead>
+            <tbody>
+              {decisions.map(d => {
+                const pb = PERSONALITY_BADGE[d.personality] ?? PERSONALITY_BADGE.balanced
+                return (
+                  <tr key={d.id} className="border-b border-gold/5 hover:bg-parchment-warm/20 transition-colors">
+                    <td className="py-2 px-2">
+                      <div className="flex items-center gap-1.5">
+                        <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[0.6rem] font-semibold border ${pb.cls}`}>
+                          {pb.label}
+                        </span>
+                        <span className="font-ui text-ink font-medium truncate max-w-[90px]">{d.name}</span>
+                      </div>
+                    </td>
+                    <td className="py-2 px-2 text-ink-muted tabular-nums hidden sm:table-cell">
+                      {d.realm}:{d.region}:{d.slot}
+                    </td>
+                    <td className="py-2 px-2 max-w-[200px]">
+                      <span className={`font-ui truncate block ${decisionColor(d.lastDecision)}`} title={d.lastDecision ?? ''}>
+                        {d.lastDecision ?? <span className="text-ink-muted italic">sin decisión</span>}
+                      </span>
+                    </td>
+                    <td className="py-2 px-2 text-right tabular-nums text-ink-muted whitespace-nowrap">
+                      {d.npcNextCheck ? formatCountdown(d.secsUntilNext) : '—'}
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── Main tab ──────────────────────────────────────────────────────────────────
 
 export function NpcMonitorTab() {
@@ -442,6 +569,9 @@ export function NpcMonitorTab() {
           <MissionBadge label="Carroñeo activo"      count={scavActive}   color="text-forest-light" />
         </div>
       </div>
+
+      {/* ── NPC Decisions ───────────────────────────────────────────────────── */}
+      <NpcDecisionsCard />
 
       {/* ── Tick history ────────────────────────────────────────────────────── */}
       {tickHistory.length > 0 && (

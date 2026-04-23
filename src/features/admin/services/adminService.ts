@@ -1,5 +1,5 @@
 import { http } from '@/shared/services/http'
-import type { AdminSettings, AdminUser, AdminMission, AdminBattlesResponse, AdminExpeditionsResponse, NpcProfileResponse, NpcStatsResponse } from '../types'
+import type { AdminSettings, AdminUser, AdminMission, AdminBattlesResponse, AdminExpeditionsResponse, NpcProfileResponse, NpcStatsResponse, NpcDecisionsResponse } from '../types'
 
 export const adminService = {
   getSettings: () => http.get<AdminSettings>('/admin/settings'),
@@ -29,4 +29,6 @@ export const adminService = {
   getNpcProfile: (realm: number, region: number, slot: number) =>
     http.get<NpcProfileResponse>(`/admin/npc-profile?realm=${realm}&region=${region}&slot=${slot}`),
   getNpcStats: () => http.get<NpcStatsResponse>('/admin/npc-stats'),
+  getNpcDecisions: (filter?: string) =>
+    http.get<NpcDecisionsResponse>(`/admin/npc-decisions${filter && filter !== 'all' ? `?filter=${filter}` : ''}`),
 }

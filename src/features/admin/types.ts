@@ -173,17 +173,39 @@ export interface AdminExpeditionsResponse {
 export interface NpcTickResult {
   at: number
   npcCount: number
+  processed: number
   ticked: number
   builtBuilding: number
   trainedCombat: number
   trainedDefense: number
   trainedSupport: number
+  saved: number
+  waiting: number
   attacked: number
   scavenged: number
   expeditioned: number
   npcExpeditionsResolved: number
   npcVsNpcResolved: number
   purged: number
+}
+
+export interface NpcDecision {
+  id: string
+  name: string
+  realm: number
+  region: number
+  slot: number
+  lastDecision: string | null
+  npcNextCheck: number | null
+  npcLevel: number
+  personality: 'economy' | 'military' | 'balanced'
+  secsUntilNext: number
+}
+
+export interface NpcDecisionsResponse {
+  decisions: NpcDecision[]
+  totalByFilter: Record<string, number>
+  now: number
 }
 
 export interface NpcAggregate {
