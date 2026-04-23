@@ -1,4 +1,4 @@
-import { eq, and } from 'drizzle-orm'
+import { eq, and, asc } from 'drizzle-orm'
 import { db, kingdoms, buildingQueue, users } from '../_db.js'
 import { getSessionUserId } from '../lib/handler.js'
 import { BUILDINGS, buildCost, buildTime, buildingRequirementsMet, calcFieldMax, calcFieldsUsed } from '../lib/buildings.js'
@@ -13,7 +13,7 @@ export default async function handler(req, res) {
   const userId = await getSessionUserId(req)
   if (!userId) return res.status(401).json({ error: 'No autenticado' })
 
-  const { building: buildingId } = req.body ?? {}
+  const { building: buildingId, kingdomId: reqKingdomId } = req.body ?? {}
   if (!buildingId) return res.status(400).json({ error: 'Falta el parámetro building' })
 
   const def = BUILDINGS.find(b => b.id === buildingId)
@@ -22,8 +22,12 @@ export default async function handler(req, res) {
   // Apply any completed queues so this mutation sees authoritative state.
   await processUserQueues(userId)
 
+  const kingdomQuery = reqKingdomId
+    ? db.select().from(kingdoms).where(and(eq(kingdoms.id, reqKingdomId), eq(kingdoms.userId, userId))).limit(1)
+    : db.select().from(kingdoms).where(eq(kingdoms.userId, userId)).orderBy(asc(kingdoms.createdAt)).limit(1)
+
   const [[kingdomRow], resMap, [userRow], cfg] = await Promise.all([
-    db.select().from(kingdoms).where(eq(kingdoms.userId, userId)).limit(1),
+    kingdomQuery,
     getResearchMap(userId),
     db.select({ characterClass: users.characterClass }).from(users).where(eq(users.id, userId)).limit(1),
     getSettings(),

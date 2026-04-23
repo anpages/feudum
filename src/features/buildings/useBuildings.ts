@@ -53,7 +53,7 @@ export function useUpgradeBuilding() {
 
   return useMutation({
     mutationKey: ['mutate', 'building'],
-    mutationFn: (buildingId: string) => buildingsService.upgrade(buildingId),
+    mutationFn: (buildingId: string) => buildingsService.upgrade(buildingId, activeId),
 
     onMutate: async (buildingId: string) => {
       await qc.cancelQueries({ queryKey: key })
@@ -79,6 +79,20 @@ export function useUpgradeBuilding() {
       }
 
       return { prev }
+    },
+
+    onSuccess: (data, buildingId) => {
+      if (!data?.finishesAt) return
+      qc.setQueryData<BuildingsResponse>(key, (prev) => {
+        if (!prev) return prev
+        return {
+          ...prev,
+          buildings: prev.buildings.map(b => {
+            if (b.id !== buildingId || !b.inQueue) return b
+            return { ...b, inQueue: { ...b.inQueue, startedAt: data.finishesAt - data.timeSeconds, finishesAt: data.finishesAt } }
+          }),
+        }
+      })
     },
 
     onError: (_err, _buildingId, context) => {
