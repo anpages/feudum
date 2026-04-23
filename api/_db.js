@@ -223,7 +223,7 @@ export const battleLog = pgTable('battle_log', {
 
 export const seasonSnapshots = pgTable('season_snapshots', {
   id:               uuid('id').primaryKey().defaultRandom(),
-  userId:           uuid('user_id').references(() => users.id, { onDelete: 'set null' }),
+  userId:           uuid('user_id'),  // no FK — historical data, user may be deleted
   seasonNumber:     integer('season_number').notNull(),
   username:         varchar('username', { length: 50 }),
   rank:             integer('rank'),
