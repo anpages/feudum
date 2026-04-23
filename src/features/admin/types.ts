@@ -210,6 +210,7 @@ export interface CombatEngineTick {
   at: number
   npcVsNpcResolved: number
   npcExpeditionsResolved: number
+  npcSpiesResolved: number
   purged: number
   intruderCount: number
 }
@@ -220,6 +221,7 @@ export interface MilitaryAiTick {
   attacked: number
   scavenged: number
   expeditioned: number
+  colonized: number
 }
 
 export interface CronData<T> {
@@ -253,6 +255,10 @@ export interface NpcAggregate {
   withMerchant: number
   withCaravan: number
   withScavenger: number
+  withScout: number
+  totalScout: number
+  withColonist: number
+  totalColonist: number
   // All 15 buildings avg/max
   avgSawmill: number;       maxSawmill: number
   avgQuarry: number;        maxQuarry: number

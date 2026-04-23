@@ -41,7 +41,7 @@ async function getExpeditionDepletion(now) {
 
 // ── Attack AI ─────────────────────────────────────────────────────────────────
 
-async function attackAI(npcKingdom, researchRow, allKingdoms, bashMap, now, cfg) {
+async function attackAI(npcKingdom, researchRow, allKingdoms, bashMap, spyMap, now, cfg) {
   if (npcKingdom.isBoss) return false
   if (NPC_AGGRESSION === 0) return false
 
@@ -127,6 +127,52 @@ async function attackAI(npcKingdom, researchRow, allKingdoms, bashMap, now, cfg)
   const travelSecs    = calcDuration(dist, force, 100, universeSpeed, researchRow, npcCharClass)
   const arrivalTime   = now + travelSecs
 
+  // Espionaje previo al ataque — NPCs con exploradores evalúan riesgo antes de atacar
+  if ((npcKingdom.scout ?? 0) > 0 && !npcKingdom.isBoss) {
+    const spyState = spyMap[npcKingdom.userId]
+    const targetKey = `${target.realm}:${target.region}:${target.slot}`
+
+    if (spyState?.inFlight) {
+      return false // espía en ruta — esperar resultado
+    }
+
+    if (spyState?.result && spyState.targetKey === targetKey) {
+      // Tenemos inteligencia reciente sobre este objetivo — evaluar riesgo
+      const atkTotal   = Object.values(force).reduce((s, n) => s + n, 0)
+      const defUnits   = Object.values(spyState.result.units   ?? {}).reduce((s, n) => s + n, 0)
+      const defDefense = Object.values(spyState.result.defense ?? {}).reduce((s, n) => s + n, 0)
+      const totalDef   = defUnits + defDefense
+      const riskRatio  = { economy: 1.5, balanced: 0.8, military: 0.5 }[personality] ?? 0.8
+      if (totalDef > 0 && atkTotal < totalDef * riskRatio) {
+        return false // demasiado arriesgado — abortar
+      }
+      // Riesgo aceptable → proceder con el ataque (fall through)
+    } else {
+      // Sin inteligencia para este objetivo → enviar explorador primero
+      const scouts = Math.min(2, npcKingdom.scout ?? 0)
+      const spyDist     = calcDistance(npcKingdom, target)
+      const spyTravelSecs = calcDuration(spyDist, { scout: scouts }, 100, universeSpeed, researchRow, null)
+      await db.insert(armyMissions).values({
+        userId:       npcKingdom.userId,
+        missionType:  'spy',
+        state:        'active',
+        startRealm:   npcKingdom.realm,
+        startRegion:  npcKingdom.region,
+        startSlot:    npcKingdom.slot,
+        targetRealm:  target.realm,
+        targetRegion: target.region,
+        targetSlot:   target.slot,
+        departureTime: now,
+        arrivalTime:  now + spyTravelSecs,
+        units: { scout: scouts },
+      })
+      await upsertUnit(npcKingdom.id, 'scout', (npcKingdom.scout ?? 0) - scouts)
+      npcKingdom.scout = (npcKingdom.scout ?? 0) - scouts
+      spyMap[npcKingdom.userId] = { inFlight: true, result: null, targetKey }
+      return false // ataque aplazado hasta que vuelva el espía
+    }
+  }
+
   await db.insert(armyMissions).values({
     userId:       npcKingdom.userId,
     missionType:  'attack',
@@ -166,10 +212,10 @@ async function attackAI(npcKingdom, researchRow, allKingdoms, bashMap, now, cfg)
 
 // ── Scavenge AI ───────────────────────────────────────────────────────────────
 
-async function scavengeAI(npcKingdom, allDebris, now, cfg) {
+async function scavengeAI(npcKingdom, allDebris, now, cfg, probability = 0.40) {
   const scavengerCount = npcKingdom.scavenger ?? 0
   if (scavengerCount === 0) return false
-  if (Math.random() > 0.40) return false
+  if (Math.random() > probability) return false
 
   const existing = await db.select({ id: armyMissions.id }).from(armyMissions).where(and(
     eq(armyMissions.missionType, 'scavenge'),
@@ -303,6 +349,64 @@ async function expeditionAI(npcKingdom, researchRow, depletionMap, now, cfg) {
   return true
 }
 
+// ── Colonize AI ───────────────────────────────────────────────────────────────
+
+async function colonizeAI(npcKingdom, allKingdoms, colonizeActiveSet, colonizePendingSlots, researchRow, now, cfg) {
+  if ((npcKingdom.colonist ?? 0) === 0) return false
+  if (colonizeActiveSet.has(npcKingdom.userId)) return false
+
+  // Limit: max 2 kingdoms per NPC user
+  const ownedCount = allKingdoms.filter(k => k.userId === npcKingdom.userId).length
+  if (ownedCount >= 2) return false
+
+  // Find nearest empty slot — same region first, then adjacent
+  const { realm, region } = npcKingdom
+  const takenSlots = new Set(allKingdoms.map(k => `${k.realm}:${k.region}:${k.slot}`))
+
+  let targetCoord = null
+  outer: for (let offset = 0; offset <= 3 && !targetCoord; offset++) {
+    for (const r of [...new Set([region, region + offset, region - offset])]) {
+      if (r < 1 || r > 10) continue
+      for (let slot = 1; slot <= 15; slot++) {
+        const key = `${realm}:${r}:${slot}`
+        if (!takenSlots.has(key) && !colonizePendingSlots.has(key)) {
+          targetCoord = { realm, region: r, slot }
+          break outer
+        }
+      }
+    }
+  }
+  if (!targetCoord) return false
+
+  const force = { colonist: 1 }
+  const universeSpeed = parseFloat(cfg.fleet_speed_peaceful ?? cfg.fleet_speed_war ?? 1)
+  const dist       = calcDistance(npcKingdom, targetCoord)
+  const travelSecs = calcDuration(dist, force, 100, universeSpeed, researchRow, null)
+
+  await db.insert(armyMissions).values({
+    userId:       npcKingdom.userId,
+    missionType:  'colonize',
+    state:        'active',
+    startRealm:   npcKingdom.realm,
+    startRegion:  npcKingdom.region,
+    startSlot:    npcKingdom.slot,
+    targetRealm:  targetCoord.realm,
+    targetRegion: targetCoord.region,
+    targetSlot:   targetCoord.slot,
+    departureTime: now,
+    arrivalTime:  now + travelSecs,
+    units: force,
+  })
+
+  await upsertUnit(npcKingdom.id, 'colonist', 0)
+  npcKingdom.colonist = 0
+
+  colonizeActiveSet.add(npcKingdom.userId)
+  colonizePendingSlots.add(`${targetCoord.realm}:${targetCoord.region}:${targetCoord.slot}`)
+
+  return true
+}
+
 // ── Handler ───────────────────────────────────────────────────────────────────
 
 export default async function handler(req, res) {
@@ -331,6 +435,54 @@ export default async function handler(req, res) {
 
   const npcKingdomIds = npcRows.map(r => r.k.id)
   const npcUserIds    = npcRows.map(r => r.k.userId)
+
+  // Spy missions from last 2h — used to decide if NPC should send scout before attacking
+  const recentSpyMissions = npcUserIds.length
+    ? await db.select({
+        userId:       armyMissions.userId,
+        targetRealm:  armyMissions.targetRealm,
+        targetRegion: armyMissions.targetRegion,
+        targetSlot:   armyMissions.targetSlot,
+        state:        armyMissions.state,
+        result:       armyMissions.result,
+      }).from(armyMissions)
+        .where(and(
+          inArray(armyMissions.userId, npcUserIds),
+          eq(armyMissions.missionType, 'spy'),
+          gte(armyMissions.departureTime, now - 7200),
+        ))
+    : []
+
+  // spyMap: userId → { inFlight, result, targetKey }
+  const spyMap = {}
+  for (const s of recentSpyMissions) {
+    if (!spyMap[s.userId]) spyMap[s.userId] = { inFlight: false, result: null, targetKey: null }
+    if (s.state === 'active') {
+      spyMap[s.userId].inFlight = true
+    } else if (s.state === 'returning' && s.result && !spyMap[s.userId].result) {
+      try {
+        spyMap[s.userId].result    = JSON.parse(s.result)
+        spyMap[s.userId].targetKey = `${s.targetRealm}:${s.targetRegion}:${s.targetSlot}`
+      } catch {}
+    }
+  }
+
+  // Active colonize missions — to avoid duplicate colonist training/dispatch
+  const activeColonizeMissions = npcUserIds.length
+    ? await db.select({
+        userId:       armyMissions.userId,
+        targetRealm:  armyMissions.targetRealm,
+        targetRegion: armyMissions.targetRegion,
+        targetSlot:   armyMissions.targetSlot,
+      }).from(armyMissions)
+        .where(and(
+          inArray(armyMissions.userId, npcUserIds),
+          eq(armyMissions.missionType, 'colonize'),
+          eq(armyMissions.state, 'active'),
+        ))
+    : []
+  const colonizeActiveSet    = new Set(activeColonizeMissions.map(m => m.userId))
+  const colonizePendingSlots = new Set(activeColonizeMissions.map(m => `${m.targetRealm}:${m.targetRegion}:${m.targetSlot}`))
 
   const [allBuildings, allUnitsRows, allResearchRows] = await Promise.all([
     db.select().from(buildings).where(inArray(buildings.kingdomId, npcKingdomIds)),
@@ -421,32 +573,57 @@ export default async function handler(req, res) {
 
   // ── Per-NPC AI loop ──────────────────────────────────────────────────────
   let attacked = 0, scavenged = 0, expeditioned = 0
+  let colonized = 0
 
   for (const kingdom of allNpcKingdoms) {
     try {
       const researchRow = researchByUser[kingdom.userId] ?? EMPTY_RESEARCH
+      const personality = npcPersonality(kingdom)
+      const cls         = npcClass(kingdom)
 
+      // 1. Carroñeo prioritario — collector/economy actúan antes de atacar
+      if ((cls === 'collector' || personality === 'economy') && allDebris.length > 0) {
+        const prob = cls === 'collector' ? 0.80 : 0.60
+        const claimedId = await scavengeAI(kingdom, allDebris, now, cfg, prob)
+        if (claimedId) {
+          scavenged++
+          const idx = allDebris.findIndex(d => d.id === claimedId)
+          if (idx >= 0) allDebris.splice(idx, 1)
+        }
+      }
+
+      // 2. Ataque (con espionaje previo si tiene exploradores)
       if (NPC_AGGRESSION > 0 && allKingdoms.length > 1) {
-        const launched = await attackAI(kingdom, researchRow, allKingdoms, bashMap, now, cfg)
+        const launched = await attackAI(kingdom, researchRow, allKingdoms, bashMap, spyMap, now, cfg)
         if (launched) attacked++
       }
 
-      const claimedDebrisId = await scavengeAI(kingdom, allDebris, now, cfg)
-      if (claimedDebrisId) {
-        scavenged++
-        const idx = allDebris.findIndex(d => d.id === claimedDebrisId)
-        if (idx >= 0) allDebris.splice(idx, 1)
+      // 3. Carroñeo secundario — military/balanced después de atacar
+      if (cls !== 'collector' && personality !== 'economy' && allDebris.length > 0) {
+        const prob = personality === 'military' ? 0.20 : 0.40
+        const claimedId = await scavengeAI(kingdom, allDebris, now, cfg, prob)
+        if (claimedId) {
+          scavenged++
+          const idx = allDebris.findIndex(d => d.id === claimedId)
+          if (idx >= 0) allDebris.splice(idx, 1)
+        }
       }
 
+      // 4. Colonización — si tiene colonizador y slot disponible
+      const didColonize = await colonizeAI(kingdom, allKingdoms, colonizeActiveSet, colonizePendingSlots, researchRow, now, cfg)
+      if (didColonize) colonized++
+
+      // 5. Expedición
       const didExpedition = await expeditionAI(kingdom, researchRow, depletionMap, now, cfg)
       if (didExpedition) expeditioned++
+
     } catch (err) {
       console.error(`[npc-military-ai] kingdom ${kingdom.id} error:`, err?.message ?? err)
     }
   }
 
   // Persist tick for admin monitor
-  const militaryTick = { at: now, npcCount: allNpcKingdoms.length, attacked, scavenged, expeditioned }
+  const militaryTick = { at: now, npcCount: allNpcKingdoms.length, attacked, scavenged, expeditioned, colonized }
   const MAX_HISTORY = 48
   let militaryHistory = []
   try { const raw = cfg.military_ai_tick_history; if (raw) militaryHistory = JSON.parse(raw) } catch { militaryHistory = [] }
@@ -460,6 +637,6 @@ export default async function handler(req, res) {
   return res.json({
     ok: true, at: now,
     npcCount: allNpcKingdoms.length,
-    attacked, scavenged, expeditioned,
+    attacked, scavenged, expeditioned, colonized,
   })
 }

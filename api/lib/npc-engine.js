@@ -67,6 +67,8 @@ export const UNIT_COSTS = {
   merchant:    { wood: 2000,    stone: 2000,   grain: 0    },
   caravan:     { wood: 6000,    stone: 6000,   grain: 0    },
   scavenger:   { wood: 10000,   stone: 6000,   grain: 2000 },
+  scout:    { wood: 0,     stone: 1000,  grain: 0     },
+  colonist: { wood: 10000, stone: 20000, grain: 10000 },
 }
 
 // ── Build / unit priorities per personality ───────────────────────────────────

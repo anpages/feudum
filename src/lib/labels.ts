@@ -6,7 +6,7 @@ export const BUILDING_LABELS: Record<string, string> = {
   cathedral: 'Catedral',
   workshop: 'Taller',
   engineersGuild: 'Gremio de Ingenieros',
-  barracks: 'Barracones',
+  barracks: 'Cuartel',
   granary: 'Granero',
   stonehouse: 'Casa de Piedra',
   silo: 'Silo',

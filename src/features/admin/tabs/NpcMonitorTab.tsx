@@ -274,6 +274,7 @@ function CombatHistoryTable({ history }: { history: CombatEngineTick[] }) {
               <th className="text-left py-2 px-2 whitespace-nowrap">Hora</th>
               <th className="text-right py-2 px-2">NPC vs NPC</th>
               <th className="text-right py-2 px-2">Exped. res.</th>
+              <th className="text-right py-2 px-2">Espías res.</th>
               <th className="text-right py-2 px-2">Purgadas</th>
               <th className="text-right py-2 px-2">Intrusiones</th>
             </tr>
@@ -287,6 +288,7 @@ function CombatHistoryTable({ history }: { history: CombatEngineTick[] }) {
                 </td>
                 <td className={`py-1.5 px-2 text-right tabular-nums ${t.npcVsNpcResolved > 0 ? 'text-crimson-light font-semibold' : 'text-ink-muted'}`}>{t.npcVsNpcResolved}</td>
                 <td className={`py-1.5 px-2 text-right tabular-nums ${t.npcExpeditionsResolved > 0 ? 'text-gold font-semibold' : 'text-ink-muted'}`}>{t.npcExpeditionsResolved}</td>
+                <td className={`py-1.5 px-2 text-right tabular-nums ${(t.npcSpiesResolved ?? 0) > 0 ? 'text-gold font-semibold' : 'text-ink-muted'}`}>{t.npcSpiesResolved ?? 0}</td>
                 <td className="py-1.5 px-2 text-right tabular-nums text-ink-muted">{t.purged}</td>
                 <td className={`py-1.5 px-2 text-right tabular-nums ${t.intruderCount > 0 ? 'text-crimson-light font-semibold' : 'text-ink-muted'}`}>{t.intruderCount}</td>
               </tr>
@@ -323,6 +325,7 @@ function MilitaryHistoryTable({ history }: { history: MilitaryAiTick[] }) {
               <th className="text-right py-2 px-2">Ataques</th>
               <th className="text-right py-2 px-2">Carroñeos</th>
               <th className="text-right py-2 px-2">Expediciones</th>
+              <th className="text-right py-2 px-2">Coloniz.</th>
             </tr>
           </thead>
           <tbody>
@@ -336,6 +339,7 @@ function MilitaryHistoryTable({ history }: { history: MilitaryAiTick[] }) {
                 <td className={`py-1.5 px-2 text-right tabular-nums ${t.attacked > 0 ? 'text-crimson-light font-semibold' : 'text-ink-muted'}`}>{t.attacked}</td>
                 <td className={`py-1.5 px-2 text-right tabular-nums ${t.scavenged > 0 ? 'text-forest-light font-semibold' : 'text-ink-muted'}`}>{t.scavenged}</td>
                 <td className={`py-1.5 px-2 text-right tabular-nums ${t.expeditioned > 0 ? 'text-gold font-semibold' : 'text-ink-muted'}`}>{t.expeditioned}</td>
+                <td className={`py-1.5 px-2 text-right tabular-nums ${(t.colonized ?? 0) > 0 ? 'text-gold-light font-semibold' : 'text-ink-muted'}`}>{t.colonized ?? 0}</td>
               </tr>
             ))}
           </tbody>
@@ -381,7 +385,7 @@ function decisionColor(text: string | null) {
   return 'text-forest-light'
 }
 
-const DECISIONS_PAGE = 20
+const DECISIONS_PAGE = 10
 
 function NpcDecisionsCard() {
   const [filter, setFilter] = useState<string>('all')
@@ -539,12 +543,15 @@ export function NpcMonitorTab() {
   const FRESH_COMBAT   = 150
   const FRESH_MILITARY = 1500  // 25 min (runs every 20 min)
 
-  const attackActive  = (agg.missionCounts['attack:active']       ?? 0)
-  const expedActive   = (agg.missionCounts['expedition:active']    ?? 0)
-                      + (agg.missionCounts['expedition:exploring'] ?? 0)
-                      + (agg.missionCounts['expedition:returning'] ?? 0)
-  const scavActive    = (agg.missionCounts['scavenge:active']      ?? 0)
-  const totalMissions = attackActive + expedActive + scavActive
+  const attackActive   = (agg.missionCounts['attack:active']        ?? 0)
+  const expedActive    = (agg.missionCounts['expedition:active']    ?? 0)
+                       + (agg.missionCounts['expedition:exploring'] ?? 0)
+                       + (agg.missionCounts['expedition:returning'] ?? 0)
+  const scavActive     = (agg.missionCounts['scavenge:active']      ?? 0)
+  const spyActive      = (agg.missionCounts['spy:active']           ?? 0)
+                       + (agg.missionCounts['spy:returning']        ?? 0)
+  const colonizeActive = (agg.missionCounts['colonize:active']      ?? 0)
+  const totalMissions  = attackActive + expedActive + scavActive + spyActive + colonizeActive
 
   return (
     <div className="space-y-6">
@@ -572,6 +579,7 @@ export function NpcMonitorTab() {
           pills={combatTick ? [
             { label: 'NPC vs NPC', value: combatTick.npcVsNpcResolved,       color: combatTick.npcVsNpcResolved > 0       ? 'text-crimson-light' : 'text-ink-muted' },
             { label: 'exped.',     value: combatTick.npcExpeditionsResolved,  color: combatTick.npcExpeditionsResolved > 0 ? 'text-gold'          : 'text-ink-muted' },
+            { label: 'espías',     value: combatTick.npcSpiesResolved ?? 0,   color: (combatTick.npcSpiesResolved ?? 0) > 0 ? 'text-gold'         : 'text-ink-muted' },
             { label: 'intrus.',    value: combatTick.intruderCount,           color: combatTick.intruderCount > 0          ? 'text-crimson-light' : 'text-ink-muted' },
           ] : []}
         />
@@ -581,9 +589,10 @@ export function NpcMonitorTab() {
           lastAt={militaryTick?.at ?? null} now={now}
           fresh={!!militaryTick && (now - militaryTick.at) < FRESH_MILITARY}
           pills={militaryTick ? [
-            { label: 'ataques',    value: militaryTick.attacked,    color: militaryTick.attacked    > 0 ? 'text-crimson-light' : 'text-ink-muted' },
-            { label: 'carroñeos', value: militaryTick.scavenged,   color: militaryTick.scavenged   > 0 ? 'text-forest-light'  : 'text-ink-muted' },
-            { label: 'exped.',    value: militaryTick.expeditioned, color: militaryTick.expeditioned > 0 ? 'text-gold'         : 'text-ink-muted' },
+            { label: 'ataques',    value: militaryTick.attacked,           color: militaryTick.attacked           > 0 ? 'text-crimson-light' : 'text-ink-muted' },
+            { label: 'carroñeos', value: militaryTick.scavenged,          color: militaryTick.scavenged          > 0 ? 'text-forest-light'  : 'text-ink-muted' },
+            { label: 'exped.',    value: militaryTick.expeditioned,        color: militaryTick.expeditioned       > 0 ? 'text-gold'          : 'text-ink-muted' },
+            { label: 'coloniz.',  value: militaryTick.colonized ?? 0,      color: (militaryTick.colonized ?? 0)   > 0 ? 'text-gold-light'    : 'text-ink-muted' },
           ] : []}
         />
       </div>
@@ -613,7 +622,7 @@ export function NpcMonitorTab() {
             ['Catedral',            agg.avgCathedral,      agg.maxCathedral,      10],
             ['Taller',              agg.avgWorkshop,       agg.maxWorkshop,       10],
             ['Gremio de Ingenieros',agg.avgEngineersGuild, agg.maxEngineersGuild,  8],
-            ['Barracones',          agg.avgBarracks,       agg.maxBarracks,       10],
+            ['Cuartel',             agg.avgBarracks,       agg.maxBarracks,       10],
             ['Academia',            agg.avgAcademy,        agg.maxAcademy,        10],
             ['Granero',             agg.avgGranary,        agg.maxGranary,        10],
             ['Casa de Piedra',      agg.avgStonehouse,     agg.maxStonehouse,     10],
@@ -709,9 +718,11 @@ export function NpcMonitorTab() {
           <div className="card-corner-tr" /><div className="card-corner-bl" />
           <h3 className="section-heading">Unidades de apoyo</h3>
           <div className="space-y-3">
-            <UnitAdoptionRow label="Mercader"  withUnit={agg.withMerchant}  total={agg.total} totalUnits={agg.totalMerchant}  />
-            <UnitAdoptionRow label="Caravana"  withUnit={agg.withCaravan}   total={agg.total} totalUnits={agg.totalCaravan}   />
-            <UnitAdoptionRow label="Carroñero" withUnit={agg.withScavenger} total={agg.total} totalUnits={agg.totalScavenger} />
+            <UnitAdoptionRow label="Mercader"   withUnit={agg.withMerchant}  total={agg.total} totalUnits={agg.totalMerchant}  />
+            <UnitAdoptionRow label="Caravana"   withUnit={agg.withCaravan}   total={agg.total} totalUnits={agg.totalCaravan}   />
+            <UnitAdoptionRow label="Carroñero"  withUnit={agg.withScavenger} total={agg.total} totalUnits={agg.totalScavenger} />
+            <UnitAdoptionRow label="Explorador" withUnit={agg.withScout}     total={agg.total} totalUnits={agg.totalScout}     color="bg-gold/60" />
+            <UnitAdoptionRow label="Colonista"  withUnit={agg.withColonist}  total={agg.total} totalUnits={agg.totalColonist}  color="bg-gold-light/60" />
           </div>
           {agg.withMerchant === 0 && agg.withCaravan === 0 && agg.withScavenger === 0 && (
             <p className="font-body text-xs text-ink-muted italic pt-1">
@@ -764,10 +775,12 @@ export function NpcMonitorTab() {
       <div className="card-medieval p-5 space-y-3">
         <div className="card-corner-tr" /><div className="card-corner-bl" />
         <h3 className="section-heading">Misiones activas</h3>
-        <div className="grid grid-cols-3 gap-3">
-          <MissionBadge label="Ataques en curso"     count={attackActive} color="text-crimson-light" />
-          <MissionBadge label="Expediciones activas" count={expedActive}  color="text-gold" />
-          <MissionBadge label="Carroñeo activo"      count={scavActive}   color="text-forest-light" />
+        <div className="grid grid-cols-3 sm:grid-cols-5 gap-3">
+          <MissionBadge label="Ataques"      count={attackActive}   color="text-crimson-light" />
+          <MissionBadge label="Carroñeo"     count={scavActive}     color="text-forest-light" />
+          <MissionBadge label="Expediciones" count={expedActive}    color="text-gold" />
+          <MissionBadge label="Espías"       count={spyActive}      color="text-gold" />
+          <MissionBadge label="Coloniz."     count={colonizeActive} color="text-gold-light" />
         </div>
       </div>
 

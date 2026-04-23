@@ -137,10 +137,12 @@ export default async function handler(req, res) {
   const combatArmy = n => COMBAT_KEYS.reduce((s, k) => s + (n[k] ?? 0), 0)
   const supportUnits = n => SUPPORT_KEYS.reduce((s, k) => s + (n[k] ?? 0), 0)
 
-  const withArmy   = npcs.filter(n => mobileArmy(n) > 0).length
+  const withArmy      = npcs.filter(n => mobileArmy(n) > 0).length
   const withMerchant  = npcs.filter(n => (n.merchant  ?? 0) > 0).length
   const withCaravan   = npcs.filter(n => (n.caravan   ?? 0) > 0).length
   const withScavenger = npcs.filter(n => (n.scavenger ?? 0) > 0).length
+  const withScout     = npcs.filter(n => (n.scout     ?? 0) > 0).length
+  const withColonist  = npcs.filter(n => (n.colonist  ?? 0) > 0).length
 
   // Building avg/max for all 15 buildings
   const buildingStats = {}
@@ -166,6 +168,10 @@ export default async function handler(req, res) {
     withMerchant,
     withCaravan,
     withScavenger,
+    withScout,
+    totalScout:    sum(npcs, n => n.scout),
+    withColonist,
+    totalColonist: sum(npcs, n => n.colonist),
 
     ...buildingStats,
     researchStats,

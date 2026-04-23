@@ -7,7 +7,7 @@
  * NPC AI state lives in npc_state (PK: userId), not in kingdoms.
  */
 import { eq, and, gte, or, inArray } from 'drizzle-orm'
-import { db, users, kingdoms, npcState, buildings, units, research, armyMissions } from '../_db.js'
+import { db, users, kingdoms, npcState, buildings, units, research, armyMissions, debrisFields } from '../_db.js'
 import { upsertBuilding, upsertUnit, upsertResearch } from '../lib/db-helpers.js'
 import { applyResourceTick } from '../lib/tick.js'
 import {
@@ -305,7 +305,7 @@ async function attemptBuild(kingdom, buildingId, cfg, now, reason) {
 
 // Trains the highest-priority unit whose requirements are met.
 // If the first eligible unit needs research it doesn't have, queues that research.
-async function attemptTrainTroops(kingdom, personality, cls, researchMap, cfg, now) {
+async function attemptTrainTroops(kingdom, personality, cls, researchMap, cfg, now, customPriority = null, skipCombatCheck = false) {
   const costMult     = cls === 'general' ? 0.9 : 1.0
   const maxUnitTypes = cls === 'general' ? 2 : 1
   const batchCap     = 50
@@ -320,14 +320,15 @@ async function attemptTrainTroops(kingdom, personality, cls, researchMap, cfg, n
   let unitTypesTrained = 0
   let firstAffordable  = null
 
-  for (const unitId of UNIT_PRIORITY[personality]) {
+  const priorityList = customPriority ?? UNIT_PRIORITY[personality]
+  for (const unitId of priorityList) {
     if (unitTypesTrained >= maxUnitTypes) break
 
     const unitDef = ALL_UNITS.find(u => u.id === unitId)
     if (!unitDef) continue
 
     // Skip defenses/support while below combat threshold
-    if ((UNIT_DEFENSE_SET.has(unitId) || UNIT_SUPPORT_SET.has(unitId)) && needMoreCombat) continue
+    if ((UNIT_DEFENSE_SET.has(unitId) || UNIT_SUPPORT_SET.has(unitId)) && needMoreCombat && !skipCombatCheck) continue
 
     let blockedByBuilding = false
     let missingResearch   = null
@@ -466,11 +467,16 @@ async function growNpcBoss(kingdom, cfg, now, researchMap) {
 
 // ── Cascade state machine ─────────────────────────────────────────────────────
 
-async function growNpc(kingdom, cfg, now, researchMap) {
+async function growNpc(kingdom, cfg, now, researchMap, debrisRegions, colonizeActiveUsers, kingdomCountByUser) {
   if (kingdom.isBoss) return await growNpcBoss(kingdom, cfg, now, researchMap)
 
   const personality = npcPersonality(kingdom)
   const cls         = npcClass(kingdom)
+
+  const createdAtSec = kingdom.createdAt
+    ? Math.floor(new Date(kingdom.createdAt).getTime() / 1000)
+    : now
+  const ageHours = (now - createdAtSec) / 3600
 
   // Nivel -1: fleetsave defensivo
   const incomingAttack = await getIncomingAttack(kingdom, now)
@@ -524,12 +530,19 @@ async function growNpc(kingdom, cfg, now, researchMap) {
     }
   }
 
+  // Nivel 0D: carroñero prioritario — collector/economy con escombros cercanos
+  if (
+    (cls === 'collector' || personality === 'economy') &&
+    debrisRegions.has(`${kingdom.realm}:${kingdom.region}`) &&
+    (kingdom.scavenger ?? 0) === 0 &&
+    (kingdom.barracks  ?? 0) >= 4
+  ) {
+    const r = await attemptTrainTroops(kingdom, personality, cls, researchMap, cfg, now, ['scavenger'], true)
+    if (r.action === 'trained' || r.action === 'researching') return r
+  }
+
   // Nivel 1: hitos de personalidad
-  const createdAtSec = kingdom.createdAt
-    ? Math.floor(new Date(kingdom.createdAt).getTime() / 1000)
-    : now
-  const ageHours = (now - createdAtSec) / 3600
-  const targets  = getTargetLevels(personality, ageHours)
+  const targets = getTargetLevels(personality, ageHours)
 
   for (const buildId of MILESTONE_ORDER) {
     const targetLv  = targets[buildId] ?? 0
@@ -540,6 +553,19 @@ async function growNpc(kingdom, cfg, now, researchMap) {
         `Hito: ${buildId} → lv${targetLv} (actual: ${currentLv})`,
       )
     }
+  }
+
+  // Nivel 1.5: colonización — si tiene capacidad y ningún colonizador activo
+  if (
+    ageHours >= 168 &&
+    (kingdom.barracks      ?? 0) >= 4 &&
+    (researchMap.cartography ?? 0) >= 3 &&
+    (kingdom.colonist      ?? 0) === 0 &&
+    !colonizeActiveUsers.has(kingdom.userId) &&
+    (kingdomCountByUser[kingdom.userId] ?? 1) < 2
+  ) {
+    const r = await attemptTrainTroops(kingdom, personality, cls, researchMap, cfg, now, ['colonist'], true)
+    if (r.action === 'trained' || r.action === 'saving') return r
   }
 
   // Nivel 2: gasto de personalidad post-hitos
@@ -622,6 +648,27 @@ export default async function handler(req, res) {
     lastDecision:        ns?.lastDecision        ?? null,
   }))
 
+  // Preload debris regions (for scavenger priority in growNpc)
+  const debrisRows = await db.select({ realm: debrisFields.realm, region: debrisFields.region }).from(debrisFields)
+  const debrisRegions = new Set(debrisRows.map(d => `${d.realm}:${d.region}`))
+
+  // Colonize missions active or returning → don't retrain colonist
+  const colonizeMissions = npcUserIds.length
+    ? await db.select({ userId: armyMissions.userId }).from(armyMissions)
+        .where(and(
+          inArray(armyMissions.userId, npcUserIds),
+          eq(armyMissions.missionType, 'colonize'),
+          or(eq(armyMissions.state, 'active'), eq(armyMissions.state, 'returning')),
+        ))
+    : []
+  const colonizeActiveUsers = new Set(colonizeMissions.map(m => m.userId))
+
+  // Count kingdoms per NPC user (to cap colonization at 2 kingdoms)
+  const kingdomCountByUser = {}
+  for (const { k } of npcRows) {
+    kingdomCountByUser[k.userId] = (kingdomCountByUser[k.userId] ?? 0) + 1
+  }
+
   // Only process NPCs whose check window has expired
   const npcsDue = allNpcKingdoms.filter(k => !k.nextCheck || k.nextCheck <= now)
 
@@ -655,7 +702,7 @@ export default async function handler(req, res) {
       // Use pre-loaded research map for this NPC's userId
       const researchMap = { ...EMPTY_RESEARCH, ...(researchByUser[kingdom.userId] ?? {}) }
 
-      const growResult = await growNpc(kingdom, cfg, now, researchMap)
+      const growResult = await growNpc(kingdom, cfg, now, researchMap, debrisRegions, colonizeActiveUsers, kingdomCountByUser)
       if (growResult?.action === 'built')     builtBuilding++
       if (growResult?.action === 'trained') {
         if (growResult.isCombat)  trainedCombat++

@@ -13,6 +13,7 @@ import {
 } from '../lib/battle.js'
 import { insertBattleLog, sumLosses } from '../lib/battle_log.js'
 import { processScavenge } from '../lib/missions/scavenge.js'
+import { processSpy } from '../lib/missions/spy.js'
 import { resolveExpedition } from '../lib/expedition.js'
 import { getSettings, setSetting } from '../lib/settings.js'
 import { startNewSeason, repairSeasonNpcsIfMissing } from '../lib/season.js'
@@ -337,6 +338,33 @@ async function runIntrusionDetector(npcKingdomsById, now) {
   return triggered.size
 }
 
+// ── Resolve NPC spy missions ──────────────────────────────────────────────────
+
+async function resolveNpcSpyMissions(npcUserIds, npcKingdomsById, now) {
+  if (npcUserIds.length === 0) return 0
+
+  const arrived = await db.select().from(armyMissions)
+    .where(and(
+      inArray(armyMissions.userId, npcUserIds),
+      eq(armyMissions.missionType, 'spy'),
+      eq(armyMissions.state,       'active'),
+      lte(armyMissions.arrivalTime, now),
+    ))
+
+  let resolved = 0
+  for (const m of arrived) {
+    const npcKingdom = npcKingdomsById[`${m.startRealm}:${m.startRegion}:${m.startSlot}`]
+    if (!npcKingdom) continue
+    try {
+      await processSpy(m, npcKingdom, now)
+      resolved++
+    } catch (err) {
+      console.error('[combat-engine] NPC spy error:', err?.message ?? err)
+    }
+  }
+  return resolved
+}
+
 // ── Handler ───────────────────────────────────────────────────────────────────
 
 export default async function handler(req, res) {
@@ -410,6 +438,7 @@ export default async function handler(req, res) {
   }
 
   await processNpcReturns(npcUserIds, npcKingdomsById, now)
+  const npcSpiesResolved = await resolveNpcSpyMissions(npcUserIds, npcKingdomsById, now)
 
   // Resolve arrived scavenges
   const arrivedScavenges = await db.select().from(armyMissions).where(and(
@@ -429,7 +458,7 @@ export default async function handler(req, res) {
   const intruderCount          = await runIntrusionDetector(npcKingdomsById, now)
 
   // Persist tick for admin monitor
-  const combatTick = { at: now, npcVsNpcResolved, npcExpeditionsResolved, purged, intruderCount }
+  const combatTick = { at: now, npcVsNpcResolved, npcExpeditionsResolved, npcSpiesResolved, purged, intruderCount }
   const MAX_HISTORY = 48
   let combatHistory = []
   try { const raw = cfg.combat_engine_tick_history; if (raw) combatHistory = JSON.parse(raw) } catch { combatHistory = [] }
@@ -445,6 +474,7 @@ export default async function handler(req, res) {
     at: now,
     npcVsNpcResolved,
     npcExpeditionsResolved,
+    npcSpiesResolved,
     purged,
     intruderCount,
     seasonAction,
