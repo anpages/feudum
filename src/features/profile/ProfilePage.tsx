@@ -362,9 +362,7 @@ export function ProfilePage() {
                         </div>
                         <p className="font-body text-xs text-ink-muted mt-0.5 tabular-nums">
                           {snap.points.toLocaleString('es')} pts
-                          {snap.achievementsCount > 0 && (
-                            <> · {snap.achievementsCount} logros</>
-                          )}
+
                           {snap.kingdomsCount > 1 && (
                             <> · {snap.kingdomsCount} reinos</>
                           )}

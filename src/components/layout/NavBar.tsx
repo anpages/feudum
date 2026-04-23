@@ -1,12 +1,12 @@
 import { NavLink } from 'react-router-dom'
 import {
   X, ShieldAlert,
-  Castle, Factory, Building2, BookOpen, Swords, Shield, Navigation, Map, Trophy, BarChart2, Users,
+  Castle, Factory, Building2, BookOpen, Swords, Shield, Navigation, Map, BarChart2, Users,
   type LucideIcon,
 } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@/features/auth/useAuth'
-import { usePendingClaimsCount } from '@/features/achievements/useAchievements'
+
 import type { ArmiesResponse } from '@/features/armies/types'
 
 interface NavItem {
@@ -34,7 +34,6 @@ interface Props {
 
 export function NavBar({ isOpen, onClose }: Props) {
   const { user } = useAuth()
-  const newAchievements = usePendingClaimsCount()
   const qc = useQueryClient()
   const underAttack = (qc.getQueryData<ArmiesResponse>(['armies'])?.underAttack) ?? false
 
@@ -76,16 +75,7 @@ export function NavBar({ isOpen, onClose }: Props) {
           <BarChart2 size={16} className="nav-icon shrink-0" />
           <span className="flex-1">Rankings</span>
         </NavLink>
-        <NavLink to="/achievements" onClick={onClose} className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}>
-          <Trophy size={16} className="nav-icon shrink-0" />
-          <span className="flex-1">Logros</span>
-          {newAchievements > 0 && (
-            <span className="ml-auto min-w-[18px] h-[18px] px-1 rounded-full font-ui text-[0.6rem] font-bold flex items-center justify-center"
-              style={{ background: '#b8860b', color: '#faf6ef' }}>
-              {newAchievements}
-            </span>
-          )}
-        </NavLink>
+
       </div>
 
       {/* Admin link */}
