@@ -38,12 +38,16 @@ function seededRand(seed) {
   let s = wangHash(seed)
   return () => { s = wangHash(s + 1); return s / 0x100000000 }
 }
-function npcName(realm, region, slot) {
+function npcKingdomName(realm, region, slot) {
   const seed = realm * 374761397 + region * 1234567 + slot * 7654321
   const rand = seededRand(seed); rand()
   const first   = NPC_FIRST[Math.floor(rand() * NPC_FIRST.length)]
   const epithet = rand() > 0.5 ? ` ${NPC_EPITHET[Math.floor(rand() * NPC_EPITHET.length)]}` : ''
   return `Reino de ${first}${epithet}`
+}
+// Username único: nombre legible + coordenadas para evitar duplicados en users.username
+function npcUsername(realm, region, slot) {
+  return `${npcKingdomName(realm, region, slot)} [${realm}:${region}:${slot}]`
 }
 
 // ── Reset ─────────────────────────────────────────────────────────────────────
@@ -103,14 +107,14 @@ export async function seedNpcs(takenSlots, now, count = null) {
     await Promise.all(chunk.map(async ({ realm, region, slot }) => {
       // 1. Insert NPC user
       const [npcUser] = await db.insert(users)
-        .values({ role: 'npc', username: npcName(realm, region, slot) })
+        .values({ role: 'npc', username: npcUsername(realm, region, slot) })
         .returning({ id: users.id })
 
       // 2. Insert kingdom
       const [kingdom] = await db.insert(kingdoms)
         .values({
           userId: npcUser.id,
-          name:   npcName(realm, region, slot),
+          name:   npcKingdomName(realm, region, slot),
           realm, region, slot,
           wood: 500, stone: 500, grain: 500,
           woodCapacity: 10000, stoneCapacity: 10000, grainCapacity: 10000,
