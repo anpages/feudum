@@ -8,13 +8,16 @@ import { useSeason, useAdminStartSeason, useAdminEndSeason, useAdminCleanSession
 import { formatDuration } from '@/lib/format'
 import { useNow } from '@/lib/useNow'
 
-const SETTINGS_META: { key: keyof AdminSettings; label: string; hint: string; integer?: boolean }[] = [
-  { key: 'economy_speed',        label: 'Velocidad economía',       hint: 'Producción y construcción' },
-  { key: 'research_speed',       label: 'Velocidad investigación',  hint: 'Tiempo de laboratorio' },
-  { key: 'fleet_speed_war',      label: 'Flota (guerra)',           hint: 'Ataque, pillaje, espionaje' },
-  { key: 'fleet_speed_peaceful', label: 'Flota (paz)',              hint: 'Transporte, colonización' },
-  { key: 'basic_wood',           label: 'Madera base / h',          hint: 'Sin edificios', integer: true },
-  { key: 'basic_stone',          label: 'Piedra base / h',          hint: 'Sin edificios', integer: true },
+const SETTINGS_META: { key: keyof AdminSettings; label: string; hint: string; integer?: boolean; group?: string }[] = [
+  { key: 'economy_speed',        label: 'Velocidad economía',       hint: 'Producción y construcción',       group: 'Velocidades' },
+  { key: 'research_speed',       label: 'Velocidad investigación',  hint: 'Tiempo de laboratorio',           group: 'Velocidades' },
+  { key: 'fleet_speed_war',      label: 'Flota (guerra)',           hint: 'Ataque, pillaje, espionaje',      group: 'Velocidades' },
+  { key: 'fleet_speed_peaceful', label: 'Flota (paz)',              hint: 'Transporte, colonización',        group: 'Velocidades' },
+  { key: 'basic_wood',           label: 'Madera base / h',          hint: 'Sin edificios', integer: true,    group: 'Recursos' },
+  { key: 'basic_stone',          label: 'Piedra base / h',          hint: 'Sin edificios', integer: true,    group: 'Recursos' },
+  { key: 'universe_realms',      label: 'Reinos (realms)',          hint: 'Número de reinos del universo', integer: true, group: 'Universo' },
+  { key: 'universe_regions',     label: 'Regiones por reino',       hint: 'Regiones por reino',            integer: true, group: 'Universo' },
+  { key: 'universe_slots',       label: 'Slots por región',         hint: 'Slots habitables por región',   integer: true, group: 'Universo' },
 ]
 
 function SeasonSection() {
@@ -200,42 +203,57 @@ export function ServerTab() {
     <div className="space-y-8">
       <SeasonSection />
 
-      <div className="space-y-3">
+      <div className="space-y-5">
         <span className="section-heading">Configuración del servidor</span>
         {isLoading ? (
           <div className="skeleton h-64 rounded-xl" />
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-2">
-            {SETTINGS_META.map(({ key, label, hint, integer }) => (
-              <Card key={key} className="p-4 flex items-center gap-4">
-                <div className="flex-1 min-w-0">
-                  <p className="font-ui text-sm font-semibold text-ink">{label}</p>
-                  <p className="font-body text-[11px] text-ink-muted/70 mt-0.5">{hint}</p>
+          <>
+            {(['Velocidades', 'Recursos', 'Universo'] as const).map(group => {
+              const items = SETTINGS_META.filter(m => m.group === group)
+              return (
+                <div key={group} className="space-y-2">
+                  <p className="font-ui text-[0.65rem] uppercase tracking-widest text-ink-muted/60">{group}</p>
+                  {group === 'Universo' && (
+                    <p className="font-body text-[11px] text-crimson-light/80 bg-crimson/5 border border-crimson/15 rounded-lg px-3 py-2">
+                      Cambiar el tamaño del universo requiere reiniciar la temporada para que sea efectivo.
+                    </p>
+                  )}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-2">
+                    {items.map(({ key, label, hint, integer }) => (
+                      <Card key={key} className="p-4 flex items-center gap-4">
+                        <div className="flex-1 min-w-0">
+                          <p className="font-ui text-sm font-semibold text-ink">{label}</p>
+                          <p className="font-body text-[11px] text-ink-muted/70 mt-0.5">{hint}</p>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <input
+                            type="text"
+                            inputMode={integer ? 'numeric' : 'decimal'}
+                            value={getVal(key)}
+                            onChange={e => setValues(v => ({ ...v, [key]: e.target.value }))}
+                            onKeyDown={e => e.key === 'Enter' && saveField(key)}
+                            className="game-input w-24 text-center text-sm tabular-nums"
+                          />
+                          <Button
+                            variant={saved === key ? 'primary' : 'ghost'}
+                            size="sm"
+                            onClick={() => saveField(key)}
+                            disabled={update.isPending || values[key] === undefined}
+                          >
+                            {update.isPending && saved !== key
+                              ? <Loader2 size={12} className="animate-spin" />
+                              : <Save size={12} />}
+                            {saved === key ? '✓' : 'OK'}
+                          </Button>
+                        </div>
+                      </Card>
+                    ))}
+                  </div>
                 </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <input
-                    type="text"
-                    inputMode={integer ? 'numeric' : 'decimal'}
-                    value={getVal(key)}
-                    onChange={e => setValues(v => ({ ...v, [key]: e.target.value }))}
-                    onKeyDown={e => e.key === 'Enter' && saveField(key)}
-                    className="game-input w-24 text-center text-sm tabular-nums"
-                  />
-                  <Button
-                    variant={saved === key ? 'primary' : 'ghost'}
-                    size="sm"
-                    onClick={() => saveField(key)}
-                    disabled={update.isPending || values[key] === undefined}
-                  >
-                    {update.isPending && saved !== key
-                      ? <Loader2 size={12} className="animate-spin" />
-                      : <Save size={12} />}
-                    {saved === key ? '✓' : 'OK'}
-                  </Button>
-                </div>
-              </Card>
-            ))}
-          </div>
+              )
+            })}
+          </>
         )}
       </div>
     </div>

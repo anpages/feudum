@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { armiesService } from './services/armiesService'
 import { getActiveKingdomId } from '@/features/kingdom/useKingdom'
+import { calcDistance, calcDuration, calcGrainConsumption } from '@/lib/game/speed'
 import type { ArmiesResponse, SendArmyResponse, RecallArmyResponse } from './types'
 import type { MissionType, ArmyMission, SendArmyParams } from '@/shared/types'
 import type { Kingdom } from '@/../db/schema'
@@ -40,18 +41,27 @@ export function useSendArmy() {
       const prevKingdom = qc.getQueryData<Kingdom>(kingdomKey)
       const prevArmies  = qc.getQueryData<ArmiesResponse>(armiesKey)
 
-      // 1. Deduct units + cargo resources from kingdom cache
+      // 1. Deduct units + cargo resources + grain consumption from kingdom cache
       if (prevKingdom) {
         const k = prevKingdom as unknown as Record<string, number>
         const patch: Record<string, number> = {}
         for (const [unit, n] of Object.entries(params.units)) {
           if (n && n > 0) patch[unit] = Math.max(0, (k[unit] ?? 0) - n)
         }
-        if (params.resources) {
-          patch.wood  = Math.max(0, k.wood  - (params.resources.wood  ?? 0))
-          patch.stone = Math.max(0, k.stone - (params.resources.stone ?? 0))
-          patch.grain = Math.max(0, k.grain - (params.resources.grain ?? 0))
-        }
+
+        // Estimate grain consumption (no research data in onMutate — uses base speeds)
+        const origin = { realm: k.realm, region: k.region, slot: k.slot }
+        const dist = calcDistance(origin, params.target)
+        const universeSpeed = 1 // conservative — corrected by onSuccess
+        const unitsFull = Object.fromEntries(Object.entries(params.units).map(([k, v]) => [k, v ?? 0]))
+        const secs = calcDuration(dist, unitsFull, params.speedPct ?? 100, universeSpeed, {}, null)
+        const grainFuel = calcGrainConsumption(unitsFull, dist, secs, universeSpeed, {}, null, params.holdingHours ?? 0)
+
+        const cargoGrain = params.resources?.grain ?? 0
+        patch.wood  = Math.max(0, k.wood  - (params.resources?.wood  ?? 0))
+        patch.stone = Math.max(0, k.stone - (params.resources?.stone ?? 0))
+        patch.grain = Math.max(0, k.grain - cargoGrain - grainFuel)
+
         qc.setQueryData<Kingdom>(kingdomKey, { ...prevKingdom, ...patch } as Kingdom)
       }
 

@@ -1,7 +1,7 @@
 import { getAdminUserId } from '../lib/admin.js'
 import { getSettings, setSetting } from '../lib/settings.js'
 
-const ALLOWED_KEYS = ['economy_speed','research_speed','fleet_speed_war','fleet_speed_peaceful','basic_wood','basic_stone']
+const ALLOWED_KEYS = ['economy_speed','research_speed','fleet_speed_war','fleet_speed_peaceful','basic_wood','basic_stone','universe_realms','universe_regions','universe_slots']
 
 export default async function handler(req, res) {
   const adminId = await getAdminUserId(req)

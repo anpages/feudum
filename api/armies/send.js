@@ -1,7 +1,7 @@
 import { eq, and, ne, asc } from 'drizzle-orm'
 import { db, kingdoms, armyMissions, users } from '../_db.js'
 import { getSessionUserId } from '../lib/handler.js'
-import { calcDistance, calcDuration, calcCargoCapacity } from '../lib/speed.js'
+import { calcDistance, calcDuration, calcCargoCapacity, calcGrainConsumption } from '../lib/speed.js'
 import { getSettings } from '../lib/settings.js'
 import { applyResourceTick } from '../lib/tick.js'
 import { processUserQueues } from '../lib/process-queues.js'
@@ -35,20 +35,7 @@ export default async function handler(req, res) {
   const tSlot   = parseInt(target?.slot,   10)
 
   const isExpedition = missionType === 'expedition'
-  const maxSlot = isExpedition ? 16 : 15
-
-  if (!tRealm || !tRegion || !tSlot
-    || tRealm < 1 || tRealm > 3
-    || tRegion < 1 || tRegion > 10
-    || tSlot < 1 || tSlot > maxSlot) {
-    return res.status(400).json({ error: 'Coordenadas de destino inválidas' })
-  }
-
-  if (isExpedition && tSlot !== 16) {
-    return res.status(400).json({ error: 'Las expediciones deben dirigirse al slot 16 (Tierras Ignotas)' })
-  }
-
-  const isMissile = missionType === 'missile'
+  const isMissile    = missionType === 'missile'
 
   await processUserQueues(userId)
 
@@ -64,6 +51,24 @@ export default async function handler(req, res) {
     getSettings(),
   ])
   if (!kingdomRow) return res.status(404).json({ error: 'Reino no encontrado' })
+
+  // ── Validate target coordinates against DB-configured universe dimensions ──
+  const maxRealm  = Math.round(cfg.universe_realms  ?? 3)
+  const maxRegion = Math.round(cfg.universe_regions ?? 10)
+  const maxSlot   = isExpedition ? Math.round(cfg.universe_slots ?? 15) + 1 : Math.round(cfg.universe_slots ?? 15)
+
+  if (!tRealm || !tRegion || !tSlot
+    || tRealm  < 1 || tRealm  > maxRealm
+    || tRegion < 1 || tRegion > maxRegion
+    || tSlot   < 1 || tSlot   > maxSlot) {
+    return res.status(400).json({ error: 'Coordenadas de destino inválidas' })
+  }
+
+  // Expedition slot = universe_slots + 1 (the "Uncharted Lands" beyond the map)
+  const expeditionSlot = Math.round(cfg.universe_slots ?? 15) + 1
+  if (isExpedition && tSlot !== expeditionSlot) {
+    return res.status(400).json({ error: `Las expediciones deben dirigirse al slot ${expeditionSlot} (Tierras Ignotas)` })
+  }
 
   const kingdom = await enrichKingdom(kingdomRow, { withUnits: true })
 
@@ -309,6 +314,13 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'No se pudo calcular el tiempo de viaje' })
   }
 
+  // ── Grain consumption (OGame fuel formula) ───────────────────────────────
+  const grainConsumption = calcGrainConsumption(
+    units, distance, travelSecs, universeSpeed, resMap,
+    userRow?.characterClass ?? null,
+    isExpedition ? holdingHours : 0,
+  )
+
   const now         = Math.floor(Date.now() / 1000)
   const arrivalTime = now + travelSecs
   const holdingTimeSecs = isExpedition ? holdingHours * 3600 : 0
@@ -317,11 +329,21 @@ export default async function handler(req, res) {
   // ── Deduct units and resources atomically ────────────────────────────────
   const { wood, stone, grain } = applyResourceTick(kingdom, cfg, userRow?.characterClass ?? null, resMap)
 
+  // Validate: player needs enough grain for cargo + fuel
+  const totalGrainNeeded = grainLoad + grainConsumption
+  if (grain < totalGrainNeeded) {
+    return res.status(400).json({
+      error: `Grano insuficiente para el combustible de la misión (necesitas ${totalGrainNeeded}, tienes ${Math.floor(grain)})`,
+      grainNeeded: totalGrainNeeded,
+      grainAvailable: Math.floor(grain),
+    })
+  }
+
   // Update kingdom resources (optimistic lock via lastResourceUpdate)
   const updated = await db.update(kingdoms).set({
     wood:  wood  - woodLoad,
     stone: stone - stoneLoad,
-    grain: grain - grainLoad,
+    grain: grain - grainLoad - grainConsumption,
     lastResourceUpdate: now,
     updatedAt: new Date(),
   }).where(and(
@@ -395,6 +417,7 @@ export default async function handler(req, res) {
     arrivalTime,
     returnTime,
     travelSeconds: travelSecs,
+    grainConsumption,
     speedPct,
   })
 }

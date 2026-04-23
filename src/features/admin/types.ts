@@ -5,6 +5,9 @@ export interface AdminSettings {
   fleet_speed_peaceful: number
   basic_wood: number
   basic_stone: number
+  universe_realms: number
+  universe_regions: number
+  universe_slots: number
 }
 
 export interface AdminUser {

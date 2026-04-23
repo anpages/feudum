@@ -3,6 +3,7 @@ import { db, settings } from '../_db.js'
 
 const NUMERIC_KEYS = new Set([
   'economy_speed','research_speed','fleet_speed_war','fleet_speed_peaceful','basic_wood','basic_stone',
+  'universe_realms','universe_regions','universe_slots',
 ])
 
 const DEFAULTS = {
@@ -12,6 +13,9 @@ const DEFAULTS = {
   fleet_speed_peaceful: 1,
   basic_wood:           30,
   basic_stone:          15,
+  universe_realms:      3,
+  universe_regions:     10,
+  universe_slots:       15,
 }
 
 export async function getSettings() {

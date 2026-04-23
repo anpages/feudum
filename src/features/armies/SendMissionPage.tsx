@@ -10,7 +10,7 @@ import { useResearch } from '@/features/research/useResearch'
 import { useResourceSettings } from '@/features/resources/useResources'
 import { ALL_UNIT_META, MISSION_META } from './armiesMeta'
 import { CoordPicker } from './components/CoordPicker'
-import { calcDistance, calcDuration, calcCargoCapacity, UNIT_CAPACITY } from '@/lib/game/speed'
+import { calcDistance, calcDuration, calcCargoCapacity, calcGrainConsumption, UNIT_CAPACITY } from '@/lib/game/speed'
 import { formatDuration, formatResource } from '@/lib/format'
 import type { IconType } from 'react-icons'
 
@@ -177,19 +177,27 @@ export function SendMissionPage() {
     ? (serverSettings?.fleetSpeedWar     ?? 1)
     : (serverSettings?.fleetSpeedPeaceful ?? 1)
 
-  const travelPreview = useMemo(() => {
-    if (!kingdom) return null
+  const { travelPreview, grainPreview } = useMemo(() => {
+    if (!kingdom) return { travelPreview: null, grainPreview: 0 }
     const effectiveUnits = isMissile ? { ballistic: ballisticCount || 1 } : units
-    if (!isMissile && totalUnits === 0) return null
-    if (isMissile && ballisticCount === 0) return null
+    if (!isMissile && totalUnits === 0) return { travelPreview: null, grainPreview: 0 }
+    if (isMissile && ballisticCount === 0) return { travelPreview: null, grainPreview: 0 }
     const k = kingdom as unknown as Record<string, number>
     const origin = { realm: k.realm, region: k.region, slot: k.slot }
-    const destSlot = missionType === 'expedition' ? 16 : tSlot
+    const expeditionSlot = (serverSettings as unknown as { universe_slots?: number })?.universe_slots
+      ? Math.round((serverSettings as unknown as { universe_slots: number }).universe_slots) + 1
+      : 16
+    const destSlot = missionType === 'expedition' ? expeditionSlot : tSlot
     const dest = { realm: tRealm, region: tRegion, slot: destSlot }
     const research = Object.fromEntries(researchData?.research.map(r => [r.id, r.level]) ?? [])
     const dist = calcDistance(origin, dest)
-    return calcDuration(dist, effectiveUnits, speedPct, universeSpeed, research, null)
-  }, [kingdom, isMissile, ballisticCount, units, totalUnits, missionType, tSlot, tRealm, tRegion, speedPct, researchData, universeSpeed])
+    const secs = calcDuration(dist, effectiveUnits, speedPct, universeSpeed, research, characterClass)
+    const grain = isMissile ? 0 : calcGrainConsumption(
+      effectiveUnits, dist, secs, universeSpeed, research, characterClass,
+      missionType === 'expedition' ? holdingHours : 0,
+    )
+    return { travelPreview: secs, grainPreview: grain }
+  }, [kingdom, isMissile, ballisticCount, units, totalUnits, missionType, tSlot, tRealm, tRegion, speedPct, researchData, universeSpeed, characterClass, holdingHours, serverSettings])
 
   const canSend = !send.isPending &&
     !(missionType === 'expedition' && expeditionSlotsFull) &&
@@ -481,6 +489,11 @@ export function SendMissionPage() {
                     Viaje {formatDuration(travelPreview)} · Exploración {holdingHours === 0.5 ? '30m' : holdingHours === 1.5 ? '1h 30m' : `${holdingHours}h`} · Vuelta {formatDuration(travelPreview)}
                   </p>
                 )}
+                {grainPreview > 0 && (
+                  <p className="font-ui text-[0.65rem] text-gold-dim">
+                    Combustible: <span className="font-semibold tabular-nums">{formatResource(grainPreview)}</span> grano
+                  </p>
+                )}
               </div>
             </>
           ) : (
@@ -508,6 +521,11 @@ export function SendMissionPage() {
               <p className="font-body text-[0.65rem] text-ink-muted/60 leading-relaxed">
                 Al 100% llegas lo antes posible. Reduce la velocidad para coordinar ataques simultáneos. Al 50% tardas el doble.
               </p>
+              {grainPreview > 0 && (
+                <p className="font-ui text-[0.65rem] text-gold-dim">
+                  Combustible: <span className="font-semibold tabular-nums">{formatResource(grainPreview)}</span> grano
+                </p>
+              )}
             </>
           )}
         </Card>

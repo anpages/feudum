@@ -159,3 +159,69 @@ export function calcTotalAttack(units) {
     .filter(([, n]) => (n ?? 0) > 0)
     .reduce((sum, [id, n]) => sum + (UNIT_ATTACK[id] ?? 0) * n, 0)
 }
+
+// Grain consumed per unit per mission — mirrors OGame's deuterium fuel property
+// Source: GameObjectProperties(..., fuel) in MilitaryShipObjects.php / CivilShipObjects.php
+export const UNIT_FUEL = {
+  squire:       20,
+  knight:       75,
+  paladin:      300,
+  warlord:      500,
+  grandKnight:  250,
+  siegeMaster:  700,
+  warMachine:   1000,
+  dragonKnight: 1,
+  merchant:     10,
+  caravan:      50,
+  colonist:     100,
+  scavenger:    300,
+  scout:        1,
+}
+
+/**
+ * Calculates grain consumed by a fleet mission — exact port of OGameX
+ * FleetMissionService::calculateConsumption().
+ *
+ * Formula per unit type:
+ *   speedValue      = max(0.5, travelSecs * universeSpeed - 10)
+ *   shipSpeedValue  = 35000 / speedValue * sqrt(distance * 10 / shipSpeed)
+ *   consumption    += max(fuel * count * distance / 35000 * (shipSpeedValue/10 + 1)², 1)
+ *
+ * Holding costs (expeditions): max(floor(sum(fuel * count * holdingHours) / 10), 1)
+ * General class bonus: −50 % fuel consumption.
+ *
+ * @param {Object} units         — { squire: 5, ... }
+ * @param {number} distance      — calcDistance() result
+ * @param {number} travelSecs    — calcDuration() result (one-way)
+ * @param {number} universeSpeed — fleet speed multiplier from server settings
+ * @param {Object} research      — research levels for drive bonuses
+ * @param {string|null} characterClass
+ * @param {number} holdingHours  — expedition hold time (0 for other missions)
+ * @returns {number} grain to deduct
+ */
+export function calcGrainConsumption(units, distance, travelSecs, universeSpeed = 1, research = {}, characterClass = null, holdingHours = 0) {
+  if (distance <= 0) return 0
+  const speedValue = Math.max(0.5, travelSecs * universeSpeed - 10)
+
+  let baseCons = 0
+  let holdingCosts = 0
+
+  for (const [id, count] of Object.entries(units)) {
+    const n = count ?? 0
+    if (n <= 0) continue
+    const fuel = UNIT_FUEL[id]
+    if (!fuel) continue
+    const shipSpeed = getUnitSpeed(id, research)
+    const shipSpeedValue = 35000 / speedValue * Math.sqrt(distance * 10 / shipSpeed)
+    baseCons += Math.max(fuel * n * distance / 35000 * Math.pow(shipSpeedValue / 10 + 1, 2), 1)
+    holdingCosts += fuel * n * holdingHours
+  }
+
+  let consumption = Math.round(baseCons)
+  if (holdingHours > 0) consumption += Math.max(Math.floor(holdingCosts / 10), 1)
+
+  // General class: −50 % fuel consumption
+  if (characterClass === 'general') consumption = Math.floor(consumption * 0.5)
+
+  return Math.max(0, consumption)
+}
