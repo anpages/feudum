@@ -147,9 +147,9 @@ function ResourceRow({ label, avg, capacity }: { label: string; avg: number; cap
   )
 }
 
-// ── Cron status bar ────────────────────────────────────────────────────────────
+// ── Cron status card ───────────────────────────────────────────────────────────
 
-function CronStatusRow({
+function CronStatusCard({
   name, schedule, lastAt, now, fresh,
   pills,
 }: {
@@ -160,37 +160,53 @@ function CronStatusRow({
   fresh: boolean
   pills: { label: string; value: number; color: string }[]
 }) {
+  const statusBadge = !lastAt
+    ? 'bg-crimson/10 text-crimson-light border-crimson/20'
+    : fresh
+      ? 'bg-forest/10 text-forest-light border-forest/20'
+      : 'bg-gold/10 text-gold border-gold/20'
+  const statusLabel = !lastAt ? 'Sin datos' : fresh ? 'Activo' : 'Inactivo'
+
   return (
-    <div className="glass rounded-xl p-4 flex flex-wrap items-center gap-4">
-      <div className="flex items-center gap-2 shrink-0 min-w-[140px]">
-        <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${lastAt ? (fresh ? 'bg-forest-light animate-pulse' : 'bg-ink-muted') : 'bg-crimson-light'}`} />
-        <div>
-          <p className="font-ui text-xs font-semibold text-ink leading-tight">{name}</p>
-          <p className="font-ui text-[0.6rem] text-ink-muted">{schedule}</p>
-        </div>
-      </div>
-      <div className="w-px h-4 bg-gold/20 hidden sm:block" />
-      {lastAt ? (
-        <div className="flex items-center gap-1.5 font-ui text-xs text-ink-muted">
-          <span>Último:</span>
-          <span className="text-ink font-semibold">{formatTs(lastAt)}</span>
-          <span>· hace {timeAgo(lastAt, now)}</span>
-        </div>
-      ) : (
-        <span className="font-ui text-xs text-ink-muted italic">Sin datos aún</span>
-      )}
-      {pills.length > 0 && (
-        <>
-          <div className="w-px h-4 bg-gold/20 hidden sm:block" />
-          <div className="flex flex-wrap items-center gap-3 ml-auto">
-            {pills.map(p => (
-              <div key={p.label} className="flex items-baseline gap-1">
-                <span className={`font-ui text-sm font-bold tabular-nums ${p.color}`}>{p.value}</span>
-                <span className="font-ui text-[0.6rem] text-ink-muted">{p.label}</span>
-              </div>
-            ))}
+    <div className="card-medieval p-4 flex flex-col gap-3">
+      <div className="card-corner-tr" /><div className="card-corner-bl" />
+
+      {/* Header */}
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className={`w-2.5 h-2.5 rounded-full shrink-0 mt-0.5 ${lastAt ? (fresh ? 'bg-forest-light animate-pulse' : 'bg-ink-muted') : 'bg-crimson-light'}`} />
+          <div className="min-w-0">
+            <p className="font-ui text-sm font-semibold text-ink leading-tight truncate">{name}</p>
+            <p className="font-ui text-[0.6rem] text-ink-muted">{schedule}</p>
           </div>
-        </>
+        </div>
+        <span className={`font-ui text-[0.6rem] font-semibold px-2 py-0.5 rounded-full border shrink-0 ${statusBadge}`}>
+          {statusLabel}
+        </span>
+      </div>
+
+      {/* Last tick */}
+      <div className="font-ui text-xs text-ink-muted border-t border-gold/8 pt-2">
+        {lastAt ? (
+          <span>
+            Último: <span className="text-ink font-semibold">{formatTs(lastAt)}</span>
+            {' '}· hace {timeAgo(lastAt, now)}
+          </span>
+        ) : (
+          <span className="italic">Sin datos aún</span>
+        )}
+      </div>
+
+      {/* Pills */}
+      {pills.length > 0 && (
+        <div className="grid grid-cols-2 gap-1.5">
+          {pills.map(p => (
+            <div key={p.label} className="flex items-baseline gap-1.5 bg-parchment-deep/40 rounded px-2 py-1.5">
+              <span className={`font-ui text-base font-bold tabular-nums ${p.color}`}>{p.value}</span>
+              <span className="font-ui text-[0.6rem] text-ink-muted truncate">{p.label}</span>
+            </div>
+          ))}
+        </div>
       )}
     </div>
   )
@@ -768,45 +784,44 @@ export function NpcMonitorTab() {
   return (
     <div className="space-y-6">
 
-      {/* ── Cron status rows ──────────────────────────────────────────────────── */}
-      <div className="space-y-2">
-        <p className="font-ui text-[0.6rem] uppercase tracking-widest text-ink-muted">Estado de crons</p>
-
-        <CronStatusRow
-          name="Constructor NPC" schedule="Cada minuto"
-          lastAt={builderTick?.at ?? null} now={now}
-          fresh={!!builderTick && (now - builderTick.at) < FRESH_BUILDER}
-          pills={builderTick ? [
-            { label: 'edificios',   value: builderTick.builtBuilding ?? 0,  color: (builderTick.builtBuilding ?? 0)  > 0 ? 'text-forest-light'  : 'text-ink-muted' },
-            { label: 'atq.',        value: builderTick.trainedCombat  ?? 0,  color: (builderTick.trainedCombat  ?? 0) > 0 ? 'text-crimson-light' : 'text-ink-muted' },
-            { label: 'def.',        value: builderTick.trainedDefense ?? 0,  color: (builderTick.trainedDefense ?? 0) > 0 ? 'text-gold'          : 'text-ink-muted' },
-            { label: 'investigando', value: builderTick.researching ?? 0,   color: (builderTick.researching ?? 0)    > 0 ? 'text-gold'          : 'text-ink-muted' },
-          ] : []}
-        />
-
-        <CronStatusRow
-          name="Motor de combate" schedule="Cada minuto"
-          lastAt={combatTick?.at ?? null} now={now}
-          fresh={!!combatTick && (now - combatTick.at) < FRESH_COMBAT}
-          pills={combatTick ? [
-            { label: 'NPC vs NPC', value: combatTick.npcVsNpcResolved,       color: combatTick.npcVsNpcResolved > 0       ? 'text-crimson-light' : 'text-ink-muted' },
-            { label: 'exped.',     value: combatTick.npcExpeditionsResolved,  color: combatTick.npcExpeditionsResolved > 0 ? 'text-gold'          : 'text-ink-muted' },
-            { label: 'espías',     value: combatTick.npcSpiesResolved ?? 0,   color: (combatTick.npcSpiesResolved ?? 0) > 0 ? 'text-gold'         : 'text-ink-muted' },
-            { label: 'intrus.',    value: combatTick.intruderCount,           color: combatTick.intruderCount > 0          ? 'text-crimson-light' : 'text-ink-muted' },
-          ] : []}
-        />
-
-        <CronStatusRow
-          name="IA Militar NPC" schedule="Cada 20 min"
-          lastAt={militaryTick?.at ?? null} now={now}
-          fresh={!!militaryTick && (now - militaryTick.at) < FRESH_MILITARY}
-          pills={militaryTick ? [
-            { label: 'ataques',    value: militaryTick.attacked,           color: militaryTick.attacked           > 0 ? 'text-crimson-light' : 'text-ink-muted' },
-            { label: 'carroñeos', value: militaryTick.scavenged,          color: militaryTick.scavenged          > 0 ? 'text-forest-light'  : 'text-ink-muted' },
-            { label: 'exped.',    value: militaryTick.expeditioned,        color: militaryTick.expeditioned       > 0 ? 'text-gold'          : 'text-ink-muted' },
-            { label: 'coloniz.',  value: militaryTick.colonized ?? 0,      color: (militaryTick.colonized ?? 0)   > 0 ? 'text-gold-light'    : 'text-ink-muted' },
-          ] : []}
-        />
+      {/* ── Cron status cards ─────────────────────────────────────────────────── */}
+      <div className="space-y-3">
+        <p className="section-heading">Estado de crons</p>
+        <div className="grid sm:grid-cols-3 gap-3">
+          <CronStatusCard
+            name="Constructor NPC" schedule="Cada minuto"
+            lastAt={builderTick?.at ?? null} now={now}
+            fresh={!!builderTick && (now - builderTick.at) < FRESH_BUILDER}
+            pills={builderTick ? [
+              { label: 'edificios',    value: builderTick.builtBuilding ?? 0, color: (builderTick.builtBuilding ?? 0)  > 0 ? 'text-forest-light'  : 'text-ink-muted' },
+              { label: 'atq.',         value: builderTick.trainedCombat  ?? 0, color: (builderTick.trainedCombat  ?? 0) > 0 ? 'text-crimson-light' : 'text-ink-muted' },
+              { label: 'def.',         value: builderTick.trainedDefense ?? 0, color: (builderTick.trainedDefense ?? 0) > 0 ? 'text-gold'          : 'text-ink-muted' },
+              { label: 'investigando', value: builderTick.researching    ?? 0, color: (builderTick.researching    ?? 0) > 0 ? 'text-gold'          : 'text-ink-muted' },
+            ] : []}
+          />
+          <CronStatusCard
+            name="Motor de combate" schedule="Cada minuto"
+            lastAt={combatTick?.at ?? null} now={now}
+            fresh={!!combatTick && (now - combatTick.at) < FRESH_COMBAT}
+            pills={combatTick ? [
+              { label: 'NPC vs NPC', value: combatTick.npcVsNpcResolved,      color: combatTick.npcVsNpcResolved      > 0 ? 'text-crimson-light' : 'text-ink-muted' },
+              { label: 'exped.',     value: combatTick.npcExpeditionsResolved, color: combatTick.npcExpeditionsResolved > 0 ? 'text-gold'         : 'text-ink-muted' },
+              { label: 'espías',     value: combatTick.npcSpiesResolved ?? 0,  color: (combatTick.npcSpiesResolved ?? 0) > 0 ? 'text-gold'        : 'text-ink-muted' },
+              { label: 'intrus.',    value: combatTick.intruderCount,          color: combatTick.intruderCount         > 0 ? 'text-crimson-light' : 'text-ink-muted' },
+            ] : []}
+          />
+          <CronStatusCard
+            name="IA Militar NPC" schedule="Cada 20 min"
+            lastAt={militaryTick?.at ?? null} now={now}
+            fresh={!!militaryTick && (now - militaryTick.at) < FRESH_MILITARY}
+            pills={militaryTick ? [
+              { label: 'ataques',   value: militaryTick.attacked,        color: militaryTick.attacked        > 0 ? 'text-crimson-light' : 'text-ink-muted' },
+              { label: 'carroñeos', value: militaryTick.scavenged,       color: militaryTick.scavenged       > 0 ? 'text-forest-light'  : 'text-ink-muted' },
+              { label: 'exped.',    value: militaryTick.expeditioned,     color: militaryTick.expeditioned    > 0 ? 'text-gold'          : 'text-ink-muted' },
+              { label: 'coloniz.',  value: militaryTick.colonized ?? 0,   color: (militaryTick.colonized ?? 0) > 0 ? 'text-gold-light'  : 'text-ink-muted' },
+            ] : []}
+          />
+        </div>
       </div>
 
       {/* ── Overview metrics ───────────────────────────────────────────────────── */}

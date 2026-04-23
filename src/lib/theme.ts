@@ -8,6 +8,8 @@ function applyTheme(mode: ThemeMode) {
     mode === 'dark' ||
     (mode === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches)
   document.documentElement.classList.toggle('dark', dark)
+  const meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]')
+  if (meta) meta.content = dark ? '#0e0c07' : '#f5e6c8'
 }
 
 interface ThemeStore {

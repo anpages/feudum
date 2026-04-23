@@ -27,7 +27,7 @@
 
     <!-- Apply dark class before first paint to avoid flash of wrong theme -->
     <script>
-      (function(){try{var s=JSON.parse(localStorage.getItem('feudum-theme')||'{}');var m=(s.state||{}).mode||'auto';if(m==='dark'||(m!=='light'&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.classList.add('dark')}catch(e){}})()
+      (function(){try{var s=JSON.parse(localStorage.getItem('feudum-theme')||'{}');var m=(s.state||{}).mode||'auto';var dark=m==='dark'||(m!=='light'&&matchMedia('(prefers-color-scheme: dark)').matches);if(dark)document.documentElement.classList.add('dark');var tc=document.querySelector('meta[name="theme-color"]');if(tc)tc.content=dark?'#0e0c07':'#f5e6c8'}catch(e){}})()
     </script>
 
     <!-- Preconnect to Google Fonts to avoid extra DNS+TLS round trips -->
