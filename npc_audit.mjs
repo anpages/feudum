@@ -11,12 +11,11 @@ import './api/lib/env.js'
 import { eq, inArray } from 'drizzle-orm'
 import { db, users, kingdoms, npcState, buildings, units, research, armyMissions } from './api/_db.js'
 import { npcPersonality, getTargetLevels, MILESTONE_ORDER } from './api/lib/npc-engine.js'
-import { ECONOMY_SPEED } from './api/lib/config.js'
 import { getSettings } from './api/lib/settings.js'
 
 const now = Math.floor(Date.now() / 1000)
 const cfg = await getSettings()
-const speedFactor = parseFloat(cfg.economy_speed ?? ECONOMY_SPEED)
+const speedFactor = parseFloat(cfg.economy_speed ?? '1')
 
 const npcRows = await db.select({ k: kingdoms, ns: npcState })
   .from(kingdoms)
@@ -93,7 +92,7 @@ const activos         = classified.filter(c => c.status === 'activo')
 
 console.log('\n══════════════════════════════════════════════════')
 console.log(`  AUDITORÍA NPC  —  ${new Date().toISOString()}`)
-console.log(`  economy_speed: ${speedFactor} (DB: ${cfg.economy_speed ?? 'no configurado'}, env: ${ECONOMY_SPEED})`)
+console.log(`  economy_speed: ${speedFactor}`)
 console.log('══════════════════════════════════════════════════')
 console.log(`\nTotal NPCs: ${npcs.length}  |  Bosses: ${bosses.length}`)
 console.log(`Con ejército:  ${npcs.filter(n=>army(n)>0).length} (${pct(npcs.filter(n=>army(n)>0).length, npcs.length)})`)
