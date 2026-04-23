@@ -1,6 +1,10 @@
-import { pgTable, uuid, integer, varchar, real, timestamp, text } from 'drizzle-orm/pg-core'
+import { pgTable, uuid, integer, varchar, real, timestamp, text, jsonb } from 'drizzle-orm/pg-core'
 import { users } from './users'
 
+/**
+ * units JSONB format: { squire: 10, knight: 5, ... }
+ * Only non-zero quantities are stored. Missing key = 0.
+ */
 export const armyMissions = pgTable('army_missions', {
   id:          uuid('id').primaryKey().defaultRandom(),
   userId:      uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
@@ -24,20 +28,7 @@ export const armyMissions = pgTable('army_missions', {
   stoneLoad: real('stone_load').default(0).notNull(),
   grainLoad: real('grain_load').default(0).notNull(),
 
-  squire:       integer('squire').default(0).notNull(),
-  knight:       integer('knight').default(0).notNull(),
-  paladin:      integer('paladin').default(0).notNull(),
-  warlord:      integer('warlord').default(0).notNull(),
-  grandKnight:  integer('grand_knight').default(0).notNull(),
-  siegeMaster:  integer('siege_master').default(0).notNull(),
-  warMachine:   integer('war_machine').default(0).notNull(),
-  dragonKnight: integer('dragon_knight').default(0).notNull(),
-  merchant:     integer('merchant').default(0).notNull(),
-  caravan:      integer('caravan').default(0).notNull(),
-  colonist:     integer('colonist').default(0).notNull(),
-  scavenger:    integer('scavenger').default(0).notNull(),
-  scout:        integer('scout').default(0).notNull(),
-  ballistic:    integer('ballistic').default(0).notNull(),
+  units: jsonb('units').$type<Record<string, number>>().default({}).notNull(),
 
   result:    text('result'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
