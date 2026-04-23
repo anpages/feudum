@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { User, Mail, Calendar, Save, Loader2, Trash2, Zap, LogOut, Bell, BellOff } from 'lucide-react'
+import { User, Mail, Calendar, Save, Loader2, Trash2, Zap, LogOut, Bell, BellOff, Trophy } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { GiCastle } from 'react-icons/gi'
 import { Card } from '@/components/ui/Card'
@@ -12,6 +12,7 @@ import {
 import { useKingdoms } from '@/features/kingdom/useKingdom'
 import { useAuth } from '@/features/auth/useAuth'
 import { usePushNotifications } from '@/features/push/usePushNotifications'
+import { useSeasonHistory } from '@/features/season/useSeason'
 
 // ── Character class definitions ───────────────────────────────────────────────
 
@@ -82,6 +83,7 @@ export function ProfilePage() {
   }
 
   const push = usePushNotifications()
+  const { data: historyData } = useSeasonHistory()
   const kingdoms = kingdomsData?.kingdoms ?? []
   const currentClass = user?.characterClass ?? null
   const ether = user?.ether ?? 0
@@ -329,6 +331,56 @@ export function ProfilePage() {
               </p>
             )}
           </section>
+
+          {/* Season history */}
+          {historyData?.snapshots && historyData.snapshots.length > 0 && (
+            <section className="space-y-3 anim-fade-up-3">
+              <h2 className="section-heading mb-0 flex items-center gap-2">
+                <Trophy size={13} className="text-gold-dim" />
+                Historial de temporadas
+              </h2>
+              <div className="space-y-2">
+                {historyData.snapshots.map(snap => (
+                  <Card key={snap.id} className="p-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-gold-soft border border-gold/20 flex items-center justify-center shrink-0">
+                        <span className="font-ui text-xs font-bold text-gold-dim">T{snap.seasonNumber}</span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="font-ui text-sm font-semibold text-ink">
+                            Temporada {snap.seasonNumber}
+                          </p>
+                          {snap.rank != null && snap.rank <= 3 && (
+                            <Badge variant="gold">
+                              {snap.rank === 1 ? '🥇' : snap.rank === 2 ? '🥈' : '🥉'} #{snap.rank}
+                            </Badge>
+                          )}
+                          {snap.rank != null && snap.rank > 3 && (
+                            <Badge variant="stone">#{snap.rank}</Badge>
+                          )}
+                        </div>
+                        <p className="font-body text-xs text-ink-muted mt-0.5 tabular-nums">
+                          {snap.points.toLocaleString('es')} pts
+                          {snap.achievementsCount > 0 && (
+                            <> · {snap.achievementsCount} logros</>
+                          )}
+                          {snap.kingdomsCount > 1 && (
+                            <> · {snap.kingdomsCount} reinos</>
+                          )}
+                        </p>
+                        <div className="flex gap-3 mt-1 text-[10px] font-ui text-ink-muted/60 tabular-nums">
+                          <span>Edif: {snap.buildingPoints}</span>
+                          <span>Inv: {snap.researchPoints}</span>
+                          <span>Ejér: {snap.unitPoints}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            </section>
+          )}
         </div>
 
       </div>

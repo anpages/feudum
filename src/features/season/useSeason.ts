@@ -34,6 +34,22 @@ export function useAdminCleanSessionData() {
   })
 }
 
+export function useSeasonSummary() {
+  return useQuery({
+    queryKey: ['season', 'summary'],
+    queryFn:  seasonService.getSummary,
+    staleTime: 2 * 60_000,
+  })
+}
+
+export function useSeasonHistory() {
+  return useQuery({
+    queryKey: ['season', 'history'],
+    queryFn:  seasonService.getHistory,
+    staleTime: 5 * 60_000,
+  })
+}
+
 export function useJoinSeason() {
   const qc = useQueryClient()
   return useMutation({

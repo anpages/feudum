@@ -1,3 +1,40 @@
+export interface SeasonSummaryPlayer {
+  userId?:        string
+  username:       string | null
+  rank:           number
+  points:         number
+  buildingPoints: number
+  researchPoints: number
+  unitPoints:     number
+  achievementsCount?: number
+  kingdomsCount?: number
+  isMe?:          boolean
+}
+
+export interface SeasonSummaryData {
+  seasonNumber: number
+  seasonStart:  number
+  seasonEnd:    number
+  winner:       { id: string; username: string | null; condition: string } | null
+  topPlayers:   SeasonSummaryPlayer[]
+  mySnapshot:   SeasonSummaryPlayer | null
+}
+
+export interface SeasonSnapshot {
+  id:               string
+  userId:           string | null
+  seasonNumber:     number
+  username:         string | null
+  rank:             number | null
+  points:           number
+  buildingPoints:   number
+  researchPoints:   number
+  unitPoints:       number
+  achievementsCount: number
+  kingdomsCount:    number
+  createdAt:        string
+}
+
 export interface SeasonBoss {
   slug:       string
   name:       string

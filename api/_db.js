@@ -2,7 +2,7 @@ import './lib/env.js'
 import postgres from 'postgres'
 import { drizzle } from 'drizzle-orm/postgres-js'
 import {
-  pgTable, pgEnum, integer, varchar, real, timestamp, text, boolean, uuid, jsonb,
+  pgTable, pgEnum, integer, varchar, real, timestamp, text, boolean, uuid, jsonb, serial,
 } from 'drizzle-orm/pg-core'
 
 export const userRoleEnum = pgEnum('user_role', ['human', 'npc', 'admin'])
@@ -221,11 +221,26 @@ export const battleLog = pgTable('battle_log', {
   createdAt:         timestamp('created_at').defaultNow().notNull(),
 })
 
+export const seasonSnapshots = pgTable('season_snapshots', {
+  id:               uuid('id').primaryKey().defaultRandom(),
+  userId:           uuid('user_id').references(() => users.id, { onDelete: 'set null' }),
+  seasonNumber:     integer('season_number').notNull(),
+  username:         varchar('username', { length: 50 }),
+  rank:             integer('rank'),
+  points:           integer('points').notNull().default(0),
+  buildingPoints:   integer('building_points').notNull().default(0),
+  researchPoints:   integer('research_points').notNull().default(0),
+  unitPoints:       integer('unit_points').notNull().default(0),
+  achievementsCount: integer('achievements_count').notNull().default(0),
+  kingdomsCount:    integer('kingdoms_count').notNull().default(0),
+  createdAt:        timestamp('created_at').defaultNow().notNull(),
+})
+
 // prepare: false required for PgBouncer transaction pooling
 const client = postgres(process.env.STORAGE_POSTGRES_URL, { prepare: false })
 export const db = drizzle(client, { schema: {
   users, kingdoms, npcState, buildings, units, research,
   buildingQueue, researchQueue, unitQueue, armyMissions,
   debrisFields, messages, settings, userAchievements, pushSubscriptions,
-  etherTransactions, battleLog,
+  etherTransactions, battleLog, seasonSnapshots,
 }})

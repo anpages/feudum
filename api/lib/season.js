@@ -6,15 +6,17 @@
  * repairSeasonNpcsIfMissing() — self-heal: reseed NPCs if none exist
  */
 import { randomUUID } from 'crypto'
-import { eq, ne } from 'drizzle-orm'
+import { eq, ne, inArray, sql } from 'drizzle-orm'
 import {
   db, users, kingdoms, npcState, buildings, units, research,
   armyMissions, debrisFields, buildingQueue, researchQueue, unitQueue,
-  userAchievements, battleLog, etherTransactions,
+  userAchievements, battleLog, etherTransactions, seasonSnapshots,
 } from '../_db.js'
 import { ECONOMY_SPEED, NPC_DENSITY, UNIVERSE } from './config.js'
 import { npcClass } from './npc-engine.js'
 import { setSetting } from './settings.js'
+import { calcPointsBreakdown } from './points.js'
+import { getBuildingMap, getResearchMap, getUnitMap } from './db-helpers.js'
 
 // ── NPC name generation ───────────────────────────────────────────────────────
 
@@ -48,6 +50,77 @@ function npcKingdomName(realm, region, slot) {
 // Username único: nombre legible + coordenadas para evitar duplicados en users.username
 function npcUsername(realm, region, slot) {
   return `${npcKingdomName(realm, region, slot)} [${realm}:${region}:${slot}]`
+}
+
+// ── Snapshot ──────────────────────────────────────────────────────────────────
+// Captures each human player's final state before resetSeason() wipes the data.
+// Called at the start of startNewSeason() so both manual and auto transitions save history.
+
+export async function snapshotSeason(seasonNumber) {
+  const humanKingdoms = await db.select({
+    k: kingdoms, userId: users.id, username: users.username,
+  })
+  .from(kingdoms)
+  .innerJoin(users, eq(kingdoms.userId, users.id))
+  .where(ne(users.role, 'npc'))
+
+  if (humanKingdoms.length === 0) return
+
+  // Group kingdoms by player
+  const playerMap = new Map()
+  for (const { k, userId, username } of humanKingdoms) {
+    if (!playerMap.has(userId)) playerMap.set(userId, { userId, username, kingdoms: [] })
+    playerMap.get(userId).kingdoms.push(k)
+  }
+
+  // Achievement counts per player
+  const userIds = [...playerMap.keys()]
+  const achRows = await db.select({
+    userId: userAchievements.userId,
+    count:  sql`COUNT(*)`.mapWith(Number),
+  })
+  .from(userAchievements)
+  .where(inArray(userAchievements.userId, userIds))
+  .groupBy(userAchievements.userId)
+  const achMap = new Map(achRows.map(r => [r.userId, r.count]))
+
+  // Compute points for each player
+  const entries = []
+  for (const { userId, username, kingdoms: playerKingdoms } of playerMap.values()) {
+    const resMap = await getResearchMap(userId)
+
+    // Research counted once per user
+    const resBreakdown = calcPointsBreakdown({}, resMap)
+    let totalBuilding = 0, totalUnit = 0
+
+    for (const k of playerKingdoms) {
+      const bMap = await getBuildingMap(k.id)
+      const uMap = await getUnitMap(k.id)
+      const bd   = calcPointsBreakdown({ ...k, ...bMap, ...uMap }, {})
+      totalBuilding += bd.buildings
+      totalUnit     += bd.units
+    }
+
+    entries.push({
+      userId,
+      username,
+      seasonNumber,
+      rank:             0,  // assigned below after sort
+      points:           totalBuilding + resBreakdown.research + totalUnit,
+      buildingPoints:   totalBuilding,
+      researchPoints:   resBreakdown.research,
+      unitPoints:       totalUnit,
+      achievementsCount: achMap.get(userId) ?? 0,
+      kingdomsCount:    playerKingdoms.length,
+    })
+  }
+
+  entries.sort((a, b) => b.points - a.points)
+  entries.forEach((e, i) => { e.rank = i + 1 })
+
+  if (entries.length > 0) {
+    await db.insert(seasonSnapshots).values(entries)
+  }
 }
 
 // ── Reset ─────────────────────────────────────────────────────────────────────
@@ -157,6 +230,12 @@ export async function seedNpcs(takenSlots, now, count = null) {
 export async function startNewSeason(seasonNumber, economySpeed) {
   const speed = parseFloat(economySpeed ?? ECONOMY_SPEED)
   const now   = Math.floor(Date.now() / 1000)
+
+  // Snapshot current season before wiping (works for both manual and auto transitions)
+  const prevSeasonNumber = seasonNumber - 1
+  if (prevSeasonNumber > 0) {
+    await snapshotSeason(prevSeasonNumber)
+  }
 
   // Always reset (clean slate for every season)
   await resetSeason()

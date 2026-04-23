@@ -1,11 +1,13 @@
 import { http } from '@/shared/services/http'
-import type { Season } from '../types'
+import type { Season, SeasonSummaryData, SeasonSnapshot } from '../types'
 
 export const seasonService = {
-  getSeason: () => http.get<Season>('/season'),
-  adminStartSeason: () => http.post('/admin/season', { action: 'start_season' }),
-  adminEndSeason: (winnerUserId?: number, condition?: string) =>
+  getSeason:            () => http.get<Season>('/season'),
+  getSummary:           () => http.get<{ summary: SeasonSummaryData | null }>('/season/summary'),
+  getHistory:           () => http.get<{ snapshots: SeasonSnapshot[] }>('/season/history'),
+  adminStartSeason:     () => http.post('/admin/season', { action: 'start_season' }),
+  adminEndSeason:       (winnerUserId?: number, condition?: string) =>
     http.post('/admin/season', { action: 'end_season', winnerUserId, condition }),
   adminCleanSessionData: () => http.post('/admin/season', { action: 'clean_session_data' }),
-  joinSeason: () => http.post<{ ok: boolean; kingdom: object }>('/season/join', {}),
+  joinSeason:           () => http.post<{ ok: boolean; kingdom: object }>('/season/join', {}),
 }
