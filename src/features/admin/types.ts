@@ -229,6 +229,14 @@ export interface CronData<T> {
   tickHistory: T[]
 }
 
+export interface NpcCurrentTask {
+  type: 'building' | 'unit'
+  targetId: string
+  targetLevel?: number
+  quantity?: number
+  finishAt: number
+}
+
 export interface NpcDecision {
   id: string
   name: string
@@ -240,6 +248,9 @@ export interface NpcDecision {
   npcLevel: number
   personality: 'economy' | 'military' | 'balanced'
   secsUntilNext: number
+  currentTask: NpcCurrentTask | null
+  currentResearch: string | null
+  researchAvailableAt: number | null
 }
 
 export interface NpcDecisionsResponse {

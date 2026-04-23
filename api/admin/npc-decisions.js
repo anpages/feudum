@@ -20,15 +20,18 @@ export default async function handler(req, res) {
   const filter = req.query.filter ?? 'all'
 
   const rows = await db.select({
-    id:           kingdoms.id,
-    name:         kingdoms.name,
-    realm:        kingdoms.realm,
-    region:       kingdoms.region,
-    slot:         kingdoms.slot,
-    lastDecision: npcState.lastDecision,
-    nextCheck:    npcState.nextCheck,
-    npcLevel:     npcState.npcLevel,
-    isBoss:       npcState.isBoss,
+    id:                  kingdoms.id,
+    name:                kingdoms.name,
+    realm:               kingdoms.realm,
+    region:              kingdoms.region,
+    slot:                kingdoms.slot,
+    lastDecision:        npcState.lastDecision,
+    nextCheck:           npcState.nextCheck,
+    npcLevel:            npcState.npcLevel,
+    isBoss:              npcState.isBoss,
+    currentTask:         npcState.currentTask,
+    currentResearch:     npcState.currentResearch,
+    researchAvailableAt: npcState.researchAvailableAt,
   }).from(kingdoms)
     .innerJoin(users, eq(kingdoms.userId, users.id))
     .innerJoin(npcState, eq(kingdoms.userId, npcState.userId))
@@ -39,16 +42,19 @@ export default async function handler(req, res) {
   const decisions = rows
     .filter(r => !r.isBoss)
     .map(r => ({
-      id:           r.id,
-      name:         r.name,
-      realm:        r.realm,
-      region:       r.region,
-      slot:         r.slot,
-      lastDecision: r.lastDecision ?? null,
-      npcNextCheck: r.nextCheck ?? null,
-      npcLevel:     r.npcLevel ?? 1,
-      personality:  npcPersonality(r),
-      secsUntilNext: r.nextCheck ? Math.max(0, r.nextCheck - now) : 0,
+      id:                  r.id,
+      name:                r.name,
+      realm:               r.realm,
+      region:              r.region,
+      slot:                r.slot,
+      lastDecision:        r.lastDecision ?? null,
+      npcNextCheck:        r.nextCheck ?? null,
+      npcLevel:            r.npcLevel ?? 1,
+      personality:         npcPersonality(r),
+      secsUntilNext:       r.nextCheck ? Math.max(0, r.nextCheck - now) : 0,
+      currentTask:         r.currentTask ?? null,
+      currentResearch:     r.currentResearch ?? null,
+      researchAvailableAt: r.researchAvailableAt ?? null,
     }))
     .filter(r => !filterFn || filterFn((r.lastDecision ?? '').toLowerCase()))
     .sort((a, b) => a.secsUntilNext - b.secsUntilNext)

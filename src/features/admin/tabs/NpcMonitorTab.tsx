@@ -1,9 +1,9 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { adminService } from '../services/adminService'
 import { formatResource } from '@/lib/format'
 import { label } from '@/lib/labels'
-import type { NpcTickResult, CombatEngineTick, MilitaryAiTick, NpcDecision } from '../types'
+import type { NpcTickResult, CombatEngineTick, MilitaryAiTick, NpcDecision, NpcCurrentTask } from '../types'
 
 // ── Translation ────────────────────────────────────────────────────────────────
 
@@ -387,6 +387,78 @@ function decisionColor(text: string | null) {
   return 'text-forest-light'
 }
 
+// ── Live countdown ─────────────────────────────────────────────────────────────
+
+function useLiveCountdown(finishAt: number | null): number {
+  const [secs, setSecs] = useState(() =>
+    finishAt ? Math.max(0, finishAt - Math.floor(Date.now() / 1000)) : 0
+  )
+  useEffect(() => {
+    if (!finishAt) return
+    const tick = () => setSecs(Math.max(0, finishAt - Math.floor(Date.now() / 1000)))
+    tick()
+    const id = setInterval(tick, 1000)
+    return () => clearInterval(id)
+  }, [finishAt])
+  return secs
+}
+
+function fmtMMSS(secs: number) {
+  if (secs <= 0) return '00:00'
+  const m = Math.floor(secs / 60)
+  const s = secs % 60
+  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+}
+
+function LiveCountdown({ finishAt }: { finishAt: number }) {
+  const secs = useLiveCountdown(finishAt)
+  return <span className="tabular-nums">{fmtMMSS(secs)}</span>
+}
+
+// Shows build + research slots as colored badges in the decision column
+function DecisionCell({ d, translated }: { d: NpcDecision; translated: string }) {
+  const task: NpcCurrentTask | null = d.currentTask
+  const hasTask     = !!task && task.finishAt > Math.floor(Date.now() / 1000)
+  const hasResearch = !!d.currentResearch && !!d.researchAvailableAt &&
+    d.researchAvailableAt > Math.floor(Date.now() / 1000)
+
+  if (!hasTask && !hasResearch) {
+    return translated
+      ? <span className={`font-ui text-wrap break-words ${decisionColor(translated)}`}>{translated}</span>
+      : <span className="text-ink-muted italic">sin decisión</span>
+  }
+
+  return (
+    <div className="flex flex-col gap-1">
+      {hasTask && task && (
+        <div className="inline-flex items-center gap-1.5 bg-gold/10 border border-gold/25 rounded px-1.5 py-0.5 w-fit">
+          <span className="font-ui text-[0.6rem] uppercase tracking-wider text-gold-dim shrink-0">
+            {task.type === 'building' ? 'Edif.' : 'Unit.'}
+          </span>
+          <span className="font-ui text-xs text-ink font-medium">
+            {label(task.targetId)}{task.targetLevel != null ? ` lv${task.targetLevel}` : task.quantity != null ? ` ×${task.quantity}` : ''}
+          </span>
+          <span className="font-ui text-xs text-gold font-semibold ml-0.5">
+            <LiveCountdown finishAt={task.finishAt} />
+          </span>
+        </div>
+      )}
+      {hasResearch && d.currentResearch && d.researchAvailableAt && (
+        <div className="inline-flex items-center gap-1.5 bg-forest/10 border border-forest/25 rounded px-1.5 py-0.5 w-fit">
+          <span className="font-ui text-[0.6rem] uppercase tracking-wider text-forest shrink-0">Inv.</span>
+          <span className="font-ui text-xs text-ink font-medium">{label(d.currentResearch)}</span>
+          <span className="font-ui text-xs text-forest-light font-semibold ml-0.5">
+            <LiveCountdown finishAt={d.researchAvailableAt} />
+          </span>
+        </div>
+      )}
+      {!hasTask && !hasResearch && translated && (
+        <span className={`font-ui text-wrap break-words ${decisionColor(translated)}`}>{translated}</span>
+      )}
+    </div>
+  )
+}
+
 const DECISIONS_PAGE = 10
 
 function NpcDecisionsCard() {
@@ -469,16 +541,14 @@ function NpcDecisionsCard() {
                           <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[0.6rem] font-semibold border shrink-0 ${pb.cls}`}>
                             {pb.label}
                           </span>
-                          <span className="font-ui text-ink font-medium truncate max-w-[90px]">{d.name}</span>
+                          <span className="font-ui text-ink font-medium truncate max-w-[140px]">{d.name}</span>
                         </div>
                       </td>
                       <td className="py-2 px-2 text-ink-muted tabular-nums hidden sm:table-cell">
                         {d.realm}:{d.region}:{d.slot}
                       </td>
                       <td className="py-2 px-2">
-                        {translated
-                          ? <span className={`font-ui text-wrap break-words ${decisionColor(translated)}`}>{translated}</span>
-                          : <span className="text-ink-muted italic">sin decisión</span>}
+                        <DecisionCell d={d} translated={translated} />
                       </td>
                       <td className="py-2 px-2 text-right tabular-nums text-ink-muted whitespace-nowrap">
                         {d.npcNextCheck ? formatCountdown(d.secsUntilNext) : '—'}

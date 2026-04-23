@@ -845,13 +845,15 @@ export default async function handler(req, res) {
       if (growResult?.action === 'researching') researching++
 
       const delay = getNpcDelay(now)
-      const nextCheck = (growResult?.action === 'waiting')
-        ? kingdom.currentTask
-          ? Math.min(now + delay, kingdom.currentTask.finishAt + 60)
-          : Math.min(now + delay, (kingdom.buildAvailableAt ?? now) + 60)
-        : (growResult?.action === 'researching' || growResult?.action === 'training')
-          ? Math.min(now + delay, (kingdom.researchAvailableAt ?? kingdom.buildAvailableAt ?? now) + 60)
-          : now + delay
+      // For deferred tasks, schedule next check at finishAt so completion is detected promptly
+      const nextCheck =
+        (growResult?.action === 'waiting' || growResult?.action === 'building' || growResult?.action === 'training')
+          ? kingdom.currentTask
+            ? kingdom.currentTask.finishAt               // process the tick when the task finishes
+            : Math.min(now + delay, (kingdom.buildAvailableAt ?? now) + 60)
+          : (growResult?.action === 'researching')
+            ? Math.min(now + delay, (kingdom.researchAvailableAt ?? now) + 60)
+            : now + delay
 
       await db.update(npcState)
         .set({ nextCheck, updatedAt: new Date() })
