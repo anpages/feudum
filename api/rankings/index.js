@@ -2,33 +2,9 @@ import { eq } from 'drizzle-orm'
 import { db, kingdoms, users, research } from '../_db.js'
 import { getSessionUserId } from '../lib/handler.js'
 import { calcPointsBreakdown } from '../lib/points.js'
+import { npcResearch as npcResearchLevels } from '../lib/npc-engine.js'
 
 const VALID_CATEGORIES = ['total', 'buildings', 'research', 'units', 'economy']
-
-// Derive virtual research levels for NPCs from their building levels (mirrors npc-tick.js npcResearch).
-function npcResearchLevels(k) {
-  const b = k.barracks ?? 0
-  const a = k.academy  ?? 0
-  const r = k.armoury  ?? 0
-  return {
-    horsemanship:      b,
-    swordsmanship:     b,
-    fortification:     r,
-    armoury:           r,
-    cartography:       a,
-    tradeRoutes:       Math.max(0, a - 2),
-    alchemy:           a,
-    pyromancy:         Math.max(0, a - 1),
-    runemastery:       Math.max(0, a - 3),
-    mysticism:         Math.max(0, a - 4),
-    dragonlore:        Math.max(0, a - 7),
-    spycraft:          a,
-    logistics:         a,
-    exploration:       a,
-    diplomaticNetwork: a,
-    divineBlessing:    Math.max(0, a - 9),
-  }
-}
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).end()

@@ -3,7 +3,9 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "crons": [
-    { "path": "/api/cron/npc-tick", "schedule": "*/10 * * * *" }
+    { "path": "/api/cron/combat-engine",    "schedule": "* * * * *"    },
+    { "path": "/api/cron/npc-builder",      "schedule": "* * * * *"    },
+    { "path": "/api/cron/npc-military-ai",  "schedule": "*/20 * * * *" }
   ],
   "routes": [
     { "src": "/api/(.*)",      "dest": "/api/$1"   },

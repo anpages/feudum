@@ -1,12 +1,7 @@
 import { eq } from 'drizzle-orm'
 import { db, kingdoms } from '../_db.js'
 import { getAdminUserId } from '../lib/admin.js'
-
-// Same hash as npc-tick.js — must stay in sync
-function npcPersonality(kingdom) {
-  const h = ((kingdom.realm * 374761 + kingdom.region * 6271 + kingdom.slot * 1013) >>> 0) % 3
-  return ['economy', 'military', 'balanced'][h]
-}
+import { npcPersonality } from '../lib/npc-engine.js'
 
 const FILTERS = {
   saving:   d => d.startsWith('ahorrando'),
