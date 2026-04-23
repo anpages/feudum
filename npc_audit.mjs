@@ -16,6 +16,7 @@ import { getSettings } from './api/lib/settings.js'
 const now = Math.floor(Date.now() / 1000)
 const cfg = await getSettings()
 const speedFactor = parseFloat(cfg.economy_speed ?? '1')
+const seasonActive = cfg.season_state === 'active'
 
 const npcRows = await db.select({ k: kingdoms, ns: npcState })
   .from(kingdoms)
@@ -41,11 +42,14 @@ const rMap = {}; for (const r of allResearch)  { (rMap[r.userId]    ??= {})[r.ty
 const all = npcRows.map(({ k, ns }) => ({
   ...k, ...(bMap[k.id] ?? {}), ...(uMap[k.id] ?? {}),
   _res: rMap[k.userId] ?? {},
-  isBoss: ns?.isBoss ?? false,
-  npcLevel: ns?.npcLevel ?? 1,
-  lastDecision: ns?.lastDecision ?? null,
-  currentResearch: ns?.currentResearch ?? null,
-  currentTask: ns?.currentTask ?? null,
+  isBoss:              ns?.isBoss              ?? false,
+  npcLevel:            ns?.npcLevel            ?? 1,
+  lastDecision:        ns?.lastDecision        ?? null,
+  currentResearch:     ns?.currentResearch     ?? null,
+  researchAvailableAt: ns?.researchAvailableAt ?? null,
+  currentTask:         ns?.currentTask         ?? null,
+  buildAvailableAt:    ns?.buildAvailableAt    ?? null,
+  nextCheck:           ns?.nextCheck           ?? null,
 }))
 
 const npcs   = all.filter(n => !n.isBoss)
@@ -78,9 +82,19 @@ function classifyNpc(n) {
   const dec = (n.lastDecision ?? '').toLowerCase()
   const saving = dec.startsWith('ahorrando')
 
-  if (saving && pending.length > 0) return { status: 'bloqueado', ageHours, personality, targets, pending }
-  if (saving && pending.length === 0) return { status: 'ahorrando_normal', ageHours, personality, targets, pending }
-  return { status: 'activo', ageHours, personality, targets, pending }
+  // Si tiene tarea activa en curso → activo aunque lastDecision diga ahorrando
+  const taskFinishAt = n.currentTask?.finishAt ?? 0
+  const hasActiveTask = (taskFinishAt > now)
+    || ((n.buildAvailableAt    ?? 0) > now)
+    || ((n.researchAvailableAt ?? 0) > now)
+
+  // Si nextCheck es futuro, el cron aún no lo ha procesado — puede que aún no haya tenido oportunidad
+  const pendingCheck = (n.nextCheck ?? 0) > now
+
+  if (hasActiveTask)                        return { status: 'activo',          ageHours, personality, targets, pending, pendingCheck }
+  if (saving && pending.length > 0)         return { status: 'bloqueado',       ageHours, personality, targets, pending, pendingCheck }
+  if (saving && pending.length === 0)       return { status: 'ahorrando_normal',ageHours, personality, targets, pending, pendingCheck }
+  return                                           { status: 'activo',          ageHours, personality, targets, pending, pendingCheck }
 }
 
 const classified = npcs.map(n => ({ n, ...classifyNpc(n) }))
@@ -92,7 +106,8 @@ const activos         = classified.filter(c => c.status === 'activo')
 
 console.log('\n══════════════════════════════════════════════════')
 console.log(`  AUDITORÍA NPC  —  ${new Date().toISOString()}`)
-console.log(`  economy_speed: ${speedFactor}`)
+console.log(`  economy_speed: ${speedFactor}  |  temporada: ${cfg.season_state ?? 'no configurada'}`)
+if (!seasonActive) console.log('  ⚠ TEMPORADA NO ACTIVA — los crons están parados')
 console.log('══════════════════════════════════════════════════')
 console.log(`\nTotal NPCs: ${npcs.length}  |  Bosses: ${bosses.length}`)
 console.log(`Con ejército:  ${npcs.filter(n=>army(n)>0).length} (${pct(npcs.filter(n=>army(n)>0).length, npcs.length)})`)
@@ -102,10 +117,16 @@ console.log(`Con colonist:  ${npcs.filter(n=>(n.colonist??0)>0).length}`)
 
 // ── Clasificación hitos ───────────────────────────────────────────────────────
 
+const pendingCheckCount = classified.filter(c => c.pendingCheck).length
+const overdueCount      = classified.filter(c => !c.pendingCheck).length
+
 console.log('\n── Clasificación por hitos ──')
 console.log(`  Bloqueados reales:   ${bloqueados.length.toString().padStart(3)}  (${pct(bloqueados.length, npcs.length)})  — hitos pendientes + ahorrando`)
 console.log(`  Ahorrando (normal):  ${ahorrandoNormal.length.toString().padStart(3)}  (${pct(ahorrandoNormal.length, npcs.length)})  — bracket cumplido, acumulando para el siguiente`)
 console.log(`  Activos:             ${activos.length.toString().padStart(3)}  (${pct(activos.length, npcs.length)})  — construyendo/entrenando/investigando`)
+console.log(`\n── Estado de procesado (nextCheck) ──`)
+console.log(`  Esperando su turno (nextCheck futuro): ${pendingCheckCount}`)
+console.log(`  Listos para procesar (nextCheck ≤ now): ${overdueCount}`)
 
 // ── Distribución de edad ──────────────────────────────────────────────────────
 
