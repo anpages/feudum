@@ -52,25 +52,26 @@ function npcUsername(realm, region, slot) {
 // ── Reset ─────────────────────────────────────────────────────────────────────
 
 export async function resetSeason() {
-  // Queues cascade from kingdoms, but delete explicitly first to be safe
-  await db.delete(buildingQueue)
-  await db.delete(researchQueue)
-  await db.delete(unitQueue)
-  // armyMissions has FK to users (userId) — delete before removing NPC users
-  await db.delete(armyMissions)
-  await db.delete(debrisFields)
-  await db.delete(userAchievements)
-  await db.delete(battleLog)
-  await db.delete(etherTransactions)
+  // All independent child tables — parallel for speed
+  await Promise.all([
+    db.delete(buildingQueue),
+    db.delete(researchQueue),
+    db.delete(unitQueue),
+    db.delete(armyMissions),
+    db.delete(debrisFields),
+    db.delete(userAchievements),
+    db.delete(battleLog),
+    db.delete(etherTransactions),
+  ])
 
-  // Delete all NPC users — cascades their kingdoms, buildings, units, research, npcState
+  // NPC users first — cascades their kingdoms, buildings, units, npcState
   await db.delete(users).where(eq(users.role, 'npc'))
 
-  // Delete remaining kingdoms (human players) — cascades buildings, units, queues
-  await db.delete(kingdoms)
-
-  // Reset research for human players
-  await db.delete(research)
+  // Human kingdoms + research — independent of each other
+  await Promise.all([
+    db.delete(kingdoms),
+    db.delete(research),
+  ])
 
   // Reset character class and ether — each season players start fresh
   await db.update(users)

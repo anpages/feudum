@@ -30,13 +30,21 @@ function SeasonSection() {
   const timeLeft = season?.seasonEnd ? Math.max(0, season.seasonEnd - now) : 0
 
   async function handleStart() {
-    await startSeason.mutateAsync()
-    setConfirm(null)
+    try {
+      await startSeason.mutateAsync()
+      setConfirm(null)
+    } catch {
+      // error shown via startSeason.error below
+    }
   }
 
   async function handleEnd() {
-    await endSeason.mutateAsync({ condition: 'admin_forced' })
-    setConfirm(null)
+    try {
+      await endSeason.mutateAsync({ condition: 'admin_forced' })
+      setConfirm(null)
+    } catch {
+      // error shown via endSeason.error below
+    }
   }
 
   return (
@@ -104,6 +112,12 @@ function SeasonSection() {
           </div>
         )}
       </Card>
+
+      {(startSeason.error || endSeason.error) && (
+        <p className="font-ui text-xs text-crimson-light bg-crimson/5 border border-crimson/20 rounded-lg px-3 py-2">
+          {String((startSeason.error || endSeason.error) ?? 'Error desconocido')}
+        </p>
+      )}
 
       <div className="flex flex-wrap gap-3">
         {/* Limpiar combates + éter (sin tocar reinos) */}
