@@ -511,6 +511,186 @@ a { color: inherit; text-decoration: none; }
   letter-spacing: 0.04em;
 }
 
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ DARK MODE ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+/*
+ * Overriding @theme tokens cascades automatically to all Tailwind utility
+ * classes (text-ink, bg-parchment-warm, etc.) without extra selectors.
+ */
+html.dark {
+  --color-ink:            #e8d5a0;
+  --color-ink-mid:        #c4a462;
+  --color-ink-muted:      #8a7058;
+
+  --color-parchment:      #0e0c07;
+  --color-parchment-warm: #141108;
+  --color-parchment-deep: #1c190e;
+  --color-surface:        #1c190e;
+
+  --color-gold:           #d4a017;
+  --color-gold-light:     #e0aa20;
+  --color-gold-dim:       #c49030;
+  --color-gold-soft:      rgba(212,160,23,0.09);
+
+  --color-crimson:        #e05252;
+  --color-crimson-light:  #e87878;
+  --color-forest:         #52b852;
+  --color-forest-light:   #6acf6a;
+}
+
+html.dark,
+html.dark body {
+  background-color: #0e0c07;
+  color: #e8d5a0;
+}
+
+html.dark ::-webkit-scrollbar-track       { background: #1c190e; }
+html.dark ::-webkit-scrollbar-thumb       { background: rgba(212,160,23,0.2); }
+html.dark ::-webkit-scrollbar-thumb:hover { background: rgba(212,160,23,0.38); }
+
+html.dark .game-header {
+  background: linear-gradient(180deg, #1a1710 0%, #141108 100%);
+  border-bottom-color: rgba(212,160,23,0.12);
+  box-shadow:
+    0 1px 0 rgba(212,160,23,0.06),
+    0 2px 12px rgba(0,0,0,0.35);
+}
+
+html.dark .header-divider {
+  background: linear-gradient(180deg, transparent, rgba(212,160,23,0.14) 30%, rgba(212,160,23,0.14) 70%, transparent);
+}
+
+html.dark .game-sidebar {
+  background: linear-gradient(180deg, #161209 0%, #131007 100%);
+  border-right-color: rgba(212,160,23,0.1);
+}
+
+html.dark .game-sidebar.open {
+  box-shadow: 4px 0 28px rgba(0,0,0,0.5);
+}
+
+html.dark .sidebar-overlay { background: rgba(0,0,0,0.5); }
+
+html.dark .game-content { background: #0e0c07; }
+
+/* ── Nav ── */
+html.dark .nav-section-label { color: rgba(180,150,80,0.4); }
+
+html.dark .nav-item { color: #a08860; }
+
+html.dark .nav-item:hover {
+  background: rgba(212,160,23,0.07);
+  color: #c4a462;
+  border-left-color: rgba(212,160,23,0.25);
+}
+
+html.dark .nav-item.active {
+  background: linear-gradient(90deg, rgba(212,160,23,0.12) 0%, rgba(212,160,23,0.04) 100%);
+  color: #d4a017;
+  border-left-color: #d4a017;
+}
+
+html.dark .nav-item.active .nav-icon { color: #d4a017; }
+
+/* ── Cards ── */
+html.dark .card-medieval {
+  background: #1c190e;
+  border-color: rgba(212,160,23,0.12);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.25), 0 4px 16px rgba(0,0,0,0.22);
+}
+
+html.dark .card-medieval::before,
+html.dark .card-medieval::after,
+html.dark .card-corner-tr,
+html.dark .card-corner-bl {
+  border-color: rgba(212,160,23,0.18);
+}
+
+html.dark .card-medieval:hover {
+  border-color: rgba(212,160,23,0.26);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.35), 0 8px 28px rgba(0,0,0,0.28);
+}
+
+html.dark .card-medieval:hover::before,
+html.dark .card-medieval:hover::after,
+html.dark .card-medieval:hover .card-corner-tr,
+html.dark .card-medieval:hover .card-corner-bl {
+  border-color: rgba(212,160,23,0.55);
+}
+
+/* ── Buttons ── */
+html.dark .btn-ghost {
+  color: #c49030;
+  border-color: rgba(212,160,23,0.25);
+}
+
+html.dark .btn-ghost:hover:not(:disabled) {
+  background: rgba(212,160,23,0.08);
+  border-color: rgba(212,160,23,0.45);
+  color: #d4a017;
+}
+
+/* ── Badges ── */
+html.dark .badge-gold   { background: rgba(212,160,23,0.12); color: #d4a017;  border-color: rgba(212,160,23,0.22); }
+html.dark .badge-crimson{ background: rgba(224,82,82,0.12);  color: #e05252;  border-color: rgba(224,82,82,0.22);  }
+html.dark .badge-forest { background: rgba(82,184,82,0.12);  color: #52b852;  border-color: rgba(82,184,82,0.22);  }
+html.dark .badge-stone  { background: rgba(110,86,56,0.2);   color: #a08860;  border-color: rgba(160,136,96,0.22); }
+
+/* ── Resource pill ── */
+html.dark .resource-pill {
+  background: #1c190e;
+  border-color: rgba(212,160,23,0.12);
+}
+
+html.dark .resource-pill:hover {
+  background: #221e12;
+  border-color: rgba(212,160,23,0.25);
+}
+
+/* ── Progress ── */
+html.dark .progress-track {
+  background: rgba(212,160,23,0.08);
+  border-color: rgba(212,160,23,0.08);
+}
+
+/* ── Form ── */
+html.dark .game-input {
+  background: #1c190e;
+  border-color: rgba(212,160,23,0.2);
+  color: #e8d5a0;
+}
+
+html.dark .game-input::placeholder { color: rgba(160,136,96,0.35); }
+
+html.dark .game-input:focus {
+  border-color: rgba(212,160,23,0.45);
+  box-shadow: 0 0 0 3px rgba(212,160,23,0.08);
+}
+
+/* ── Misc ── */
+html.dark .divider            { color: rgba(212,160,23,0.25); }
+html.dark .divider::before,
+html.dark .divider::after      { background: rgba(212,160,23,0.1); }
+html.dark .section-heading     { color: rgba(180,150,80,0.5); }
+html.dark .page-title          { color: #e8d5a0; }
+
+html.dark .skeleton {
+  background: linear-gradient(
+    90deg,
+    rgba(212,160,23,0.04) 25%,
+    rgba(212,160,23,0.09) 50%,
+    rgba(212,160,23,0.04) 75%
+  );
+  background-size: 200% 100%;
+}
+
+html.dark .bg-login {
+  background-color: #0e0c07;
+  background-image:
+    radial-gradient(ellipse 80% 55% at 18% 18%, rgba(212,160,23,0.07) 0%, transparent 60%),
+    radial-gradient(ellipse 55% 45% at 82% 78%, rgba(155,26,26,0.04) 0%, transparent 60%);
+}
+
 /* Login page background */
 .bg-login {
   background-color: #faf6ef;

@@ -5,6 +5,7 @@ import { NavBar } from './NavBar'
 import { ToastContainer } from '@/components/ui/ToastContainer'
 import { useRealtime } from '@/features/realtime/useRealtime'
 import { PageErrorBoundary } from '@/components/ErrorBoundary'
+import { watchSystemTheme } from '@/lib/theme'
 
 export function GameLayout() {
   useRealtime()
@@ -15,6 +16,7 @@ export function GameLayout() {
 
   const { pathname } = useLocation()
   useEffect(() => { window.scrollTo(0, 0) }, [pathname])
+  useEffect(() => watchSystemTheme(), [])
 
   return (
     <div className="game-layout">

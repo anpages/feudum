@@ -25,6 +25,11 @@
 
     <title>Feudum</title>
 
+    <!-- Apply dark class before first paint to avoid flash of wrong theme -->
+    <script>
+      (function(){try{var s=JSON.parse(localStorage.getItem('feudum-theme')||'{}');var m=(s.state||{}).mode||'auto';if(m==='dark'||(m!=='light'&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.classList.add('dark')}catch(e){}})()
+    </script>
+
     <!-- Preconnect to Google Fonts to avoid extra DNS+TLS round trips -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />

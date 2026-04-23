@@ -2,10 +2,12 @@ import { NavLink } from 'react-router-dom'
 import {
   X, ShieldAlert,
   Castle, Factory, Building2, BookOpen, Swords, Shield, Navigation, Map, BarChart2, Users,
+  Sun, Moon, Monitor,
   type LucideIcon,
 } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@/features/auth/useAuth'
+import { useTheme, type ThemeMode } from '@/lib/theme'
 
 import type { ArmiesResponse } from '@/features/armies/types'
 
@@ -32,9 +34,16 @@ interface Props {
   onClose: () => void
 }
 
+const THEME_OPTIONS: { mode: ThemeMode; Icon: LucideIcon; label: string }[] = [
+  { mode: 'light', Icon: Sun,     label: 'Claro'  },
+  { mode: 'dark',  Icon: Moon,    label: 'Oscuro' },
+  { mode: 'auto',  Icon: Monitor, label: 'Auto'   },
+]
+
 export function NavBar({ isOpen, onClose }: Props) {
   const { user } = useAuth()
   const qc = useQueryClient()
+  const { mode, setMode } = useTheme()
   const underAttack = (qc.getQueryData<ArmiesResponse>(['armies'])?.underAttack) ?? false
 
   return (
@@ -92,6 +101,28 @@ export function NavBar({ isOpen, onClose }: Props) {
           </NavLink>
         </div>
       )}
+
+      {/* Theme toggle */}
+      <div className="px-3 pt-3 pb-2 border-t border-gold/10">
+        <span className="nav-section-label !pt-0 !pb-2">Tema</span>
+        <div className="flex gap-1">
+          {THEME_OPTIONS.map(({ mode: m, Icon, label }) => (
+            <button
+              key={m}
+              onClick={() => setMode(m)}
+              title={label}
+              className={`flex-1 flex flex-col items-center gap-1 py-1.5 rounded transition-all font-ui text-[0.58rem] font-semibold tracking-wider uppercase border ${
+                mode === m
+                  ? 'bg-gold/10 text-gold border-gold/30'
+                  : 'text-ink-muted hover:text-ink-mid hover:bg-gold/5 border-transparent'
+              }`}
+            >
+              <Icon size={13} />
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
 
       {/* Footer */}
       <div className="px-4 py-3 border-t border-gold/10">
