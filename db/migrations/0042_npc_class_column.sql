@@ -1,0 +1,1 @@
+ALTER TABLE npc_state ADD COLUMN IF NOT EXISTS npc_class VARCHAR(20);

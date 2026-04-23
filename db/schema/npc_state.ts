@@ -9,6 +9,7 @@ export const npcState = pgTable('npc_state', {
   userId:              uuid('user_id').primaryKey().references(() => users.id, { onDelete: 'cascade' }),
   isBoss:              boolean('is_boss').default(false).notNull(),
   npcLevel:            integer('npc_level').default(1).notNull(),
+  npcClass:            varchar('npc_class', { length: 20 }),
   buildAvailableAt:    integer('build_available_at'),
   lastBuildAt:         integer('last_build_at').default(0).notNull(),
   lastAttackAt:        integer('last_attack_at').default(0).notNull(),

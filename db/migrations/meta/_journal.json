@@ -92,6 +92,13 @@
       "when": 1776769167926,
       "tag": "0012_polite_dust",
       "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1745452800000,
+      "tag": "0042_npc_class_column",
+      "breakpoints": true
     }
   ]
 }

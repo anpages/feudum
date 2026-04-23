@@ -12,6 +12,7 @@ import {
   userAchievements,
 } from '../_db.js'
 import { ECONOMY_SPEED, NPC_DENSITY, UNIVERSE } from './config.js'
+import { npcClass } from './npc-engine.js'
 import { getBossForSeason, getBossPosition } from './bosses.js'
 import { setSetting } from './settings.js'
 
@@ -74,7 +75,7 @@ export async function resetSeason() {
 
 // ── NPC seed ──────────────────────────────────────────────────────────────────
 
-export async function seedNpcs(takenSlots, now) {
+export async function seedNpcs(takenSlots, now, count = null) {
   const { maxRealm, maxRegion, maxSlot } = UNIVERSE
   const totalSlots = maxRealm * maxRegion * maxSlot
   const targetNpcs = Math.floor(totalSlots * NPC_DENSITY)
@@ -92,7 +93,8 @@ export async function seedNpcs(takenSlots, now) {
     [available[i], available[j]] = [available[j], available[i]]
   }
 
-  const chosen = available.slice(0, Math.min(targetNpcs, available.length))
+  const limit  = count !== null ? count : targetNpcs
+  const chosen = available.slice(0, Math.min(limit, available.length))
 
   // Each NPC needs its own user row — process in parallel chunks of 20
   let seeded = 0
@@ -117,8 +119,9 @@ export async function seedNpcs(takenSlots, now) {
         })
         .returning({ id: kingdoms.id })
 
-      // 3. Insert npcState
-      await db.insert(npcState).values({ userId: npcUser.id, isBoss: false, npcLevel: 1 })
+      // 3. Insert npcState with computed class (placeholder for Phase 19)
+      const cls = npcClass({ realm, region, slot })
+      await db.insert(npcState).values({ userId: npcUser.id, isBoss: false, npcLevel: 1, npcClass: cls })
 
       // 4. Insert initial windmill
       await db.insert(buildings).values({ kingdomId: kingdom.id, type: 'windmill', level: 1 })
