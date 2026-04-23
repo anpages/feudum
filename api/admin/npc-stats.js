@@ -1,7 +1,7 @@
 import { eq, inArray } from 'drizzle-orm'
 import { db, kingdoms, users, npcState, buildings, units, armyMissions } from '../_db.js'
 import { getAdminUserId } from '../lib/admin.js'
-import { getStringSetting } from '../lib/settings.js'
+import { getStringSetting, getSettings } from '../lib/settings.js'
 
 const MOBILE_KEYS = [
   'squire','knight','paladin','warlord','grandKnight',
@@ -27,13 +27,28 @@ export default async function handler(req, res) {
 
   const now = Math.floor(Date.now() / 1000)
 
-  // Load tick history from settings
-  const [lastTickRaw, historyRaw] = await Promise.all([
-    getStringSetting('npc_last_tick'),
-    getStringSetting('npc_tick_history'),
-  ])
-  const lastTick    = lastTickRaw ? JSON.parse(lastTickRaw) : null
-  const tickHistory = historyRaw  ? JSON.parse(historyRaw)  : []
+  // Load tick history from settings for all 3 crons
+  const cfg = await getSettings()
+  function parseTick(raw)    { try { return raw ? JSON.parse(raw) : null  } catch { return null  } }
+  function parseHistory(raw) { try { return raw ? JSON.parse(raw) : []    } catch { return []    } }
+
+  const lastTick    = parseTick(cfg.npc_last_tick)
+  const tickHistory = parseHistory(cfg.npc_tick_history)
+
+  const crons = {
+    builder: {
+      lastTick:    lastTick,
+      tickHistory: tickHistory.slice(-48),
+    },
+    combat: {
+      lastTick:    parseTick(cfg.combat_engine_last_tick),
+      tickHistory: parseHistory(cfg.combat_engine_tick_history).slice(-48),
+    },
+    militaryAi: {
+      lastTick:    parseTick(cfg.military_ai_last_tick),
+      tickHistory: parseHistory(cfg.military_ai_tick_history).slice(-48),
+    },
+  }
 
   // Load NPC kingdoms + npcState
   const npcRows = await db.select({ k: kingdoms, ns: npcState })
@@ -163,5 +178,5 @@ export default async function handler(req, res) {
     now,
   }
 
-  return res.json({ lastTick, tickHistory: tickHistory.slice(-24), aggregate })
+  return res.json({ crons, lastTick, tickHistory: tickHistory.slice(-24), aggregate })
 }

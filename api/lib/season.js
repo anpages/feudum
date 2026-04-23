@@ -9,7 +9,7 @@ import { eq, ne } from 'drizzle-orm'
 import {
   db, users, kingdoms, npcState, buildings, units, research,
   armyMissions, debrisFields, buildingQueue, researchQueue, unitQueue,
-  userAchievements,
+  userAchievements, battleLog, etherTransactions,
 } from '../_db.js'
 import { ECONOMY_SPEED, NPC_DENSITY, UNIVERSE } from './config.js'
 import { npcClass } from './npc-engine.js'
@@ -61,6 +61,8 @@ export async function resetSeason() {
   await db.delete(armyMissions)
   await db.delete(debrisFields)
   await db.delete(userAchievements)
+  await db.delete(battleLog)
+  await db.delete(etherTransactions)
 
   // Delete all NPC users — cascades their kingdoms, buildings, units, research, npcState
   await db.delete(users).where(eq(users.role, 'npc'))
@@ -71,10 +73,20 @@ export async function resetSeason() {
   // Reset research for human players
   await db.delete(research)
 
-  // Reset character class — each season players choose again
+  // Reset character class and ether — each season players start fresh
   await db.update(users)
-    .set({ characterClass: null, updatedAt: new Date() })
+    .set({ characterClass: null, ether: 0, updatedAt: new Date() })
     .where(ne(users.role, 'npc'))
+
+  // Clear cron tick history
+  await Promise.all([
+    setSetting('npc_last_tick',                ''),
+    setSetting('npc_tick_history',             '[]'),
+    setSetting('combat_engine_last_tick',      ''),
+    setSetting('combat_engine_tick_history',   '[]'),
+    setSetting('military_ai_last_tick',        ''),
+    setSetting('military_ai_tick_history',     '[]'),
+  ])
 }
 
 // ── NPC seed ──────────────────────────────────────────────────────────────────

@@ -4,7 +4,7 @@ import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { useAdminSettings, useUpdateSettings, type AdminSettings } from '@/features/admin/useAdmin'
-import { useSeason, useAdminStartSeason, useAdminEndSeason } from '@/features/season/useSeason'
+import { useSeason, useAdminStartSeason, useAdminEndSeason, useAdminCleanSessionData } from '@/features/season/useSeason'
 import { formatDuration } from '@/lib/format'
 import { useNow } from '@/lib/useNow'
 
@@ -21,7 +21,8 @@ function SeasonSection() {
   const { data: season, isLoading } = useSeason()
   const startSeason = useAdminStartSeason()
   const endSeason   = useAdminEndSeason()
-  const [confirm, setConfirm] = useState<'start' | 'end' | null>(null)
+  const cleanData   = useAdminCleanSessionData()
+  const [confirm, setConfirm] = useState<'start' | 'end' | 'clean' | null>(null)
   const now = useNow()
 
   if (isLoading) return <div className="skeleton h-36 rounded-xl" />
@@ -104,7 +105,23 @@ function SeasonSection() {
         )}
       </Card>
 
-      <div className="flex gap-3">
+      <div className="flex flex-wrap gap-3">
+        {/* Limpiar combates + éter (sin tocar reinos) */}
+        {confirm === 'clean' ? (
+          <div className="flex items-center gap-2">
+            <span className="font-body text-xs text-ink-muted">¿Limpiar combates y éter?</span>
+            <Button variant="danger" size="sm" onClick={async () => { await cleanData.mutateAsync(); setConfirm(null) }} disabled={cleanData.isPending}>
+              {cleanData.isPending ? <Loader2 size={12} className="animate-spin" /> : null}
+              Confirmar
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => setConfirm(null)}>Cancelar</Button>
+          </div>
+        ) : (
+          <Button variant="ghost" size="sm" onClick={() => setConfirm('clean')}>
+            Limpiar combates + éter
+          </Button>
+        )}
+
         {!season?.active && (
           confirm === 'start' ? (
             <div className="flex items-center gap-2">

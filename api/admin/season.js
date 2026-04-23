@@ -4,8 +4,8 @@
  * POST { action: "start_season" } → emergency manual start (cron handles normal flow)
  * POST { action: "end_season" }   → force-end current season
  */
-import { eq } from 'drizzle-orm'
-import { db, kingdoms, npcState } from '../_db.js'
+import { eq, ne } from 'drizzle-orm'
+import { db, kingdoms, npcState, users, battleLog, etherTransactions } from '../_db.js'
 import { getAdminUserId } from '../lib/admin.js'
 import { getSettings, setSetting } from '../lib/settings.js'
 import { startNewSeason } from '../lib/season.js'
@@ -72,6 +72,16 @@ export default async function handler(req, res) {
       setSetting('season_end',                String(Math.floor(Date.now() / 1000))),
       setSetting('season_winner_user_id',     winnerUserId ?? ''),
       setSetting('season_winner_condition',   condition),
+    ])
+    return res.json({ ok: true })
+  }
+
+  // ── clean_session_data — wipe battle log + ether without touching kingdoms ──
+  if (action === 'clean_session_data') {
+    await Promise.all([
+      db.delete(battleLog),
+      db.delete(etherTransactions),
+      db.update(users).set({ ether: 0, updatedAt: new Date() }).where(ne(users.role, 'npc')),
     ])
     return res.json({ ok: true })
   }

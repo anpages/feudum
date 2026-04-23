@@ -12,7 +12,7 @@ import { upsertUnit } from '../lib/db-helpers.js'
 import { NPC_AGGRESSION, NPC_ATTACK_INTERVAL_HOURS, NPC_BASH_LIMIT } from '../lib/config.js'
 import { calcDistance, calcDuration } from '../lib/speed.js'
 import { sendPush } from '../lib/push.js'
-import { getSettings } from '../lib/settings.js'
+import { getSettings, setSetting } from '../lib/settings.js'
 import {
   UNIT_KEYS, UNIT_COMBAT_SET, UNIT_SUPPORT_SET, UNIT_DEFENSE_SET, UNIT_PRIORITY,
   UNIT_COSTS, ATTACK_THRESHOLD,
@@ -440,6 +440,18 @@ export default async function handler(req, res) {
       console.error(`[npc-military-ai] kingdom ${kingdom.id} error:`, err?.message ?? err)
     }
   }
+
+  // Persist tick for admin monitor
+  const militaryTick = { at: now, npcCount: allNpcKingdoms.length, attacked, scavenged, expeditioned }
+  const MAX_HISTORY = 48
+  let militaryHistory = []
+  try { const raw = cfg.military_ai_tick_history; if (raw) militaryHistory = JSON.parse(raw) } catch { militaryHistory = [] }
+  militaryHistory.push(militaryTick)
+  if (militaryHistory.length > MAX_HISTORY) militaryHistory = militaryHistory.slice(-MAX_HISTORY)
+  await Promise.all([
+    setSetting('military_ai_last_tick',    JSON.stringify(militaryTick)),
+    setSetting('military_ai_tick_history', JSON.stringify(militaryHistory)),
+  ])
 
   return res.json({
     ok: true, at: now,

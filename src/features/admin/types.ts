@@ -195,12 +195,36 @@ export interface NpcTickResult {
   trainedSupport: number
   saved: number
   waiting: number
+  fleetsaved?: number
+  sleeping?: number
+  researching?: number
   attacked: number
   scavenged: number
   expeditioned: number
   npcExpeditionsResolved: number
   npcVsNpcResolved: number
   purged: number
+}
+
+export interface CombatEngineTick {
+  at: number
+  npcVsNpcResolved: number
+  npcExpeditionsResolved: number
+  purged: number
+  intruderCount: number
+}
+
+export interface MilitaryAiTick {
+  at: number
+  npcCount: number
+  attacked: number
+  scavenged: number
+  expeditioned: number
+}
+
+export interface CronData<T> {
+  lastTick: T | null
+  tickHistory: T[]
 }
 
 export interface NpcDecision {
@@ -272,6 +296,11 @@ export interface NpcAggregate {
 }
 
 export interface NpcStatsResponse {
+  crons: {
+    builder:    CronData<NpcTickResult>
+    combat:     CronData<CombatEngineTick>
+    militaryAi: CronData<MilitaryAiTick>
+  }
   lastTick: NpcTickResult | null
   tickHistory: NpcTickResult[]
   aggregate: NpcAggregate

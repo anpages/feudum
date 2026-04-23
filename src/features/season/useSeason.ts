@@ -25,3 +25,11 @@ export function useAdminEndSeason() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['season'] }),
   })
 }
+
+export function useAdminCleanSessionData() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: seasonService.adminCleanSessionData,
+    onSuccess:  () => qc.invalidateQueries({ queryKey: ['admin', 'battles'] }),
+  })
+}

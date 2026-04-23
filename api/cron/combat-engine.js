@@ -421,6 +421,18 @@ export default async function handler(req, res) {
   const purged                 = await purgeOldExpeditions(now)
   const intruderCount          = await runIntrusionDetector(npcKingdomsById, now)
 
+  // Persist tick for admin monitor
+  const combatTick = { at: now, npcVsNpcResolved, npcExpeditionsResolved, purged, intruderCount }
+  const MAX_HISTORY = 48
+  let combatHistory = []
+  try { const raw = cfg.combat_engine_tick_history; if (raw) combatHistory = JSON.parse(raw) } catch { combatHistory = [] }
+  combatHistory.push(combatTick)
+  if (combatHistory.length > MAX_HISTORY) combatHistory = combatHistory.slice(-MAX_HISTORY)
+  await Promise.all([
+    setSetting('combat_engine_last_tick',    JSON.stringify(combatTick)),
+    setSetting('combat_engine_tick_history', JSON.stringify(combatHistory)),
+  ])
+
   return res.json({
     ok: true,
     at: now,

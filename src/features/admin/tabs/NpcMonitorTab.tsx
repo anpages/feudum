@@ -2,9 +2,22 @@ import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { adminService } from '../services/adminService'
 import { formatResource } from '@/lib/format'
-import type { NpcTickResult, NpcDecision } from '../types'
+import { label } from '@/lib/labels'
+import type { NpcTickResult, CombatEngineTick, MilitaryAiTick, NpcDecision } from '../types'
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// ── Translation ────────────────────────────────────────────────────────────────
+
+const ID_RE = /\b(sawmill|quarry|grainFarm|windmill|cathedral|workshop|engineersGuild|barracks|granary|stonehouse|silo|academy|alchemistTower|ambassadorHall|armoury|squire|knight|paladin|warlord|grandKnight|siegeMaster|warMachine|dragonKnight|merchant|caravan|colonist|scavenger|scout|archer|crossbowman|ballista|trebuchet|mageTower|dragonCannon|palisade|castleWall|moat|catapult|ballistic|swordsmanship|fortification|horsemanship|cartography|tradeRoutes|spycraft|logistics|exploration|alchemy|pyromancy|runemastery|mysticism|dragonlore|diplomaticNetwork|divineBlessing)\b/g
+
+function translateDecision(text: string | null): string {
+  if (!text) return ''
+  return text
+    .replace(ID_RE, id => label(id))
+    .replace(/\bFleetsave\b/g, 'Huida táctica')
+    .replace(/\bfleetsave\b/g, 'huida táctica')
+}
+
+// ── Helpers ────────────────────────────────────────────────────────────────────
 
 function timeAgo(unix: number, now: number) {
   const d = now - unix
@@ -14,72 +27,20 @@ function timeAgo(unix: number, now: number) {
 }
 
 function formatTs(unix: number) {
-  return new Date(unix * 1000).toLocaleTimeString('es-ES', {
-    hour: '2-digit', minute: '2-digit',
-  })
+  return new Date(unix * 1000).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
 }
 
 function pct(n: number, total: number) {
   return total > 0 ? Math.round(n / total * 100) : 0
 }
 
-// ── Sub-components ────────────────────────────────────────────────────────────
-
-function TickStatusBar({ tick, now }: { tick: NpcTickResult; now: number }) {
-  const age  = now - tick.at
-  const fresh = age < 900  // less than 15 min
-
-  return (
-    <div className="glass rounded-xl p-4 flex flex-wrap items-center gap-4">
-      {/* Status dot */}
-      <div className="flex items-center gap-2 shrink-0">
-        <span className={`w-2.5 h-2.5 rounded-full ${fresh ? 'bg-forest-light animate-pulse' : 'bg-ink-muted'}`} />
-        <span className="font-ui text-xs font-semibold text-ink">
-          {fresh ? 'Activo' : 'Sin actividad reciente'}
-        </span>
-      </div>
-      <div className="w-px h-4 bg-gold/20 hidden sm:block" />
-      {/* Last tick */}
-      <div className="flex items-center gap-1.5 font-ui text-xs text-ink-muted">
-        <span className="text-ink-muted">Último tick:</span>
-        <span className="text-ink font-semibold">{formatTs(tick.at)}</span>
-        <span className="text-ink-muted">· hace {timeAgo(tick.at, now)}</span>
-      </div>
-      <div className="w-px h-4 bg-gold/20 hidden sm:block" />
-      {/* Quick stats */}
-      <div className="flex flex-wrap items-center gap-3 ml-auto">
-        <TickPill label="edificios" value={tick.builtBuilding} color={tick.builtBuilding > 0 ? 'text-forest-light'  : 'text-ink-muted'} />
-        <TickPill label="ataque"    value={tick.trainedCombat}  color={tick.trainedCombat  > 0 ? 'text-crimson-light' : 'text-ink-muted'} />
-        <TickPill label="defensas"  value={tick.trainedDefense} color={tick.trainedDefense > 0 ? 'text-gold'          : 'text-ink-muted'} />
-        <TickPill label="apoyo"     value={tick.trainedSupport} color={tick.trainedSupport > 0 ? 'text-gold-light'    : 'text-ink-muted'} />
-        <TickPill label="combates"  value={tick.attacked}       color={tick.attacked       > 0 ? 'text-crimson-light' : 'text-ink-muted'} />
-        <TickPill label="expedición" value={tick.expeditioned}  color={tick.expeditioned   > 0 ? 'text-gold'          : 'text-ink-muted'} />
-      </div>
-    </div>
-  )
+function formatCountdown(secs: number) {
+  if (secs <= 0) return 'ahora'
+  if (secs < 60) return `${secs}s`
+  return `${Math.floor(secs / 60)}m ${secs % 60}s`
 }
 
-function TickPill({ label, value, color }: { label: string; value: number; color: string }) {
-  return (
-    <div className="flex items-baseline gap-1">
-      <span className={`font-ui text-sm font-bold tabular-nums ${color}`}>{value}</span>
-      <span className="font-ui text-[0.6rem] text-ink-muted">{label}</span>
-    </div>
-  )
-}
-
-function MetricCard({ label, value, sub, accent }: {
-  label: string; value: string | number; sub?: string; accent?: string
-}) {
-  return (
-    <div className="card-medieval p-4 flex flex-col gap-1">
-      <div className="card-corner-tr" /><div className="card-corner-bl" />
-      <span className="font-ui text-[0.6rem] uppercase tracking-widest text-ink-muted">{label}</span>
-      <span className={`font-ui text-2xl font-bold tabular-nums ${accent ?? 'text-ink'}`}>{value}</span>
-      {sub && <span className="font-ui text-[0.6rem] text-ink-muted">{sub}</span>}
-    </div>
-  )
-}
+// ── UI atoms ──────────────────────────────────────────────────────────────────
 
 function FillBar({ value, max, color = 'bg-gold' }: { value: number; max: number; color?: string }) {
   const w = max > 0 ? Math.min(100, value / max * 100) : 0
@@ -90,17 +51,36 @@ function FillBar({ value, max, color = 'bg-gold' }: { value: number; max: number
   )
 }
 
+function MetricCard({ label, value, sub, accent }: { label: string; value: string | number; sub?: string; accent?: string }) {
+  return (
+    <div className="card-medieval p-4 flex flex-col gap-1">
+      <div className="card-corner-tr" /><div className="card-corner-bl" />
+      <span className="font-ui text-[0.6rem] uppercase tracking-widest text-ink-muted">{label}</span>
+      <span className={`font-ui text-2xl font-bold tabular-nums ${accent ?? 'text-ink'}`}>{value}</span>
+      {sub && <span className="font-ui text-[0.6rem] text-ink-muted">{sub}</span>}
+    </div>
+  )
+}
+
+function MissionBadge({ label, count, color }: { label: string; count: number; color: string }) {
+  return (
+    <div className={`glass rounded-lg p-3 text-center ${count > 0 ? '' : 'opacity-50'}`}>
+      <div className={`font-ui text-xl font-bold tabular-nums ${color}`}>{count}</div>
+      <div className="font-ui text-[0.6rem] uppercase tracking-wider text-ink-muted mt-0.5">{label}</div>
+    </div>
+  )
+}
+
 function ArmyDistribution({ dist, total }: { dist: Record<string, number>; total: number }) {
   const buckets = [
     { key: '0',     label: 'Sin ejército', color: 'bg-ink-muted/30' },
     { key: '1-10',  label: '1–10',         color: 'bg-gold/40' },
-    { key: '11-50', label: '11–50',         color: 'bg-gold/70' },
-    { key: '51-200',label: '51–200',        color: 'bg-gold' },
-    { key: '200+',  label: '200+',          color: 'bg-forest-light' },
+    { key: '11-50', label: '11–50',        color: 'bg-gold/70' },
+    { key: '51-200',label: '51–200',       color: 'bg-gold' },
+    { key: '200+',  label: '200+',         color: 'bg-forest-light' },
   ]
   return (
     <div className="space-y-1.5">
-      {/* Stacked bar */}
       <div className="flex h-3 rounded overflow-hidden gap-px">
         {buckets.map(b => {
           const n = dist[b.key] ?? 0
@@ -111,7 +91,6 @@ function ArmyDistribution({ dist, total }: { dist: Record<string, number>; total
           ) : null
         })}
       </div>
-      {/* Legend */}
       <div className="flex flex-wrap gap-x-3 gap-y-0.5">
         {buckets.map(b => {
           const n = dist[b.key] ?? 0
@@ -128,14 +107,11 @@ function ArmyDistribution({ dist, total }: { dist: Record<string, number>; total
   )
 }
 
-
 function BuildingRow({ label, avg, max, weight }: { label: string; avg: number; max: number; weight: number }) {
   return (
     <div className="flex items-center gap-3">
       <span className="font-ui text-xs text-ink-muted w-28 shrink-0">{label}</span>
-      <div className="flex-1 space-y-0.5">
-        <FillBar value={avg} max={weight} color="bg-gold/70" />
-      </div>
+      <div className="flex-1 space-y-0.5"><FillBar value={avg} max={weight} color="bg-gold/70" /></div>
       <span className="font-ui text-xs tabular-nums text-ink w-20 text-right shrink-0">
         <span className="text-ink-muted text-[0.6rem]">prom.</span> {avg} <span className="text-ink-muted text-[0.6rem]">máx.</span> {max}
       </span>
@@ -165,90 +141,117 @@ function ResourceRow({ label, avg, capacity }: { label: string; avg: number; cap
   return (
     <div className="flex items-center gap-3">
       <span className="font-ui text-xs text-ink-muted w-14 shrink-0">{label}</span>
-      <div className="flex-1">
-        <FillBar value={avg} max={capacity} color="bg-gold/60" />
-      </div>
+      <div className="flex-1"><FillBar value={avg} max={capacity} color="bg-gold/60" /></div>
       <span className="font-ui text-xs tabular-nums text-ink w-20 text-right shrink-0">{formatResource(avg)}</span>
     </div>
   )
 }
 
-function MissionBadge({ label, count, color }: { label: string; count: number; color: string }) {
+// ── Cron status bar ────────────────────────────────────────────────────────────
+
+function CronStatusRow({
+  name, schedule, lastAt, now, fresh,
+  pills,
+}: {
+  name: string
+  schedule: string
+  lastAt: number | null
+  now: number
+  fresh: boolean
+  pills: { label: string; value: number; color: string }[]
+}) {
   return (
-    <div className={`glass rounded-lg p-3 text-center ${count > 0 ? '' : 'opacity-50'}`}>
-      <div className={`font-ui text-xl font-bold tabular-nums ${color}`}>{count}</div>
-      <div className="font-ui text-[0.6rem] uppercase tracking-wider text-ink-muted mt-0.5">{label}</div>
+    <div className="glass rounded-xl p-4 flex flex-wrap items-center gap-4">
+      <div className="flex items-center gap-2 shrink-0 min-w-[140px]">
+        <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${lastAt ? (fresh ? 'bg-forest-light animate-pulse' : 'bg-ink-muted') : 'bg-crimson-light'}`} />
+        <div>
+          <p className="font-ui text-xs font-semibold text-ink leading-tight">{name}</p>
+          <p className="font-ui text-[0.6rem] text-ink-muted">{schedule}</p>
+        </div>
+      </div>
+      <div className="w-px h-4 bg-gold/20 hidden sm:block" />
+      {lastAt ? (
+        <div className="flex items-center gap-1.5 font-ui text-xs text-ink-muted">
+          <span>Último:</span>
+          <span className="text-ink font-semibold">{formatTs(lastAt)}</span>
+          <span>· hace {timeAgo(lastAt, now)}</span>
+        </div>
+      ) : (
+        <span className="font-ui text-xs text-ink-muted italic">Sin datos aún</span>
+      )}
+      {pills.length > 0 && (
+        <>
+          <div className="w-px h-4 bg-gold/20 hidden sm:block" />
+          <div className="flex flex-wrap items-center gap-3 ml-auto">
+            {pills.map(p => (
+              <div key={p.label} className="flex items-baseline gap-1">
+                <span className={`font-ui text-sm font-bold tabular-nums ${p.color}`}>{p.value}</span>
+                <span className="font-ui text-[0.6rem] text-ink-muted">{p.label}</span>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
     </div>
   )
 }
 
+// ── Tick history tables ───────────────────────────────────────────────────────
+
 const PAGE_SIZE = 10
 
-function TickHistoryTable({ history }: { history: NpcTickResult[] }) {
+function BuilderHistoryTable({ history }: { history: NpcTickResult[] }) {
   const [visible, setVisible] = useState(PAGE_SIZE)
-  const sorted    = [...history].reverse()
-  const rows      = sorted.slice(0, visible)
-  const hasMore   = visible < sorted.length
-  const maxBuilt  = Math.max(...sorted.map(r => r.builtBuilding ?? 0), 1)
+  const sorted  = [...history].reverse()
+  const rows    = sorted.slice(0, visible)
+  const hasMore = visible < sorted.length
 
   return (
     <div className="space-y-3">
       <div className="overflow-x-auto">
         <table className="w-full text-xs">
           <thead>
-            <tr className="border-b border-gold/10 font-ui text-ink-muted uppercase tracking-wider text-[0.6rem]">
-              <th className="text-left py-2 px-3 whitespace-nowrap">Hora</th>
-              <th className="text-right py-2 px-3">Edif.</th>
-              <th className="text-right py-2 px-3">Ataque</th>
-              <th className="text-right py-2 px-3">Defensa</th>
-              <th className="text-right py-2 px-3">Apoyo</th>
-              <th className="text-right py-2 px-3">Combates</th>
-              <th className="text-right py-2 px-3">Exped.</th>
-              <th className="text-right py-2 px-3 hidden sm:table-cell">Carroñ.</th>
+            <tr className="border-b border-gold/10 font-ui text-ink-muted uppercase tracking-wider text-[0.55rem]">
+              <th className="text-left py-2 px-2 whitespace-nowrap">Hora</th>
+              <th className="text-right py-2 px-2">Proc.</th>
+              <th className="text-right py-2 px-2">Edif.</th>
+              <th className="text-right py-2 px-2">Atq.</th>
+              <th className="text-right py-2 px-2">Def.</th>
+              <th className="text-right py-2 px-2">Apo.</th>
+              <th className="text-right py-2 px-2">Invest.</th>
+              <th className="text-right py-2 px-2">Espera</th>
+              <th className="text-right py-2 px-2">Ahorra</th>
+              <th className="text-right py-2 px-2 hidden sm:table-cell">Huida</th>
+              <th className="text-right py-2 px-2 hidden sm:table-cell">Duerme</th>
             </tr>
           </thead>
           <tbody>
-            {rows.map((t, i) => {
-              const built   = t.builtBuilding   ?? 0
-              const combat  = t.trainedCombat   ?? 0
-              const defense = t.trainedDefense  ?? 0
-              const support = t.trainedSupport  ?? 0
-              return (
-                <tr key={t.at}
-                  className={`border-b border-gold/5 transition-colors ${i === 0 ? 'bg-gold/5' : 'hover:bg-parchment-warm/5'}`}>
-                  <td className="py-2 px-3 text-ink-muted tabular-nums whitespace-nowrap">
-                    {formatTs(t.at)}
-                    {i === 0 && <span className="ml-2 font-ui text-[0.55rem] text-gold font-semibold uppercase">último</span>}
-                  </td>
-                  <td className="py-2 px-3 text-right tabular-nums">
-                    <div className="flex items-center justify-end gap-1">
-                      <div className="h-2 rounded-sm bg-forest-light/60 hidden sm:block"
-                        style={{ width: `${Math.round(built / maxBuilt * 24)}px`, minWidth: built > 0 ? '2px' : '0' }} />
-                      <span className={built > 0 ? 'text-forest-light font-semibold' : 'text-ink-muted'}>{built}</span>
-                    </div>
-                  </td>
-                  <td className={`py-2 px-3 text-right tabular-nums ${combat > 0 ? 'text-crimson-light font-semibold' : 'text-ink-muted'}`}>{combat}</td>
-                  <td className={`py-2 px-3 text-right tabular-nums ${defense > 0 ? 'text-gold font-semibold' : 'text-ink-muted'}`}>{defense}</td>
-                  <td className={`py-2 px-3 text-right tabular-nums ${support > 0 ? 'text-gold-light font-semibold' : 'text-ink-muted'}`}>{support}</td>
-                  <td className={`py-2 px-3 text-right tabular-nums ${t.attacked > 0 ? 'text-crimson-light font-semibold' : 'text-ink-muted'}`}>{t.attacked}</td>
-                  <td className={`py-2 px-3 text-right tabular-nums ${t.expeditioned > 0 ? 'text-gold font-semibold' : 'text-ink-muted'}`}>{t.expeditioned}</td>
-                  <td className={`py-2 px-3 text-right tabular-nums hidden sm:table-cell ${t.scavenged > 0 ? 'text-forest-light font-semibold' : 'text-ink-muted'}`}>{t.scavenged}</td>
-                </tr>
-              )
-            })}
+            {rows.map((t, i) => (
+              <tr key={t.at} className={`border-b border-gold/5 transition-colors ${i === 0 ? 'bg-gold/5' : 'hover:bg-parchment-warm/5'}`}>
+                <td className="py-1.5 px-2 text-ink-muted tabular-nums whitespace-nowrap">
+                  {formatTs(t.at)}
+                  {i === 0 && <span className="ml-1.5 font-ui text-[0.5rem] text-gold font-semibold uppercase">último</span>}
+                </td>
+                <td className="py-1.5 px-2 text-right tabular-nums text-ink-muted">{t.processed ?? 0}</td>
+                <td className={`py-1.5 px-2 text-right tabular-nums ${(t.builtBuilding ?? 0) > 0 ? 'text-forest-light font-semibold' : 'text-ink-muted'}`}>{t.builtBuilding ?? 0}</td>
+                <td className={`py-1.5 px-2 text-right tabular-nums ${(t.trainedCombat ?? 0) > 0 ? 'text-crimson-light font-semibold' : 'text-ink-muted'}`}>{t.trainedCombat ?? 0}</td>
+                <td className={`py-1.5 px-2 text-right tabular-nums ${(t.trainedDefense ?? 0) > 0 ? 'text-gold font-semibold' : 'text-ink-muted'}`}>{t.trainedDefense ?? 0}</td>
+                <td className={`py-1.5 px-2 text-right tabular-nums ${(t.trainedSupport ?? 0) > 0 ? 'text-gold-light font-semibold' : 'text-ink-muted'}`}>{t.trainedSupport ?? 0}</td>
+                <td className={`py-1.5 px-2 text-right tabular-nums ${(t.researching ?? 0) > 0 ? 'text-gold font-semibold' : 'text-ink-muted'}`}>{t.researching ?? 0}</td>
+                <td className="py-1.5 px-2 text-right tabular-nums text-ink-muted">{t.waiting ?? 0}</td>
+                <td className="py-1.5 px-2 text-right tabular-nums text-ink-muted">{t.saved ?? 0}</td>
+                <td className={`py-1.5 px-2 text-right tabular-nums hidden sm:table-cell ${(t.fleetsaved ?? 0) > 0 ? 'text-crimson-light font-semibold' : 'text-ink-muted'}`}>{t.fleetsaved ?? 0}</td>
+                <td className="py-1.5 px-2 text-right tabular-nums text-ink-muted hidden sm:table-cell">{t.sleeping ?? 0}</td>
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>
       {hasMore && (
         <div className="text-center pt-1">
-          <button
-            onClick={() => setVisible(v => v + PAGE_SIZE)}
-            className="btn btn-ghost text-xs px-4 py-1.5"
-          >
+          <button onClick={() => setVisible(v => v + PAGE_SIZE)} className="btn btn-ghost text-xs px-4 py-1.5">
             Cargar {Math.min(PAGE_SIZE, sorted.length - visible)} más
-            <span className="ml-1.5 font-ui text-[0.6rem] text-ink-muted">
-              ({visible}/{sorted.length})
-            </span>
+            <span className="ml-1.5 font-ui text-[0.6rem] text-ink-muted">({visible}/{sorted.length})</span>
           </button>
         </div>
       )}
@@ -256,14 +259,109 @@ function TickHistoryTable({ history }: { history: NpcTickResult[] }) {
   )
 }
 
-// ── NPC Decisions card ────────────────────────────────────────────────────────
+function CombatHistoryTable({ history }: { history: CombatEngineTick[] }) {
+  const [visible, setVisible] = useState(PAGE_SIZE)
+  const sorted  = [...history].reverse()
+  const rows    = sorted.slice(0, visible)
+  const hasMore = visible < sorted.length
+
+  return (
+    <div className="space-y-3">
+      <div className="overflow-x-auto">
+        <table className="w-full text-xs">
+          <thead>
+            <tr className="border-b border-gold/10 font-ui text-ink-muted uppercase tracking-wider text-[0.55rem]">
+              <th className="text-left py-2 px-2 whitespace-nowrap">Hora</th>
+              <th className="text-right py-2 px-2">NPC vs NPC</th>
+              <th className="text-right py-2 px-2">Exped. res.</th>
+              <th className="text-right py-2 px-2">Purgadas</th>
+              <th className="text-right py-2 px-2">Intrusiones</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((t, i) => (
+              <tr key={t.at} className={`border-b border-gold/5 transition-colors ${i === 0 ? 'bg-gold/5' : 'hover:bg-parchment-warm/5'}`}>
+                <td className="py-1.5 px-2 text-ink-muted tabular-nums whitespace-nowrap">
+                  {formatTs(t.at)}
+                  {i === 0 && <span className="ml-1.5 font-ui text-[0.5rem] text-gold font-semibold uppercase">último</span>}
+                </td>
+                <td className={`py-1.5 px-2 text-right tabular-nums ${t.npcVsNpcResolved > 0 ? 'text-crimson-light font-semibold' : 'text-ink-muted'}`}>{t.npcVsNpcResolved}</td>
+                <td className={`py-1.5 px-2 text-right tabular-nums ${t.npcExpeditionsResolved > 0 ? 'text-gold font-semibold' : 'text-ink-muted'}`}>{t.npcExpeditionsResolved}</td>
+                <td className="py-1.5 px-2 text-right tabular-nums text-ink-muted">{t.purged}</td>
+                <td className={`py-1.5 px-2 text-right tabular-nums ${t.intruderCount > 0 ? 'text-crimson-light font-semibold' : 'text-ink-muted'}`}>{t.intruderCount}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {hasMore && (
+        <div className="text-center pt-1">
+          <button onClick={() => setVisible(v => v + PAGE_SIZE)} className="btn btn-ghost text-xs px-4 py-1.5">
+            Cargar {Math.min(PAGE_SIZE, sorted.length - visible)} más
+            <span className="ml-1.5 font-ui text-[0.6rem] text-ink-muted">({visible}/{sorted.length})</span>
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function MilitaryHistoryTable({ history }: { history: MilitaryAiTick[] }) {
+  const [visible, setVisible] = useState(PAGE_SIZE)
+  const sorted  = [...history].reverse()
+  const rows    = sorted.slice(0, visible)
+  const hasMore = visible < sorted.length
+
+  return (
+    <div className="space-y-3">
+      <div className="overflow-x-auto">
+        <table className="w-full text-xs">
+          <thead>
+            <tr className="border-b border-gold/10 font-ui text-ink-muted uppercase tracking-wider text-[0.55rem]">
+              <th className="text-left py-2 px-2 whitespace-nowrap">Hora</th>
+              <th className="text-right py-2 px-2">NPCs</th>
+              <th className="text-right py-2 px-2">Ataques</th>
+              <th className="text-right py-2 px-2">Carroñeos</th>
+              <th className="text-right py-2 px-2">Expediciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((t, i) => (
+              <tr key={t.at} className={`border-b border-gold/5 transition-colors ${i === 0 ? 'bg-gold/5' : 'hover:bg-parchment-warm/5'}`}>
+                <td className="py-1.5 px-2 text-ink-muted tabular-nums whitespace-nowrap">
+                  {formatTs(t.at)}
+                  {i === 0 && <span className="ml-1.5 font-ui text-[0.5rem] text-gold font-semibold uppercase">último</span>}
+                </td>
+                <td className="py-1.5 px-2 text-right tabular-nums text-ink-muted">{t.npcCount}</td>
+                <td className={`py-1.5 px-2 text-right tabular-nums ${t.attacked > 0 ? 'text-crimson-light font-semibold' : 'text-ink-muted'}`}>{t.attacked}</td>
+                <td className={`py-1.5 px-2 text-right tabular-nums ${t.scavenged > 0 ? 'text-forest-light font-semibold' : 'text-ink-muted'}`}>{t.scavenged}</td>
+                <td className={`py-1.5 px-2 text-right tabular-nums ${t.expeditioned > 0 ? 'text-gold font-semibold' : 'text-ink-muted'}`}>{t.expeditioned}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {hasMore && (
+        <div className="text-center pt-1">
+          <button onClick={() => setVisible(v => v + PAGE_SIZE)} className="btn btn-ghost text-xs px-4 py-1.5">
+            Cargar {Math.min(PAGE_SIZE, sorted.length - visible)} más
+            <span className="ml-1.5 font-ui text-[0.6rem] text-ink-muted">({visible}/{sorted.length})</span>
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+
+// ── NPC Decisions card ─────────────────────────────────────────────────────────
 
 const DECISION_FILTERS = [
-  { key: 'all',      label: 'Todos'       },
-  { key: 'saving',   label: 'Ahorrando'   },
-  { key: 'waiting',  label: 'En cola'     },
+  { key: 'all',      label: 'Todos'        },
+  { key: 'saving',   label: 'Ahorrando'    },
+  { key: 'waiting',  label: 'En cola'      },
   { key: 'building', label: 'Construyendo' },
-  { key: 'training', label: 'Entrenando'  },
+  { key: 'training', label: 'Entrenando'   },
 ] as const
 
 const PERSONALITY_BADGE: Record<string, { label: string; cls: string }> = {
@@ -272,34 +370,39 @@ const PERSONALITY_BADGE: Record<string, { label: string; cls: string }> = {
   balanced: { label: 'Bal', cls: 'text-gold bg-gold/10 border-gold/20' },
 }
 
-function formatCountdown(secs: number) {
-  if (secs <= 0) return 'ahora'
-  if (secs < 60) return `${secs}s`
-  return `${Math.floor(secs / 60)}m ${secs % 60}s`
-}
-
 function decisionColor(text: string | null) {
   if (!text) return 'text-ink-muted'
   const t = text.toLowerCase()
-  if (t.startsWith('ahorrando'))   return 'text-ink-muted'
-  if (t.startsWith('en cola'))     return 'text-gold'
-  if (t.startsWith('entrenando'))  return 'text-crimson-light'
-  if (t.startsWith('energía'))     return 'text-crimson-light'
+  if (t.startsWith('ahorrando'))      return 'text-ink-muted'
+  if (t.startsWith('en cola'))        return 'text-gold'
+  if (t.startsWith('entrenando'))     return 'text-crimson-light'
+  if (t.startsWith('huida táctica'))  return 'text-crimson-light'
+  if (t.startsWith('energía'))        return 'text-crimson-light'
   return 'text-forest-light'
 }
 
+const DECISIONS_PAGE = 20
+
 function NpcDecisionsCard() {
   const [filter, setFilter] = useState<string>('all')
+  const [visible, setVisible] = useState(DECISIONS_PAGE)
   const { data, isLoading } = useQuery({
     queryKey: ['admin', 'npc-decisions', filter],
-    queryFn: () => adminService.getNpcDecisions(filter),
+    queryFn:  () => adminService.getNpcDecisions(filter),
     staleTime: 20_000,
     refetchInterval: 30_000,
     retry: false,
   })
 
-  const totals = data?.totalByFilter ?? {}
-  const decisions: NpcDecision[] = data?.decisions ?? []
+  const totals: Record<string, number> = data?.totalByFilter ?? {}
+  const allDecisions: NpcDecision[]    = data?.decisions ?? []
+  const decisions = allDecisions.slice(0, visible)
+  const hasMore   = visible < allDecisions.length
+
+  const handleFilterChange = (key: string) => {
+    setFilter(key)
+    setVisible(DECISIONS_PAGE)
+  }
 
   return (
     <div className="card-medieval p-5 space-y-4">
@@ -315,7 +418,7 @@ function NpcDecisionsCard() {
         {DECISION_FILTERS.map(f => (
           <button
             key={f.key}
-            onClick={() => setFilter(f.key)}
+            onClick={() => handleFilterChange(f.key)}
             className={`px-3 py-1 rounded-full font-ui text-xs border transition-colors ${
               filter === f.key
                 ? 'bg-gold text-parchment border-gold font-semibold'
@@ -338,58 +441,74 @@ function NpcDecisionsCard() {
       ) : decisions.length === 0 ? (
         <p className="font-ui text-xs text-ink-muted text-center py-6">Sin NPCs en esta categoría.</p>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full text-xs">
-            <thead>
-              <tr className="border-b border-gold/10 font-ui text-ink-muted uppercase tracking-wider text-[0.6rem]">
-                <th className="text-left py-2 px-2">NPC</th>
-                <th className="text-left py-2 px-2 hidden sm:table-cell">Coord.</th>
-                <th className="text-left py-2 px-2">Decisión</th>
-                <th className="text-right py-2 px-2 whitespace-nowrap">Próx. check</th>
-              </tr>
-            </thead>
-            <tbody>
-              {decisions.map(d => {
-                const pb = PERSONALITY_BADGE[d.personality] ?? PERSONALITY_BADGE.balanced
-                return (
-                  <tr key={d.id} className="border-b border-gold/5 hover:bg-parchment-warm/20 transition-colors">
-                    <td className="py-2 px-2">
-                      <div className="flex items-center gap-1.5">
-                        <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[0.6rem] font-semibold border ${pb.cls}`}>
-                          {pb.label}
-                        </span>
-                        <span className="font-ui text-ink font-medium truncate max-w-[90px]">{d.name}</span>
-                      </div>
-                    </td>
-                    <td className="py-2 px-2 text-ink-muted tabular-nums hidden sm:table-cell">
-                      {d.realm}:{d.region}:{d.slot}
-                    </td>
-                    <td className="py-2 px-2 max-w-[200px]">
-                      <span className={`font-ui truncate block ${decisionColor(d.lastDecision)}`} title={d.lastDecision ?? ''}>
-                        {d.lastDecision ?? <span className="text-ink-muted italic">sin decisión</span>}
-                      </span>
-                    </td>
-                    <td className="py-2 px-2 text-right tabular-nums text-ink-muted whitespace-nowrap">
-                      {d.npcNextCheck ? formatCountdown(d.secsUntilNext) : '—'}
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
+        <>
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="border-b border-gold/10 font-ui text-ink-muted uppercase tracking-wider text-[0.6rem]">
+                  <th className="text-left py-2 px-2">NPC</th>
+                  <th className="text-left py-2 px-2 hidden sm:table-cell">Coord.</th>
+                  <th className="text-left py-2 px-2">Decisión</th>
+                  <th className="text-right py-2 px-2 whitespace-nowrap">Próx. check</th>
+                </tr>
+              </thead>
+              <tbody>
+                {decisions.map(d => {
+                  const pb = PERSONALITY_BADGE[d.personality] ?? PERSONALITY_BADGE.balanced
+                  const translated = translateDecision(d.lastDecision)
+                  return (
+                    <tr key={d.id} className="border-b border-gold/5 hover:bg-parchment-warm/20 transition-colors">
+                      <td className="py-2 px-2">
+                        <div className="flex items-center gap-1.5">
+                          <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[0.6rem] font-semibold border shrink-0 ${pb.cls}`}>
+                            {pb.label}
+                          </span>
+                          <span className="font-ui text-ink font-medium truncate max-w-[90px]">{d.name}</span>
+                        </div>
+                      </td>
+                      <td className="py-2 px-2 text-ink-muted tabular-nums hidden sm:table-cell">
+                        {d.realm}:{d.region}:{d.slot}
+                      </td>
+                      <td className="py-2 px-2">
+                        {translated
+                          ? <span className={`font-ui text-wrap break-words ${decisionColor(translated)}`}>{translated}</span>
+                          : <span className="text-ink-muted italic">sin decisión</span>}
+                      </td>
+                      <td className="py-2 px-2 text-right tabular-nums text-ink-muted whitespace-nowrap">
+                        {d.npcNextCheck ? formatCountdown(d.secsUntilNext) : '—'}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+          {hasMore && (
+            <div className="text-center pt-1">
+              <button
+                onClick={() => setVisible(v => v + DECISIONS_PAGE)}
+                className="btn btn-ghost text-xs px-4 py-1.5"
+              >
+                Cargar {Math.min(DECISIONS_PAGE, allDecisions.length - visible)} más
+                <span className="ml-1.5 font-ui text-[0.6rem] text-ink-muted">
+                  ({visible}/{allDecisions.length})
+                </span>
+              </button>
+            </div>
+          )}
+        </>
       )}
     </div>
   )
 }
 
-// ── Main tab ──────────────────────────────────────────────────────────────────
+// ── Main tab ───────────────────────────────────────────────────────────────────
 
 export function NpcMonitorTab() {
   const now = Math.floor(Date.now() / 1000)
   const { data, isLoading } = useQuery({
     queryKey: ['admin', 'npc-stats'],
-    queryFn: adminService.getNpcStats,
+    queryFn:  adminService.getNpcStats,
     refetchInterval: 60_000,
   })
 
@@ -411,7 +530,14 @@ export function NpcMonitorTab() {
     )
   }
 
-  const { lastTick, tickHistory, aggregate: agg } = data
+  const { crons, aggregate: agg } = data
+  const builderTick    = crons?.builder?.lastTick ?? null
+  const combatTick     = crons?.combat?.lastTick ?? null
+  const militaryTick   = crons?.militaryAi?.lastTick ?? null
+
+  const FRESH_BUILDER  = 150   // 2.5 min (runs every 1 min)
+  const FRESH_COMBAT   = 150
+  const FRESH_MILITARY = 1500  // 25 min (runs every 20 min)
 
   const attackActive  = (agg.missionCounts['attack:active']       ?? 0)
   const expedActive   = (agg.missionCounts['expedition:active']    ?? 0)
@@ -423,17 +549,46 @@ export function NpcMonitorTab() {
   return (
     <div className="space-y-6">
 
-      {/* ── Status bar ─────────────────────────────────────────────────────── */}
-      {lastTick
-        ? <TickStatusBar tick={lastTick} now={now} />
-        : (
-          <div className="glass rounded-xl p-4 text-center font-ui text-xs text-ink-muted">
-            Sin historial de ticks aún — se registran a partir del próximo tick del cron.
-          </div>
-        )
-      }
+      {/* ── Cron status rows ──────────────────────────────────────────────────── */}
+      <div className="space-y-2">
+        <p className="font-ui text-[0.6rem] uppercase tracking-widest text-ink-muted">Estado de crons</p>
 
-      {/* ── Overview metrics ───────────────────────────────────────────────── */}
+        <CronStatusRow
+          name="Constructor NPC" schedule="Cada minuto"
+          lastAt={builderTick?.at ?? null} now={now}
+          fresh={!!builderTick && (now - builderTick.at) < FRESH_BUILDER}
+          pills={builderTick ? [
+            { label: 'edificios',   value: builderTick.builtBuilding ?? 0,  color: (builderTick.builtBuilding ?? 0)  > 0 ? 'text-forest-light'  : 'text-ink-muted' },
+            { label: 'atq.',        value: builderTick.trainedCombat  ?? 0,  color: (builderTick.trainedCombat  ?? 0) > 0 ? 'text-crimson-light' : 'text-ink-muted' },
+            { label: 'def.',        value: builderTick.trainedDefense ?? 0,  color: (builderTick.trainedDefense ?? 0) > 0 ? 'text-gold'          : 'text-ink-muted' },
+            { label: 'investigando', value: builderTick.researching ?? 0,   color: (builderTick.researching ?? 0)    > 0 ? 'text-gold'          : 'text-ink-muted' },
+          ] : []}
+        />
+
+        <CronStatusRow
+          name="Motor de combate" schedule="Cada minuto"
+          lastAt={combatTick?.at ?? null} now={now}
+          fresh={!!combatTick && (now - combatTick.at) < FRESH_COMBAT}
+          pills={combatTick ? [
+            { label: 'NPC vs NPC', value: combatTick.npcVsNpcResolved,       color: combatTick.npcVsNpcResolved > 0       ? 'text-crimson-light' : 'text-ink-muted' },
+            { label: 'exped.',     value: combatTick.npcExpeditionsResolved,  color: combatTick.npcExpeditionsResolved > 0 ? 'text-gold'          : 'text-ink-muted' },
+            { label: 'intrus.',    value: combatTick.intruderCount,           color: combatTick.intruderCount > 0          ? 'text-crimson-light' : 'text-ink-muted' },
+          ] : []}
+        />
+
+        <CronStatusRow
+          name="IA Militar NPC" schedule="Cada 20 min"
+          lastAt={militaryTick?.at ?? null} now={now}
+          fresh={!!militaryTick && (now - militaryTick.at) < FRESH_MILITARY}
+          pills={militaryTick ? [
+            { label: 'ataques',    value: militaryTick.attacked,    color: militaryTick.attacked    > 0 ? 'text-crimson-light' : 'text-ink-muted' },
+            { label: 'carroñeos', value: militaryTick.scavenged,   color: militaryTick.scavenged   > 0 ? 'text-forest-light'  : 'text-ink-muted' },
+            { label: 'exped.',    value: militaryTick.expeditioned, color: militaryTick.expeditioned > 0 ? 'text-gold'         : 'text-ink-muted' },
+          ] : []}
+        />
+      </div>
+
+      {/* ── Overview metrics ───────────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <MetricCard label="Total NPCs"    value={agg.total}    sub={`${agg.bosses} jefe(s)`} />
         <MetricCard label="Con ejército"  value={`${pct(agg.withArmy, agg.total)}%`}
@@ -445,10 +600,8 @@ export function NpcMonitorTab() {
           accent={totalMissions > 0 ? 'text-gold' : 'text-ink'} />
       </div>
 
-      {/* ── Buildings + Army ───────────────────────────────────────────────── */}
+      {/* ── Buildings + Army ───────────────────────────────────────────────────── */}
       <div className="grid lg:grid-cols-2 gap-4">
-
-        {/* Buildings */}
         <div className="card-medieval p-5 space-y-4">
           <div className="card-corner-tr" /><div className="card-corner-bl" />
           <h3 className="section-heading">Edificios (avg / max)</h3>
@@ -460,7 +613,6 @@ export function NpcMonitorTab() {
           </div>
         </div>
 
-        {/* Army distribution */}
         <div className="card-medieval p-5 space-y-4">
           <div className="card-corner-tr" /><div className="card-corner-bl" />
           <h3 className="section-heading">Distribución del ejército</h3>
@@ -482,23 +634,20 @@ export function NpcMonitorTab() {
         </div>
       </div>
 
-      {/* ── Combat units + Support units ───────────────────────────────────── */}
+      {/* ── Combat units + Support units ───────────────────────────────────────── */}
       <div className="grid lg:grid-cols-2 gap-4">
-
-        {/* Combat units */}
         <div className="card-medieval p-5 space-y-4">
           <div className="card-corner-tr" /><div className="card-corner-bl" />
           <h3 className="section-heading">Ejército de combate</h3>
           <div className="space-y-3">
-            <UnitAdoptionRow label="Escudero"        withUnit={agg.withArmy}        total={agg.total} totalUnits={agg.totalSquire}       color="bg-gold/60" />
-            <UnitAdoptionRow label="Caballero"       withUnit={agg.withKnight}      total={agg.total} totalUnits={agg.totalKnight}       color="bg-gold/70" />
-            <UnitAdoptionRow label="Paladín"         withUnit={agg.withPaladin}     total={agg.total} totalUnits={agg.totalPaladin}      color="bg-gold" />
-            <UnitAdoptionRow label="Señor de guerra" withUnit={agg.withWarlord}     total={agg.total} totalUnits={agg.totalWarlord}      color="bg-gold" />
-            <UnitAdoptionRow label="Gran Caballero"  withUnit={agg.withGrandKnight} total={agg.total} totalUnits={agg.totalGrandKnight}  color="bg-forest-light" />
+            <UnitAdoptionRow label="Escudero"        withUnit={agg.withArmy}        total={agg.total} totalUnits={agg.totalSquire}      color="bg-gold/60" />
+            <UnitAdoptionRow label="Caballero"       withUnit={agg.withKnight}      total={agg.total} totalUnits={agg.totalKnight}      color="bg-gold/70" />
+            <UnitAdoptionRow label="Paladín"         withUnit={agg.withPaladin}     total={agg.total} totalUnits={agg.totalPaladin}     color="bg-gold" />
+            <UnitAdoptionRow label="Señor de guerra" withUnit={agg.withWarlord}     total={agg.total} totalUnits={agg.totalWarlord}     color="bg-gold" />
+            <UnitAdoptionRow label="Gran Caballero"  withUnit={agg.withGrandKnight} total={agg.total} totalUnits={agg.totalGrandKnight} color="bg-forest-light" />
           </div>
         </div>
 
-        {/* Support units adoption */}
         <div className="card-medieval p-5 space-y-4">
           <div className="card-corner-tr" /><div className="card-corner-bl" />
           <h3 className="section-heading">Unidades de apoyo</h3>
@@ -515,25 +664,22 @@ export function NpcMonitorTab() {
         </div>
       </div>
 
-      {/* ── Defenses + Resources ─────────────────────────────────────────────── */}
+      {/* ── Defenses + Resources ────────────────────────────────────────────────── */}
       <div className="grid lg:grid-cols-2 gap-4">
-
-        {/* Defenses */}
         <div className="card-medieval p-5 space-y-4">
           <div className="card-corner-tr" /><div className="card-corner-bl" />
           <h3 className="section-heading">Defensas</h3>
           <div className="space-y-3">
-            <UnitAdoptionRow label="Arquero"         withUnit={agg.withArcher}      total={agg.total} totalUnits={agg.totalArcher}       color="bg-gold/60" />
-            <UnitAdoptionRow label="Ballestero"      withUnit={agg.withCrossbowman} total={agg.total} totalUnits={agg.totalCrossbowman}  color="bg-gold/70" />
-            <UnitAdoptionRow label="Ballista"        withUnit={agg.withBallista}    total={agg.total} totalUnits={agg.totalBallista}     color="bg-gold" />
-            <UnitAdoptionRow label="Trebuchet"       withUnit={agg.withTrebuchet}   total={agg.total} totalUnits={agg.totalTrebuchet}    color="bg-gold" />
-            <UnitAdoptionRow label="Torre Maga"      withUnit={agg.withMageTower}   total={agg.total} totalUnits={agg.totalMageTower}    color="bg-forest-light" />
-            <UnitAdoptionRow label="Muro"            withUnit={agg.withCastleWall}  total={agg.total} totalUnits={agg.totalCastleWall}   color="bg-ink-mid" />
-            <UnitAdoptionRow label="Foso"            withUnit={agg.withMoat}        total={agg.total} totalUnits={agg.totalMoat}         color="bg-ink-mid" />
+            <UnitAdoptionRow label="Arquero"    withUnit={agg.withArcher}      total={agg.total} totalUnits={agg.totalArcher}      color="bg-gold/60" />
+            <UnitAdoptionRow label="Ballestero" withUnit={agg.withCrossbowman} total={agg.total} totalUnits={agg.totalCrossbowman} color="bg-gold/70" />
+            <UnitAdoptionRow label="Ballista"   withUnit={agg.withBallista}    total={agg.total} totalUnits={agg.totalBallista}    color="bg-gold" />
+            <UnitAdoptionRow label="Trebuchet"  withUnit={agg.withTrebuchet}   total={agg.total} totalUnits={agg.totalTrebuchet}   color="bg-gold" />
+            <UnitAdoptionRow label="Torre Maga" withUnit={agg.withMageTower}   total={agg.total} totalUnits={agg.totalMageTower}   color="bg-forest-light" />
+            <UnitAdoptionRow label="Muralla"    withUnit={agg.withCastleWall}  total={agg.total} totalUnits={agg.totalCastleWall}  color="bg-ink-mid" />
+            <UnitAdoptionRow label="Foso"       withUnit={agg.withMoat}        total={agg.total} totalUnits={agg.totalMoat}        color="bg-ink-mid" />
           </div>
         </div>
 
-        {/* Resources */}
         <div className="card-medieval p-5 space-y-4">
           <div className="card-corner-tr" /><div className="card-corner-bl" />
           <h3 className="section-heading">Recursos (prom. por NPC)</h3>
@@ -543,45 +689,62 @@ export function NpcMonitorTab() {
             <ResourceRow label="Grano"  avg={agg.avgGrain} capacity={50000} />
           </div>
           <div className="grid grid-cols-3 gap-2 pt-1">
-            <div className="glass rounded p-2.5 text-center">
-              <div className="font-ui text-sm font-bold text-ink tabular-nums">{formatResource(agg.avgWood)}</div>
-              <div className="font-ui text-[0.6rem] text-ink-muted uppercase tracking-wide mt-0.5">Madera</div>
-            </div>
-            <div className="glass rounded p-2.5 text-center">
-              <div className="font-ui text-sm font-bold text-ink tabular-nums">{formatResource(agg.avgStone)}</div>
-              <div className="font-ui text-[0.6rem] text-ink-muted uppercase tracking-wide mt-0.5">Piedra</div>
-            </div>
-            <div className="glass rounded p-2.5 text-center">
-              <div className="font-ui text-sm font-bold text-ink tabular-nums">{formatResource(agg.avgGrain)}</div>
-              <div className="font-ui text-[0.6rem] text-ink-muted uppercase tracking-wide mt-0.5">Grano</div>
-            </div>
+            {[
+              { label: 'Madera', value: agg.avgWood },
+              { label: 'Piedra', value: agg.avgStone },
+              { label: 'Grano',  value: agg.avgGrain },
+            ].map(r => (
+              <div key={r.label} className="glass rounded p-2.5 text-center">
+                <div className="font-ui text-sm font-bold text-ink tabular-nums">{formatResource(r.value)}</div>
+                <div className="font-ui text-[0.6rem] text-ink-muted uppercase tracking-wide mt-0.5">{r.label}</div>
+              </div>
+            ))}
           </div>
         </div>
       </div>
 
-      {/* ── Active missions ─────────────────────────────────────────────────── */}
+      {/* ── Active missions ──────────────────────────────────────────────────────── */}
       <div className="card-medieval p-5 space-y-3">
         <div className="card-corner-tr" /><div className="card-corner-bl" />
         <h3 className="section-heading">Misiones activas</h3>
         <div className="grid grid-cols-3 gap-3">
-          <MissionBadge label="Ataques en curso"    count={attackActive} color="text-crimson-light" />
+          <MissionBadge label="Ataques en curso"     count={attackActive} color="text-crimson-light" />
           <MissionBadge label="Expediciones activas" count={expedActive}  color="text-gold" />
           <MissionBadge label="Carroñeo activo"      count={scavActive}   color="text-forest-light" />
         </div>
       </div>
 
-      {/* ── NPC Decisions ───────────────────────────────────────────────────── */}
+      {/* ── NPC Decisions ────────────────────────────────────────────────────────── */}
       <NpcDecisionsCard />
 
-      {/* ── Tick history ────────────────────────────────────────────────────── */}
-      {tickHistory.length > 0 && (
+      {/* ── Tick histories ───────────────────────────────────────────────────────── */}
+      {(crons?.builder?.tickHistory?.length ?? 0) > 0 && (
+        <div className="card-medieval p-5 space-y-3">
+          <div className="card-corner-tr" /><div className="card-corner-bl" />
+          <h3 className="section-heading">Historial — Constructor NPC</h3>
+          <BuilderHistoryTable history={crons.builder.tickHistory} />
+        </div>
+      )}
+
+      {(crons?.combat?.tickHistory?.length ?? 0) > 0 && (
         <div className="card-medieval p-5 space-y-3">
           <div className="card-corner-tr" /><div className="card-corner-bl" />
           <div className="flex items-center justify-between">
-            <h3 className="section-heading">Historial de ticks</h3>
-            <span className="font-ui text-[0.6rem] text-ink-muted">{tickHistory.length} entradas · refresca c/60s</span>
+            <h3 className="section-heading">Historial — Motor de combate</h3>
+            <span className="font-ui text-[0.6rem] text-ink-muted">{crons.combat.tickHistory.length} entradas</span>
           </div>
-          <TickHistoryTable history={tickHistory} />
+          <CombatHistoryTable history={crons.combat.tickHistory} />
+        </div>
+      )}
+
+      {(crons?.militaryAi?.tickHistory?.length ?? 0) > 0 && (
+        <div className="card-medieval p-5 space-y-3">
+          <div className="card-corner-tr" /><div className="card-corner-bl" />
+          <div className="flex items-center justify-between">
+            <h3 className="section-heading">Historial — IA Militar</h3>
+            <span className="font-ui text-[0.6rem] text-ink-muted">{crons.militaryAi.tickHistory.length} entradas</span>
+          </div>
+          <MilitaryHistoryTable history={crons.militaryAi.tickHistory} />
         </div>
       )}
 
