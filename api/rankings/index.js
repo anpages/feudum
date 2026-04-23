@@ -1,5 +1,5 @@
-import { eq, ne } from 'drizzle-orm'
 import { db, kingdoms, users, npcState } from '../_db.js'
+import { eq } from 'drizzle-orm'
 import { getSessionUserId } from '../lib/handler.js'
 import { calcPointsBreakdown } from '../lib/points.js'
 import { getBuildingMaps, getResearchMaps } from '../lib/db-helpers.js'
@@ -13,17 +13,14 @@ export default async function handler(req, res) {
   const userId = await getSessionUserId(req)
   if (!userId) return res.status(401).json({ error: 'No autenticado' })
 
-  const category   = VALID_CATEGORIES.includes(req.query.category) ? req.query.category : 'total'
-  const playerType = req.query.type === 'npcs' ? 'npcs' : 'players'
-  const showNpcs   = playerType === 'npcs'
+  const category = VALID_CATEGORIES.includes(req.query.category) ? req.query.category : 'total'
 
-  // Fetch all kingdoms joined with users and npc_state
+  // All kingdoms — players and NPCs together
   const allKingdomRows = await db
     .select({ k: kingdoms, u: users, ns: npcState })
     .from(kingdoms)
     .innerJoin(users, eq(kingdoms.userId, users.id))
     .leftJoin(npcState, eq(kingdoms.userId, npcState.userId))
-    .where(showNpcs ? eq(users.role, 'npc') : ne(users.role, 'npc'))
 
   const kingdomIds = allKingdomRows.map(({ k }) => k.id)
   const userIds    = [...new Set(allKingdomRows.map(({ k }) => k.userId))]
@@ -56,5 +53,5 @@ export default async function handler(req, res) {
   ranked.sort((a, b) => b.points - a.points)
   ranked.forEach((entry, i) => { entry.rank = i + 1 })
 
-  return res.json({ rankings: ranked, category, playerType })
+  return res.json({ rankings: ranked, category })
 }

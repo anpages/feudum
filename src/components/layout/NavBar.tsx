@@ -27,6 +27,7 @@ const NAV_ITEMS: NavItem[] = [
   { to: '/defense',     label: 'Defensa',       Icon: Shield },
   { to: '/armies',      label: 'Misiones',      Icon: Navigation },
   { to: '/map',         label: 'Mapa',          Icon: Map },
+  { to: '/rankings',    label: 'Rankings',      Icon: BarChart2 },
 ]
 
 interface Props {
@@ -78,12 +79,6 @@ export function NavBar({ isOpen, onClose }: Props) {
             )}
           </NavLink>
         ))}
-
-        <span className="nav-section-label mt-3">Social</span>
-        <NavLink to="/rankings"     onClick={onClose} className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}>
-          <BarChart2 size={16} className="nav-icon shrink-0" />
-          <span className="flex-1">Rankings</span>
-        </NavLink>
 
       </div>
 

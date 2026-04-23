@@ -1,9 +1,9 @@
 import { useState } from 'react'
-import { Trophy, Medal, Users, Cpu } from 'lucide-react'
+import { Trophy, Medal } from 'lucide-react'
 import { GiLaurelCrown, GiScrollQuill, GiAnvil, GiSpellBook, GiCrossedSwords, GiWheat, GiCastle, GiRobotGolem, GiDragonHead } from 'react-icons/gi'
 import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
-import { useRankings, type RankingCategory, type RankingPlayerType, type RankingEntry } from '@/features/rankings/useRankings'
+import { useRankings, type RankingCategory, type RankingEntry } from '@/features/rankings/useRankings'
 import { formatResource } from '@/lib/format'
 
 // ── Category tabs ─────────────────────────────────────────────────────────────
@@ -16,17 +16,11 @@ const CATEGORIES: { id: RankingCategory; label: string; Icon: React.ComponentTyp
   { id: 'economy',   label: 'Economía',      Icon: GiWheat,        unit: 'pts' },
 ]
 
-const PLAYER_TYPES: { id: RankingPlayerType; label: string; Icon: React.ComponentType<{ size?: number; className?: string }> }[] = [
-  { id: 'players', label: 'Jugadores', Icon: Users },
-  { id: 'npcs',    label: 'NPCs',      Icon: Cpu },
-]
-
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export function RankingsPage() {
-  const [category, setCategory]     = useState<RankingCategory>('total')
-  const [playerType, setPlayerType] = useState<RankingPlayerType>('players')
-  const { data, isLoading } = useRankings(category, playerType)
+  const [category, setCategory] = useState<RankingCategory>('total')
+  const { data, isLoading } = useRankings(category)
 
   const rankings = data?.rankings ?? []
   const top3 = rankings.slice(0, 3)
@@ -39,26 +33,8 @@ export function RankingsPage() {
         <span className="section-heading">Clasificación</span>
         <h1 className="page-title mt-0.5">Rankings</h1>
         <p className="font-body text-ink-muted text-sm mt-1.5">
-          Compara tu progreso con el resto de reinos del universo.
+          Reinos de jugadores y NPCs ordenados por puntuación.
         </p>
-      </div>
-
-      {/* Player type tabs */}
-      <div className="anim-fade-up-1 flex gap-1 p-1 bg-obsidian border border-gold/10 rounded-lg w-fit">
-        {PLAYER_TYPES.map(({ id, label, Icon }) => (
-          <button
-            key={id}
-            onClick={() => setPlayerType(id)}
-            className={`flex items-center gap-1.5 px-4 py-1.5 rounded font-ui text-xs font-semibold transition-all ${
-              playerType === id
-                ? 'bg-gold/15 border border-gold/30 text-gold-dim shadow-sm'
-                : 'text-ink-muted hover:text-ink-mid'
-            }`}
-          >
-            <Icon size={12} />
-            {label}
-          </button>
-        ))}
       </div>
 
       {/* Category tabs */}

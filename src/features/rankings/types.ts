@@ -1,5 +1,4 @@
 export type RankingCategory = 'total' | 'buildings' | 'research' | 'units' | 'economy'
-export type RankingPlayerType = 'players' | 'npcs'
 
 export interface RankingBreakdown {
   total: number
@@ -28,5 +27,4 @@ export interface RankingEntry {
 export interface RankingsResponse {
   rankings: RankingEntry[]
   category: RankingCategory
-  playerType: RankingPlayerType
 }
