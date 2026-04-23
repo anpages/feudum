@@ -5,6 +5,7 @@
  * startNewSeason()           — reset + seed boss + seed player kingdoms + seed NPCs
  * repairSeasonNpcsIfMissing() — self-heal: reseed NPCs if none exist
  */
+import { randomUUID } from 'crypto'
 import { eq, ne } from 'drizzle-orm'
 import {
   db, users, kingdoms, npcState, buildings, units, research,
@@ -117,9 +118,9 @@ export async function seedNpcs(takenSlots, now, count = null) {
   for (let i = 0; i < chosen.length; i += 20) {
     const chunk = chosen.slice(i, i + 20)
     await Promise.all(chunk.map(async ({ realm, region, slot }) => {
-      // 1. Insert NPC user
+      // 1. Insert NPC user (id must be explicit — no DB-level default on uuid PK)
       const [npcUser] = await db.insert(users)
-        .values({ role: 'npc', username: npcUsername(realm, region, slot) })
+        .values({ id: randomUUID(), role: 'npc', username: npcUsername(realm, region, slot) })
         .returning({ id: users.id })
 
       // 2. Insert kingdom
