@@ -5,9 +5,9 @@ import { npcPersonality } from '../lib/npc-engine.js'
 
 const FILTERS = {
   saving:   d => d.startsWith('ahorrando'),
-  waiting:  d => d.startsWith('en cola'),
+  waiting:  d => d.startsWith('en cola') || d.startsWith('ocupado'),
   building: d => d.startsWith('hito') || d.startsWith('crecimiento') || d.startsWith('energía') || d.startsWith('almacén') || d.startsWith('requisito'),
-  training: d => d.startsWith('entrenando'),
+  training: d => d.startsWith('entrenando') || d.startsWith('investigando'),
 }
 
 export default async function handler(req, res) {

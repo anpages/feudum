@@ -363,7 +363,7 @@ function MilitaryHistoryTable({ history }: { history: MilitaryAiTick[] }) {
 const DECISION_FILTERS = [
   { key: 'all',      label: 'Todos'        },
   { key: 'saving',   label: 'Ahorrando'    },
-  { key: 'waiting',  label: 'En cola'      },
+  { key: 'waiting',  label: 'Ocupado'      },
   { key: 'building', label: 'Construyendo' },
   { key: 'training', label: 'Entrenando'   },
 ] as const
@@ -379,7 +379,9 @@ function decisionColor(text: string | null) {
   const t = text.toLowerCase()
   if (t.startsWith('ahorrando'))      return 'text-ink-muted'
   if (t.startsWith('en cola'))        return 'text-gold'
+  if (t.startsWith('ocupado'))        return 'text-gold'
   if (t.startsWith('entrenando'))     return 'text-crimson-light'
+  if (t.startsWith('investigando'))   return 'text-gold'
   if (t.startsWith('huida táctica'))  return 'text-crimson-light'
   if (t.startsWith('energía'))        return 'text-crimson-light'
   return 'text-forest-light'

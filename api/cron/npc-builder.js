@@ -13,7 +13,7 @@ import { applyResourceTick } from '../lib/tick.js'
 import {
   BUILDINGS, buildCost, buildTime, applyBuildingEffect,
 } from '../lib/buildings.js'
-import { ALL_UNITS } from '../lib/units.js'
+import { ALL_UNITS, unitBuildTime } from '../lib/units.js'
 import { RESEARCH, researchCost, researchTime } from '../lib/research.js'
 import { ECONOMY_SPEED } from '../lib/config.js'
 import { calcDistance, calcDuration } from '../lib/speed.js'
@@ -25,6 +25,12 @@ import {
   isSleepTime, getNpcDelay, getTargetLevels, getTickFlavor, calcEnergyBalance,
   EMPTY_RESEARCH,
 } from '../lib/npc-engine.js'
+
+// ── Esfuerzo de construcción ──────────────────────────────────────────────────
+// Builds/trains that take longer than this threshold are deferred: resources
+// are consumed immediately but the level/quantity is applied on completion.
+const EFFORT_THRESHOLD_SECS = 60   // 1 minute
+const NPC_TIME_FACTOR        = 0.9  // NPCs build 10% faster than players
 
 // ── DB helpers ────────────────────────────────────────────────────────────────
 
@@ -121,12 +127,11 @@ async function attemptResearch(kingdom, researchId, researchMap, cfg, now, depth
     return { action: 'saving', research: researchId }
   }
 
-  const speed     = parseFloat(cfg.economy_speed ?? ECONOMY_SPEED)
-  const cls       = npcClass(kingdom)
-  const timeSecs  = researchTime(cost.wood, cost.stone, kingdom.academy ?? 0, speed)
-  // Discoverer class researches faster
-  const timeBonus = cls === 'discoverer' ? 0.75 : 1.0
-  const finalTime = Math.max(30, Math.floor(timeSecs * timeBonus))
+  const speed           = parseFloat(cfg.economy_speed ?? ECONOMY_SPEED)
+  const cls             = npcClass(kingdom)
+  const timeSecs        = researchTime(cost.wood, cost.stone, kingdom.academy ?? 0, speed)
+  const classBonus      = cls === 'discoverer' ? 0.75 : 1.0
+  const npcResearchTime = Math.max(1, Math.floor(timeSecs * NPC_TIME_FACTOR * classBonus))
 
   const newWood  = kingdom.wood  - cost.wood
   const newStone = kingdom.stone - cost.stone
@@ -139,20 +144,33 @@ async function attemptResearch(kingdom, researchId, researchMap, cfg, now, depth
     lastResourceUpdate: now,
     updatedAt:          new Date(),
   }).where(eq(kingdoms.id, kingdom.id))
+  kingdom.wood  = newWood
+  kingdom.stone = newStone
+  kingdom.grain = newGrain
+
+  if (npcResearchTime <= EFFORT_THRESHOLD_SECS) {
+    // Instant research — low-level or fast path
+    const newLevel = currentLevel + 1
+    await upsertResearch(kingdom.userId, researchId, newLevel)
+    await db.update(npcState).set({
+      lastDecision: `Investigado: ${researchId} lv${newLevel} (instantáneo)`,
+      updatedAt: new Date(),
+    }).where(eq(npcState.userId, kingdom.userId))
+    researchMap[researchId]  = newLevel
+    kingdom.currentResearch  = null
+    return { action: 'researching' }
+  }
 
   await db.update(npcState).set({
     currentResearch:     researchId,
-    researchAvailableAt: now + finalTime,
-    lastDecision: `Investigando ${researchId} lv${currentLevel + 1} (${Math.round(finalTime / 60)} min)`,
+    researchAvailableAt: now + npcResearchTime,
+    lastDecision: `Investigando ${researchId} lv${currentLevel + 1} (${Math.round(npcResearchTime / 60)} min)`,
     updatedAt: new Date(),
   }).where(eq(npcState.userId, kingdom.userId))
 
   // Update in-memory kingdom so cascade knows the queue is now busy
-  kingdom.wood               = newWood
-  kingdom.stone              = newStone
-  kingdom.grain              = newGrain
   kingdom.currentResearch    = researchId
-  kingdom.researchAvailableAt = now + finalTime
+  kingdom.researchAvailableAt = now + npcResearchTime
 
   return { action: 'researching', research: researchId }
 }
@@ -232,6 +250,45 @@ const KINGDOM_PRODUCTION_KEYS = new Set([
   'woodCapacity', 'stoneCapacity', 'grainCapacity',
 ])
 
+// Completes a deferred task (building or unit) once finishAt <= now.
+async function completeDeferredTask(kingdom, now) {
+  const task = kingdom.currentTask
+  if (!task) return
+
+  if (task.type === 'building') {
+    const def = BUILDINGS.find(b => b.id === task.targetId)
+    if (def) {
+      const effect = applyBuildingEffect(task.targetId, task.targetLevel, kingdom)
+      await upsertBuilding(kingdom.id, task.targetId, task.targetLevel)
+      const kingdomPatch = { updatedAt: new Date() }
+      for (const [k, v] of Object.entries(effect)) {
+        if (KINGDOM_PRODUCTION_KEYS.has(k)) kingdomPatch[k] = v
+      }
+      if (Object.keys(kingdomPatch).length > 1) {
+        await db.update(kingdoms).set(kingdomPatch).where(eq(kingdoms.id, kingdom.id))
+      }
+      Object.assign(kingdom, effect)
+      kingdom[task.targetId] = task.targetLevel
+    }
+  } else if (task.type === 'unit') {
+    const newCount = (kingdom[task.targetId] ?? 0) + task.quantity
+    await upsertUnit(kingdom.id, task.targetId, newCount)
+    kingdom[task.targetId] = newCount
+  }
+
+  await db.update(npcState).set({
+    currentTask:     null,
+    buildAvailableAt: now,
+    lastDecision:    task.type === 'building'
+      ? `Construido: ${task.targetId} lv${task.targetLevel}`
+      : `Entrenado: ${task.targetId} ×${task.quantity}`,
+    updatedAt: new Date(),
+  }).where(eq(npcState.userId, kingdom.userId))
+
+  kingdom.currentTask     = null
+  kingdom.buildAvailableAt = now
+}
+
 async function attemptBuild(kingdom, buildingId, cfg, now, reason) {
   const def = BUILDINGS.find(b => b.id === buildingId)
   if (!def) return { action: 'error', building: buildingId }
@@ -265,40 +322,56 @@ async function attemptBuild(kingdom, buildingId, cfg, now, reason) {
   const newGrain = kingdom.grain - (cost.grain ?? 0)
   const effect   = applyBuildingEffect(buildingId, nextLv, kingdom)
 
-  const cls       = npcClass(kingdom)
-  const isBoss    = kingdom.isBoss ?? false
-  const speed     = parseFloat(cfg.economy_speed ?? ECONOMY_SPEED)
-  const rawTime   = buildTime(cost.wood, cost.stone, nextLv, kingdom.workshop ?? 0, kingdom.engineersGuild ?? 0, speed)
-  const timeBonus = isBoss ? 0.5 : (cls === 'discoverer' ? 0.75 : 1.0)
+  const cls         = npcClass(kingdom)
+  const isBoss      = kingdom.isBoss ?? false
+  const speed       = parseFloat(cfg.economy_speed ?? ECONOMY_SPEED)
+  const rawTime     = buildTime(cost.wood, cost.stone, nextLv, kingdom.workshop ?? 0, kingdom.engineersGuild ?? 0, speed)
+  const classBonus  = isBoss ? 0.5 : (cls === 'discoverer' ? 0.75 : 1.0)
+  const npcTime     = Math.max(1, Math.floor(rawTime * NPC_TIME_FACTOR * classBonus))
 
-  // Split effect: production/capacity keys → kingdoms table; building level → buildings table
+  // Deduct resources in kingdoms table (always — cost is paid upfront)
   const kingdomPatch = {
     wood: newWood, stone: newStone, grain: newGrain,
     lastResourceUpdate: now,
     updatedAt: new Date(),
   }
+
+  if (npcTime > EFFORT_THRESHOLD_SECS) {
+    // Deferred build: pay now, apply level when timer expires
+    await db.update(kingdoms).set(kingdomPatch).where(eq(kingdoms.id, kingdom.id))
+    await db.update(npcState).set({
+      currentTask:      { type: 'building', targetId: buildingId, targetLevel: nextLv, finishAt: now + npcTime },
+      buildAvailableAt: now + npcTime,
+      lastDecision:     `Ocupado: construyendo ${buildingId} lv${nextLv} (${Math.round(npcTime / 60)} min)`,
+      updatedAt:        new Date(),
+    }).where(eq(npcState.userId, kingdom.userId))
+
+    kingdom.wood  = newWood
+    kingdom.stone = newStone
+    kingdom.grain = newGrain
+    kingdom.currentTask     = { type: 'building', targetId: buildingId, targetLevel: nextLv, finishAt: now + npcTime }
+    kingdom.buildAvailableAt = now + npcTime
+
+    return { action: 'building', building: buildingId, level: nextLv }
+  }
+
+  // Instant build (≤ threshold): apply effect and level immediately
   for (const [k, v] of Object.entries(effect)) {
     if (KINGDOM_PRODUCTION_KEYS.has(k)) kingdomPatch[k] = v
   }
-
   await db.update(kingdoms).set(kingdomPatch).where(eq(kingdoms.id, kingdom.id))
-
-  // Update building level in normalized buildings table
   await upsertBuilding(kingdom.id, buildingId, nextLv)
-
-  // Update npcState for build timer
   await db.update(npcState).set({
-    buildAvailableAt: now + Math.max(30, Math.floor(rawTime * timeBonus)),
+    buildAvailableAt: now + npcTime,
     lastDecision:     reason,
     updatedAt:        new Date(),
   }).where(eq(npcState.userId, kingdom.userId))
 
-  // Update in-memory so cascade logic sees updated values
   kingdom.wood  = newWood
   kingdom.stone = newStone
   kingdom.grain = newGrain
   Object.assign(kingdom, effect)
-  kingdom.buildAvailableAt = now + Math.max(30, Math.floor(rawTime * timeBonus))
+  kingdom.buildAvailableAt = now + npcTime
 
   return { action: 'built', building: buildingId, level: nextLv }
 }
@@ -387,22 +460,53 @@ async function attemptTrainTroops(kingdom, personality, cls, researchMap, cfg, n
     return { action: 'saving' }
   }
 
-  // Deduct resources from kingdoms table
+  // Calculate training time for this batch (use the last/main unit trained)
+  const speed       = parseFloat(cfg.economy_speed ?? ECONOMY_SPEED)
+  const mainUnitDef = ALL_UNITS.find(u => u.id === lastUnit)
+  const totalBatch  = patch[lastUnit] ?? totalTrained
+  const rawUnitTime = mainUnitDef
+    ? unitBuildTime(mainUnitDef.hull, kingdom.barracks ?? 0, kingdom.engineersGuild ?? 0, totalBatch, speed)
+    : 0
+  const npcUnitTime = Math.max(1, Math.floor(rawUnitTime * NPC_TIME_FACTOR))
+
+  // Deduct resources (always upfront)
   await db.update(kingdoms).set({
     wood, stone, grain,
     lastResourceUpdate: now,
     updatedAt: new Date(),
   }).where(eq(kingdoms.id, kingdom.id))
+  kingdom.wood  = wood
+  kingdom.stone = stone
+  kingdom.grain = grain
 
-  // Upsert each trained unit type in units table
+  if (npcUnitTime > EFFORT_THRESHOLD_SECS && Object.keys(patch).length === 1) {
+    // Deferred unit training: pay now, apply quantity on completion
+    // Only defer when training a single unit type (simpler state to track)
+    await db.update(npcState).set({
+      currentTask:      { type: 'unit', targetId: lastUnit, quantity: totalBatch, finishAt: now + npcUnitTime },
+      buildAvailableAt: now + npcUnitTime,
+      lastDecision:     `Ocupado: entrenando ${lastUnit} ×${totalBatch} (${Math.round(npcUnitTime / 60)} min)`,
+      updatedAt:        new Date(),
+    }).where(eq(npcState.userId, kingdom.userId))
+
+    kingdom.currentTask      = { type: 'unit', targetId: lastUnit, quantity: totalBatch, finishAt: now + npcUnitTime }
+    kingdom.buildAvailableAt = now + npcUnitTime
+
+    return {
+      action:    'training',
+      unit:      lastUnit,
+      count:     totalBatch,
+      isCombat:  UNIT_COMBAT_SET.has(lastUnit),
+      isSupport: UNIT_SUPPORT_SET.has(lastUnit),
+      isDefense: UNIT_DEFENSE_SET.has(lastUnit),
+    }
+  }
+
+  // Instant train: apply immediately
   for (const [unitId, newCount] of Object.entries(patch)) {
     await upsertUnit(kingdom.id, unitId, newCount)
     kingdom[unitId] = newCount
   }
-
-  kingdom.wood  = wood
-  kingdom.stone = stone
-  kingdom.grain = grain
 
   const d = `Entrenando ${lastUnit} (+${totalTrained})`
   await db.update(npcState).set({
@@ -459,7 +563,20 @@ async function attemptBuildWeighted(kingdom, personality, cfg, now) {
 // ── Boss growth ───────────────────────────────────────────────────────────────
 
 async function growNpcBoss(kingdom, cfg, now, researchMap) {
-  if (now < (kingdom.buildAvailableAt ?? 0)) return { action: 'waiting' }
+  if (kingdom.currentTask) {
+    if (now >= kingdom.currentTask.finishAt) {
+      await completeDeferredTask(kingdom, now)
+    } else {
+      const minsLeft = Math.ceil((kingdom.currentTask.finishAt - now) / 60)
+      const desc = kingdom.currentTask.type === 'building'
+        ? `Ocupado: construyendo ${kingdom.currentTask.targetId} lv${kingdom.currentTask.targetLevel} (${minsLeft} min)`
+        : `Ocupado: entrenando ${kingdom.currentTask.targetId} ×${kingdom.currentTask.quantity} (${minsLeft} min)`
+      await setDecision(kingdom, desc)
+      return { action: 'waiting' }
+    }
+  } else if (now < (kingdom.buildAvailableAt ?? 0)) {
+    return { action: 'waiting' }
+  }
   const result = await attemptTrainTroops(kingdom, 'military', 'general', researchMap, cfg, now)
   if (result.action === 'trained') return result
   return await attemptBuildWeighted(kingdom, 'military', cfg, now)
@@ -489,10 +606,21 @@ async function growNpc(kingdom, cfg, now, researchMap, debrisRegions, colonizeAc
     return { action: 'sleeping' }
   }
 
-  // Nivel 0-A: cola de construcción ocupada
-  const buildAvailable = kingdom.buildAvailableAt ?? 0
-  if (now < buildAvailable) {
-    const minsLeft = Math.ceil((buildAvailable - now) / 60)
+  // Nivel 0-A: tarea diferida en progreso
+  if (kingdom.currentTask) {
+    if (now >= kingdom.currentTask.finishAt) {
+      await completeDeferredTask(kingdom, now)
+      // Fall through — task just completed, take next action this tick
+    } else {
+      const minsLeft = Math.ceil((kingdom.currentTask.finishAt - now) / 60)
+      const desc = kingdom.currentTask.type === 'building'
+        ? `Ocupado: construyendo ${kingdom.currentTask.targetId} lv${kingdom.currentTask.targetLevel} (${minsLeft} min)`
+        : `Ocupado: entrenando ${kingdom.currentTask.targetId} ×${kingdom.currentTask.quantity} (${minsLeft} min)`
+      await setDecision(kingdom, desc)
+      return { action: 'waiting' }
+    }
+  } else if (now < (kingdom.buildAvailableAt ?? 0)) {
+    const minsLeft = Math.ceil(((kingdom.buildAvailableAt ?? 0) - now) / 60)
     await setDecision(kingdom, `En cola de construcción (${minsLeft} min)`)
     return { action: 'waiting' }
   }
@@ -644,6 +772,7 @@ export default async function handler(req, res) {
     nextCheck:           ns?.nextCheck           ?? null,
     currentResearch:     ns?.currentResearch     ?? null,
     researchAvailableAt: ns?.researchAvailableAt ?? null,
+    currentTask:         ns?.currentTask         ?? null,
     lastAttackAt:        ns?.lastAttackAt        ?? 0,
     lastDecision:        ns?.lastDecision        ?? null,
   }))
@@ -703,8 +832,8 @@ export default async function handler(req, res) {
       const researchMap = { ...EMPTY_RESEARCH, ...(researchByUser[kingdom.userId] ?? {}) }
 
       const growResult = await growNpc(kingdom, cfg, now, researchMap, debrisRegions, colonizeActiveUsers, kingdomCountByUser)
-      if (growResult?.action === 'built')     builtBuilding++
-      if (growResult?.action === 'trained') {
+      if (growResult?.action === 'built' || growResult?.action === 'building') builtBuilding++
+      if (growResult?.action === 'trained' || growResult?.action === 'training') {
         if (growResult.isCombat)  trainedCombat++
         if (growResult.isSupport) trainedSupport++
         if (growResult.isDefense) trainedDefense++
@@ -717,9 +846,11 @@ export default async function handler(req, res) {
 
       const delay = getNpcDelay(now)
       const nextCheck = (growResult?.action === 'waiting')
-        ? Math.min(now + delay, (kingdom.buildAvailableAt ?? now) + 60)
-        : (growResult?.action === 'researching')
-          ? Math.min(now + delay, (kingdom.researchAvailableAt ?? now) + 60)
+        ? kingdom.currentTask
+          ? Math.min(now + delay, kingdom.currentTask.finishAt + 60)
+          : Math.min(now + delay, (kingdom.buildAvailableAt ?? now) + 60)
+        : (growResult?.action === 'researching' || growResult?.action === 'training')
+          ? Math.min(now + delay, (kingdom.researchAvailableAt ?? kingdom.buildAvailableAt ?? now) + 60)
           : now + delay
 
       await db.update(npcState)
