@@ -351,6 +351,13 @@ export default async function handler(req, res) {
   const cfg = await getSettings()
 
   const seasonAction = await manageSeason(cfg, now)
+
+  // Re-read settings: manageSeason may have activated a new season
+  const cfgAfter = await getSettings()
+  if (cfgAfter.season_state !== 'active') {
+    return res.json({ ok: true, at: now, skipped: 'no_active_season', seasonAction })
+  }
+
   const repairAction = await repairSeasonNpcsIfMissing(now)
 
   // Load all NPC kingdoms with their npcState

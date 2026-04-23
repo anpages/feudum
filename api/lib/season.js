@@ -13,7 +13,6 @@ import {
 } from '../_db.js'
 import { ECONOMY_SPEED, NPC_DENSITY, UNIVERSE } from './config.js'
 import { npcClass } from './npc-engine.js'
-import { getBossForSeason, getBossPosition } from './bosses.js'
 import { setSetting } from './settings.js'
 
 // ── NPC name generation ───────────────────────────────────────────────────────
@@ -149,167 +148,21 @@ export async function seedNpcs(takenSlots, now, count = null) {
   return seeded
 }
 
-async function findFreeSlot({ realm, region, slot }, takenSlots) {
-  const { maxRegion, maxSlot } = UNIVERSE
-  for (let s = slot; s <= maxSlot; s++) {
-    const key = `${realm}:${region}:${s}`
-    if (!takenSlots.has(key)) return { realm, region, slot: s }
-  }
-  for (let r = 1; r <= maxRegion; r++) {
-    if (r === region) continue
-    for (let s = 1; s <= maxSlot; s++) {
-      const key = `${realm}:${r}:${s}`
-      if (!takenSlots.has(key)) return { realm, region: r, slot: s }
-    }
-  }
-  return { realm, region, slot }
-}
-
 // ── Start new season ──────────────────────────────────────────────────────────
+// Players do NOT get kingdoms here — they join manually via POST /api/season/join.
+// Boss is not included: no boss mechanic in current phase.
 
 export async function startNewSeason(seasonNumber, economySpeed) {
-  const boss  = getBossForSeason(seasonNumber)
   const speed = parseFloat(economySpeed ?? ECONOMY_SPEED)
   const now   = Math.floor(Date.now() / 1000)
-  const diff  = boss.difficulty
 
-  // Reset (skip on season 1 — nothing to reset)
-  if (seasonNumber > 1) await resetSeason()
+  // Always reset (clean slate for every season)
+  await resetSeason()
 
-  const takenSlots = new Set()
+  // Seed 50 NPCs at random available slots
+  const npcCount = await seedNpcs(new Set(), now, 50)
 
-  // ── Boss at center ──────────────────────────────────────────────────────────
-  const center   = getBossPosition(UNIVERSE)
-  const bossSlot = await findFreeSlot(center, takenSlots)
-  takenSlots.add(`${bossSlot.realm}:${bossSlot.region}:${bossSlot.slot}`)
-
-  // 1. Boss user
-  const [bossUser] = await db.insert(users)
-    .values({ role: 'npc', username: boss.name })
-    .returning({ id: users.id })
-
-  // 2. Boss kingdom (resource fields only — no building/unit columns)
-  const [bossKingdom] = await db.insert(kingdoms)
-    .values({
-      userId: bossUser.id,
-      name:   boss.name,
-      ...bossSlot,
-      wood:  Math.round(500000 * diff),
-      stone: Math.round(400000 * diff),
-      grain: Math.round(100000 * diff),
-      woodCapacity:  10_000_000,
-      stoneCapacity: 10_000_000,
-      grainCapacity: 10_000_000,
-      woodProduction:  0,
-      stoneProduction: 0,
-      grainProduction: 0,
-      lastResourceUpdate: now,
-    })
-    .returning({ id: kingdoms.id })
-
-  const bossKingdomId = bossKingdom.id
-
-  // 3. Boss npcState
-  await db.insert(npcState).values({ userId: bossUser.id, isBoss: true, npcLevel: 3 })
-
-  // 4. Boss buildings (one row per type)
-  await db.insert(buildings).values([
-    { kingdomId: bossKingdomId, type: 'sawmill',        level: Math.round(15 * diff) },
-    { kingdomId: bossKingdomId, type: 'quarry',         level: Math.round(13 * diff) },
-    { kingdomId: bossKingdomId, type: 'grainFarm',      level: Math.round(11 * diff) },
-    { kingdomId: bossKingdomId, type: 'windmill',       level: Math.round(10 * diff) },
-    { kingdomId: bossKingdomId, type: 'cathedral',      level: Math.round(5  * diff) },
-    { kingdomId: bossKingdomId, type: 'workshop',       level: Math.round(8  * diff) },
-    { kingdomId: bossKingdomId, type: 'engineersGuild', level: Math.round(4  * diff) },
-    { kingdomId: bossKingdomId, type: 'barracks',       level: Math.round(12 * diff) },
-    { kingdomId: bossKingdomId, type: 'granary',        level: Math.round(6  * diff) },
-    { kingdomId: bossKingdomId, type: 'stonehouse',     level: Math.round(6  * diff) },
-    { kingdomId: bossKingdomId, type: 'silo',           level: Math.round(5  * diff) },
-    { kingdomId: bossKingdomId, type: 'academy',        level: Math.round(3  * diff) },
-    { kingdomId: bossKingdomId, type: 'armoury',        level: Math.round(4  * diff) },
-    { kingdomId: bossKingdomId, type: 'alchemistTower', level: Math.round(3  * diff) },
-    { kingdomId: bossKingdomId, type: 'ambassadorHall', level: Math.round(2  * diff) },
-  ])
-
-  // 5. Boss units
-  await db.insert(units).values([
-    { kingdomId: bossKingdomId, type: 'squire',       quantity: Math.round(500 * diff) },
-    { kingdomId: bossKingdomId, type: 'knight',       quantity: Math.round(200 * diff) },
-    { kingdomId: bossKingdomId, type: 'paladin',      quantity: Math.round(80  * diff) },
-    { kingdomId: bossKingdomId, type: 'warlord',      quantity: Math.round(30  * diff) },
-    { kingdomId: bossKingdomId, type: 'grandKnight',  quantity: Math.round(15  * diff) },
-    { kingdomId: bossKingdomId, type: 'siegeMaster',  quantity: Math.round(10  * diff) },
-    { kingdomId: bossKingdomId, type: 'warMachine',   quantity: Math.round(5   * diff) },
-    { kingdomId: bossKingdomId, type: 'dragonKnight', quantity: Math.round(3   * diff) },
-    { kingdomId: bossKingdomId, type: 'archer',       quantity: Math.round(300 * diff) },
-    { kingdomId: bossKingdomId, type: 'crossbowman',  quantity: Math.round(150 * diff) },
-    { kingdomId: bossKingdomId, type: 'ballista',     quantity: Math.round(60  * diff) },
-    { kingdomId: bossKingdomId, type: 'mageTower',    quantity: Math.round(40  * diff) },
-    { kingdomId: bossKingdomId, type: 'palisade',     quantity: 1 },
-    { kingdomId: bossKingdomId, type: 'castleWall',   quantity: 1 },
-  ])
-
-  // 6. Boss research (skip rows where level would be 0)
-  const bossResearchDefs = [
-    { type: 'swordsmanship',     level: Math.round(8 * diff) },
-    { type: 'fortification',     level: Math.round(8 * diff) },
-    { type: 'armoury',           level: Math.round(6 * diff) },
-    { type: 'horsemanship',      level: Math.round(8 * diff) },
-    { type: 'cartography',       level: Math.round(6 * diff) },
-    { type: 'tradeRoutes',       level: Math.round(4 * diff) },
-    { type: 'alchemy',           level: Math.round(5 * diff) },
-    { type: 'pyromancy',         level: Math.round(4 * diff) },
-    { type: 'runemastery',       level: Math.round(3 * diff) },
-    { type: 'mysticism',         level: Math.round(2 * diff) },
-    { type: 'dragonlore',        level: Math.round(1 * diff) },
-    { type: 'spycraft',          level: Math.round(3 * diff) },
-    { type: 'logistics',         level: Math.round(3 * diff) },
-    { type: 'exploration',       level: Math.round(2 * diff) },
-    { type: 'diplomaticNetwork', level: 0 },
-    { type: 'divineBlessing',    level: 0 },
-  ].filter(r => r.level > 0)
-
-  if (bossResearchDefs.length > 0) {
-    await db.insert(research).values(
-      bossResearchDefs.map(r => ({ userId: bossUser.id, type: r.type, level: r.level }))
-    )
-  }
-
-  // ── Player kingdoms ─────────────────────────────────────────────────────────
-  const { maxRealm, maxRegion, maxSlot } = UNIVERSE
-
-  const playerUsers = await db
-    .select({ id: users.id, username: users.username })
-    .from(users)
-    .where(ne(users.role, 'npc'))
-
-  for (const u of playerUsers) {
-    let placed = false
-    for (let attempt = 0; attempt < 1000 && !placed; attempt++) {
-      const realm  = Math.ceil(Math.random() * maxRealm)
-      const region = Math.ceil(Math.random() * maxRegion)
-      const slot   = Math.ceil(Math.random() * maxSlot)
-      const key    = `${realm}:${region}:${slot}`
-      if (!takenSlots.has(key)) {
-        takenSlots.add(key)
-        await db.insert(kingdoms).values({
-          userId: u.id,
-          name:   `Reino de ${u.username ?? 'Jugador'}`,
-          realm, region, slot,
-          wood: 500, stone: 500, grain: 500,
-          woodCapacity: 10000, stoneCapacity: 10000, grainCapacity: 10000,
-          woodProduction: 0, stoneProduction: 0, grainProduction: 0,
-          lastResourceUpdate: now,
-        })
-        placed = true
-      }
-    }
-  }
-
-  // ── NPCs fill remaining slots to NPC_DENSITY ────────────────────────────────
-  const npcCount = await seedNpcs(takenSlots, now)
-
-  // ── Season settings ─────────────────────────────────────────────────────────
+  // Season settings
   const durationSecs = Math.round((360 / speed) * 86400)
   const seasonEnd    = now + durationSecs
 
@@ -318,12 +171,12 @@ export async function startNewSeason(seasonNumber, economySpeed) {
     setSetting('season_state',            'active'),
     setSetting('season_start',            String(now)),
     setSetting('season_end',              String(seasonEnd)),
-    setSetting('season_boss_slug',        boss.slug),
+    setSetting('season_boss_slug',        ''),
     setSetting('season_winner_user_id',   ''),
     setSetting('season_winner_condition', ''),
   ])
 
-  return { npcCount, bossSlot, durationSecs, playerCount: playerUsers.length }
+  return { npcCount, durationSecs }
 }
 
 // ── Self-heal: repair an "active" season that has no NPCs ────────────────────

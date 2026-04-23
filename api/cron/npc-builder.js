@@ -564,6 +564,10 @@ export default async function handler(req, res) {
   const now = Math.floor(Date.now() / 1000)
   const cfg = await getSettings()
 
+  if (cfg.season_state !== 'active') {
+    return res.json({ ok: true, skipped: 'no_active_season' })
+  }
+
   // Batch load all NPC kingdoms with their npcState in one query
   const npcRows = await db.select({ k: kingdoms, ns: npcState })
     .from(kingdoms)

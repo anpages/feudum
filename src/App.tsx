@@ -1,6 +1,7 @@
 import { lazy, Suspense } from 'react'
 import { Routes, Route, Navigate, Outlet, useSearchParams } from 'react-router-dom'
 import { useAuth } from '@/features/auth/useAuth'
+import { SeasonRoute } from '@/features/season/SeasonGate'
 
 // Auth pages — load immediately (user lands here first)
 import { LoginPage } from '@/features/auth/LoginPage'
@@ -74,6 +75,7 @@ export default function App() {
           <Route path="/onboarding" element={<OnboardingRoute />} />
 
           <Route element={<ProtectedRoute />}>
+            <Route element={<SeasonRoute />}>
             <Route element={<GameLayout />}>
               <Route path="/"                   element={<RootRedirect />} />
               <Route path="/overview"           element={<OverviewPage />} />
@@ -93,6 +95,7 @@ export default function App() {
               <Route path="/messages"           element={<MessagesPage />} />
               <Route path="/profile"            element={<ProfilePage />} />
               <Route path="/admin"              element={<AdminPage />} />
+            </Route>
             </Route>
           </Route>
 

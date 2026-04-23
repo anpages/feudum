@@ -33,3 +33,14 @@ export function useAdminCleanSessionData() {
     onSuccess:  () => qc.invalidateQueries({ queryKey: ['admin', 'battles'] }),
   })
 }
+
+export function useJoinSeason() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: seasonService.joinSeason,
+    onSuccess:  () => {
+      qc.invalidateQueries({ queryKey: ['kingdoms'] })
+      qc.invalidateQueries({ queryKey: ['kingdom'] })
+    },
+  })
+}

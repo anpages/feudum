@@ -7,4 +7,5 @@ export const seasonService = {
   adminEndSeason: (winnerUserId?: number, condition?: string) =>
     http.post('/admin/season', { action: 'end_season', winnerUserId, condition }),
   adminCleanSessionData: () => http.post('/admin/season', { action: 'clean_session_data' }),
+  joinSeason: () => http.post<{ ok: boolean; kingdom: object }>('/season/join', {}),
 }
