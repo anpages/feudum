@@ -2,7 +2,7 @@ import { db, users } from '../_db.js'
 import { eq } from 'drizzle-orm'
 import { getSupabaseUser } from '../lib/supabase.js'
 
-const COLS = { id: users.id, username: users.username, isAdmin: users.isAdmin, ether: users.ether, characterClass: users.characterClass }
+const COLS = { id: users.id, username: users.username, role: users.role, ether: users.ether, characterClass: users.characterClass }
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).end()

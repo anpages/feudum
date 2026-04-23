@@ -11,7 +11,7 @@ export interface AdminUser {
   id: string
   username: string | null
   email: string
-  isAdmin: boolean
+  role: string
   isNpc: boolean
   createdAt: string
   kingdomId: string | null

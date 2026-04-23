@@ -23,7 +23,7 @@ export function PlayersTab() {
               <p className="font-ui text-sm text-ink font-semibold truncate">
                 {u.username ?? <span className="italic text-ink-muted/60 font-normal">sin nickname</span>}
               </p>
-              {u.isAdmin && <Badge variant="gold">Admin</Badge>}
+              {u.role === 'admin' && <Badge variant="gold">Admin</Badge>}
             </div>
             <p className="font-body text-[11px] text-ink-muted truncate">{u.email}</p>
             {u.kingdom && (
@@ -33,12 +33,12 @@ export function PlayersTab() {
             )}
           </div>
           <Button
-            variant={u.isAdmin ? 'danger' : 'ghost'}
+            variant={u.role === 'admin' ? 'danger' : 'ghost'}
             size="sm"
-            onClick={() => toggle.mutate({ userId: u.id, isAdmin: !u.isAdmin })}
+            onClick={() => toggle.mutate({ userId: u.id, isAdmin: u.role !== 'admin' })}
             disabled={toggle.isPending}
           >
-            {u.isAdmin ? 'Quitar admin' : 'Hacer admin'}
+            {u.role === 'admin' ? 'Quitar admin' : 'Hacer admin'}
           </Button>
         </div>
       ))}

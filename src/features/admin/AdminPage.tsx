@@ -25,7 +25,7 @@ export function AdminPage() {
   const [tab, setTab] = useState<Tab>('npc_monitor')
 
   if (isLoading) return null
-  if (!user?.isAdmin) return <Navigate to="/overview" replace />
+  if (user?.role !== 'admin') return <Navigate to="/overview" replace />
 
   return (
     <div className="space-y-6">

@@ -5,7 +5,7 @@ import { getSessionUserId } from './handler.js'
 export async function getAdminUserId(req) {
   const userId = await getSessionUserId(req)
   if (!userId) return null
-  const [user] = await db.select({ id: users.id, isAdmin: users.isAdmin })
+  const [user] = await db.select({ id: users.id, role: users.role })
     .from(users).where(eq(users.id, userId)).limit(1)
-  return user?.isAdmin ? userId : null
+  return user?.role === 'admin' ? userId : null
 }

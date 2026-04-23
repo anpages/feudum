@@ -22,13 +22,13 @@ export default async function handler(req, res) {
 
   // public.users row is auto-created by the on_auth_user_created trigger.
   const [user] = await db
-    .select({ id: users.id, username: users.username, isAdmin: users.isAdmin })
+    .select({ id: users.id, username: users.username, role: users.role })
     .from(users)
     .where(eq(users.id, supabaseUser.id))
     .limit(1)
 
-  if (user && isAdminEmail && !user.isAdmin) {
-    await db.update(users).set({ isAdmin: true, updatedAt: new Date() }).where(eq(users.id, user.id))
+  if (user && isAdminEmail && user.role !== 'admin') {
+    await db.update(users).set({ role: 'admin', updatedAt: new Date() }).where(eq(users.id, user.id))
   }
 
   const isNew = !user?.username

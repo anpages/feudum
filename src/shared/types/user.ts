@@ -1,7 +1,7 @@
 export interface AuthUser {
   id: string
   username: string | null
-  isAdmin?: boolean
+  role?: string
   ether?: number
   characterClass?: string | null
 }

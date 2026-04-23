@@ -89,7 +89,7 @@ export function NavBar({ isOpen, onClose }: Props) {
       </div>
 
       {/* Admin link */}
-      {user?.isAdmin && (
+      {user?.role === 'admin' && (
         <div className="px-2 pb-2 border-t border-gold/10 pt-2">
           <span className="nav-section-label">Sistema</span>
           <NavLink
