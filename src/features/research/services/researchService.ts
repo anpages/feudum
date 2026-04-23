@@ -1,19 +1,19 @@
 import { http } from '@/shared/services/http'
 import { supabase } from '@/lib/supabase'
-import { snakeToCamel, snakeToCamelArray } from '@/lib/game/caseConvert'
+import { snakeToCamelArray } from '@/lib/game/caseConvert'
 import { RESEARCH, researchCost, researchTime, requirementsMet } from '@/lib/game/research'
 import type { ResearchResponse, UpgradeResearchResponse } from '../types'
 
-interface QueueRow {
+interface ResearchQueueRow {
   id: string
-  research: string
+  researchType: string
   level: number
   startedAt: number
   finishesAt: number
 }
 
 interface BuildingQueueRow {
-  building: string
+  buildingType: string
   level: number
   finishesAt: number
 }
@@ -23,17 +23,15 @@ export const researchService = {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) throw new Error('No autenticado')
 
-    // academy level is a private column → must come from the my_kingdom() RPC.
-    const [{ data: kingdomRows }, { data: researchRow }, { data: userRow }, { data: settingsRows }] = await Promise.all([
+    // Phase 1: kingdom + user character class + settings (parallel)
+    const [{ data: kingdomRows }, { data: userRow }, { data: settingsRows }] = await Promise.all([
       supabase.rpc('my_kingdom', { kid: activeKingdomId ?? null }),
-      supabase.from('research').select('*').eq('user_id', user.id).maybeSingle(),
       supabase.from('users').select('character_class').eq('id', user.id).maybeSingle(),
       supabase.from('settings').select('key, value'),
     ])
     const kingdomRow = Array.isArray(kingdomRows) ? kingdomRows[0] : null
     if (!kingdomRow) throw new Error('Reino no encontrado')
 
-    const research = researchRow ? snakeToCamel<Record<string, number>>(researchRow) : {}
     const characterClass = userRow?.character_class as string | null
 
     let researchSpeed = 1
@@ -41,38 +39,51 @@ export const researchService = {
       if (r.key === 'research_speed') researchSpeed = parseFloat(r.value as string)
     }
 
-    const [{ data: queueRows }, { data: buildingQueueRows }] = await Promise.all([
-      supabase.from('research_queue').select('id, research, level, started_at, finishes_at').eq('user_id', user.id),
-      supabase.from('building_queue').select('building, level, finishes_at').eq('kingdom_id', kingdomRow.id),
+    // Phase 2: normalized tables + queues (need kingdom id from phase 1)
+    const [
+      { data: buildingRows },
+      { data: researchRows },
+      { data: queueRows },
+      { data: buildingQueueRows },
+    ] = await Promise.all([
+      supabase.from('buildings').select('type, level').eq('kingdom_id', kingdomRow.id),
+      supabase.from('research').select('type, level').eq('user_id', user.id),
+      supabase.from('research_queue').select('id, research_type, level, started_at, finishes_at').eq('user_id', user.id),
+      supabase.from('building_queue').select('building_type, level, finishes_at').eq('kingdom_id', kingdomRow.id),
     ])
 
-    const queue: QueueRow[] = snakeToCamelArray<QueueRow>(queueRows)
+    // Build research map from normalized rows
+    const research: Record<string, number> = {}
+    for (const r of researchRows ?? []) research[r.type] = r.level
+
+    const queue: ResearchQueueRow[] = snakeToCamelArray<ResearchQueueRow>(queueRows)
     const now = Math.floor(Date.now() / 1000)
 
     const projected = { ...research }
     for (const item of queue) {
-      if (item.finishesAt <= now) projected[item.research] = item.level
+      if (item.finishesAt <= now) projected[item.researchType] = item.level
     }
 
     const activeQueue = queue.filter(q => q.finishesAt > now)
 
-    // Project building levels: if a building finished but the server hasn't processed
-    // the queue yet, the DB column is still the old level — apply completed items locally.
-    const buildingQueue: BuildingQueueRow[] = snakeToCamelArray<BuildingQueueRow>(buildingQueueRows)
-    let academyLevel = (kingdomRow.academy as number) ?? 0
-    for (const item of buildingQueue) {
-      if (item.finishesAt <= now && item.building === 'academy') {
+    // Build academy level: start from buildings table, then apply finished building queue
+    const buildingMap: Record<string, number> = {}
+    for (const r of buildingRows ?? []) buildingMap[r.type] = r.level
+
+    let academyLevel = buildingMap.academy ?? 0
+    for (const item of snakeToCamelArray<BuildingQueueRow>(buildingQueueRows)) {
+      if (item.finishesAt <= now && item.buildingType === 'academy') {
         academyLevel = Math.max(academyLevel, item.level)
       }
     }
-    const kingdomForReqs = { academy: academyLevel } as Record<string, number>
+    const kingdomForReqs = { ...buildingMap } as Record<string, number>
 
     const result = RESEARCH.map(def => {
       const level = projected[def.id] ?? 0
       const cost  = researchCost(def, level)
       const baseTime = researchTime(cost.wood, cost.stone, academyLevel, researchSpeed)
       const timeSecs = characterClass === 'discoverer' ? Math.max(1, Math.floor(baseTime * 0.75)) : baseTime
-      const queueItem = activeQueue.find(q => q.research === def.id)
+      const queueItem = activeQueue.find(q => q.researchType === def.id)
       return {
         id:          def.id,
         level,

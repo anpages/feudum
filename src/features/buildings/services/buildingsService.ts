@@ -9,7 +9,7 @@ import type { BuildingsResponse, UpgradeBuildingResponse } from '../types'
 
 interface QueueRow {
   id: string
-  building: string
+  buildingType: string
   level: number
   startedAt: number
   finishesAt: number
@@ -20,35 +20,41 @@ export const buildingsService = {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) throw new Error('No autenticado')
 
-    const [{ data: kingdomRows }, { data: researchRow }, { data: settingsRows }] = await Promise.all([
+    // Phase 1: kingdom + settings (settings doesn't need kingdom id)
+    const [{ data: kingdomRows }, { data: settingsRows }] = await Promise.all([
       supabase.rpc('my_kingdom', { kid: activeKingdomId ?? null }),
-      supabase.from('research').select('*').eq('user_id', user.id).maybeSingle(),
       supabase.from('settings').select('key, value'),
     ])
     const kingdomRow = Array.isArray(kingdomRows) ? kingdomRows[0] : null
     if (!kingdomRow) throw new Error('Reino no encontrado')
-
-    const kingdom = snakeToCamel<Record<string, number>>(kingdomRow)
-    const research = researchRow ? snakeToCamel<Record<string, number>>(researchRow) : {}
 
     let economySpeed = 1
     for (const r of settingsRows ?? []) {
       if (r.key === 'economy_speed') economySpeed = parseFloat(r.value as string)
     }
 
-    const { data: queueRows } = await supabase
-      .from('building_queue')
-      .select('id, building, level, started_at, finishes_at')
-      .eq('kingdom_id', kingdomRow.id)
+    // Phase 2: buildings levels + queue (both need kingdom id)
+    const [{ data: buildingRows }, { data: queueRows }] = await Promise.all([
+      supabase.from('buildings').select('type, level').eq('kingdom_id', kingdomRow.id),
+      supabase.from('building_queue')
+        .select('id, building_type, level, started_at, finishes_at')
+        .eq('kingdom_id', kingdomRow.id),
+    ])
+
+    // Base kingdom resources + coords
+    const kingdom = snakeToCamel<Record<string, number>>(kingdomRow)
+
+    // Merge building levels from the buildings table
+    const projected: Record<string, number> = { ...kingdom }
+    for (const r of buildingRows ?? []) projected[r.type] = r.level
 
     const queue: QueueRow[] = snakeToCamelArray<QueueRow>(queueRows)
     const now = Math.floor(Date.now() / 1000)
 
-    // Apply finished items locally so the UI shows correct levels without waiting for server.
-    const projected = { ...kingdom }
+    // Apply finished queue items so counts are up to date
     for (const item of queue) {
       if (item.finishesAt <= now) {
-        Object.assign(projected, applyBuildingEffect(item.building, item.level, projected))
+        Object.assign(projected, applyBuildingEffect(item.buildingType, item.level, projected))
       }
     }
 
@@ -63,7 +69,7 @@ export const buildingsService = {
       const nextLevel = level + 1
       const cost      = buildCost(def.woodBase, def.stoneBase, def.factor, level, def.grainBase)
       const timeSecs  = buildTime(cost.wood, cost.stone, nextLevel, workshopLevel, engineersGuildLevel, economySpeed)
-      const queueItem = activeQueue.find(q => q.building === def.id) ?? null
+      const queueItem = activeQueue.find(q => q.buildingType === def.id) ?? null
 
       return {
         id:          def.id,
@@ -73,10 +79,10 @@ export const buildingsService = {
         costStone:   cost.stone,
         costGrain:   cost.grain,
         timeSeconds: timeSecs,
-        requiresMet: buildingRequirementsMet(def, projected, research),
+        requiresMet: buildingRequirementsMet(def, projected, {}),
         requires:    def.requires as BuildingsResponse['buildings'][number]['requires'],
         inQueue:     queueItem ? { id: queueItem.id, level: queueItem.level, startedAt: queueItem.startedAt, finishesAt: queueItem.finishesAt } : null,
-        queueDepth:  activeQueue.filter(q => q.building === def.id).length,
+        queueDepth:  activeQueue.filter(q => q.buildingType === def.id).length,
       }
     })
 
