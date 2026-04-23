@@ -663,13 +663,20 @@ async function growNpc(kingdom, cfg, now, researchMap, debrisRegions, colonizeAc
     }
   }
 
-  // Nivel 0D: carroñero prioritario — collector/economy con escombros cercanos
+  // Nivel 0D: carroñero prioritario — collector/economy con escombros cercanos.
+  // Requisitos reales del scavenger: barracks lv4 + horsemanship lv6 + runemastery lv2.
+  // Cuando faltan los techs, los empujamos explícitamente en vez de dejar que
+  // attemptTrainTroops los cadene; así el planificador de investigación los prioriza.
   if (
     (cls === 'collector' || personality === 'economy') &&
     debrisRegions.has(`${kingdom.realm}:${kingdom.region}`) &&
     (kingdom.scavenger ?? 0) === 0 &&
     (kingdom.barracks  ?? 0) >= 4
   ) {
+    if ((researchMap.horsemanship ?? 0) < 6)
+      return await attemptResearch(kingdom, 'horsemanship', researchMap, cfg, now)
+    if ((researchMap.runemastery  ?? 0) < 2)
+      return await attemptResearch(kingdom, 'runemastery',  researchMap, cfg, now)
     const r = await attemptTrainTroops(kingdom, personality, cls, researchMap, cfg, now, ['scavenger'], true)
     if (r.action === 'trained' || r.action === 'researching') return r
   }

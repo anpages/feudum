@@ -284,8 +284,8 @@ async function expeditionAI(npcKingdom, researchRow, depletionMap, now, cfg) {
   if (npcKingdom.isBoss) return false
   const cls         = npcClass(npcKingdom)
   const personality = npcPersonality(npcKingdom)
-  const probability = cls === 'discoverer' ? 0.35 : personality === 'balanced' ? 0.12 : 0
-  if (probability === 0 || Math.random() > probability) return false
+  const probability = cls === 'discoverer' ? 0.35 : personality === 'balanced' ? 0.12 : 0.05
+  if (Math.random() > probability) return false
 
   const total = totalArmy(npcKingdom)
   if (total < 20) return false
