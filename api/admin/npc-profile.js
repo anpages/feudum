@@ -14,29 +14,6 @@ function npcClass(k) {
   return ['collector', 'general', 'discoverer'][h]
 }
 
-function npcVirtualResearch(k) {
-  const b = k.barracks ?? 0
-  const a = k.academy  ?? 0
-  const r = k.armoury  ?? 0
-  return {
-    horsemanship:      b,
-    swordsmanship:     b,
-    fortification:     r,
-    armoury:           r,
-    cartography:       a,
-    tradeRoutes:       Math.max(0, a - 2),
-    alchemy:           a,
-    pyromancy:         Math.max(0, a - 1),
-    runemastery:       Math.max(0, a - 3),
-    mysticism:         Math.max(0, a - 4),
-    dragonlore:        Math.max(0, a - 7),
-    spycraft:          a,
-    logistics:         a,
-    exploration:       a,
-    diplomaticNetwork: a,
-    divineBlessing:    Math.max(0, a - 9),
-  }
-}
 
 export default async function handler(req, res) {
   const adminId = await getAdminUserId(req)
@@ -98,7 +75,7 @@ export default async function handler(req, res) {
     kingdom: enriched,
     personality:     enriched.isNpc ? npcPersonality(enriched) : null,
     npcClass:        enriched.isNpc ? npcClass(enriched)        : null,
-    virtualResearch: enriched.isNpc ? npcVirtualResearch(enriched) : null,
+    virtualResearch: null,
     research:        researchMap,
     points:          calcPoints(enriched, researchMap),
     activeMissions,
