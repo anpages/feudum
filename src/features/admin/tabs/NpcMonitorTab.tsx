@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { adminService } from '../services/adminService'
 import { formatResource } from '@/lib/format'
 import { label } from '@/lib/labels'
-import type { NpcTickResult, CombatEngineTick, MilitaryAiTick, NpcDecision, NpcCurrentTask } from '../types'
+import type { NpcTickResult, CombatEngineTick, MilitaryAiTick, NpcDecision, NpcCurrentTask, NpcHealthReport } from '../types'
 
 // ── Translation ────────────────────────────────────────────────────────────────
 
@@ -596,6 +596,128 @@ function NpcDecisionsCard() {
   )
 }
 
+// ── Health history ─────────────────────────────────────────────────────────────
+
+const STATUS_STYLE = {
+  ok:       { badge: 'bg-forest/15 text-forest-light border-forest/25',  dot: 'bg-forest-light', label: 'OK'       },
+  warning:  { badge: 'bg-gold/15   text-gold        border-gold/25',      dot: 'bg-gold',         label: 'Alerta'   },
+  critical: { badge: 'bg-crimson/15 text-crimson-light border-crimson/25',dot: 'bg-crimson-light',label: 'Crítico'  },
+}
+
+function StatusBadge({ status }: { status: NpcHealthReport['status'] }) {
+  const s = STATUS_STYLE[status] ?? STATUS_STYLE.ok
+  return (
+    <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border font-ui text-xs font-semibold ${s.badge}`}>
+      <span className={`w-1.5 h-1.5 rounded-full ${s.dot}`} />
+      {s.label}
+    </span>
+  )
+}
+
+function HealthHistorySection({ reports }: { reports: NpcHealthReport[] }) {
+  const [expanded, setExpanded] = useState<number | null>(null)
+  if (reports.length === 0) {
+    return (
+      <div className="card-medieval p-5">
+        <div className="card-corner-tr" /><div className="card-corner-bl" />
+        <h3 className="section-heading mb-3">Salud NPC — historial (cada 4h)</h3>
+        <p className="font-ui text-xs text-ink-muted italic">Sin datos aún — el primer reporte se generará en el próximo ciclo del cron (cada 4h).</p>
+      </div>
+    )
+  }
+
+  const sorted  = [...reports].reverse()
+  const latest  = sorted[0]
+  const hasAnomalies = sorted.some(r => r.anomalies.length > 0)
+
+  return (
+    <div className="card-medieval p-5 space-y-4">
+      <div className="card-corner-tr" /><div className="card-corner-bl" />
+
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h3 className="section-heading">Salud NPC — historial (cada 4h)</h3>
+        <div className="flex items-center gap-3">
+          <StatusBadge status={latest.status} />
+          <span className="font-ui text-[0.6rem] text-ink-muted">{reports.length} entradas · {formatTs(latest.ts)}</span>
+        </div>
+      </div>
+
+      {/* Latest anomalies banner */}
+      {latest.anomalies.length > 0 && (
+        <div className={`rounded-lg p-3 border text-xs space-y-1 ${latest.status === 'critical' ? 'bg-crimson/10 border-crimson/25' : 'bg-gold/10 border-gold/25'}`}>
+          {latest.anomalies.map((a, i) => (
+            <p key={i} className={`font-ui ${latest.status === 'critical' ? 'text-crimson-light' : 'text-gold'}`}>⚠ {a}</p>
+          ))}
+        </div>
+      )}
+
+      <div className="overflow-x-auto">
+        <table className="w-full text-xs">
+          <thead>
+            <tr className="border-b border-gold/10 font-ui text-ink-muted uppercase tracking-wider text-[0.55rem]">
+              <th className="text-left py-2 px-2 whitespace-nowrap">Hora</th>
+              <th className="text-center py-2 px-2">Estado</th>
+              <th className="text-right py-2 px-2">Ahorrando</th>
+              <th className="text-right py-2 px-2">Cantera</th>
+              <th className="text-right py-2 px-2">Aserrad.</th>
+              <th className="text-right py-2 px-2">Piedra/h</th>
+              <th className="text-right py-2 px-2">Unidades</th>
+              {hasAnomalies && <th className="text-left py-2 px-2">Anomalías</th>}
+            </tr>
+          </thead>
+          <tbody>
+            {sorted.map((r, i) => {
+              const m = r.metrics
+              const isExpanded = expanded === i
+              return (
+                <tr
+                  key={r.ts}
+                  onClick={() => setExpanded(isExpanded ? null : i)}
+                  className={`border-b border-gold/5 cursor-pointer transition-colors
+                    ${i === 0 ? 'bg-gold/5' : ''}
+                    ${r.status === 'critical' ? 'bg-crimson/5' : r.status === 'warning' ? 'bg-gold/5' : ''}
+                    hover:bg-parchment-warm/20`}
+                >
+                  <td className="py-1.5 px-2 text-ink-muted tabular-nums whitespace-nowrap">
+                    {formatTs(r.ts)}
+                    {i === 0 && <span className="ml-1.5 font-ui text-[0.5rem] text-gold font-semibold uppercase">último</span>}
+                  </td>
+                  <td className="py-1.5 px-2 text-center">
+                    <StatusBadge status={r.status} />
+                  </td>
+                  <td className={`py-1.5 px-2 text-right tabular-nums font-semibold ${m.savingPct >= 85 ? 'text-crimson-light' : m.savingPct >= 60 ? 'text-gold' : 'text-forest-light'}`}>
+                    {m.savingPct}%
+                  </td>
+                  <td className={`py-1.5 px-2 text-right tabular-nums ${m.avgQuarry < 2 ? 'text-crimson-light' : m.avgQuarry < 4 ? 'text-gold' : 'text-forest-light'}`}>
+                    lv{m.avgQuarry}
+                  </td>
+                  <td className="py-1.5 px-2 text-right tabular-nums text-ink-muted">lv{m.avgSawmill}</td>
+                  <td className={`py-1.5 px-2 text-right tabular-nums ${m.avgStoneProd < 30 ? 'text-crimson-light' : 'text-ink-muted'}`}>
+                    {m.avgStoneProd}
+                  </td>
+                  <td className={`py-1.5 px-2 text-right tabular-nums ${m.totalCombatUnits === 0 ? 'text-ink-muted' : 'text-forest-light font-semibold'}`}>
+                    {m.totalCombatUnits === 0 ? '—' : m.totalCombatUnits.toLocaleString()}
+                  </td>
+                  {hasAnomalies && (
+                    <td className="py-1.5 px-2 text-ink-muted">
+                      {r.anomalies.length > 0
+                        ? <span className={`font-ui text-[0.6rem] ${r.status === 'critical' ? 'text-crimson-light' : 'text-gold'}`}>
+                            {r.anomalies.length} anomalía{r.anomalies.length > 1 ? 's' : ''}
+                            {isExpanded ? ' ▲' : ' ▼'}
+                          </span>
+                        : null}
+                    </td>
+                  )}
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
 // ── Main tab ───────────────────────────────────────────────────────────────────
 
 export function NpcMonitorTab() {
@@ -624,7 +746,7 @@ export function NpcMonitorTab() {
     )
   }
 
-  const { crons, aggregate: agg } = data
+  const { crons, aggregate: agg, healthHistory = [] } = data
   const builderTick    = crons?.builder?.lastTick ?? null
   const combatTick     = crons?.combat?.lastTick ?? null
   const militaryTick   = crons?.militaryAi?.lastTick ?? null
@@ -876,6 +998,9 @@ export function NpcMonitorTab() {
 
       {/* ── NPC Decisions ────────────────────────────────────────────────────────── */}
       <NpcDecisionsCard />
+
+      {/* ── Health history ──────────────────────────────────────────────────────── */}
+      <HealthHistorySection reports={healthHistory} />
 
       {/* ── Tick histories ───────────────────────────────────────────────────────── */}
       {(crons?.builder?.tickHistory?.length ?? 0) > 0 && (

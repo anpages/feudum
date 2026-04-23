@@ -221,5 +221,9 @@ export default async function handler(req, res) {
     now,
   }
 
-  return res.json({ crons, lastTick, tickHistory: tickHistory.slice(-24), aggregate })
+  let healthHistory = []
+  try { if (cfg.npc_health_history) healthHistory = JSON.parse(cfg.npc_health_history) }
+  catch { healthHistory = [] }
+
+  return res.json({ crons, lastTick, tickHistory: tickHistory.slice(-24), aggregate, healthHistory: healthHistory.slice(-18) })
 }

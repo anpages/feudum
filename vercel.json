@@ -5,7 +5,8 @@
   "crons": [
     { "path": "/api/cron/combat-engine",    "schedule": "* * * * *"    },
     { "path": "/api/cron/npc-builder",      "schedule": "* * * * *"    },
-    { "path": "/api/cron/npc-military-ai",  "schedule": "*/20 * * * *" }
+    { "path": "/api/cron/npc-military-ai",  "schedule": "*/20 * * * *" },
+    { "path": "/api/cron/npc-health",       "schedule": "0 */4 * * *"  }
   ],
   "routes": [
     { "src": "/api/(.*)",      "dest": "/api/$1"   },

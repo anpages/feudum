@@ -328,6 +328,29 @@ export interface NpcAggregate {
   now: number
 }
 
+export interface NpcHealthMetrics {
+  npcCount: number
+  savingPct: number
+  activePct: number
+  avgSawmill: number
+  avgQuarry: number
+  avgWindmill: number
+  avgBarracks: number
+  avgWoodProd: number
+  avgStoneProd: number
+  totalCombatUnits: number
+  npcsWithUnits: number
+  seasonAgeHours: number
+  economySpeed: number
+}
+
+export interface NpcHealthReport {
+  ts: number
+  status: 'ok' | 'warning' | 'critical'
+  metrics: NpcHealthMetrics
+  anomalies: string[]
+}
+
 export interface NpcStatsResponse {
   crons: {
     builder:    CronData<NpcTickResult>
@@ -337,4 +360,5 @@ export interface NpcStatsResponse {
   lastTick: NpcTickResult | null
   tickHistory: NpcTickResult[]
   aggregate: NpcAggregate
+  healthHistory: NpcHealthReport[]
 }
