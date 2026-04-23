@@ -54,6 +54,7 @@ export const npcState = pgTable('npc_state', {
   lastDecision:        varchar('last_decision', { length: 255 }),
   currentResearch:     varchar('current_research', { length: 50 }),
   researchAvailableAt: integer('research_available_at'),
+  currentTask:         jsonb('current_task'),
   createdAt:           timestamp('created_at').defaultNow().notNull(),
   updatedAt:           timestamp('updated_at').defaultNow().notNull(),
 })
