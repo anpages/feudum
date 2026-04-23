@@ -424,21 +424,32 @@ Import from `@/components/ui` (barrel export).
 
 ### Phase 13 — Active NPCs ✅
 - [x] **NPC kingdoms as real DB rows** — NPCs behave exactly like real players
-  - `isNpc`, `isBoss`, `npcLevel`, `npcLastBuildAt`, `npcLastAttackAt` columns on `kingdoms`
-  - System NPC user owns all NPC kingdoms; seeded via `startNewSeason()` at ~50% density (`NPC_DENSITY`)
-  - NPC resources tick identically to player kingdoms; loot deducted from real stored values
-  - Spy returns real NPC resource + troop data (no special case needed)
-  - `GET /api/cron/npc-tick` — Vercel Cron (hourly); secured with `CRON_SECRET`
-    - Growth AI: NPC spends resources to build next building (sawmill→quarry→grainFarm→windmill→barracks→workshop) and trains units toward target army size per `npcLevel`; no woodFloor lock (removed)
-    - Unit training: all unit types including merchant (barracks lv2), caravan (barracks lv6), scavenger (barracks lv6 + academy lv5); grain deducted per unit trained
-    - `UNIT_PRIORITY` per personality: `economy`, `military`, `balanced`
-    - Attack AI: if army above threshold and cooldown elapsed, selects richest player kingdom within radius, deducts 60–80% troops, inserts `army_missions` with real `arrivalTime`
-    - Tick result persisted to settings: `npc_last_tick` (JSON) + `npc_tick_history` (last 48, JSON array)
-  - Battle resolution lazy: `GET /api/armies` + `GET /api/messages` trigger `resolveIncomingNpcAttacks()`; player finds outcome when they log in
-  - NPC return mission: winner NPC gets loot added on arrival; loser units gone permanently
-  - Boss kingdom (`isBoss: true`) seeded at universe center with scaled buildings/units per difficulty
-  - Configurable: `NPC_AGGRESSION`, `NPC_ATTACK_INTERVAL_HOURS`, `NPC_REBUILD_INTERVAL_HOURS` in `api/lib/config.js`
+  - Each NPC is its own `users` row with `role='npc'` — NEVER in `auth.users`; email nullable
+  - AI state lives in `npc_state` table (keyed by `user_id`): `is_boss`, `npc_level`, `next_check`, `current_research`, `build_available_at`, `last_attack_at`, `last_decision`
+  - `npcPersonality()` → `'economy'|'military'|'balanced'` and `npcClass()` → `'collector'|'general'|'discoverer'` are deterministic coord-hashes — NOT stored in DB (`api/lib/npc-engine.js`)
+  - NPC buildings/units/research in the same normalized tables as players; loot deducted from real stored values
+  - Spy returns real NPC resource + troop data (reads same buildings/units tables)
+  - Seeded via `startNewSeason()` at ~50% density (`NPC_DENSITY`); boss: `npc_state.is_boss=true`
+  - Configurable: `NPC_AGGRESSION`, `NPC_ATTACK_INTERVAL_HOURS`, `NPC_BASH_LIMIT` in `api/lib/config.js`
   - Map reads NPC kingdoms from DB; Wang hash retained as slot-display fallback only
+- [x] **Two-cron architecture** — split by cadence and concern:
+  - `GET /api/cron/npc-builder` (every minute) — `next_check` gating gives each NPC a staggered 8-12 min window. Handles: resource tick, construction, unit training, research, fleetsave on incoming attack
+  - `GET /api/cron/npc-military-ai` (every 20 min) — runs all NPCs without gating. Handles: attack, scavenge, expedition, colonize
+- [x] **Growth AI cascade (npc-builder)** — ordered priority:
+  - **Nivel 0**: fleetsave if incoming attack, complete expired queues, redirect if storage full
+  - **Nivel 0D**: collector/economy with nearby debris → explicitly push `horsemanship lv6` then `runemastery lv2`, then train scavenger (requires barracks lv4 + those techs). Saving for colonist does NOT block this level
+  - **Nivel 1**: personality-specific building milestones per age bracket (`MILESTONES` in `npc-engine.js`). Storage buildings (granary/stonehouse/silo) gated at 70% resource utilization
+  - **Nivel 1.5**: colonist — age ≥168h + barracks lv4 + cartography lv3; saving for colonist falls through to Nivel 2
+  - **Nivel 2** (parallel): build + train in same tick. `getTickFlavor` rotates per-minute with per-NPC `posShift` (not per-hour lock): `military`=troops/buildings/troops, `economy`=buildings/buildings/research, `balanced`=buildings/troops/research
+- [x] **Military AI (npc-military-ai)**:
+  - `FLEET_RESERVE = 0.20` — global constant; no mission may leave < 20% combat fleet home
+  - `attackAI`: sendRatio capped at 80%; pre-attack spy scout before committing force
+  - `scavengeAI`: skips if debris < 500; sends `min(all, ceil(debris×10/20000))` scavengers
+  - `expeditionAI`: discoverer 35%, balanced 12%, all others 5%; fleet reserve check enforced; slot = `UNIVERSE.maxSlot+1` (no hardcoded 16)
+  - `colonizeAI`: uses `UNIVERSE.maxRegion`/`UNIVERSE.maxSlot` — no hardcoded bounds
+  - Unit reqs: merchant (barracks 2), caravan (barracks 6), scavenger (barracks 4 + horsemanship 6 + runemastery 2), colonist (barracks 4 + cartography 3), scout (barracks 3 + spycraft 2)
+  - Tick result persisted: `npc_last_tick` (JSON) + `npc_tick_history` (last 48, JSON array)
+- [x] **Battle resolution lazy**: `GET /api/armies` + `GET /api/messages` trigger `resolveIncomingNpcAttacks()`; winner NPC gets loot on return; loser units gone permanently
 
 ### Phase 13.5 — Season System, Achievements & Push ✅
 - [x] **Season card on Overview** — prominent `<SeasonCard>` on OverviewPage: boss name, lore, army size, difficulty stars, live countdown, "Atacar" CTA linking to /armies with pre-filled coords
