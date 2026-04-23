@@ -20,16 +20,16 @@ async function fetchSettings() {
 }
 
 async function fetchUserAndResearch(userId: string) {
-  // my_user() is a SECURITY DEFINER RPC: caller can read their own ether/email
-  // (those columns are revoked from authenticated, only the RPC exposes them).
-  const [{ data: userRows }, { data: researchRow }] = await Promise.all([
+  const [{ data: userRows }, { data: researchRows }] = await Promise.all([
     supabase.rpc('my_user'),
-    supabase.from('research').select('*').eq('user_id', userId).maybeSingle(),
+    supabase.from('research').select('type, level').eq('user_id', userId),
   ])
   const userRow = Array.isArray(userRows) ? userRows[0] : null
+  const research: Record<string, number> = {}
+  for (const r of researchRows ?? []) research[(r as { type: string; level: number }).type] = (r as { type: string; level: number }).level
   return {
     characterClass: (userRow?.character_class as string | null) ?? null,
-    research: researchRow ? snakeToCamel(researchRow) : null,
+    research,
   }
 }
 
@@ -55,17 +55,24 @@ export const kingdomService = {
     if (!kingdomRow) throw new Error('Reino no encontrado')
 
     const kingdom = snakeToCamel<Kingdom>(kingdomRow)
-    const eff = effectiveProduction(kingdom, ctx.research, settings, ctx.characterClass)
+
+    // Building levels live in the buildings table, not kingdoms — fetch them
+    // so effectiveProduction can compute energy (windmill/sawmill/etc. levels).
+    const { data: buildingRows } = await supabase
+      .from('buildings').select('type, level').eq('kingdom_id', kingdomRow.id)
+    const buildingMap: Record<string, number> = {}
+    for (const r of buildingRows ?? []) buildingMap[(r as { type: string; level: number }).type] = (r as { type: string; level: number }).level
+
+    const enriched = { ...kingdom, ...buildingMap }
+    const eff = effectiveProduction(enriched, ctx.research, settings, ctx.characterClass)
 
     return {
-      ...kingdom,
+      ...enriched,
       woodProduction:  eff.wood,
       stoneProduction: eff.stone,
       grainProduction: eff.grain,
       energyProduced:  eff.energyProd,
       energyConsumed:  eff.energyCons,
-      // The `Kingdom` type doesn't declare these derived energy fields; consumers
-      // access them with `(kingdom as Record<string, unknown>).energyProduced`.
     } as unknown as Kingdom
   },
 
