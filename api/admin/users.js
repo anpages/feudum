@@ -24,7 +24,7 @@ export default async function handler(req, res) {
 
     const kingdomByUser = Object.fromEntries(kRows.map(k => [k.userId, k]))
 
-    return res.json({ users: rows.map(u => ({ ...u, kingdom: kingdomByUser[u.id] ?? null })) })
+    return res.json({ users: rows.map(u => ({ ...u, isNpc: u.role === 'npc', kingdom: kingdomByUser[u.id] ?? null })) })
   }
 
   if (req.method === 'PATCH') {

@@ -148,11 +148,25 @@ export interface NpcProfileResponse {
   personality: 'economy' | 'military' | 'balanced' | null
   npcClass: 'collector' | 'general' | 'discoverer' | null
   virtualResearch: Record<string, number> | null
+  research: Record<string, number>
   points: number
   activeMissions: NpcProfileMission[]
   recentMissions: NpcProfileMission[]
   battles: NpcProfileBattle[]
   now: number
+}
+
+export interface KingdomProfileData {
+  kingdom:         NpcProfileKingdom
+  personality:     string | null
+  npcClass:        string | null
+  virtualResearch: Record<string, number> | null
+  research:        Record<string, number>
+  points:          number
+  activeMissions:  NpcProfileMission[]
+  recentMissions:  NpcProfileMission[]
+  battles:         NpcProfileBattle[]
+  now:             number
 }
 
 export interface AdminExpeditionsResponse {

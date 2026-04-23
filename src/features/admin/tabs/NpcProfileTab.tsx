@@ -1,6 +1,3 @@
-import { useState, useEffect } from 'react'
-import { useQuery } from '@tanstack/react-query'
-import { adminService } from '../services/adminService'
 import { formatResource, formatDuration } from '@/lib/format'
 import { BUILDING_LABELS, RESEARCH_LABELS, UNIT_LABELS } from '@/lib/labels'
 import type { NpcProfileKingdom, NpcProfileMission, NpcProfileBattle } from '../types'
@@ -31,7 +28,7 @@ const BUILDINGS_PRODUCTION = ['sawmill', 'quarry', 'grainFarm', 'windmill', 'cat
 const BUILDINGS_STORAGE    = ['granary', 'stonehouse', 'silo'] as const
 const BUILDINGS_UTILITY    = ['workshop', 'engineersGuild', 'barracks', 'academy', 'alchemistTower', 'ambassadorHall', 'armoury'] as const
 
-const RESEARCH_COMBAT = ['swordsmanship', 'fortification', 'armoury'] as const
+const RESEARCH_COMBAT  = ['swordsmanship', 'fortification', 'armoury'] as const
 const RESEARCH_MOBILITY = ['horsemanship', 'cartography', 'tradeRoutes'] as const
 const RESEARCH_ARCANE   = ['alchemy', 'pyromancy', 'runemastery', 'mysticism', 'dragonlore'] as const
 const RESEARCH_MISC     = ['spycraft', 'logistics', 'exploration', 'diplomaticNetwork', 'divineBlessing'] as const
@@ -320,14 +317,15 @@ function Stat({ label, value, sub }: { label: string; value: React.ReactNode; su
 
 // ── Main profile layout ───────────────────────────────────────────────────────
 
-function KingdomProfile({
-  kingdom, personality, npcClass: cls, virtualResearch, points,
+export function KingdomProfile({
+  kingdom, personality, npcClass: cls, virtualResearch, research, points,
   activeMissions, recentMissions, battles, now,
 }: {
   kingdom: NpcProfileKingdom
   personality: string | null
   npcClass: string | null
   virtualResearch: Record<string, number> | null
+  research?: Record<string, number>
   points: number
   activeMissions: NpcProfileMission[]
   recentMissions: NpcProfileMission[]
@@ -342,6 +340,15 @@ function KingdomProfile({
   const totalDefense = DEFENSE_UNITS.reduce((s, u) => s + (k[u] ?? 0), 0)
   const buildAvailIn = (kingdom.npcBuildAvailableAt ?? 0) > now ? (kingdom.npcBuildAvailableAt ?? 0) - now : 0
 
+  // Decide what research data to show
+  const hasRealResearch = research && Object.keys(research).length > 0
+  const showVirtual     = !!virtualResearch
+  const researchSection = showVirtual
+    ? { title: 'Investigación virtual', data: virtualResearch }
+    : hasRealResearch
+      ? { title: 'Investigación', data: research! }
+      : null
+
   return (
     <div className="space-y-4">
 
@@ -355,8 +362,11 @@ function KingdomProfile({
               <div className="flex items-center gap-2 flex-wrap">
                 <h2 className="font-display text-xl text-gold-light">{kingdom.name}</h2>
                 {kingdom.isBoss && <span className="badge badge-crimson">🐉 Jefe</span>}
-                {!kingdom.isBoss && <span className="badge badge-stone">NPC</span>}
-                {kingdom.npcLevel > 0 && <span className="badge badge-gold">Nivel {kingdom.npcLevel}</span>}
+                {kingdom.isNpc
+                  ? <span className="badge badge-stone">NPC</span>
+                  : <span className="badge badge-gold">Jugador</span>
+                }
+                {kingdom.isNpc && kingdom.npcLevel > 0 && <span className="badge badge-gold">Nivel {kingdom.npcLevel}</span>}
               </div>
               <div className="font-ui text-xs text-ink-muted mt-1 flex items-center gap-3 flex-wrap">
                 <span className="font-mono">{coord}</span>
@@ -417,22 +427,22 @@ function KingdomProfile({
 
         <SectionCard title="Edificios">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-6 gap-y-4">
-            <BuildingGroup title="Producción"    ids={BUILDINGS_PRODUCTION} kingdom={kingdom} />
-            <BuildingGroup title="Almacenamiento" ids={BUILDINGS_STORAGE}   kingdom={kingdom} />
-            <BuildingGroup title="Utilidades"    ids={BUILDINGS_UTILITY}    kingdom={kingdom} />
+            <BuildingGroup title="Producción"     ids={BUILDINGS_PRODUCTION} kingdom={kingdom} />
+            <BuildingGroup title="Almacenamiento" ids={BUILDINGS_STORAGE}    kingdom={kingdom} />
+            <BuildingGroup title="Utilidades"     ids={BUILDINGS_UTILITY}    kingdom={kingdom} />
           </div>
         </SectionCard>
 
-        {virtualResearch && (
-          <SectionCard title="Investigación virtual">
+        {researchSection && (
+          <SectionCard title={researchSection.title}>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
               <div className="space-y-4">
-                <ResearchGroup title="Combate"    ids={RESEARCH_COMBAT}   research={virtualResearch} />
-                <ResearchGroup title="Movilidad"  ids={RESEARCH_MOBILITY} research={virtualResearch} />
+                <ResearchGroup title="Combate"   ids={RESEARCH_COMBAT}   research={researchSection.data} />
+                <ResearchGroup title="Movilidad" ids={RESEARCH_MOBILITY} research={researchSection.data} />
               </div>
               <div className="space-y-4">
-                <ResearchGroup title="Arcano"  ids={RESEARCH_ARCANE} research={virtualResearch} />
-                <ResearchGroup title="Misc"    ids={RESEARCH_MISC}   research={virtualResearch} />
+                <ResearchGroup title="Arcano" ids={RESEARCH_ARCANE} research={researchSection.data} />
+                <ResearchGroup title="Misc"   ids={RESEARCH_MISC}   research={researchSection.data} />
               </div>
             </div>
           </SectionCard>
@@ -467,101 +477,6 @@ function KingdomProfile({
         </SectionCard>
       </div>
 
-    </div>
-  )
-}
-
-// ── Tab root ──────────────────────────────────────────────────────────────────
-
-export function NpcProfileTab() {
-  const [realm,  setRealm]  = useState('1')
-  const [region, setRegion] = useState('1')
-  const [slot,   setSlot]   = useState('1')
-  const [query,  setQuery]  = useState<{ realm: number; region: number; slot: number } | null>(null)
-
-  const [now, setNow] = useState(() => Math.floor(Date.now() / 1000))
-  useEffect(() => {
-    const t = setInterval(() => setNow(Math.floor(Date.now() / 1000)), 1000)
-    return () => clearInterval(t)
-  }, [])
-
-  const { data, isLoading, error } = useQuery({
-    queryKey: ['admin', 'npc-profile', query?.realm, query?.region, query?.slot],
-    queryFn: () => adminService.getNpcProfile(query!.realm, query!.region, query!.slot),
-    enabled: !!query,
-    refetchInterval: 10_000,
-  })
-
-  function handleSearch(e: React.FormEvent) {
-    e.preventDefault()
-    const r  = Math.max(1, Math.min(3,  parseInt(realm)  || 1))
-    const rg = Math.max(1, Math.min(10, parseInt(region) || 1))
-    const sl = Math.max(1, Math.min(15, parseInt(slot)   || 1))
-    setQuery({ realm: r, region: rg, slot: sl })
-  }
-
-  return (
-    <div className="space-y-5">
-
-      {/* Search form */}
-      <form onSubmit={handleSearch} className="flex flex-wrap items-end gap-3">
-        {([
-          { label: 'Reino',  val: realm,  set: setRealm,  ph: '1–3'  },
-          { label: 'Región', val: region, set: setRegion, ph: '1–10' },
-          { label: 'Slot',   val: slot,   set: setSlot,   ph: '1–15' },
-        ] as const).map(({ label, val, set, ph }) => (
-          <div key={label} className="flex flex-col gap-1">
-            <label className="font-ui text-[0.6rem] uppercase tracking-widest text-ink-muted">{label}</label>
-            <input
-              type="text" inputMode="numeric" value={val} placeholder={ph}
-              onChange={e => set(e.target.value.replace(/[^0-9]/g, ''))}
-              className="game-input w-20 text-center"
-            />
-          </div>
-        ))}
-        <button type="submit" className="btn btn-primary px-5 py-2 text-xs">
-          Buscar
-        </button>
-        {query && !isLoading && data && (
-          <span className="font-ui text-[0.65rem] text-ink-muted self-end pb-2">
-            {query.realm}:{query.region}:{query.slot} · actualizado automáticamente
-          </span>
-        )}
-      </form>
-
-      {/* States */}
-      {isLoading && (
-        <div className="space-y-3">
-          <div className="skeleton h-32 rounded-lg" />
-          <div className="skeleton h-20 rounded-lg" />
-          <div className="grid grid-cols-2 gap-4">
-            <div className="skeleton h-64 rounded-lg" />
-            <div className="skeleton h-64 rounded-lg" />
-          </div>
-        </div>
-      )}
-
-      {error && !isLoading && (
-        <div className="rounded-lg border border-crimson/20 bg-crimson/5 px-4 py-3 font-ui text-sm text-crimson-light">
-          {(error as Error).message?.includes('404')
-            ? 'No hay ningún reino en esas coordenadas.'
-            : 'Error al cargar el perfil. Inténtalo de nuevo.'}
-        </div>
-      )}
-
-      {data && !isLoading && (
-        <KingdomProfile
-          kingdom={data.kingdom}
-          personality={data.personality}
-          npcClass={data.npcClass}
-          virtualResearch={data.virtualResearch}
-          points={data.points}
-          activeMissions={data.activeMissions}
-          recentMissions={data.recentMissions}
-          battles={data.battles}
-          now={now}
-        />
-      )}
     </div>
   )
 }

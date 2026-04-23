@@ -2,7 +2,7 @@ import { eq, and, or, desc, gte } from 'drizzle-orm'
 import { db, armyMissions, battleLog } from '../_db.js'
 import { getAdminUserId } from '../lib/admin.js'
 import { calcPoints } from '../lib/points.js'
-import { getKingdomAt, enrichKingdom } from '../lib/db-helpers.js'
+import { getKingdomAt, enrichKingdom, getResearchMap } from '../lib/db-helpers.js'
 
 function npcPersonality(k) {
   const h = ((k.realm * 374761 + k.region * 6271 + k.slot * 1013) >>> 0) % 3
@@ -62,7 +62,7 @@ export default async function handler(req, res) {
   // Enrich with buildings + units for calcPoints and npcVirtualResearch
   const enriched = await enrichKingdom(kingdom, { withUnits: true })
 
-  const [activeMissions, recentMissions, battles] = await Promise.all([
+  const [activeMissions, recentMissions, battles, researchMap] = await Promise.all([
     // Active/exploring/returning missions launched FROM or heading TO this slot
     db.select().from(armyMissions)
       .where(and(
@@ -90,6 +90,8 @@ export default async function handler(req, res) {
       .where(or(eq(battleLog.attackerCoord, coord), eq(battleLog.defenderCoord, coord)))
       .orderBy(desc(battleLog.createdAt))
       .limit(60),
+
+    getResearchMap(kingdom.userId),
   ])
 
   return res.json({
@@ -97,7 +99,8 @@ export default async function handler(req, res) {
     personality:     enriched.isNpc ? npcPersonality(enriched) : null,
     npcClass:        enriched.isNpc ? npcClass(enriched)        : null,
     virtualResearch: enriched.isNpc ? npcVirtualResearch(enriched) : null,
-    points:          calcPoints(enriched),
+    research:        researchMap,
+    points:          calcPoints(enriched, researchMap),
     activeMissions,
     recentMissions,
     battles,

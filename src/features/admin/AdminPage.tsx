@@ -1,21 +1,19 @@
 import { useState } from 'react'
 import { Navigate } from 'react-router-dom'
-import { Settings, Users, ScrollText, Compass, Search, Activity } from 'lucide-react'
+import { Settings, Users, ScrollText, Compass, Activity } from 'lucide-react'
 import { useAuth } from '@/features/auth/useAuth'
 import { ServerTab }      from './tabs/ServerTab'
 import { PlayersTab }     from './tabs/PlayersTab'
 import { BattlesTab }     from './tabs/BattlesTab'
 import { ExpeditionsTab } from './tabs/ExpeditionsTab'
-import { NpcProfileTab }  from './tabs/NpcProfileTab'
 import { NpcMonitorTab }  from './tabs/NpcMonitorTab'
 
-type Tab = 'server' | 'players' | 'battles' | 'expeditions' | 'npc_monitor' | 'npc'
+type Tab = 'server' | 'players' | 'battles' | 'expeditions' | 'npc_monitor'
 
 const TABS: { id: Tab; label: string; Icon: typeof Settings }[] = [
   { id: 'npc_monitor', label: 'NPCs Monitor', Icon: Activity },
   { id: 'battles',     label: 'Combates',     Icon: ScrollText },
   { id: 'expeditions', label: 'Expediciones', Icon: Compass },
-  { id: 'npc',         label: 'Perfil NPC',   Icon: Search },
   { id: 'players',     label: 'Jugadores',    Icon: Users },
   { id: 'server',      label: 'Servidor',     Icon: Settings },
 ]
@@ -54,7 +52,6 @@ export function AdminPage() {
         {tab === 'battles'     && <BattlesTab />}
         {tab === 'expeditions' && <ExpeditionsTab />}
         {tab === 'npc_monitor' && <NpcMonitorTab />}
-        {tab === 'npc'         && <NpcProfileTab />}
       </div>
     </div>
   )
