@@ -46,8 +46,8 @@ export const NPC_DEFENSE_KEYS = [
 ]
 
 export const UNIT_COMBAT_SET  = new Set(['squire','knight','paladin','warlord','grandKnight','siegeMaster','warMachine','dragonKnight'])
-export const UNIT_SUPPORT_SET = new Set(['merchant','caravan','scavenger'])
-export const UNIT_DEFENSE_SET = new Set(['archer','crossbowman','ballista','mageTower','trebuchet','dragonCannon','castleWall','moat','catapult'])
+export const UNIT_SUPPORT_SET = new Set(['merchant','caravan','scavenger','scout'])
+export const UNIT_DEFENSE_SET = new Set(['archer','crossbowman','palisade','ballista','mageTower','trebuchet','dragonCannon','castleWall','moat','catapult'])
 
 // ── Unit costs ────────────────────────────────────────────────────────────────
 
@@ -69,6 +69,13 @@ export const UNIT_COSTS = {
   scavenger:   { wood: 10000,   stone: 6000,   grain: 2000 },
   scout:    { wood: 0,     stone: 1000,  grain: 0     },
   colonist: { wood: 10000, stone: 20000, grain: 10000 },
+  // Defenses — required for UNIT_PRIORITY resolution
+  palisade:    { wood: 10000, stone: 10000, grain: 0     },
+  moat:        { wood: 5000,  stone: 2000,  grain: 0     },
+  catapult:    { wood: 12000, stone: 3000,  grain: 1000  },
+  trebuchet:   { wood: 20000, stone: 15000, grain: 2000  },
+  castleWall:  { wood: 50000, stone: 50000, grain: 0     },
+  dragonCannon:{ wood: 50000, stone: 50000, grain: 30000 },
 }
 
 // ── Build / unit priorities per personality ───────────────────────────────────
@@ -94,10 +101,92 @@ export const BUILD_WEIGHTS = {
   },
 }
 
+// Unit training priority per personality.
+// Ordering reflects natural progression: build economy/army base first,
+// then unlock support/intel capability, then defense line, then elite forces.
+// Prerequisites gate each unit automatically — placing a unit early just means
+// "train it as soon as requirements are met," not "train it at second 0."
+// Defense and support units are skipped until armySize >= ATTACK_THRESHOLD (needMoreCombat check).
 export const UNIT_PRIORITY = {
-  economy:  ['squire', 'merchant', 'archer', 'caravan', 'crossbowman', 'knight', 'scavenger', 'mageTower', 'ballista', 'paladin', 'warlord', 'grandKnight', 'siegeMaster', 'warMachine', 'dragonKnight'],
-  military: ['squire', 'knight', 'archer', 'crossbowman', 'paladin', 'warlord', 'ballista', 'mageTower', 'grandKnight', 'siegeMaster', 'warMachine', 'dragonKnight', 'merchant', 'scavenger'],
-  balanced: ['squire', 'merchant', 'archer', 'knight', 'crossbowman', 'scavenger', 'paladin', 'mageTower', 'ballista', 'caravan', 'warlord', 'grandKnight', 'siegeMaster', 'warMachine', 'dragonKnight'],
+  // Economy (collector): trade and intel before combat escalation;
+  // defense as shield for accumulated resources; heavy combat late.
+  economy: [
+    'squire',        // combat minimum — unlocks support/defense training
+    'merchant',      // cargo early: trade routes + loot transport
+    'scout',         // intel before any attack decision
+    'archer',        // cheap static defense
+    'caravan',       // large cargo (horsemanship 6 gate)
+    'crossbowman',   // better ranged defense
+    'knight',        // first real combat unit
+    'moat',          // passive fortification (armoury building 1)
+    'scavenger',     // debris collection (horsemanship 6 + runemastery 2)
+    'paladin',       // mid-tier combat
+    'mageTower',     // high-shield defense
+    'palisade',      // large shield dome (armoury research 2)
+    'ballista',      // heavy laser defense
+    'catapult',      // siege defense (armoury building 2)
+    'trebuchet',     // gauss-equivalent defense
+    'castleWall',    // max shield fortification
+    'warlord',       // late heavy combat
+    'grandKnight',   // elite (very late requirements)
+    'siegeMaster',
+    'warMachine',
+    'dragonCannon',  // plasma-equivalent defense (dragonlore 7)
+    'dragonKnight',  // endgame
+  ],
+
+  // Military (general): combat mass first, intel second, strong defense line, support minimal.
+  military: [
+    'squire',        // fast/cheap combat
+    'knight',        // core heavy combat
+    'archer',        // basic defense while growing
+    'scout',         // intel before attacks (barracks 3 + spycraft 2)
+    'crossbowman',   // better ranged defense
+    'paladin',       // elite combat unit
+    'moat',          // passive fortification
+    'warlord',       // heavy combat
+    'ballista',      // defense upgrade
+    'mageTower',     // high-shield defense
+    'palisade',      // large shield dome
+    'catapult',      // siege defense
+    'grandKnight',   // top-tier combat
+    'trebuchet',     // advanced defense
+    'siegeMaster',   // bomber equivalent
+    'castleWall',    // max fortification
+    'warMachine',    // destroyer equivalent
+    'merchant',      // minimal cargo for looting
+    'caravan',       // large cargo late-game
+    'scavenger',     // opportunistic debris
+    'dragonCannon',  // advanced defense
+    'dragonKnight',  // endgame
+  ],
+
+  // Balanced (discoverer): everything in natural proportions; scouts early for intel;
+  // reasonable mix of combat, support, and defense throughout.
+  balanced: [
+    'squire',        // basic combat
+    'merchant',      // trade capability (barracks 1 + horsemanship 2)
+    'scout',         // intel early (barracks 3 + spycraft 2)
+    'archer',        // basic defense
+    'knight',        // heavy combat
+    'crossbowman',   // defense upgrade
+    'moat',          // passive fortification
+    'scavenger',     // debris collection
+    'paladin',       // elite combat
+    'mageTower',     // shield defense
+    'palisade',      // dome fortification
+    'ballista',      // heavy defense
+    'caravan',       // large cargo (horsemanship 6)
+    'catapult',      // siege defense
+    'trebuchet',     // advanced defense
+    'warlord',       // heavy combat
+    'castleWall',    // max fortification
+    'grandKnight',   // elite forces
+    'siegeMaster',
+    'warMachine',
+    'dragonCannon',
+    'dragonKnight',
+  ],
 }
 
 export const ATTACK_THRESHOLD = {

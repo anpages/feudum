@@ -192,7 +192,9 @@ async function attemptFleetsave(kingdom, cfg, now, incomingAttack) {
 
   const force = {}
   let totalSent = 0
-  for (const u of UNIT_COMBAT_SET) {
+  // Save combat units and support units (caravans, merchants, scouts, colonist)
+  const fleetsaveKeys = [...UNIT_COMBAT_SET, ...UNIT_SUPPORT_SET, 'colonist']
+  for (const u of fleetsaveKeys) {
     const n = kingdom[u] ?? 0
     if (n > 0) { force[u] = n; totalSent += n }
   }
