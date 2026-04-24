@@ -282,7 +282,7 @@ export default async function handler(req, res) {
     stoneLoad = safeFloat(rawResources?.stone)
     grainLoad = safeFloat(rawResources?.grain)
 
-    const capacity = calcCargoCapacity(units)
+    const capacity = calcCargoCapacity(units, userRow?.characterClass ?? null)
     if (woodLoad + stoneLoad + grainLoad > capacity) {
       return res.status(400).json({
         error: `La carga supera la capacidad de transporte (${capacity})`,

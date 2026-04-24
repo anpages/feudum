@@ -144,7 +144,7 @@ export function SendMissionPage() {
   const top1Points     = armies?.top1Points ?? 0
   const characterClass = armies?.characterClass ?? null
   const isDiscoverer   = characterClass === 'discoverer'
-  const cargo          = useMemo(() => calcCargoCapacity(units), [units])
+  const cargo          = useMemo(() => calcCargoCapacity(units, characterClass), [units, characterClass])
   const hasCargo       = Object.keys(UNIT_CAPACITY).some(k => (units[k] ?? 0) > 0)
   const maxResources   = maxResourcesByPoints(top1Points)
   const effectiveMax   = isDiscoverer ? Math.floor(maxResources * 1.5) : maxResources

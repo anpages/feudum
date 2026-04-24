@@ -23,9 +23,11 @@ export function applyResourceTick(kingdom, cfg, characterClass = null, res = nul
     return { wood: kingdom.wood, stone: kingdom.stone, grain: kingdom.grain, now }
   }
 
-  const alchLv     = res?.alchemy    ?? 0
-  const dl         = res?.dragonlore ?? 0
-  const classBonus = characterClass === 'collector' ? 1.25 : 1.0
+  const alchLv          = res?.alchemy    ?? 0
+  const dl              = res?.dragonlore ?? 0
+  const classBonus      = characterClass === 'collector' ? 1.25 : 1.0
+  // Collector: +10% energy production (OGame: getEnergyProductionBonus)
+  const energyClassBonus = characterClass === 'collector' ? 1.10 : 1.0
 
   // Support both flat keys (from kingdomService) and nested productionSettings (from DB row)
   const ps = kingdom.productionSettings ?? {}
@@ -35,8 +37,8 @@ export function applyResourceTick(kingdom, cfg, characterClass = null, res = nul
   const windPct  = ((kingdom.windmillPercent   ?? ps.windmillPercent  ?? 10)) / 10
   const catPct   = ((kingdom.cathedralPercent  ?? ps.cathedralPercent ?? 10)) / 10
 
-  const energyProd = windmillEnergy(kingdom.windmill  ?? 0) * windPct
-                   + cathedralEnergy(kingdom.cathedral ?? 0, alchLv) * catPct
+  const energyProd = (windmillEnergy(kingdom.windmill  ?? 0) * windPct
+                   + cathedralEnergy(kingdom.cathedral ?? 0, alchLv) * catPct) * energyClassBonus
   const energyCons = sawmillEnergy(kingdom.sawmill    ?? 0) * sawPct
                    + quarryEnergy(kingdom.quarry      ?? 0) * quarPct
                    + grainFarmEnergy(kingdom.grainFarm ?? 0) * grainPct

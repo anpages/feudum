@@ -1,5 +1,5 @@
 import { eq, and } from 'drizzle-orm'
-import { db, armyMissions, debrisFields } from '../../_db.js'
+import { db, armyMissions, debrisFields, users } from '../../_db.js'
 import { calcCargoCapacity } from '../battle.js'
 import { extractMissionUnits, UNIT_KEYS } from './keys.js'
 
@@ -7,7 +7,8 @@ export async function processScavenge(mission, myKingdom, now, targetKingdom) {
   const travelSecs   = mission.arrivalTime - mission.departureTime
   const returnTime   = now + travelSecs
   const missionUnits = extractMissionUnits(mission, UNIT_KEYS)
-  const cargo = calcCargoCapacity(missionUnits)
+  const [userRow] = await db.select({ characterClass: users.characterClass }).from(users).where(eq(users.id, myKingdom.userId)).limit(1)
+  const cargo = calcCargoCapacity(missionUnits, userRow?.characterClass ?? null)
 
   const [debris] = await db.select().from(debrisFields).where(and(
     eq(debrisFields.realm,  mission.targetRealm),

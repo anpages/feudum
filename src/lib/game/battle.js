@@ -72,10 +72,12 @@ function applyBonus(base, level) {
 }
 
 // ── Build battle unit array from counts + research ─────────────────────────────
-export function buildBattleUnits(unitCounts, res = {}, lfBonuses = {}) {
-  const sword = res.swordsmanship ?? 0
-  const arm   = res.armoury       ?? 0
-  const fort  = res.fortification ?? 0
+// characterClass: General gets +2 effective levels on all combat research (OGame: getAdditionalCombatResearchLevels)
+export function buildBattleUnits(unitCounts, res = {}, lfBonuses = {}, characterClass = null) {
+  const classBonus = characterClass === 'general' ? 2 : 0
+  const sword = (res.swordsmanship ?? 0) + classBonus
+  const arm   = (res.armoury       ?? 0) + classBonus
+  const fort  = (res.fortification ?? 0) + classBonus
 
   const units = []
   for (const [id, count] of Object.entries(unitCounts)) {
@@ -256,6 +258,14 @@ export function repairDefenses(lostDef, repairRate = 70) {
 
 // ── Cargo capacity ────────────────────────────────────────────────────────────
 const CARGO_CAP = { merchant: 5000, caravan: 25000, colonist: 7500, scavenger: 20000 }
-export function calcCargoCapacity(units) {
-  return Object.entries(units).reduce((s, [id, n]) => s + (CARGO_CAP[id] ?? 0) * (n ?? 0), 0)
+const TRANSPORT_UNITS = new Set(['merchant', 'caravan'])
+// characterClass: collector → transporter ×1.25; general → scavenger ×1.20
+export function calcCargoCapacity(units, characterClass = null) {
+  return Object.entries(units).reduce((s, [id, n]) => {
+    const base  = CARGO_CAP[id] ?? 0
+    const bonus = characterClass === 'collector' && TRANSPORT_UNITS.has(id) ? 1.25
+      : characterClass === 'general'   && id === 'scavenger'               ? 1.20
+      : 1.0
+    return s + base * bonus * (n ?? 0)
+  }, 0)
 }

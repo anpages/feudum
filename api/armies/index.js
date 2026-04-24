@@ -195,9 +195,11 @@ export default async function handler(req, res) {
       }
     })
 
-  const logistics    = resMap.logistics ?? 0
-  const maxSlots     = 1 + logistics
-  const slotsUsed    = missions.filter(m => m.missionType !== 'missile').length
+  const logistics      = resMap.logistics ?? 0
+  const characterClass = userRow?.characterClass ?? null
+  // General: +2 fleet slots (OGame: getAdditionalFleetSlots)
+  const maxSlots       = 1 + logistics + (characterClass === 'general' ? 2 : 0)
+  const slotsUsed      = missions.filter(m => m.missionType !== 'missile').length
 
   // Fetch all human kingdoms for top1Points calculation
   const allHumanKingdoms = await db
@@ -206,7 +208,6 @@ export default async function handler(req, res) {
     .innerJoin(users, eq(kingdoms.userId, users.id))
     .where(ne(users.role, 'npc'))
   const top1Points   = allHumanKingdoms.reduce((max, r) => Math.max(max, calcPoints(r.k)), 0)
-  const characterClass = userRow?.characterClass ?? null
 
   // ── Incoming enemy missions ───────────────────────────────────────────────
   const HOSTILE_TYPES = new Set(['attack', 'spy', 'missile'])

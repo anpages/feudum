@@ -1,5 +1,5 @@
 import { eq, and } from 'drizzle-orm'
-import { db, kingdoms, armyMissions, messages, debrisFields } from '../../_db.js'
+import { db, kingdoms, armyMissions, messages, debrisFields, users } from '../../_db.js'
 import {
   buildBattleUnits, runBattle, calculateLoot,
   calculateDebris, repairDefenses, calcCargoCapacity,
@@ -33,8 +33,12 @@ export async function processAttack(mission, myKingdom, now, targetKingdom) {
   const returnTime   = now + travelSecs
   const missionUnits = extractMissionUnits(mission, UNIT_KEYS)
 
-  const atkResMap = await getResearchMap(myKingdom.userId)
-  const attackerUnits = buildBattleUnits(missionUnits, atkResMap)
+  const [atkResMap, [atkUserRow]] = await Promise.all([
+    getResearchMap(myKingdom.userId),
+    db.select({ characterClass: users.characterClass }).from(users).where(eq(users.id, myKingdom.userId)).limit(1),
+  ])
+  const atkClass      = atkUserRow?.characterClass ?? null
+  const attackerUnits = buildBattleUnits(missionUnits, atkResMap, {}, atkClass)
 
   let defenderUnits = []
   let defRes        = { wood: 0, stone: 0, grain: 0 }
@@ -44,8 +48,9 @@ export async function processAttack(mission, myKingdom, now, targetKingdom) {
   if (targetKingdom) {
     enrichedTarget = await enrichKingdom(targetKingdom, { withUnits: true })
     const defResMap = await getResearchMap(targetKingdom.userId)
+    const [defUserRow] = await db.select({ characterClass: users.characterClass }).from(users).where(eq(users.id, targetKingdom.userId)).limit(1)
     defForce = { ...extractUnits(enrichedTarget, UNIT_KEYS), ...extractUnits(enrichedTarget, DEFENSE_KEYS) }
-    defenderUnits = buildBattleUnits(defForce, defResMap)
+    defenderUnits = buildBattleUnits(defForce, defResMap, {}, defUserRow?.characterClass ?? null)
     defRes = { wood: targetKingdom.wood, stone: targetKingdom.stone, grain: targetKingdom.grain }
   } else {
     const seed    = mission.targetRealm * 374761397 + mission.targetRegion * 1234567 + mission.targetSlot * 7654321
@@ -60,7 +65,7 @@ export async function processAttack(mission, myKingdom, now, targetKingdom) {
   const targetName = targetKingdom?.name ?? `NPC (R${mission.targetRealm}:${mission.targetRegion}:${mission.targetSlot})`
 
   if (outcome === 'victory' || outcome === 'draw') {
-    const cargo = calcCargoCapacity(missionUnits)
+    const cargo = calcCargoCapacity(missionUnits, atkClass)
     const loot  = outcome === 'victory' ? calculateLoot(defRes, cargo) : { wood: 0, stone: 0, grain: 0 }
 
     if (enrichedTarget) {

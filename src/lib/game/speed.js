@@ -130,14 +130,19 @@ export function calcDistance(from, to) {
  * @returns {number} travel time in seconds
  */
 export function calcDuration(distance, units, speedPct = 100, universeSpeed = 1, research = {}, characterClass = null, lfSpeedBonus = 0) {
-  const COMBAT_UNITS = new Set(['squire','knight','paladin','warlord','grandKnight','siegeMaster','warMachine','dragonKnight'])
+  const COMBAT_UNITS    = new Set(['squire','knight','paladin','warlord','grandKnight','siegeMaster','warMachine','dragonKnight'])
+  const TRANSPORT_UNITS = new Set(['merchant', 'caravan'])
   const speedMult = 1 + lfSpeedBonus
 
   const speeds = Object.entries(units)
     .filter(([, n]) => (n ?? 0) > 0)
     .map(([id]) => {
       const speed = getUnitSpeed(id, research)
-      const classBonus = (characterClass === 'general' && COMBAT_UNITS.has(id)) ? 1.25 : 1.0
+      // General: ×2.0 combat units + scavenger (OGame: getCombatShipSpeedBonus + getRecyclerSpeedBonus)
+      // Collector: ×2.0 transporters (OGame: getTransporterSpeedBonus)
+      const classBonus =
+        characterClass === 'general'   && (COMBAT_UNITS.has(id) || id === 'scavenger') ? 2.0 :
+        characterClass === 'collector' && TRANSPORT_UNITS.has(id)                       ? 2.0 : 1.0
       return speed * classBonus * speedMult
     })
 
@@ -148,10 +153,20 @@ export function calcDuration(distance, units, speedPct = 100, universeSpeed = 1,
   ))
 }
 
-export function calcCargoCapacity(units) {
+// characterClass: optional, applies cargo bonuses from OGame CharacterClassService
+//   collector → merchant/caravan ×1.25 (getTransporterCargoBonus)
+//   general   → scavenger ×1.20      (getRecyclerPathfinderCargoBonus)
+export function calcCargoCapacity(units, characterClass = null) {
+  const TRANSPORT_UNITS = new Set(['merchant', 'caravan'])
   return Object.entries(units)
     .filter(([, n]) => (n ?? 0) > 0)
-    .reduce((sum, [id, n]) => sum + (UNIT_CAPACITY[id] ?? 0) * n, 0)
+    .reduce((sum, [id, n]) => {
+      const base  = UNIT_CAPACITY[id] ?? 0
+      const bonus = characterClass === 'collector' && TRANSPORT_UNITS.has(id) ? 1.25
+        : characterClass === 'general'   && id === 'scavenger'               ? 1.20
+        : 1.0
+      return sum + base * bonus * n
+    }, 0)
 }
 
 export function calcTotalAttack(units) {

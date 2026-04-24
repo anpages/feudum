@@ -106,7 +106,7 @@ declare module '@/lib/game/speed' {
   export function getUnitSpeed(unitId: string, research?: Record<string, number>): number
   export function calcDistance(from: { realm: number; region: number; slot: number }, to: { realm: number; region: number; slot: number }): number
   export function calcDuration(distance: number, units: Record<string, number>, speedPct?: number, universeSpeed?: number, research?: Record<string, number>, characterClass?: string | null): number
-  export function calcCargoCapacity(units: Record<string, number>): number
+  export function calcCargoCapacity(units: Record<string, number>, characterClass?: string | null): number
   export function calcTotalAttack(units: Record<string, number>): number
   export function calcGrainConsumption(units: Record<string, number>, distance: number, travelSecs: number, universeSpeed?: number, research?: Record<string, number>, characterClass?: string | null, holdingHours?: number): number
 }
