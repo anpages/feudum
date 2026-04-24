@@ -235,10 +235,8 @@ function BuilderHistoryTable({ history }: { history: NpcTickResult[] }) {
               <th className="text-right py-2 px-2">Def.</th>
               <th className="text-right py-2 px-2">Apo.</th>
               <th className="text-right py-2 px-2">Invest.</th>
-              <th className="text-right py-2 px-2">Espera</th>
               <th className="text-right py-2 px-2">Ahorra</th>
               <th className="text-right py-2 px-2 hidden sm:table-cell">Huida</th>
-              <th className="text-right py-2 px-2 hidden sm:table-cell">Duerme</th>
             </tr>
           </thead>
           <tbody>
@@ -254,10 +252,8 @@ function BuilderHistoryTable({ history }: { history: NpcTickResult[] }) {
                 <td className={`py-1.5 px-2 text-right tabular-nums ${(t.trainedDefense ?? 0) > 0 ? 'text-gold font-semibold' : 'text-ink-muted'}`}>{t.trainedDefense ?? 0}</td>
                 <td className={`py-1.5 px-2 text-right tabular-nums ${(t.trainedSupport ?? 0) > 0 ? 'text-gold-light font-semibold' : 'text-ink-muted'}`}>{t.trainedSupport ?? 0}</td>
                 <td className={`py-1.5 px-2 text-right tabular-nums ${(t.researching ?? 0) > 0 ? 'text-gold font-semibold' : 'text-ink-muted'}`}>{t.researching ?? 0}</td>
-                <td className="py-1.5 px-2 text-right tabular-nums text-ink-muted">{t.waiting ?? 0}</td>
                 <td className="py-1.5 px-2 text-right tabular-nums text-ink-muted">{t.saved ?? 0}</td>
                 <td className={`py-1.5 px-2 text-right tabular-nums hidden sm:table-cell ${(t.fleetsaved ?? 0) > 0 ? 'text-crimson-light font-semibold' : 'text-ink-muted'}`}>{t.fleetsaved ?? 0}</td>
-                <td className="py-1.5 px-2 text-right tabular-nums text-ink-muted hidden sm:table-cell">{t.sleeping ?? 0}</td>
               </tr>
             ))}
           </tbody>
