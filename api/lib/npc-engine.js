@@ -83,19 +83,19 @@ export const UNIT_COSTS = {
 
 export const BUILD_WEIGHTS = {
   economy: {
-    sawmill: 1.0, windmill: 1.5, quarry: 0.85, grainFarm: 0.70,
+    sawmill: 1.0, windmill: 1.5, quarry: 0.90, grainFarm: 0.82,
     cathedral: 0.50, granary: 0.55, stonehouse: 0.50, silo: 0.45,
     workshop: 0.65, barracks: 0.60, academy: 0.25,
     alchemistTower: 0.40, ambassadorHall: 0.20, armoury: 0.35, engineersGuild: 0.35,
   },
   military: {
-    barracks: 1.0, sawmill: 0.75, windmill: 1.5, quarry: 0.65, workshop: 0.60,
-    grainFarm: 0.55, armoury: 0.50, granary: 0.35,
+    barracks: 1.0, windmill: 1.5, sawmill: 0.75, quarry: 0.85, grainFarm: 0.78,
+    workshop: 0.60, armoury: 0.50, granary: 0.35,
     stonehouse: 0.35, silo: 0.30, academy: 0.25,
     alchemistTower: 0.25, ambassadorHall: 0.30, cathedral: 0.20, engineersGuild: 0.25,
   },
   balanced: {
-    sawmill: 0.90, windmill: 1.5, barracks: 0.80, quarry: 0.75, grainFarm: 0.65,
+    sawmill: 0.90, windmill: 1.5, barracks: 0.80, quarry: 0.85, grainFarm: 0.80,
     workshop: 0.60, granary: 0.45, stonehouse: 0.40,
     silo: 0.35, academy: 0.30, alchemistTower: 0.35,
     armoury: 0.35, ambassadorHall: 0.25, cathedral: 0.30, engineersGuild: 0.30,
@@ -202,45 +202,53 @@ export const ATTACK_THRESHOLD = {
 // ── Milestone tables (hours → target building levels) ────────────────────────
 
 export const MILESTONES = {
-  // academy included so the research tree unlocks naturally:
-  //   lv1 → alchemy, lv2 → cartography, lv3 → spycraft, lv6 → armoury research, lv7 → tradeRoutes
+  // Windmill always sized to cover sawmill + quarry + grainFarm energy consumption.
+  // grainFarm consumes 2× energy per level, so windmill tracks it closely.
+  // Extended rows at 2160h/2880h let long-running NPCs keep scaling production.
+  // alchemistTower included from 1440h to expand building field cap for deep progressions.
   economy: [
     { hours: 0,    sawmill: 2,  quarry: 1,  grainFarm: 0,  windmill: 2,  workshop: 0, barracks: 0, academy: 0 },
-    { hours: 24,   sawmill: 6,  quarry: 4,  grainFarm: 2,  windmill: 6,  workshop: 1, barracks: 0, academy: 1 },
-    { hours: 72,   sawmill: 9,  quarry: 6,  grainFarm: 4,  windmill: 10, workshop: 1, barracks: 0, academy: 2 },
-    { hours: 120,  sawmill: 10, quarry: 7,  grainFarm: 5,  windmill: 11, workshop: 1, barracks: 1, academy: 3 },
-    { hours: 168,  sawmill: 12, quarry: 8,  grainFarm: 6,  windmill: 13, workshop: 2, barracks: 2, academy: 4 },
-    { hours: 336,  sawmill: 15, quarry: 11, grainFarm: 8,  windmill: 16, workshop: 2, barracks: 3, academy: 5 },
-    { hours: 672,  sawmill: 18, quarry: 14, grainFarm: 10, windmill: 19, workshop: 3, barracks: 4, academy: 5 },
-    { hours: 720,  sawmill: 19, quarry: 15, grainFarm: 11, windmill: 20, workshop: 3, barracks: 5, academy: 6, engineersGuild: 1, armoury: 0 },
-    { hours: 1080, sawmill: 21, quarry: 17, grainFarm: 12, windmill: 22, workshop: 3, barracks: 6, academy: 7, engineersGuild: 2, armoury: 1 },
-    { hours: 1440, sawmill: 24, quarry: 19, grainFarm: 14, windmill: 25, workshop: 4, barracks: 7, academy: 8, engineersGuild: 3, armoury: 2 },
+    { hours: 24,   sawmill: 6,  quarry: 4,  grainFarm: 3,  windmill: 7,  workshop: 1, barracks: 0, academy: 1 },
+    { hours: 72,   sawmill: 9,  quarry: 6,  grainFarm: 6,  windmill: 11, workshop: 1, barracks: 0, academy: 2 },
+    { hours: 120,  sawmill: 10, quarry: 7,  grainFarm: 7,  windmill: 12, workshop: 1, barracks: 1, academy: 3 },
+    { hours: 168,  sawmill: 12, quarry: 9,  grainFarm: 9,  windmill: 15, workshop: 2, barracks: 2, academy: 4 },
+    { hours: 336,  sawmill: 15, quarry: 12, grainFarm: 12, windmill: 18, workshop: 2, barracks: 3, academy: 5 },
+    { hours: 672,  sawmill: 18, quarry: 16, grainFarm: 16, windmill: 22, workshop: 3, barracks: 4, academy: 5 },
+    { hours: 720,  sawmill: 19, quarry: 17, grainFarm: 17, windmill: 23, workshop: 3, barracks: 5, academy: 6, engineersGuild: 1, armoury: 0 },
+    { hours: 1080, sawmill: 21, quarry: 19, grainFarm: 19, windmill: 25, workshop: 3, barracks: 6, academy: 7, engineersGuild: 2, armoury: 1 },
+    { hours: 1440, sawmill: 24, quarry: 22, grainFarm: 20, windmill: 28, workshop: 4, barracks: 7, academy: 8, engineersGuild: 3, armoury: 2, alchemistTower: 3 },
+    { hours: 2160, sawmill: 27, quarry: 25, grainFarm: 23, windmill: 31, workshop: 4, barracks: 8, academy: 9, engineersGuild: 4, armoury: 3, alchemistTower: 4 },
+    { hours: 2880, sawmill: 30, quarry: 28, grainFarm: 26, windmill: 34, workshop: 5, barracks: 9, academy: 10, engineersGuild: 5, armoury: 4, alchemistTower: 5 },
   ],
   military: [
     { hours: 0,    sawmill: 2,  quarry: 1,  grainFarm: 0,  windmill: 2,  workshop: 0, barracks: 0,  academy: 0 },
-    { hours: 24,   sawmill: 4,  quarry: 3,  grainFarm: 1,  windmill: 4,  workshop: 1, barracks: 0,  academy: 1 },
-    { hours: 72,   sawmill: 6,  quarry: 4,  grainFarm: 2,  windmill: 7,  workshop: 1, barracks: 2,  academy: 1 },
-    { hours: 168,  sawmill: 8,  quarry: 5,  grainFarm: 3,  windmill: 10, workshop: 2, barracks: 3,  academy: 2 },
-    { hours: 336,  sawmill: 11, quarry: 7,  grainFarm: 5,  windmill: 13, workshop: 2, barracks: 4,  academy: 3 },
-    { hours: 672,  sawmill: 14, quarry: 10, grainFarm: 7,  windmill: 16, workshop: 3, barracks: 5,  academy: 3 },
-    { hours: 720,  sawmill: 15, quarry: 11, grainFarm: 8,  windmill: 17, workshop: 3, barracks: 7,  academy: 4, engineersGuild: 1, armoury: 3 },
-    { hours: 1080, sawmill: 17, quarry: 13, grainFarm: 9,  windmill: 19, workshop: 3, barracks: 9,  academy: 5, engineersGuild: 2, armoury: 5 },
-    { hours: 1440, sawmill: 20, quarry: 16, grainFarm: 11, windmill: 22, workshop: 4, barracks: 11, academy: 6, engineersGuild: 3, armoury: 7 },
+    { hours: 24,   sawmill: 4,  quarry: 3,  grainFarm: 2,  windmill: 5,  workshop: 1, barracks: 0,  academy: 1 },
+    { hours: 72,   sawmill: 6,  quarry: 5,  grainFarm: 4,  windmill: 8,  workshop: 1, barracks: 2,  academy: 1 },
+    { hours: 168,  sawmill: 8,  quarry: 7,  grainFarm: 6,  windmill: 11, workshop: 2, barracks: 3,  academy: 2 },
+    { hours: 336,  sawmill: 11, quarry: 10, grainFarm: 9,  windmill: 15, workshop: 2, barracks: 4,  academy: 3 },
+    { hours: 672,  sawmill: 14, quarry: 14, grainFarm: 13, windmill: 20, workshop: 3, barracks: 5,  academy: 3 },
+    { hours: 720,  sawmill: 15, quarry: 15, grainFarm: 14, windmill: 21, workshop: 3, barracks: 7,  academy: 4, engineersGuild: 1, armoury: 3 },
+    { hours: 1080, sawmill: 17, quarry: 18, grainFarm: 16, windmill: 24, workshop: 3, barracks: 9,  academy: 5, engineersGuild: 2, armoury: 5 },
+    { hours: 1440, sawmill: 20, quarry: 22, grainFarm: 18, windmill: 26, workshop: 4, barracks: 11, academy: 7, engineersGuild: 3, armoury: 7, alchemistTower: 2 },
+    { hours: 2160, sawmill: 22, quarry: 25, grainFarm: 21, windmill: 29, workshop: 4, barracks: 12, academy: 8, engineersGuild: 3, armoury: 8, alchemistTower: 3 },
+    { hours: 2880, sawmill: 25, quarry: 28, grainFarm: 24, windmill: 32, workshop: 5, barracks: 13, academy: 9, engineersGuild: 4, armoury: 9, alchemistTower: 4 },
   ],
   balanced: [
     { hours: 0,    sawmill: 2,  quarry: 1,  grainFarm: 0,  windmill: 2,  workshop: 0, barracks: 0,  academy: 0 },
-    { hours: 24,   sawmill: 5,  quarry: 3,  grainFarm: 1,  windmill: 5,  workshop: 1, barracks: 0,  academy: 1 },
-    { hours: 72,   sawmill: 7,  quarry: 5,  grainFarm: 3,  windmill: 8,  workshop: 1, barracks: 1,  academy: 2 },
-    { hours: 168,  sawmill: 10, quarry: 7,  grainFarm: 5,  windmill: 11, workshop: 2, barracks: 3,  academy: 3 },
-    { hours: 336,  sawmill: 13, quarry: 9,  grainFarm: 7,  windmill: 14, workshop: 2, barracks: 4,  academy: 4 },
-    { hours: 672,  sawmill: 16, quarry: 12, grainFarm: 9,  windmill: 17, workshop: 3, barracks: 5,  academy: 4 },
-    { hours: 720,  sawmill: 17, quarry: 13, grainFarm: 10, windmill: 18, workshop: 3, barracks: 7,  academy: 5, engineersGuild: 1, armoury: 2 },
-    { hours: 1080, sawmill: 19, quarry: 15, grainFarm: 11, windmill: 20, workshop: 3, barracks: 9,  academy: 6, engineersGuild: 2, armoury: 4 },
-    { hours: 1440, sawmill: 22, quarry: 18, grainFarm: 13, windmill: 23, workshop: 4, barracks: 10, academy: 7, engineersGuild: 3, armoury: 6 },
+    { hours: 24,   sawmill: 5,  quarry: 3,  grainFarm: 3,  windmill: 6,  workshop: 1, barracks: 0,  academy: 1 },
+    { hours: 72,   sawmill: 7,  quarry: 5,  grainFarm: 5,  windmill: 9,  workshop: 1, barracks: 1,  academy: 2 },
+    { hours: 168,  sawmill: 10, quarry: 8,  grainFarm: 7,  windmill: 13, workshop: 2, barracks: 3,  academy: 3 },
+    { hours: 336,  sawmill: 13, quarry: 11, grainFarm: 10, windmill: 17, workshop: 2, barracks: 4,  academy: 4 },
+    { hours: 672,  sawmill: 16, quarry: 15, grainFarm: 13, windmill: 21, workshop: 3, barracks: 5,  academy: 4 },
+    { hours: 720,  sawmill: 17, quarry: 16, grainFarm: 14, windmill: 22, workshop: 3, barracks: 7,  academy: 5, engineersGuild: 1, armoury: 2 },
+    { hours: 1080, sawmill: 19, quarry: 19, grainFarm: 17, windmill: 25, workshop: 3, barracks: 9,  academy: 6, engineersGuild: 2, armoury: 4 },
+    { hours: 1440, sawmill: 22, quarry: 21, grainFarm: 19, windmill: 27, workshop: 4, barracks: 10, academy: 7, engineersGuild: 3, armoury: 6, alchemistTower: 2 },
+    { hours: 2160, sawmill: 25, quarry: 24, grainFarm: 22, windmill: 30, workshop: 4, barracks: 11, academy: 8, engineersGuild: 3, armoury: 7, alchemistTower: 3 },
+    { hours: 2880, sawmill: 28, quarry: 27, grainFarm: 25, windmill: 33, workshop: 5, barracks: 12, academy: 9, engineersGuild: 4, armoury: 8, alchemistTower: 4 },
   ],
 }
 
-export const MILESTONE_ORDER = ['windmill', 'sawmill', 'quarry', 'grainFarm', 'workshop', 'barracks', 'academy', 'engineersGuild', 'armoury']
+export const MILESTONE_ORDER = ['windmill', 'sawmill', 'quarry', 'grainFarm', 'workshop', 'barracks', 'academy', 'engineersGuild', 'armoury', 'alchemistTower']
 
 // ── Research priorities per personality ──────────────────────────────────────
 // Ordered list of research IDs to pursue proactively during 'research' flavor ticks.
@@ -257,22 +265,28 @@ export const RESEARCH_PRIORITY = {
 }
 
 // Maximum levels the proactive system pushes toward per tech per personality.
-// Higher targets for specialties; lower where the personality doesn't benefit as much.
+// Targets cover the full unit unlock chain including endgame:
+//   alchemy≥8 (dragonlore + warMachine), pyromancy≥12 (grandKnight direct req),
+//   runemastery≥5 (dragonlore prereq), dragonlore≥7 (dragonCannon),
+//   cartography≥6 (siegeMaster), armoury≥5 (mysticism prereq),
+//   mysticism≥6 (dragonKnight), tradeRoutes≥7 (dragonKnight).
+// divineBlessing (academy 12 prereq) is reached via weighted building past milestones.
+// Season length determines which NPCs actually hit the endgame — targets don't cap that.
 export const RESEARCH_TARGETS = {
   economy: {
-    alchemy: 6, horsemanship: 6, cartography: 4, runemastery: 2, spycraft: 3,
-    pyromancy: 3, fortification: 3, swordsmanship: 3, exploration: 5, mysticism: 3,
-    armoury: 4, tradeRoutes: 3, logistics: 3, dragonlore: 2, divineBlessing: 2, diplomaticNetwork: 2,
+    alchemy: 8, horsemanship: 6, cartography: 6, runemastery: 5, spycraft: 4,
+    pyromancy: 12, fortification: 3, swordsmanship: 4, exploration: 6, mysticism: 6,
+    armoury: 5, tradeRoutes: 7, logistics: 4, dragonlore: 7, divineBlessing: 2, diplomaticNetwork: 3,
   },
   military: {
-    alchemy: 4, horsemanship: 6, fortification: 6, swordsmanship: 6, cartography: 3,
-    spycraft: 3, pyromancy: 5, runemastery: 2, armoury: 7, logistics: 5,
-    exploration: 3, mysticism: 3, tradeRoutes: 2, dragonlore: 3, divineBlessing: 2, diplomaticNetwork: 1,
+    alchemy: 8, horsemanship: 6, fortification: 6, swordsmanship: 6, cartography: 6,
+    spycraft: 3, pyromancy: 12, runemastery: 5, armoury: 7, logistics: 6,
+    exploration: 4, mysticism: 6, tradeRoutes: 7, dragonlore: 7, divineBlessing: 2, diplomaticNetwork: 2,
   },
   balanced: {
-    alchemy: 5, horsemanship: 6, cartography: 4, spycraft: 3, fortification: 4,
-    swordsmanship: 4, pyromancy: 4, runemastery: 2, exploration: 4, logistics: 4,
-    armoury: 5, mysticism: 3, tradeRoutes: 3, dragonlore: 2, divineBlessing: 2, diplomaticNetwork: 2,
+    alchemy: 8, horsemanship: 6, cartography: 6, spycraft: 3, fortification: 5,
+    swordsmanship: 5, pyromancy: 12, runemastery: 5, exploration: 5, logistics: 4,
+    armoury: 5, mysticism: 6, tradeRoutes: 7, dragonlore: 7, divineBlessing: 2, diplomaticNetwork: 2,
   },
 }
 
@@ -309,8 +323,8 @@ export function getTickFlavor(personality, kingdom, _ageHours) {
   const phase    = (minute + posShift) % 3
   // El ciclo varía por personalidad para preservar el carácter de cada NPC.
   const cycles = {
-    military: ['troops',    'buildings', 'troops'   ],  // 2/3 enfocado en ejército
-    economy:  ['buildings', 'buildings', 'research' ],  // 2/3 en producción
+    military: ['troops',    'troops',    'research'  ],  // 2/3 ejército, 1/3 investigación
+    economy:  ['buildings', 'buildings', 'research'  ],  // 2/3 en producción
     balanced: ['buildings', 'troops',   'research'  ],  // uno de cada
   }
   return (cycles[personality] ?? cycles.balanced)[phase]
