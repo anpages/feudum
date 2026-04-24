@@ -697,11 +697,12 @@ function HealthHistorySection({ reports }: { reports: NpcHealthReport[] }) {
                   <td className="py-1.5 px-2 text-ink-muted tabular-nums whitespace-nowrap">
                     {formatTs(r.ts)}
                     {i === 0 && <span className="ml-1.5 font-ui text-[0.5rem] text-gold font-semibold uppercase">último</span>}
+                    {r.sleep && <span className="ml-1.5 font-ui text-[0.5rem] text-ink-muted">💤</span>}
                   </td>
                   <td className="py-1.5 px-2 text-center">
                     <StatusBadge status={r.status} />
                   </td>
-                  <td className={`py-1.5 px-2 text-right tabular-nums font-semibold ${m.savingPct >= 85 ? 'text-crimson-light' : m.savingPct >= 60 ? 'text-gold' : 'text-forest-light'}`}>
+                  <td className={`py-1.5 px-2 text-right tabular-nums font-semibold ${!r.sleep && m.savingPct >= 85 ? 'text-crimson-light' : m.savingPct >= 60 ? 'text-gold' : 'text-forest-light'}`}>
                     {m.savingPct}%
                   </td>
                   <td className={`py-1.5 px-2 text-right tabular-nums ${m.avgQuarry < 2 ? 'text-crimson-light' : m.avgQuarry < 4 ? 'text-gold' : 'text-forest-light'}`}>

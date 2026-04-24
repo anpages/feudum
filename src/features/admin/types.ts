@@ -349,6 +349,7 @@ export interface NpcHealthReport {
   status: 'ok' | 'warning' | 'critical'
   metrics: NpcHealthMetrics
   anomalies: string[]
+  sleep?: boolean
 }
 
 export interface NpcStatsResponse {

@@ -7,6 +7,7 @@
 import { eq, inArray } from 'drizzle-orm'
 import { db, kingdoms, users, npcState, buildings, units } from '../_db.js'
 import { getSettings, setSetting } from '../lib/settings.js'
+import { isSleepTime } from '../lib/npc-engine.js'
 import { ECONOMY_SPEED } from '../lib/config.js'
 
 const COMBAT_KEYS = ['squire','knight','paladin','warlord','grandKnight','siegeMaster','warMachine','dragonKnight']
@@ -104,8 +105,12 @@ export default async function handler(req, res) {
 
   // ── Detección de anomalías ─────────────────────────────────────────────────
   const anomalies = []
+  const inSleep = isSleepTime(now)
 
-  if (savingPct >= 85) {
+  // Durante la ventana de sueño (1h-8h UTC) los lastDecision están rancios —
+  // la mayoría de NPCs no se reprocesa en horas, así que savingPct no refleja
+  // la realidad y dispara falsos positivos.
+  if (!inSleep && savingPct >= 85) {
     anomalies.push(`${savingPct}% NPCs bloqueados (ahorrando)`)
   }
 
@@ -121,9 +126,9 @@ export default async function handler(req, res) {
     anomalies.push(`Producción de piedra muy baja (${metrics.avgStoneProd}/h base) tras ${Math.round(seasonAgeHours)}h`)
   }
 
-  // Tendencia: 3 lecturas consecutivas con ≥85% bloqueados
-  const recent3 = history.slice(-3)
-  const allStuck = recent3.length >= 3 && recent3.every(r => (r.metrics?.savingPct ?? 0) >= 85)
+  // Tendencia: 3 lecturas consecutivas con ≥85% bloqueados (excluir ventana de sueño)
+  const recent3 = history.slice(-3).filter(r => !r.sleep)
+  const allStuck = !inSleep && recent3.length >= 3 && recent3.every(r => (r.metrics?.savingPct ?? 0) >= 85)
   if (allStuck && savingPct >= 85) {
     anomalies.push(`Bloqueados en ${recent3.length + 1} lecturas consecutivas — revisar IA`)
   }
@@ -142,7 +147,7 @@ export default async function handler(req, res) {
   if (allStuck && savingPct >= 85)                        status = 'critical'
   if (totalCombatUnits === 0 && seasonAgeHours >= 72)     status = 'critical'
 
-  const report = { ts: now, status, metrics, anomalies }
+  const report = { ts: now, status, metrics, anomalies, sleep: isSleepTime(now) }
 
   history.push(report)
   if (history.length > MAX_HISTORY) history = history.slice(-MAX_HISTORY)
