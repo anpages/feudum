@@ -653,10 +653,19 @@ async function growNpc(kingdom, cfg, now, researchMap, debrisRegions, colonizeAc
   // Nivel 0-B: supervivencia — energía negativa
   const energyBalance = calcEnergyBalance(kingdom)
   if (energyBalance < 0) {
-    return await attemptBuild(
+    const rWind = await attemptBuild(
       kingdom, 'windmill', cfg, now,
       `Energía negativa (${energyBalance.toFixed(0)}): subir molino`,
     )
+    if (rWind.action !== 'saving') return rWind
+    // Windmill demasiado caro — intentar catedral si alchemy lv3 disponible
+    if ((researchMap?.alchemy ?? 0) >= 3) {
+      return await attemptBuild(
+        kingdom, 'cathedral', cfg, now,
+        `Energía negativa (${energyBalance.toFixed(0)}): subir catedral`,
+      )
+    }
+    return rWind
   }
 
   // Nivel 0-C: supervivencia — almacén al 90%

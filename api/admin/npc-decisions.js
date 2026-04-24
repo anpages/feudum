@@ -4,10 +4,9 @@ import { getAdminUserId } from '../lib/admin.js'
 import { npcPersonality } from '../lib/npc-engine.js'
 
 const FILTERS = {
-  saving:   d => d.startsWith('ahorrando'),
-  waiting:  d => d.startsWith('en cola') || d.startsWith('ocupado'),
-  building: d => d.startsWith('hito') || d.startsWith('crecimiento') || d.startsWith('energía') || d.startsWith('almacén') || d.startsWith('requisito'),
-  training:    d => d.startsWith('entrenando'),
+  saving:      d => d.startsWith('ahorrando'),
+  building:    d => d.startsWith('hito') || d.startsWith('crecimiento') || d.startsWith('energía') || d.startsWith('almacén') || d.startsWith('requisito') || (d.startsWith('ocupado') && d.includes('construyendo')),
+  training:    d => d.startsWith('entrenando') || (d.startsWith('ocupado') && d.includes('entrenando')),
   researching: d => d.startsWith('investigando'),
 }
 
@@ -64,10 +63,9 @@ export default async function handler(req, res) {
     .slice(0, limit)
 
   const totalByFilter = {
-    all:      rows.filter(r => !r.isBoss).length,
-    saving:   rows.filter(r => !r.isBoss && FILTERS.saving((r.lastDecision ?? '').toLowerCase())).length,
-    waiting:  rows.filter(r => !r.isBoss && FILTERS.waiting((r.lastDecision ?? '').toLowerCase())).length,
-    building: rows.filter(r => !r.isBoss && FILTERS.building((r.lastDecision ?? '').toLowerCase())).length,
+    all:         rows.filter(r => !r.isBoss).length,
+    saving:      rows.filter(r => !r.isBoss && FILTERS.saving((r.lastDecision ?? '').toLowerCase())).length,
+    building:    rows.filter(r => !r.isBoss && FILTERS.building((r.lastDecision ?? '').toLowerCase())).length,
     training:    rows.filter(r => !r.isBoss && FILTERS.training((r.lastDecision ?? '').toLowerCase())).length,
     researching: rows.filter(r => !r.isBoss && FILTERS.researching((r.lastDecision ?? '').toLowerCase())).length,
   }
