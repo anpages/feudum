@@ -4,23 +4,30 @@ import { ArrowLeft } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { useAdminUsers, useToggleAdmin, useDeleteUser, useAddNpc } from '@/features/admin/useAdmin'
 import { adminService } from '../services/adminService'
 import { KingdomProfile } from './NpcProfileTab'
 import type { AdminUser } from '@/features/admin/types'
 
 type Coords = { realm: number; region: number; slot: number; username: string | null; isNpc: boolean }
+type ConfirmState =
+  | { type: 'delete_npc';   user: AdminUser }
+  | { type: 'delete_human'; user: AdminUser }
+  | { type: 'add_npc' }
+  | null
 
 export function PlayersTab() {
   const { data, isLoading } = useAdminUsers()
-  const toggle         = useToggleAdmin()
-  const deleteUser     = useDeleteUser()
+  const toggle     = useToggleAdmin()
+  const deleteUser = useDeleteUser()
   const [newNpcId, setNewNpcId] = useState<string | null>(null)
-  const addNpc         = useAddNpc((id) => {
+  const addNpc = useAddNpc((id) => {
     setNewNpcId(id)
     setTimeout(() => setNewNpcId(null), 8000)
   })
-  const [selected, setSelected] = useState<Coords | null>(null)
+  const [selected, setSelected]   = useState<Coords | null>(null)
+  const [confirm,  setConfirm]    = useState<ConfirmState>(null)
   const [now, setNow] = useState(() => Math.floor(Date.now() / 1000))
 
   useEffect(() => {
@@ -40,6 +47,17 @@ export function PlayersTab() {
   const users = data?.users ?? []
   const humans = users.filter((u: AdminUser) => !u.isNpc)
   const npcs   = users.filter((u: AdminUser) =>  u.isNpc)
+
+  function handleConfirm() {
+    if (!confirm) return
+    if (confirm.type === 'delete_npc' || confirm.type === 'delete_human') {
+      deleteUser.mutate(confirm.user.id, { onSuccess: () => setConfirm(null) })
+    } else if (confirm.type === 'add_npc') {
+      addNpc.mutate(undefined, { onSuccess: () => setConfirm(null) })
+    }
+  }
+
+  const isPending = deleteUser.isPending || addNpc.isPending
 
   // ── Profile view ────────────────────────────────────────────────────────
   if (selected) {
@@ -126,30 +144,12 @@ export function PlayersTab() {
             Ver perfil
           </Button>
           {!u.isNpc && u.role !== 'admin' && (
-            <Button
-              variant="danger"
-              size="sm"
-              disabled={deleteUser.isPending}
-              onClick={() => {
-                if (window.confirm(`¿Borrar cuenta de "${u.username ?? u.email}"? Esta acción es irreversible.`)) {
-                  deleteUser.mutate(u.id)
-                }
-              }}
-            >
+            <Button variant="danger" size="sm" onClick={() => setConfirm({ type: 'delete_human', user: u })}>
               Borrar
             </Button>
           )}
           {u.isNpc && (
-            <Button
-              variant="danger"
-              size="sm"
-              disabled={deleteUser.isPending}
-              onClick={() => {
-                if (window.confirm(`¿Eliminar NPC "${u.username}"? Se borrarán todos sus datos.`)) {
-                  deleteUser.mutate(u.id)
-                }
-              }}
-            >
+            <Button variant="danger" size="sm" onClick={() => setConfirm({ type: 'delete_npc', user: u })}>
               Eliminar
             </Button>
           )}
@@ -158,54 +158,79 @@ export function PlayersTab() {
     )
   }
 
+  const confirmProps = confirm === null ? null : confirm.type === 'add_npc' ? {
+    title: 'Añadir NPC',
+    message: 'Se creará un nuevo NPC en un slot vacío aleatorio. Comenzará desde cero.',
+    confirmLabel: 'Añadir',
+    danger: false,
+  } : confirm.type === 'delete_npc' ? {
+    title: 'Eliminar NPC',
+    message: `¿Eliminar a "${confirm.user.username}"? Se borrarán todos sus datos de la base de datos.`,
+    confirmLabel: 'Eliminar',
+    danger: true,
+  } : {
+    title: 'Borrar cuenta',
+    message: `¿Borrar la cuenta de "${confirm.user.username ?? confirm.user.email}"? Esta acción es irreversible.`,
+    confirmLabel: 'Borrar',
+    danger: true,
+  }
+
   return (
-    <div className="space-y-4">
-      {/* Jugadores humanos */}
-      <div>
-        <p className="font-ui text-[0.6rem] uppercase tracking-widest text-ink-muted mb-2">
-          Jugadores ({humans.length})
-        </p>
-        <Card className="divide-y divide-gold/10">
-          {humans.length === 0 && (
-            <p className="p-5 font-body text-sm text-ink-muted text-center">Sin jugadores</p>
+    <>
+      <div className="space-y-4">
+        {/* Jugadores humanos */}
+        <div>
+          <p className="font-ui text-[0.6rem] uppercase tracking-widest text-ink-muted mb-2">
+            Jugadores ({humans.length})
+          </p>
+          <Card className="divide-y divide-gold/10">
+            {humans.length === 0 && (
+              <p className="p-5 font-body text-sm text-ink-muted text-center">Sin jugadores</p>
+            )}
+            {humans.map((u: AdminUser) => <UserRow key={u.id} u={u} />)}
+          </Card>
+        </div>
+
+        {/* NPCs */}
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <p className="font-ui text-[0.6rem] uppercase tracking-widest text-ink-muted">
+              NPCs ({npcs.length})
+            </p>
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={addNpc.isPending}
+              onClick={() => setConfirm({ type: 'add_npc' })}
+            >
+              + Añadir NPC
+            </Button>
+          </div>
+          {addNpc.isError && (
+            <p className="font-ui text-xs text-crimson-light mb-2">
+              {addNpc.error instanceof Error && addNpc.error.message.includes('no_empty_slots')
+                ? 'No hay slots vacíos disponibles'
+                : 'Error al añadir NPC'}
+            </p>
           )}
-          {humans.map((u: AdminUser) => <UserRow key={u.id} u={u} />)}
-        </Card>
+          <Card className="divide-y divide-gold/10">
+            {npcs.length === 0 && (
+              <p className="p-5 font-body text-sm text-ink-muted text-center">Sin NPCs</p>
+            )}
+            {npcs.map((u: AdminUser) => <UserRow key={u.id} u={u} />)}
+          </Card>
+        </div>
       </div>
 
-      {/* NPCs */}
-      <div>
-        <div className="flex items-center justify-between mb-2">
-          <p className="font-ui text-[0.6rem] uppercase tracking-widest text-ink-muted">
-            NPCs ({npcs.length})
-          </p>
-          <Button
-            variant="ghost"
-            size="sm"
-            disabled={addNpc.isPending}
-            onClick={() => {
-              if (window.confirm('¿Añadir un nuevo NPC en un slot vacío aleatorio?')) {
-                addNpc.mutate()
-              }
-            }}
-          >
-            {addNpc.isPending ? '...' : '+ Añadir NPC'}
-          </Button>
-        </div>
-        {addNpc.isError && (
-          <p className="font-ui text-xs text-crimson-light mb-2">
-            {addNpc.error instanceof Error && addNpc.error.message.includes('no_empty_slots')
-              ? 'No hay slots vacíos disponibles'
-              : 'Error al añadir NPC'}
-          </p>
-        )}
-        <Card className="divide-y divide-gold/10">
-          {npcs.length === 0 && (
-            <p className="p-5 font-body text-sm text-ink-muted text-center">Sin NPCs</p>
-          )}
-          {npcs.map((u: AdminUser) => <UserRow key={u.id} u={u} />)}
-        </Card>
-      </div>
-    </div>
+      {confirmProps && (
+        <ConfirmDialog
+          open={confirm !== null}
+          onClose={() => !isPending && setConfirm(null)}
+          onConfirm={handleConfirm}
+          loading={isPending}
+          {...confirmProps}
+        />
+      )}
+    </>
   )
 }
