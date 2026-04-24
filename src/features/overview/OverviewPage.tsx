@@ -75,7 +75,8 @@ export function OverviewPage() {
   const incomingHostileCount = armiesData?.incomingMissions.filter(m => m.threatLevel === 'hostile').length ?? 0
   const underAttack = armiesData?.underAttack ?? false
 
-  const [militaryOpen, setMilitaryOpen] = useState(false)
+  const [militaryOpen,     setMilitaryOpen]     = useState(false)
+  const [developmentOpen, setDevelopmentOpen] = useState(false)
 
   // Units currently away on missions (active + exploring + returning)
   const unitsInMissions: Record<string, number> = {}
@@ -226,8 +227,8 @@ export function OverviewPage() {
           {/* Kingdom stats */}
           <Card className="p-4 space-y-3">
             <p className="font-ui text-[0.6rem] text-ink-muted/60 uppercase tracking-widest">Desarrollo</p>
-            <StatRow icon={<GiAnvil size={13} />} label="Edificios" value={`${buildingCount}`} note={`Nv. total ${buildingTotalLevels}`} onClick={() => navigate('/buildings')} />
-            <StatRow icon={<GiSpellBook size={13} />} label="Investigaciones" value={`${researchCount}`} note={`Nv. total ${researchTotalLevels}`} onClick={() => navigate('/research')} />
+            <StatRow icon={<GiAnvil size={13} />} label="Edificios" value={`${buildingCount}`} note={`Nv. total ${buildingTotalLevels}`} onClick={() => setDevelopmentOpen(true)} />
+            <StatRow icon={<GiSpellBook size={13} />} label="Investigaciones" value={`${researchCount}`} note={`Nv. total ${researchTotalLevels}`} onClick={() => setDevelopmentOpen(true)} />
           </Card>
 
           {/* Military stats */}
@@ -300,6 +301,14 @@ export function OverviewPage() {
           </Card>
         )}
       </section>
+
+      {/* ── Development sheet ── */}
+      <Sheet open={developmentOpen} onClose={() => setDevelopmentOpen(false)} title="Desarrollo">
+        <DevelopmentSheetContent
+          buildings={buildingsData?.buildings ?? []}
+          research={researchData?.research ?? []}
+        />
+      </Sheet>
 
       {/* ── Military sheet ── */}
       <Sheet open={militaryOpen} onClose={() => setMilitaryOpen(false)} title="Fuerza militar">
@@ -477,6 +486,52 @@ function MilitarySheetContent({ units, support, defenses, inMissions }: {
       )}
       {combatUnits.length === 0 && supportUnits.length === 0 && defenseUnits.length === 0 && (
         <p className="font-body text-sm text-ink-muted text-center py-10">Sin unidades entrenadas todavía.</p>
+      )}
+    </div>
+  )
+}
+
+// ── Development sheet content ─────────────────────────────────────────────────
+
+interface BuildingInfo { id: string; level: number; inQueue?: unknown }
+interface ResearchInfo  { id: string; level: number; inQueue?: unknown }
+
+function DevRow({ name, level, inQueue }: { name: string; level: number; inQueue?: boolean }) {
+  return (
+    <div className="flex items-center gap-3 py-2 border-b border-gold/8 last:border-0">
+      <span className="font-ui text-sm text-ink flex-1 truncate">{name}</span>
+      {inQueue && <span className="font-ui text-[0.6rem] text-gold uppercase tracking-wide shrink-0">en cola</span>}
+      <span className={`font-ui text-sm tabular-nums font-semibold text-right w-10 shrink-0 ${level === 0 ? 'text-ink-muted/30' : 'text-ink'}`}>
+        {level === 0 ? '—' : `Nv. ${level}`}
+      </span>
+    </div>
+  )
+}
+
+function DevelopmentSheetContent({ buildings, research }: { buildings: BuildingInfo[]; research: ResearchInfo[] }) {
+  const activeBuildings = buildings.filter(b => b.level > 0 || b.inQueue)
+  const activeResearch  = research.filter(r => r.level > 0 || r.inQueue)
+
+  return (
+    <div className="px-5 pb-6">
+      {activeBuildings.length > 0 && (
+        <div className="mt-4">
+          <p className="section-heading mb-2">Edificios</p>
+          {activeBuildings.map(b => (
+            <DevRow key={b.id} name={unitLabel(b.id)} level={b.level} inQueue={!!b.inQueue} />
+          ))}
+        </div>
+      )}
+      {activeResearch.length > 0 && (
+        <div className="mt-5">
+          <p className="section-heading mb-2">Investigaciones</p>
+          {activeResearch.map(r => (
+            <DevRow key={r.id} name={unitLabel(r.id)} level={r.level} inQueue={!!r.inQueue} />
+          ))}
+        </div>
+      )}
+      {activeBuildings.length === 0 && activeResearch.length === 0 && (
+        <p className="font-body text-sm text-ink-muted text-center py-10">Sin desarrollo todavía.</p>
       )}
     </div>
   )
