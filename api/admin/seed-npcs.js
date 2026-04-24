@@ -11,7 +11,7 @@ export default async function handler(req, res) {
   if (!adminId) return res.status(403).json({ error: 'forbidden' })
 
   const { action } = req.body ?? {}
-  if (!['seed_npcs', 'reset_npcs', 'debug_reset_seed'].includes(action)) {
+  if (!['seed_npcs', 'reset_npcs', 'debug_reset_seed', 'add_one_npc'].includes(action)) {
     return res.status(400).json({ error: 'unknown_action' })
   }
 
@@ -53,5 +53,17 @@ export default async function handler(req, res) {
     const seeded = await seedNpcs(takenSlots, now, DEBUG_NPC_COUNT)
 
     return res.json({ ok: true, deleted: deleted.length, npcsCreated: seeded })
+  }
+
+  // Add one NPC to a random empty slot
+  if (action === 'add_one_npc') {
+    const now = Math.floor(Date.now() / 1000)
+    const existing = await db.select({
+      realm: kingdoms.realm, region: kingdoms.region, slot: kingdoms.slot,
+    }).from(kingdoms)
+    const takenSlots = new Set(existing.map(k => `${k.realm}:${k.region}:${k.slot}`))
+    const seeded = await seedNpcs(takenSlots, now, 1)
+    if (seeded === 0) return res.status(409).json({ error: 'no_empty_slots' })
+    return res.json({ ok: true, created: seeded })
   }
 }

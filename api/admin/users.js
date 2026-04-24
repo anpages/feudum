@@ -47,9 +47,11 @@ export default async function handler(req, res) {
     // Delete from public.users (cascades to kingdoms, research, etc.)
     await db.delete(users).where(eq(users.id, userId))
 
-    // Delete from Supabase auth.users (requires service role)
-    const { error } = await getSupabaseAdmin().auth.admin.deleteUser(userId)
-    if (error) console.error('[admin/users] deleteUser auth error:', error.message)
+    // NPCs have no auth.users row — only delete auth entry for human accounts
+    if (target.role !== 'npc') {
+      const { error } = await getSupabaseAdmin().auth.admin.deleteUser(userId)
+      if (error) console.error('[admin/users] deleteUser auth error:', error.message)
+    }
 
     return res.json({ ok: true })
   }

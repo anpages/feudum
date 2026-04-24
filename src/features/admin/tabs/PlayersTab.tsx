@@ -4,7 +4,7 @@ import { ArrowLeft } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
-import { useAdminUsers, useToggleAdmin, useDeleteUser } from '@/features/admin/useAdmin'
+import { useAdminUsers, useToggleAdmin, useDeleteUser, useAddNpc } from '@/features/admin/useAdmin'
 import { adminService } from '../services/adminService'
 import { KingdomProfile } from './NpcProfileTab'
 import type { AdminUser } from '@/features/admin/types'
@@ -13,8 +13,9 @@ type Coords = { realm: number; region: number; slot: number; username: string | 
 
 export function PlayersTab() {
   const { data, isLoading } = useAdminUsers()
-  const toggle = useToggleAdmin()
+  const toggle     = useToggleAdmin()
   const deleteUser = useDeleteUser()
+  const addNpc     = useAddNpc()
   const [selected, setSelected] = useState<Coords | null>(null)
   const [now, setNow] = useState(() => Math.floor(Date.now() / 1000))
 
@@ -124,12 +125,26 @@ export function PlayersTab() {
               size="sm"
               disabled={deleteUser.isPending}
               onClick={() => {
-                if (confirm(`¿Borrar cuenta de "${u.username ?? u.email}"? Esta acción es irreversible.`)) {
+                if (window.confirm(`¿Borrar cuenta de "${u.username ?? u.email}"? Esta acción es irreversible.`)) {
                   deleteUser.mutate(u.id)
                 }
               }}
             >
               Borrar
+            </Button>
+          )}
+          {u.isNpc && (
+            <Button
+              variant="danger"
+              size="sm"
+              disabled={deleteUser.isPending}
+              onClick={() => {
+                if (window.confirm(`¿Eliminar NPC "${u.username}"? Se borrarán todos sus datos.`)) {
+                  deleteUser.mutate(u.id)
+                }
+              }}
+            >
+              Eliminar
             </Button>
           )}
         </div>
@@ -153,16 +168,34 @@ export function PlayersTab() {
       </div>
 
       {/* NPCs */}
-      {npcs.length > 0 && (
-        <div>
-          <p className="font-ui text-[0.6rem] uppercase tracking-widest text-ink-muted mb-2">
+      <div>
+        <div className="flex items-center justify-between mb-2">
+          <p className="font-ui text-[0.6rem] uppercase tracking-widest text-ink-muted">
             NPCs ({npcs.length})
           </p>
-          <Card className="divide-y divide-gold/10">
-            {npcs.map((u: AdminUser) => <UserRow key={u.id} u={u} />)}
-          </Card>
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled={addNpc.isPending}
+            onClick={() => addNpc.mutate()}
+          >
+            {addNpc.isPending ? '...' : '+ Añadir NPC'}
+          </Button>
         </div>
-      )}
+        {addNpc.isError && (
+          <p className="font-ui text-xs text-crimson-light mb-2">
+            {addNpc.error instanceof Error && addNpc.error.message.includes('no_empty_slots')
+              ? 'No hay slots vacíos disponibles'
+              : 'Error al añadir NPC'}
+          </p>
+        )}
+        <Card className="divide-y divide-gold/10">
+          {npcs.length === 0 && (
+            <p className="p-5 font-body text-sm text-ink-muted text-center">Sin NPCs</p>
+          )}
+          {npcs.map((u: AdminUser) => <UserRow key={u.id} u={u} />)}
+        </Card>
+      </div>
     </div>
   )
 }

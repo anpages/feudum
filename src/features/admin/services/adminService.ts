@@ -21,6 +21,8 @@ export const adminService = {
     ),
   resetNpcs: () =>
     http.post<{ ok: boolean; deleted: number }>('/admin/seed-npcs', { action: 'reset_npcs' }),
+  addNpc: () =>
+    http.post<{ ok: boolean; created: number }>('/admin/seed-npcs', { action: 'add_one_npc' }),
   getBattles: (params?: { type?: string; page?: number }) => {
     const qs = new URLSearchParams()
     if (params?.type)  qs.set('type', params.type)

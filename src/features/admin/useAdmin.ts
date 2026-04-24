@@ -58,6 +58,14 @@ export function useDeleteUser() {
   })
 }
 
+export function useAddNpc() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: () => adminService.addNpc(),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin', 'users'] }),
+  })
+}
+
 export function useDevAction() {
   return useMutation({
     mutationFn: (body: Record<string, unknown>) => adminService.devAction(body),
