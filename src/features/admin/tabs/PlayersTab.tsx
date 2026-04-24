@@ -177,7 +177,11 @@ export function PlayersTab() {
             variant="ghost"
             size="sm"
             disabled={addNpc.isPending}
-            onClick={() => addNpc.mutate()}
+            onClick={() => {
+              if (window.confirm('¿Añadir un nuevo NPC en un slot vacío aleatorio?')) {
+                addNpc.mutate()
+              }
+            }}
           >
             {addNpc.isPending ? '...' : '+ Añadir NPC'}
           </Button>
