@@ -117,8 +117,8 @@ export async function processAttack(mission, myKingdom, now, targetKingdom) {
     }
 
     insertBattleLog({
-      attackerKingdomId: myKingdom.id,      attackerName: myKingdom.name,
-      defenderKingdomId: targetKingdom?.id, defenderName: targetName,
+      attackerKingdomId: myKingdom.id,      attackerName: myKingdom.name, attackerIsNpc: false,
+      defenderKingdomId: targetKingdom?.id, defenderName: targetName,    defenderIsNpc: targetKingdom?.isNpc ?? false,
       missionType: 'attack', outcome,
       lootWood: loot.wood, lootStone: loot.stone, lootGrain: loot.grain,
       attackerLosses: sumLosses(lostAtk), defenderLosses: sumLosses(lostDef), rounds,
@@ -166,8 +166,8 @@ export async function processAttack(mission, myKingdom, now, targetKingdom) {
     }).where(eq(armyMissions.id, mission.id))
 
     insertBattleLog({
-      attackerKingdomId: myKingdom.id,      attackerName: myKingdom.name,
-      defenderKingdomId: targetKingdom?.id, defenderName: targetName,
+      attackerKingdomId: myKingdom.id,      attackerName: myKingdom.name, attackerIsNpc: false,
+      defenderKingdomId: targetKingdom?.id, defenderName: targetName,    defenderIsNpc: targetKingdom?.isNpc ?? false,
       missionType: 'attack', outcome: 'defeat',
       lootWood: 0, lootStone: 0, lootGrain: 0,
       attackerLosses: sumLosses(lostAtk), defenderLosses: sumLosses(lostDef), rounds,

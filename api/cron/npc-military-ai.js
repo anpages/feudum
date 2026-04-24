@@ -18,6 +18,7 @@ import {
   UNIT_COSTS, ATTACK_THRESHOLD,
   npcPersonality, npcClass, totalArmy, depletionFactor, EMPTY_RESEARCH,
 } from '../lib/npc-engine.js'
+import { calcCargoCapacity } from '../../src/lib/game/battle.js'
 
 const FLEET_RESERVE   = 0.20   // fraction of combat fleet kept home before any mission
 const SCAVENGER_CARGO = 20000  // cargo per scavenger unit
@@ -125,6 +126,13 @@ async function attackAI(npcKingdom, researchRow, allKingdoms, bashMap, spyMap, n
     if (send > 0) { force[u] = send; totalSent += send }
   }
   if (totalSent === 0) return false
+
+  // Economy/balanced NPCs without cargo capacity skip the attack if the target has
+  // lootable resources — no point raiding without a way to carry anything back.
+  if (personality !== 'military' && cls !== 'general') {
+    const targetResources = (target.wood ?? 0) + (target.stone ?? 0) + (target.grain ?? 0)
+    if (targetResources > 0 && calcCargoCapacity(force) === 0) return false
+  }
 
   const universeSpeed = parseFloat(cfg.fleet_speed_war ?? 1)
   const dist          = calcDistance(npcKingdom, target)

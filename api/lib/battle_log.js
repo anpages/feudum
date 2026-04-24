@@ -1,8 +1,8 @@
 import { db, battleLog } from '../_db.js'
 
 export async function insertBattleLog({
-  attackerKingdomId, attackerName,
-  defenderKingdomId, defenderName,
+  attackerKingdomId, attackerName, attackerIsNpc,
+  defenderKingdomId, defenderName, defenderIsNpc,
   missionType, outcome,
   lootWood, lootStone, lootGrain,
   attackerLosses, defenderLosses, rounds,
@@ -13,9 +13,11 @@ export async function insertBattleLog({
       attackerKingdomId: attackerKingdomId ?? null,
       attackerName,
       attackerCoord: attackerCoord ?? '',
+      attackerIsNpc: attackerIsNpc ?? false,
       defenderKingdomId: defenderKingdomId ?? null,
       defenderName,
       defenderCoord: defenderCoord ?? '',
+      defenderIsNpc: defenderIsNpc ?? false,
       missionType,
       outcome,
       lootWood:       lootWood       ?? 0,

@@ -123,8 +123,8 @@ export async function resolveIncomingNpcAttacks(playerKingdoms, now) {
       }
 
       insertBattleLog({
-        attackerKingdomId: npcKingdom.id, attackerName: npcKingdom.name,
-        defenderKingdomId: defKingdom.id, defenderName: defKingdom.name,
+        attackerKingdomId: npcKingdom.id, attackerName: npcKingdom.name, attackerIsNpc: true,
+        defenderKingdomId: defKingdom.id, defenderName: defKingdom.name, defenderIsNpc: false,
         missionType: 'attack', outcome,
         lootWood: loot.wood, lootStone: loot.stone, lootGrain: loot.grain,
         attackerLosses: sumLosses(lostAtk), defenderLosses: sumLosses(lostDef), rounds,
