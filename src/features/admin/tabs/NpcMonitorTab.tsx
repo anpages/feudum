@@ -855,18 +855,18 @@ export function NpcMonitorTab() {
           {([
             ['Aserradero',          agg.avgSawmill,        agg.maxSawmill,        15],
             ['Cantera',             agg.avgQuarry,         agg.maxQuarry,         15],
-            ['Granja de Grano',     agg.avgGrainFarm,      agg.maxGrainFarm,      15],
-            ['Molino de Viento',    agg.avgWindmill,       agg.maxWindmill,       15],
+            ['Granja',              agg.avgGrainFarm,      agg.maxGrainFarm,      15],
+            ['Molino',              agg.avgWindmill,       agg.maxWindmill,       15],
             ['Catedral',            agg.avgCathedral,      agg.maxCathedral,      10],
             ['Taller',              agg.avgWorkshop,       agg.maxWorkshop,       10],
-            ['Gremio de Ingenieros',agg.avgEngineersGuild, agg.maxEngineersGuild,  8],
+            ['Gremio',              agg.avgEngineersGuild, agg.maxEngineersGuild,  8],
             ['Cuartel',             agg.avgBarracks,       agg.maxBarracks,       10],
             ['Academia',            agg.avgAcademy,        agg.maxAcademy,        10],
             ['Leñera',              agg.avgGranary,        agg.maxGranary,        10],
             ['Lapidario',           agg.avgStonehouse,     agg.maxStonehouse,     10],
             ['Silo',                agg.avgSilo,           agg.maxSilo,           10],
-            ['Expansor de Dominio', agg.avgAlchemistTower, agg.maxAlchemistTower,  5],
-            ['Salón Embajadores',   agg.avgAmbassadorHall, agg.maxAmbassadorHall,  8],
+            ['Expansor',            agg.avgAlchemistTower, agg.maxAlchemistTower,  5],
+            ['Salón',               agg.avgAmbassadorHall, agg.maxAmbassadorHall,  8],
             ['Armería',             agg.avgArmoury,        agg.maxArmoury,         8],
           ] as [string, number, number, number][]).map(([lbl, avgVal, maxVal, weight]) => (
             <BuildingRow key={lbl} label={lbl} avg={avgVal} max={maxVal} weight={weight} />
