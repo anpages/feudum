@@ -725,6 +725,19 @@ function HealthHistorySection({ reports }: { reports: NpcHealthReport[] }) {
                     </td>
                   )}
                 </tr>
+                {isExpanded && r.anomalies.length > 0 && (
+                  <tr className={`border-b border-gold/5 ${r.status === 'critical' ? 'bg-crimson/5' : 'bg-gold/5'}`}>
+                    <td colSpan={hasAnomalies ? 8 : 7} className="py-2 px-4">
+                      <ul className="space-y-1">
+                        {r.anomalies.map((a, j) => (
+                          <li key={j} className={`font-ui text-[0.65rem] ${r.status === 'critical' ? 'text-crimson-light' : 'text-gold'}`}>
+                            ⚠ {a}
+                          </li>
+                        ))}
+                      </ul>
+                    </td>
+                  </tr>
+                )}
               )
             })}
           </tbody>

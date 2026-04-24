@@ -909,7 +909,7 @@ export default async function handler(req, res) {
     at: now,
     npcCount: allNpcKingdoms.length, processed: npcsDue.length, ticked,
     builtBuilding, trainedCombat, trainedDefense, trainedSupport,
-    saved, waiting, fleetsaved, sleeping,
+    saved, waiting, researching, fleetsaved, sleeping,
     attacked: 0, scavenged: 0, expeditioned: 0,
     npcExpeditionsResolved: 0, npcVsNpcResolved: 0, purged: 0,
   }
