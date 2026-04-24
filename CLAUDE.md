@@ -540,13 +540,29 @@ Import from `@/components/ui` (barrel export).
   - One per item per queue slot
   - Ref: `app/Services/HalvingService.php`
 
-### Phase 19 — Character Classes (pending)
-- [ ] **3 character classes** selectable per player (cost: Dark Matter to change)
-  - DB: `users.character_class`
-  - **Collector** — +25% mine production, +100% transport speed, +50% Crawler bonus
-  - **General** — +100% combat unit speed, -50% grain consumption, +2 fleet slots, +2 combat research levels
-  - **Discoverer** — -25% research time, +2 expedition slots, -50% expedition enemy chance, +20% phalanx range, 75% loot from inactive players
-  - Each class unlocks a special exclusive unit
+### Phase 19 — Character Classes (partially implemented)
+- [x] **3 character classes** selectable per player — DB: `users.character_class`
+  - **Collector** ✅
+    - [x] +25% mine production (`tick.js` classBonus)
+    - [x] +10% energy production (`tick.js` energyClassBonus)
+    - [x] +100% transporter speed — merchant/caravan (`speed.js` calcDuration)
+    - [x] +25% transporter cargo — merchant/caravan (`speed.js`/`battle.js` calcCargoCapacity)
+    - [ ] +50% Crawler bonus — no crawlers in Feudum, N/A
+  - **General** ✅
+    - [x] +100% combat unit speed (`speed.js` calcDuration, ×2.0)
+    - [x] +100% scavenger speed (`speed.js` calcDuration, ×2.0 — OGame recycler equiv.)
+    - [x] -50% grain consumption (`speed.js` calcGrainConsumption)
+    - [x] +2 fleet slots (`armies/index.js` maxSlots)
+    - [x] +2 effective combat research levels — sword/armoury/fort (`battle.js` buildBattleUnits)
+    - [x] +20% scavenger cargo (`speed.js`/`battle.js` calcCargoCapacity)
+    - [ ] +5 moon fields — no moon system in Feudum, N/A
+  - **Discoverer** ✅
+    - [x] -25% research time (`research/upgrade.js` classMult ×0.75)
+    - [x] -50% expedition enemy chance (`expedition.js` combatMultiplier)
+    - [x] +50% expedition resources/units found (`expedition.js`)
+    - [ ] +2 expedition slots — not implemented
+    - [ ] +20% phalanx range — no phalanx in Feudum, N/A
+    - [ ] 75% loot from inactive players — not implemented
   - Ref: `app/Enums/CharacterClass.php`, `app/Services/CharacterClassService.php`
 
 ### Phase 20 — Social Features (pending)
