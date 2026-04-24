@@ -61,12 +61,15 @@ export const kingdomService = {
 
     const kingdom = snakeToCamel<Kingdom>(kingdomRow)
 
-    // Building levels live in the buildings table, not kingdoms — fetch them
-    // so effectiveProduction can compute energy (windmill/sawmill/etc. levels).
-    const { data: buildingRows } = await supabase
-      .from('buildings').select('type, level').eq('kingdom_id', kingdomRow.id)
+    // Building levels and unit quantities live in normalized tables, not kingdoms.
+    const [{ data: buildingRows }, { data: unitRows }] = await Promise.all([
+      supabase.from('buildings').select('type, level').eq('kingdom_id', kingdomRow.id),
+      supabase.from('units').select('type, quantity').eq('kingdom_id', kingdomRow.id),
+    ])
     const buildingMap: Record<string, number> = {}
     for (const r of buildingRows ?? []) buildingMap[(r as { type: string; level: number }).type] = (r as { type: string; level: number }).level
+    const unitMap: Record<string, number> = {}
+    for (const r of unitRows ?? []) unitMap[(r as { type: string; quantity: number }).type] = (r as { type: string; quantity: number }).quantity
 
     // Per-kingdom production percentages (0–10, default 10 = 100%).
     // Stored as productionSettings JSONB on the kingdom row.
@@ -79,7 +82,7 @@ export const kingdomService = {
       cathedralPercent: pct.cathedralPercent ?? 10,
     }
 
-    const enriched = { ...kingdom, ...buildingMap, ...percents }
+    const enriched = { ...kingdom, ...buildingMap, ...unitMap, ...percents }
     const eff = effectiveProduction(enriched, ctx.research, settings, ctx.characterClass)
 
     return {

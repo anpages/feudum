@@ -12,7 +12,7 @@ import { processScavenge }   from '../lib/missions/scavenge.js'
 import { processDeploy }     from '../lib/missions/deploy.js'
 import { processExpedition } from '../lib/missions/expedition.js'
 import { processMissile }    from '../lib/missions/missile.js'
-import { getResearchMap, getUnitMap, upsertUnit } from '../lib/db-helpers.js'
+import { getResearchMap, getUnitMap, upsertUnit, getBuildingMaps, getUnitMaps } from '../lib/db-helpers.js'
 
 async function resolveTargetKingdom(mission) {
   const { getKingdomAt } = await import('../lib/db-helpers.js')
@@ -207,7 +207,12 @@ export default async function handler(req, res) {
     .from(kingdoms)
     .innerJoin(users, eq(kingdoms.userId, users.id))
     .where(ne(users.role, 'npc'))
-  const top1Points   = allHumanKingdoms.reduce((max, r) => Math.max(max, calcPoints(r.k)), 0)
+  const hkIds = allHumanKingdoms.map(r => r.k.id)
+  const [hBMaps, hUMaps] = await Promise.all([getBuildingMaps(hkIds), getUnitMaps(hkIds)])
+  const top1Points = allHumanKingdoms.reduce((max, r) => {
+    const p = calcPoints({ ...r.k, ...(hBMaps[r.k.id] ?? {}), ...(hUMaps[r.k.id] ?? {}) })
+    return Math.max(max, p)
+  }, 0)
 
   // ── Incoming enemy missions ───────────────────────────────────────────────
   const HOSTILE_TYPES = new Set(['attack', 'spy', 'missile'])

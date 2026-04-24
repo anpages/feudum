@@ -2,7 +2,7 @@ import { db, kingdoms, users, npcState } from '../_db.js'
 import { eq } from 'drizzle-orm'
 import { getSessionUserId } from '../lib/handler.js'
 import { calcPointsBreakdown } from '../lib/points.js'
-import { getBuildingMaps, getResearchMaps } from '../lib/db-helpers.js'
+import { getBuildingMaps, getResearchMaps, getUnitMaps } from '../lib/db-helpers.js'
 import { EMPTY_RESEARCH } from '../lib/npc-engine.js'
 
 const VALID_CATEGORIES = ['total', 'buildings', 'research', 'units', 'economy']
@@ -24,14 +24,15 @@ export default async function handler(req, res) {
 
   const kingdomIds = allKingdomRows.map(({ k }) => k.id)
   const userIds    = [...new Set(allKingdomRows.map(({ k }) => k.userId))]
-  const [bMaps, resMaps] = await Promise.all([
+  const [bMaps, uMaps, resMaps] = await Promise.all([
     getBuildingMaps(kingdomIds),
+    getUnitMaps(kingdomIds),
     getResearchMaps(userIds),
   ])
 
   const ranked = allKingdomRows.map(({ k, u, ns }) => {
     const breakdown = calcPointsBreakdown(
-      { ...k, ...(bMaps[k.id] ?? {}) },
+      { ...k, ...(bMaps[k.id] ?? {}), ...(uMaps[k.id] ?? {}) },
       { ...EMPTY_RESEARCH, ...(resMaps[k.userId] ?? {}) },
     )
     return {

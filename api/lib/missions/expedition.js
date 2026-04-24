@@ -4,7 +4,7 @@ import { resolveExpedition } from '../expedition.js'
 import { calculateDebris } from '../battle.js'
 import { extractMissionUnits, UNIT_KEYS } from './keys.js'
 import { calcPoints } from '../points.js'
-import { getResearchMap } from '../db-helpers.js'
+import { getResearchMap, getBuildingMaps, getUnitMaps } from '../db-helpers.js'
 
 const OUTCOME_LABELS = {
   nothing:   '🌑 Tierras Ignotas — expedición vacía',
@@ -29,8 +29,13 @@ export async function processExpedition(mission, myKingdom, now) {
     db.select().from(kingdoms),
   ])
 
-  // Top-1 player points for resource reward scaling
-  const top1Points = allKingdoms.reduce((max, k) => Math.max(max, calcPoints(k)), 0)
+  // Top-1 player points for resource reward scaling — enrich with buildings + units
+  const allKingdomIds = allKingdoms.map(k => k.id)
+  const [expBMaps, expUMaps] = await Promise.all([getBuildingMaps(allKingdomIds), getUnitMaps(allKingdomIds)])
+  const top1Points = allKingdoms.reduce((max, k) => {
+    const p = calcPoints({ ...k, ...(expBMaps[k.id] ?? {}), ...(expUMaps[k.id] ?? {}) })
+    return Math.max(max, p)
+  }, 0)
 
   const isDiscoverer = userRow?.characterClass === 'discoverer'
   // Discoverer class: halve combat encounter probability, +50% resources/units
