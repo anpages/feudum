@@ -121,7 +121,7 @@ export const BUILDING_META: Record<string, BuildingMeta> = {
     produces: null,
     category: 'infrastructure',
     effect: '+5 campos por nivel (+1 extra cada 2 niveles). Base: 100 campos.',
-    description: 'Expande el límite de campos de construcción del reino. Sin ella el reino tiene 100 campos en total (suma de niveles de todos los edificios). Cada nivel añade ~5 campos extra.',
+    description: 'Amplía el espacio de construcción del reino. Base: 100 campos.',
   },
   ambassadorHall: {
     name: 'Salón de Embajadores',

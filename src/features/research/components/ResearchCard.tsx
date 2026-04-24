@@ -39,7 +39,7 @@ function CostItem({ icon, value, hasEnough }: { icon: ReactNode; value: number; 
 
 interface ResearchCardProps {
   item: ResearchInfo
-  meta: { name: string; description: string; category: string }
+  meta: { name: string; description: string | ((lv: number) => string); category: string }
   kingdom?: Record<string, unknown> | null
   researchLevels?: Record<string, number>
   canAfford: boolean
@@ -82,7 +82,9 @@ function ResearchCardImpl({
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
           <h3 className="font-ui text-sm font-semibold text-ink">{meta.name}</h3>
-          <p className="font-body text-xs text-ink-muted mt-1 leading-relaxed">{meta.description}</p>
+          <p className="font-body text-xs text-ink-muted mt-1 leading-relaxed">
+            {typeof meta.description === 'function' ? meta.description(item.level) : meta.description}
+          </p>
         </div>
         <Badge variant={item.level > 0 ? 'gold' : 'stone'} className="shrink-0">
           Nv {inQueue ? `${item.level}→${item.inQueue!.level}` : item.level}
