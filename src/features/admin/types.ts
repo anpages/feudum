@@ -26,9 +26,15 @@ export interface AdminBattleLog {
   attackerKingdomId: string | null
   attackerName: string
   attackerIsNpc: boolean
+  attackerCoord: string
+  attackerForce: Record<string, number>
+  attackerLost: Record<string, number>
   defenderKingdomId: string | null
   defenderName: string
   defenderIsNpc: boolean
+  defenderCoord: string
+  defenderForce: Record<string, number>
+  defenderLost: Record<string, number>
   missionType: string
   outcome: string
   lootWood: number
@@ -37,8 +43,6 @@ export interface AdminBattleLog {
   attackerLosses: number
   defenderLosses: number
   rounds: number
-  attackerCoord: string
-  defenderCoord: string
   createdAt: string
 }
 

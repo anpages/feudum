@@ -59,11 +59,11 @@ export async function resolveIncomingNpcAttacks(playerKingdoms, now) {
       // Enrich defender kingdom with units
       const enrichedDef = await enrichKingdom(defKingdom, { withUnits: true })
       const defResMap   = await getResearchMap(defKingdom.userId)
-      const defenderUnits = buildBattleUnits(
-        { ...Object.fromEntries(UNIT_KEYS.map(k => [k, enrichedDef[k] ?? 0])),
-          ...Object.fromEntries(DEFENSE_KEYS.map(k => [k, enrichedDef[k] ?? 0])) },
-        defResMap
-      )
+      const defForce = {
+        ...Object.fromEntries(UNIT_KEYS.map(k => [k, enrichedDef[k] ?? 0])),
+        ...Object.fromEntries(DEFENSE_KEYS.map(k => [k, enrichedDef[k] ?? 0])),
+      }
+      const defenderUnits = buildBattleUnits(defForce, defResMap)
 
       const defRes = { wood: defKingdom.wood, stone: defKingdom.stone, grain: defKingdom.grain }
       const { outcome, rounds, survivingAtk, lostAtk, lostDef } =
@@ -124,7 +124,9 @@ export async function resolveIncomingNpcAttacks(playerKingdoms, now) {
 
       insertBattleLog({
         attackerKingdomId: npcKingdom.id, attackerName: npcKingdom.name, attackerIsNpc: true,
+        attackerForce: missionUnits, attackerLost: lostAtk,
         defenderKingdomId: defKingdom.id, defenderName: defKingdom.name, defenderIsNpc: false,
+        defenderForce: defForce,     defenderLost: lostDef,
         missionType: 'attack', outcome,
         lootWood: loot.wood, lootStone: loot.stone, lootGrain: loot.grain,
         attackerLosses: sumLosses(lostAtk), defenderLosses: sumLosses(lostDef), rounds,

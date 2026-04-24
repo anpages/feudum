@@ -1,8 +1,14 @@
 import { db, battleLog } from '../_db.js'
 
+function nz(obj) {
+  return Object.fromEntries(Object.entries(obj ?? {}).filter(([, v]) => (v ?? 0) > 0))
+}
+
 export async function insertBattleLog({
   attackerKingdomId, attackerName, attackerIsNpc,
+  attackerForce, attackerLost,
   defenderKingdomId, defenderName, defenderIsNpc,
+  defenderForce, defenderLost,
   missionType, outcome,
   lootWood, lootStone, lootGrain,
   attackerLosses, defenderLosses, rounds,
@@ -12,12 +18,16 @@ export async function insertBattleLog({
     await db.insert(battleLog).values({
       attackerKingdomId: attackerKingdomId ?? null,
       attackerName,
-      attackerCoord: attackerCoord ?? '',
-      attackerIsNpc: attackerIsNpc ?? false,
+      attackerCoord:  attackerCoord  ?? '',
+      attackerIsNpc:  attackerIsNpc  ?? false,
+      attackerForce:  nz(attackerForce),
+      attackerLost:   nz(attackerLost),
       defenderKingdomId: defenderKingdomId ?? null,
       defenderName,
-      defenderCoord: defenderCoord ?? '',
-      defenderIsNpc: defenderIsNpc ?? false,
+      defenderCoord:  defenderCoord  ?? '',
+      defenderIsNpc:  defenderIsNpc  ?? false,
+      defenderForce:  nz(defenderForce),
+      defenderLost:   nz(defenderLost),
       missionType,
       outcome,
       lootWood:       lootWood       ?? 0,

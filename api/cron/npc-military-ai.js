@@ -127,11 +127,19 @@ async function attackAI(npcKingdom, researchRow, allKingdoms, bashMap, spyMap, n
   }
   if (totalSent === 0) return false
 
-  // Economy/balanced NPCs without cargo capacity skip the attack if the target has
-  // lootable resources — no point raiding without a way to carry anything back.
-  if (personality !== 'military' && cls !== 'general') {
-    const targetResources = (target.wood ?? 0) + (target.stone ?? 0) + (target.grain ?? 0)
-    if (targetResources > 0 && calcCargoCapacity(force) === 0) return false
+  const cargo           = calcCargoCapacity(force)
+  const targetResources = (target.wood ?? 0) + (target.stone ?? 0) + (target.grain ?? 0)
+
+  if (cargo === 0) {
+    if (personality === 'military' || cls === 'general') {
+      // Military value: only attack if target has resources OR significant combat units
+      // For player targets unitTotal is unknown — allow (spy handles risk assessment)
+      const targetUnits = target.unitTotal ?? null
+      if (targetResources === 0 && targetUnits !== null && targetUnits < 5) return false
+    } else {
+      // Economy/balanced: no point attacking without a way to carry loot
+      if (targetResources > 0) return false
+    }
   }
 
   const universeSpeed = parseFloat(cfg.fleet_speed_war ?? 1)
@@ -566,6 +574,8 @@ export default async function handler(req, res) {
       isNpc: true, isBoss: k.isBoss,
       realm: k.realm, region: k.region, slot: k.slot,
       wood: k.wood, stone: k.stone, grain: k.grain,
+      // Sum of combat units — used for military value check in attackAI
+      unitTotal: [...UNIT_COMBAT_SET].reduce((s, u) => s + (k[u] ?? 0), 0),
     })),
   ]
 

@@ -178,7 +178,9 @@ async function resolveNpcVsNpcAttacks(npcKingdomsById, researchByUser, now) {
 
       await insertBattleLog({
         attackerKingdomId: atkKingdom.id, attackerName: atkKingdom.name, attackerIsNpc: true,
+        attackerForce: missionUnits, attackerLost: lostAtk,
         defenderKingdomId: defKingdom.id, defenderName: defKingdom.name, defenderIsNpc: true,
+        defenderForce: allDefUnits,  defenderLost: lostDef,
         missionType: 'attack', outcome,
         lootWood: loot.wood, lootStone: loot.stone, lootGrain: loot.grain,
         attackerLosses: sumLosses(lostAtk), defenderLosses: sumLosses(lostDef), rounds,

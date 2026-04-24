@@ -40,18 +40,18 @@ export async function processAttack(mission, myKingdom, now, targetKingdom) {
   let defRes        = { wood: 0, stone: 0, grain: 0 }
   let enrichedTarget = null
 
+  let defForce = {}
   if (targetKingdom) {
     enrichedTarget = await enrichKingdom(targetKingdom, { withUnits: true })
     const defResMap = await getResearchMap(targetKingdom.userId)
-    defenderUnits = buildBattleUnits(
-      { ...extractUnits(enrichedTarget, UNIT_KEYS), ...extractUnits(enrichedTarget, DEFENSE_KEYS) },
-      defResMap
-    )
+    defForce = { ...extractUnits(enrichedTarget, UNIT_KEYS), ...extractUnits(enrichedTarget, DEFENSE_KEYS) }
+    defenderUnits = buildBattleUnits(defForce, defResMap)
     defRes = { wood: targetKingdom.wood, stone: targetKingdom.stone, grain: targetKingdom.grain }
   } else {
     const seed    = mission.targetRealm * 374761397 + mission.targetRegion * 1234567 + mission.targetSlot * 7654321
     const npcPts  = ((seed ^ (seed >>> 16)) >>> 0) % 20000
-    defenderUnits = buildBattleUnits({ archer: 5 + Math.floor(npcPts / 2000), ballista: Math.floor(npcPts / 5000) }, {})
+    defForce = { archer: 5 + Math.floor(npcPts / 2000), ballista: Math.floor(npcPts / 5000) }
+    defenderUnits = buildBattleUnits(defForce, {})
     defRes        = { wood: 1000 + npcPts / 10, stone: 800 + npcPts / 12, grain: 600 + npcPts / 15 }
   }
 
@@ -118,7 +118,9 @@ export async function processAttack(mission, myKingdom, now, targetKingdom) {
 
     insertBattleLog({
       attackerKingdomId: myKingdom.id,      attackerName: myKingdom.name, attackerIsNpc: false,
+      attackerForce: missionUnits, attackerLost: lostAtk,
       defenderKingdomId: targetKingdom?.id, defenderName: targetName,    defenderIsNpc: targetKingdom?.isNpc ?? false,
+      defenderForce: defForce,     defenderLost: lostDef,
       missionType: 'attack', outcome,
       lootWood: loot.wood, lootStone: loot.stone, lootGrain: loot.grain,
       attackerLosses: sumLosses(lostAtk), defenderLosses: sumLosses(lostDef), rounds,
@@ -167,7 +169,9 @@ export async function processAttack(mission, myKingdom, now, targetKingdom) {
 
     insertBattleLog({
       attackerKingdomId: myKingdom.id,      attackerName: myKingdom.name, attackerIsNpc: false,
+      attackerForce: missionUnits, attackerLost: lostAtk,
       defenderKingdomId: targetKingdom?.id, defenderName: targetName,    defenderIsNpc: targetKingdom?.isNpc ?? false,
+      defenderForce: defForce,     defenderLost: lostDef,
       missionType: 'attack', outcome: 'defeat',
       lootWood: 0, lootStone: 0, lootGrain: 0,
       attackerLosses: sumLosses(lostAtk), defenderLosses: sumLosses(lostDef), rounds,
