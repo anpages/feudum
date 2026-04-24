@@ -1,5 +1,5 @@
 import { eq } from 'drizzle-orm'
-import { db, users, kingdoms, research } from '../_db.js'
+import { db, users, kingdoms } from '../_db.js'
 import { getSessionUserId } from '../lib/handler.js'
 import { UNIVERSE } from '../lib/config.js'
 
@@ -65,7 +65,7 @@ export default async function handler(req, res) {
       tempAvg:            240 - (position.slot - 1) * 25,
       lastResourceUpdate: Math.floor(Date.now() / 1000),
     })
-    await db.insert(research).values({ userId })
+    // Research: missing row = level 0 in normalized schema; no init needed.
   }
 
   return res.json({ ok: true })
