@@ -41,13 +41,10 @@ export default async function handler(req, res) {
       eq(kingdoms.region, region),
     ))
 
-  // Fetch research for point calculation (only for human players)
-  const humanUserIds = realKingdoms
-    .filter(r => r.u.role !== 'npc')
-    .map(r => r.k.userId)
+  // Fetch research for point calculation (all kingdoms)
   const researchMaps = {}
-  for (const uid of humanUserIds) {
-    researchMaps[uid] = await getResearchMap(uid)
+  for (const { k } of realKingdoms) {
+    researchMaps[k.userId] = await getResearchMap(k.userId)
   }
 
   // Build slots 1-15
@@ -60,7 +57,7 @@ export default async function handler(req, res) {
     if (realBySlot[slot]) {
       const { k, u, ns } = realBySlot[slot]
       const isNpc = u.role === 'npc'
-      const points = isNpc ? 0 : calcPoints(k, researchMaps[k.userId] ?? {})
+      const points = calcPoints(k, researchMaps[k.userId] ?? {})
       return {
         slot,
         kingdomId: k.id,
