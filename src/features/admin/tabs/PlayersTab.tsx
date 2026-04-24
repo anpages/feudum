@@ -4,7 +4,7 @@ import { ArrowLeft } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
-import { useAdminUsers, useToggleAdmin } from '@/features/admin/useAdmin'
+import { useAdminUsers, useToggleAdmin, useDeleteUser } from '@/features/admin/useAdmin'
 import { adminService } from '../services/adminService'
 import { KingdomProfile } from './NpcProfileTab'
 import type { AdminUser } from '@/features/admin/types'
@@ -14,6 +14,7 @@ type Coords = { realm: number; region: number; slot: number; username: string | 
 export function PlayersTab() {
   const { data, isLoading } = useAdminUsers()
   const toggle = useToggleAdmin()
+  const deleteUser = useDeleteUser()
   const [selected, setSelected] = useState<Coords | null>(null)
   const [now, setNow] = useState(() => Math.floor(Date.now() / 1000))
 
@@ -117,6 +118,20 @@ export function PlayersTab() {
           >
             Ver perfil
           </Button>
+          {!u.isNpc && u.role !== 'admin' && (
+            <Button
+              variant="danger"
+              size="sm"
+              disabled={deleteUser.isPending}
+              onClick={() => {
+                if (confirm(`¿Borrar cuenta de "${u.username ?? u.email}"? Esta acción es irreversible.`)) {
+                  deleteUser.mutate(u.id)
+                }
+              }}
+            >
+              Borrar
+            </Button>
+          )}
         </div>
       </div>
     )

@@ -11,10 +11,6 @@ export const supabase = createClient(
       autoRefreshToken: true,
       persistSession: true,
       storage: localStorage,
-      // Disable automatic URL code exchange — AuthCallbackPage handles it
-      // explicitly. With both active, the PKCE code gets used twice (race)
-      // and the second exchange fails with "invalid grant".
-      detectSessionInUrl: false,
     },
   }
 )

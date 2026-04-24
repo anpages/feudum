@@ -50,6 +50,14 @@ export function useToggleAdmin() {
   })
 }
 
+export function useDeleteUser() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (userId: string) => adminService.deleteUser(userId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin', 'users'] }),
+  })
+}
+
 export function useDevAction() {
   return useMutation({
     mutationFn: (body: Record<string, unknown>) => adminService.devAction(body),

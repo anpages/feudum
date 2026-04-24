@@ -9,6 +9,8 @@ export const adminService = {
     http.patch<AdminSettings>('/admin/settings', patch),
   toggleAdmin: (userId: string, isAdmin: boolean) =>
     http.patch<{ ok: boolean }>('/admin/users', { userId, isAdmin }),
+  deleteUser: (userId: string) =>
+    http.delete<{ ok: boolean }>(`/admin/users?userId=${userId}`),
   devAction: (body: Record<string, unknown>) => http.post<{ ok: boolean }>('/admin/dev', body),
   fastForward: (body: { missionId?: string; all?: boolean }) =>
     http.post<{ ok: boolean }>('/admin/fleet', body),

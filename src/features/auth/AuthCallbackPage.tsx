@@ -30,27 +30,20 @@ export function AuthCallbackPage() {
 
     timeout = setTimeout(() => finish(false, 'timeout'), 15_000)
 
-    const code = params.get('code')
-    if (code) {
-      // Flujo PKCE: intercambiar el código explícitamente.
-      // No depender de detectSessionInUrl — en SPAs ya inicializadas puede no dispararse.
-      supabase.auth.exchangeCodeForSession(code).then(({ data, error }) => {
-        if (error) { finish(false, 'exchange_failed'); return }
-        if (data.session) { finish(true); return }
-        finish(false, 'no_session')
-      })
-    } else {
-      // Flujo implícito (hash) o sesión ya establecida en localStorage
-      supabase.auth.getSession().then(({ data: { session }, error }) => {
-        if (error) { finish(false, 'session_error'); return }
-        if (session) { finish(true); return }
+    // The Supabase client (detectSessionInUrl: true) auto-exchanges the PKCE
+    // code from the URL. We must NOT call exchangeCodeForSession ourselves —
+    // the code can only be used once and would fail with "invalid_grant".
+    // Just wait: getSession() catches a fast exchange; onAuthStateChange catches
+    // a slow one. Both paths call finish(true) and navigate to /.
+    supabase.auth.getSession().then(({ data: { session }, error }) => {
+      if (error) { finish(false, 'session_error'); return }
+      if (session) { finish(true); return }
 
-        const { data } = supabase.auth.onAuthStateChange((_event, session) => {
-          if (session) finish(true)
-        })
-        subscription = data.subscription
+      const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+        if (session) finish(true)
       })
-    }
+      subscription = data.subscription
+    })
 
     return () => { timeout && clearTimeout(timeout); subscription?.unsubscribe() }
   }, [navigate])
