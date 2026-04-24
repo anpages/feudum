@@ -13,6 +13,7 @@ import {
   getResearchMap, enrichKingdom, batchUpsertUnits, getUnitMap, upsertUnit,
 } from './db-helpers.js'
 import { extractMissionUnits, UNIT_KEYS, DEFENSE_KEYS } from './missions/keys.js'
+import { npcClass } from './npc-engine.js'
 
 export async function resolveIncomingNpcAttacks(playerKingdoms, now) {
   for (const defKingdom of playerKingdoms) {
@@ -54,7 +55,8 @@ export async function resolveIncomingNpcAttacks(playerKingdoms, now) {
       }
 
       const missionUnits  = extractMissionUnits(m, UNIT_KEYS)
-      const attackerUnits = buildBattleUnits(missionUnits, {})
+      const atkClass      = npcClass(npcKingdom)
+      const attackerUnits = buildBattleUnits(missionUnits, {}, {}, atkClass)
 
       // Enrich defender kingdom with units
       const enrichedDef = await enrichKingdom(defKingdom, { withUnits: true })
@@ -69,7 +71,7 @@ export async function resolveIncomingNpcAttacks(playerKingdoms, now) {
       const { outcome, rounds, survivingAtk, lostAtk, lostDef } =
         runBattle(attackerUnits, defenderUnits)
 
-      const cargo  = calcCargoCapacity(missionUnits)
+      const cargo  = calcCargoCapacity(missionUnits, atkClass)
       const loot   = outcome === 'victory' ? calculateLoot(defRes, cargo) : { wood: 0, stone: 0, grain: 0 }
       const debris = calculateDebris(lostAtk, lostDef)
       const travelSecs = m.arrivalTime - m.departureTime

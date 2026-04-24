@@ -134,7 +134,7 @@ async function attackAI(npcKingdom, researchRow, allKingdoms, bashMap, spyMap, n
   }
   if (totalSent === 0) return false
 
-  const cargo         = calcCargoCapacity(force)
+  const cargo         = calcCargoCapacity(force, cls === 'collector' ? 'collector' : cls === 'general' ? 'general' : null)
   const universeSpeed = parseFloat(cfg.fleet_speed_war ?? 1)
   const npcCharClass  = cls === 'general' ? 'general' : null
 
