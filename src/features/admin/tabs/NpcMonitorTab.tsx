@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { adminService } from '../services/adminService'
 import { formatResource } from '@/lib/format'
@@ -686,8 +686,8 @@ function HealthHistorySection({ reports }: { reports: NpcHealthReport[] }) {
               const m = r.metrics
               const isExpanded = expanded === i
               return (
+                <React.Fragment key={r.ts}>
                 <tr
-                  key={r.ts}
                   onClick={() => setExpanded(isExpanded ? null : i)}
                   className={`border-b border-gold/5 cursor-pointer transition-colors
                     ${i === 0 ? 'bg-gold/5' : ''}
@@ -738,6 +738,7 @@ function HealthHistorySection({ reports }: { reports: NpcHealthReport[] }) {
                     </td>
                   </tr>
                 )}
+                </React.Fragment>
               )
             })}
           </tbody>
