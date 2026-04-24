@@ -6,7 +6,7 @@ export const authService = {
   me: () => http.get<AuthUser>('/auth/me'),
 
   logout: async () => {
-    await supabase.auth.signOut()
+    await supabase.auth.signOut({ scope: 'local' })
     return { ok: true }
   },
 

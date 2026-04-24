@@ -10,22 +10,30 @@ export function AuthCallbackPage() {
     if (done.current) return
     done.current = true
 
-    // Supabase auto-exchanges the PKCE code via detectSessionInUrl on client init.
-    // We just wait for the session to be ready.
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) { navigate('/', { replace: true }); return }
+    let subscription: { unsubscribe: () => void } | null = null
+    let timeout: ReturnType<typeof setTimeout> | null = null
 
-      // Not ready yet — wait for the auth state change event
-      const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-        if (event === 'SIGNED_IN' && session) {
-          subscription.unsubscribe()
-          navigate('/', { replace: true })
-        } else if (event === 'SIGNED_OUT') {
-          subscription.unsubscribe()
-          navigate('/login?error=exchange_failed', { replace: true })
-        }
+    const finish = (ok: boolean) => {
+      timeout && clearTimeout(timeout)
+      subscription?.unsubscribe()
+      navigate(ok ? '/' : '/login?error=exchange_failed', { replace: true })
+    }
+
+    // Timeout: si en 15s no hay sesión redirige al login con error
+    timeout = setTimeout(() => finish(false), 15_000)
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) { finish(true); return }
+
+      // Sesión no lista aún — esperar cualquier evento con sesión válida
+      const { data } = supabase.auth.onAuthStateChange((event, session) => {
+        if (session) { finish(true); return }
+        if (event === 'SIGNED_OUT') finish(false)
       })
+      subscription = data.subscription
     })
+
+    return () => { timeout && clearTimeout(timeout); subscription?.unsubscribe() }
   }, [navigate])
 
   return (
