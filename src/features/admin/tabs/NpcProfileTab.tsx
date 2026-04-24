@@ -366,7 +366,6 @@ export function KingdomProfile({
                   ? <span className="badge badge-stone">NPC</span>
                   : <span className="badge badge-gold">Jugador</span>
                 }
-                {kingdom.isNpc && kingdom.npcLevel > 0 && <span className="badge badge-gold">Nivel {kingdom.npcLevel}</span>}
               </div>
               <div className="font-ui text-xs text-ink-muted mt-1 flex items-center gap-3 flex-wrap">
                 <span className="font-mono">{coord}</span>

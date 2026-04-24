@@ -30,12 +30,13 @@ export const buildingsService = {
 
     const economySpeed = (cfgRaw as { economySpeed: number }).economySpeed ?? 1
 
-    // Phase 2: buildings levels + queue (both need kingdom id)
-    const [{ data: buildingRows }, { data: queueRows }] = await Promise.all([
+    // Phase 2: buildings levels + queue + research (all need user/kingdom id)
+    const [{ data: buildingRows }, { data: queueRows }, { data: researchRows }] = await Promise.all([
       supabase.from('buildings').select('type, level').eq('kingdom_id', kingdomRow.id),
       supabase.from('building_queue')
         .select('id, building_type, level, started_at, finishes_at')
         .eq('kingdom_id', kingdomRow.id),
+      supabase.from('research').select('type, level').eq('user_id', user.id),
     ])
 
     // Base kingdom resources + coords
@@ -44,6 +45,9 @@ export const buildingsService = {
     // Merge building levels from the buildings table
     const projected: Record<string, number> = { ...kingdom }
     for (const r of buildingRows ?? []) projected[r.type] = r.level
+
+    const researchMap: Record<string, number> = {}
+    for (const r of researchRows ?? []) researchMap[r.type] = r.level
 
     const queue: QueueRow[] = snakeToCamelArray<QueueRow>(queueRows)
     const now = Math.floor(Date.now() / 1000)
@@ -76,7 +80,7 @@ export const buildingsService = {
         costStone:   cost.stone,
         costGrain:   cost.grain,
         timeSeconds: timeSecs,
-        requiresMet: buildingRequirementsMet(def, projected, {}),
+        requiresMet: buildingRequirementsMet(def, projected, researchMap),
         requires:    def.requires as BuildingsResponse['buildings'][number]['requires'],
         inQueue:     queueItem ? { id: queueItem.id, level: queueItem.level, startedAt: queueItem.startedAt, finishesAt: queueItem.finishesAt } : null,
         queueDepth:  activeQueue.filter(q => q.buildingType === def.id).length,

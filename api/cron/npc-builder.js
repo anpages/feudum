@@ -108,6 +108,7 @@ async function attemptResearch(kingdom, researchId, researchMap, cfg, now, depth
         return await attemptBuild(
           kingdom, req.id, cfg, now,
           `Requisito para investigar ${researchId}: ${req.id} lv${req.level}`,
+          researchMap,
         )
       }
     } else if (req.type === 'research') {
@@ -292,19 +293,26 @@ async function completeDeferredTask(kingdom, now) {
   kingdom.buildAvailableAt = now
 }
 
-async function attemptBuild(kingdom, buildingId, cfg, now, reason) {
+async function attemptBuild(kingdom, buildingId, cfg, now, reason, researchMap = {}) {
   const def = BUILDINGS.find(b => b.id === buildingId)
   if (!def) return { action: 'error', building: buildingId }
 
   if (def.requires?.length) {
-    const missingReq = def.requires.find(req =>
+    const missingBuilding = def.requires.find(req =>
       req.type === 'building' && (kingdom[req.id] ?? 0) < req.level
     )
-    if (missingReq) {
+    if (missingBuilding) {
       return await attemptBuild(
-        kingdom, missingReq.id, cfg, now,
-        `Requisito para ${buildingId}: necesita ${missingReq.id} lv${missingReq.level}`,
+        kingdom, missingBuilding.id, cfg, now,
+        `Requisito para ${buildingId}: necesita ${missingBuilding.id} lv${missingBuilding.level}`,
+        researchMap,
       )
+    }
+    const missingResearch = def.requires.find(req =>
+      req.type === 'research' && (researchMap[req.id] ?? 0) < req.level
+    )
+    if (missingResearch) {
+      return await attemptResearch(kingdom, missingResearch.id, researchMap, cfg, now)
     }
   }
 
@@ -527,7 +535,7 @@ async function attemptTrainTroops(kingdom, personality, cls, researchMap, cfg, n
   }
 }
 
-async function attemptBuildWeighted(kingdom, personality, cfg, now) {
+async function attemptBuildWeighted(kingdom, personality, cfg, now, researchMap = {}) {
   const weights = BUILD_WEIGHTS[personality]
 
   const candidates = Object.entries(weights)
@@ -549,7 +557,8 @@ async function attemptBuildWeighted(kingdom, personality, cfg, now) {
   for (const { id, def } of candidates) {
     if (def.requires?.length) {
       const blocked = def.requires.some(req =>
-        req.type === 'building' && (kingdom[req.id] ?? 0) < req.level
+        req.type === 'building' ? (kingdom[req.id]     ?? 0) < req.level :
+        req.type === 'research' ? (researchMap[req.id] ?? 0) < req.level : false
       )
       if (blocked) continue
     }
@@ -563,7 +572,7 @@ async function attemptBuildWeighted(kingdom, personality, cfg, now) {
       continue  // try cheaper alternatives before giving up
     }
 
-    return await attemptBuild(kingdom, id, cfg, now, `Crecimiento: ${id} → lv${nextLv}`)
+    return await attemptBuild(kingdom, id, cfg, now, `Crecimiento: ${id} → lv${nextLv}`, researchMap)
   }
 
   if (bestSaving) {
@@ -614,7 +623,7 @@ async function growNpcBoss(kingdom, cfg, now, researchMap) {
   }
   const result = await attemptTrainTroops(kingdom, 'military', 'general', researchMap, cfg, now)
   if (result.action === 'trained') return result
-  return await attemptBuildWeighted(kingdom, 'military', cfg, now)
+  return await attemptBuildWeighted(kingdom, 'military', cfg, now, researchMap)
 }
 
 // ── Cascade state machine ─────────────────────────────────────────────────────
@@ -679,15 +688,15 @@ async function growNpc(kingdom, cfg, now, researchMap, debrisRegions, colonizeAc
     const rWind = await attemptBuild(
       kingdom, 'windmill', cfg, now,
       `Energía negativa (${energyBalance.toFixed(0)}): subir molino`,
+      researchMap,
     )
     if (rWind.action !== 'saving') return rWind
-    // Windmill demasiado caro — intentar catedral si alchemy lv3 disponible
-    if ((researchMap?.alchemy ?? 0) >= 3) {
-      return await attemptBuild(
-        kingdom, 'cathedral', cfg, now,
-        `Energía negativa (${energyBalance.toFixed(0)}): subir catedral`,
-      )
-    }
+    // Windmill demasiado caro — intentar catedral (attemptBuild verifica alchemy lv3 internamente)
+    return await attemptBuild(
+      kingdom, 'cathedral', cfg, now,
+      `Energía negativa (${energyBalance.toFixed(0)}): subir catedral`,
+      researchMap,
+    )
     return rWind
   }
 
@@ -699,7 +708,7 @@ async function growNpc(kingdom, cfg, now, researchMap, debrisRegions, colonizeAc
   ]
   for (const { res, store, cap } of storageChecks) {
     if ((kingdom[res] ?? 0) >= (kingdom[cap] ?? 10000) * 0.9) {
-      return await attemptBuild(kingdom, store, cfg, now, `Almacén ${res} al 90%: subir ${store}`)
+      return await attemptBuild(kingdom, store, cfg, now, `Almacén ${res} al 90%: subir ${store}`, researchMap)
     }
   }
 
@@ -731,6 +740,7 @@ async function growNpc(kingdom, cfg, now, researchMap, debrisRegions, colonizeAc
       return await attemptBuild(
         kingdom, buildId, cfg, now,
         `Hito: ${buildId} → lv${targetLv} (actual: ${currentLv})`,
+        researchMap,
       )
     }
   }
@@ -760,17 +770,17 @@ async function growNpc(kingdom, cfg, now, researchMap, debrisRegions, colonizeAc
   if (flavor === 'research') {
     primaryResult = await attemptResearchProactive(kingdom, personality, researchMap, cfg, now)
     if (!kingdom.currentTask) {
-      secondaryResult = await attemptBuildWeighted(kingdom, personality, cfg, now)
+      secondaryResult = await attemptBuildWeighted(kingdom, personality, cfg, now, researchMap)
     }
   } else if (flavor === 'troops') {
     if (hasTroops) {
       primaryResult = await attemptTrainTroops(kingdom, personality, cls, researchMap, cfg, now)
     }
     if (!kingdom.currentTask) {
-      secondaryResult = await attemptBuildWeighted(kingdom, personality, cfg, now)
+      secondaryResult = await attemptBuildWeighted(kingdom, personality, cfg, now, researchMap)
     }
   } else {
-    primaryResult = await attemptBuildWeighted(kingdom, personality, cfg, now)
+    primaryResult = await attemptBuildWeighted(kingdom, personality, cfg, now, researchMap)
     if (hasTroops && !kingdom.currentTask) {
       secondaryResult = await attemptTrainTroops(kingdom, personality, cls, researchMap, cfg, now)
     }

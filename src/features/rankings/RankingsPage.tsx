@@ -6,6 +6,14 @@ import { Badge } from '@/components/ui/Badge'
 import { useRankings, type RankingCategory, type RankingEntry } from '@/features/rankings/useRankings'
 import { formatResource } from '@/lib/format'
 
+// Nivel visual derivado de los puntos totales (resources spent ÷ 1000).
+// Escala log₂: cada nivel dobla los puntos necesarios.
+// NPCs tempranos (~50 pts) → lv2; endgame (~50k pts) → lv12.
+function npcTier(entry: { breakdown: { total: number } }): number {
+  const pts = entry.breakdown.total
+  return Math.max(1, Math.floor(Math.log2(Math.max(2, pts) / 10)))
+}
+
 // ── Category tabs ─────────────────────────────────────────────────────────────
 
 const CATEGORIES: { id: RankingCategory; label: string; Icon: React.ComponentType<{ size?: number; className?: string }>, unit: string }[] = [
@@ -111,7 +119,7 @@ function PodiumCard({ entry, unit }: { entry: RankingEntry; unit: string }) {
           {entry.name}
         </p>
         <p className="font-body text-xs text-ink-muted/70">
-          {entry.isBoss ? '⚔ Jefe' : entry.isNpc ? `NPC Nv.${entry.npcLevel ?? 1}` : `@${entry.username}`}
+          {entry.isBoss ? '⚔ Jefe' : entry.isNpc ? `NPC Nv.${npcTier(entry)}` : `@${entry.username}`}
         </p>
       </div>
       <div className="mt-1">
@@ -146,7 +154,7 @@ function RankRow({ entry, unit }: { entry: RankingEntry; unit: string }) {
       <div className="flex-1 min-w-0">
         <p className="font-ui text-sm font-medium text-ink truncate">{entry.name}</p>
         <p className="font-body text-xs text-ink-muted/60 truncate">
-          {entry.isBoss ? '⚔ Jefe de temporada' : entry.isNpc ? `NPC Nv.${entry.npcLevel ?? 1}` : `@${entry.username}`}
+          {entry.isBoss ? '⚔ Jefe de temporada' : entry.isNpc ? `NPC Nv.${npcTier(entry)}` : `@${entry.username}`}
           {' '}· R{entry.realm} · {entry.region} · {entry.slot}
         </p>
       </div>
