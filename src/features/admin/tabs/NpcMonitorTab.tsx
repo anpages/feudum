@@ -285,10 +285,10 @@ function CombatHistoryTable({ history }: { history: CombatEngineTick[] }) {
             <tr className="border-b border-gold/10 font-ui text-ink-muted uppercase tracking-wider text-[0.55rem]">
               <th className="text-left py-2 px-2 whitespace-nowrap">Hora</th>
               <th className="text-right py-2 px-2">NPC vs NPC</th>
-              <th className="text-right py-2 px-2">Exped. res.</th>
-              <th className="text-right py-2 px-2">Espías res.</th>
-              <th className="text-right py-2 px-2">Purgadas</th>
-              <th className="text-right py-2 px-2">Intrusiones</th>
+              <th className="text-right py-2 px-2">Expediciones</th>
+              <th className="text-right py-2 px-2">Espionajes</th>
+              <th className="text-right py-2 px-2">Limpieza DB</th>
+              <th className="text-right py-2 px-2">Ataques det.</th>
             </tr>
           </thead>
           <tbody>
