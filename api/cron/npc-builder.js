@@ -21,6 +21,7 @@ import { getSettings, setSetting } from '../lib/settings.js'
 import {
   UNIT_KEYS, UNIT_COSTS, UNIT_COMBAT_SET, UNIT_SUPPORT_SET, UNIT_DEFENSE_SET,
   UNIT_PRIORITY, BUILD_WEIGHTS, ATTACK_THRESHOLD, MILESTONE_ORDER,
+  RESEARCH_PRIORITY, RESEARCH_TARGETS,
   npcPersonality, npcClass,
   isSleepTime, getNpcDelay, getTargetLevels, getTickFlavor, calcEnergyBalance,
   EMPTY_RESEARCH,
@@ -410,19 +411,18 @@ async function attemptTrainTroops(kingdom, personality, cls, researchMap, cfg, n
 
     for (const req of unitDef.requires ?? []) {
       if (req.type === 'building' && (kingdom[req.id] ?? 0) < req.level) {
-        blockedByBuilding = true; break
+        blockedByBuilding = true  // scan all reqs — don't break, research may still be queueable
       }
-      if (req.type === 'research' && (researchMap[req.id] ?? 0) < req.level) {
-        missingResearch = req.id; break
+      if (req.type === 'research' && (researchMap[req.id] ?? 0) < req.level && !missingResearch) {
+        missingResearch = req.id
       }
     }
 
-    if (blockedByBuilding) continue
-
-    // Research missing: set it as current priority and stop
+    // Queue missing research even when building is also pending — parallel progress
     if (missingResearch) {
       return await attemptResearch(kingdom, missingResearch, researchMap, cfg, now)
     }
+    if (blockedByBuilding) continue
 
     const cost = UNIT_COSTS[unitId]
     if (!cost) continue
@@ -572,6 +572,26 @@ async function attemptBuildWeighted(kingdom, personality, cfg, now) {
 
   await setDecision(kingdom, 'Sin edificios disponibles (bloqueados por requisitos)')
   return { action: 'blocked' }
+}
+
+// Proactively advances the highest-priority research that is below its target level.
+// Chains prerequisites automatically via attemptResearch.
+async function attemptResearchProactive(kingdom, personality, researchMap, cfg, now) {
+  const priority = RESEARCH_PRIORITY[personality] ?? RESEARCH_PRIORITY.balanced
+  const targets  = RESEARCH_TARGETS[personality]  ?? RESEARCH_TARGETS.balanced
+
+  for (const researchId of priority) {
+    const target  = targets[researchId] ?? 0
+    if (target === 0) continue
+    if ((researchMap[researchId] ?? 0) >= target) continue
+
+    const r = await attemptResearch(kingdom, researchId, researchMap, cfg, now)
+    // 'error' means research ID not found — skip it; anything else is actionable or blocked
+    if (r.action !== 'error') return r
+  }
+
+  await setDecision(kingdom, 'Sin investigación proactiva pendiente')
+  return { action: 'no_research' }
 }
 
 // ── Boss growth ───────────────────────────────────────────────────────────────
@@ -727,34 +747,38 @@ async function growNpc(kingdom, cfg, now, researchMap, debrisRegions, colonizeAc
     if (r.action === 'trained') return r
   }
 
-  // Nivel 2: ejecución en paralelo — edificio + tropa en el mismo tick.
-  // El sabor determina el orden; ambas acciones se intentan siempre.
-  // Si la primaria no puede pagarse, se intenta la secundaria con los recursos libres.
+  // Nivel 2: doble acción por tick — sabor determina la prioridad.
+  // research: investigación proactiva → luego edificar con lo que sobre.
+  // troops:   entrenar → luego edificar con lo que sobre.
+  // buildings: edificar → luego entrenar con lo que sobre.
   const flavor    = getTickFlavor(personality, kingdom, ageHours)
   const hasTroops = (kingdom.barracks ?? 0) >= 1
 
-  let buildResult, trainResult
+  let primaryResult, secondaryResult
 
-  if (flavor === 'troops' || flavor === 'research') {
-    // Primero tropas/investigación, luego construye con lo que sobre
+  if (flavor === 'research') {
+    primaryResult = await attemptResearchProactive(kingdom, personality, researchMap, cfg, now)
+    if (!kingdom.currentTask) {
+      secondaryResult = await attemptBuildWeighted(kingdom, personality, cfg, now)
+    }
+  } else if (flavor === 'troops') {
     if (hasTroops) {
-      trainResult = await attemptTrainTroops(kingdom, personality, cls, researchMap, cfg, now)
+      primaryResult = await attemptTrainTroops(kingdom, personality, cls, researchMap, cfg, now)
     }
     if (!kingdom.currentTask) {
-      buildResult = await attemptBuildWeighted(kingdom, personality, cfg, now)
+      secondaryResult = await attemptBuildWeighted(kingdom, personality, cfg, now)
     }
   } else {
-    // Primero edificio, luego entrena con los recursos restantes (ahorro inteligente)
-    buildResult = await attemptBuildWeighted(kingdom, personality, cfg, now)
+    primaryResult = await attemptBuildWeighted(kingdom, personality, cfg, now)
     if (hasTroops && !kingdom.currentTask) {
-      trainResult = await attemptTrainTroops(kingdom, personality, cls, researchMap, cfg, now)
+      secondaryResult = await attemptTrainTroops(kingdom, personality, cls, researchMap, cfg, now)
     }
   }
 
-  const isActive = (r) => r && !['saving', 'blocked', 'waiting', 'error', 'research_busy'].includes(r?.action)
-  if (isActive(buildResult)) return buildResult
-  if (isActive(trainResult)) return trainResult
-  return buildResult ?? trainResult ?? { action: 'saving' }
+  const isActive = (r) => r && !['saving', 'blocked', 'waiting', 'error', 'research_busy', 'no_research'].includes(r?.action)
+  if (isActive(primaryResult))   return primaryResult
+  if (isActive(secondaryResult)) return secondaryResult
+  return primaryResult ?? secondaryResult ?? { action: 'saving' }
 }
 
 // ── Handler ───────────────────────────────────────────────────────────────────
