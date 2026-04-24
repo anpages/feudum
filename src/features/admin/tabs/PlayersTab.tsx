@@ -13,9 +13,13 @@ type Coords = { realm: number; region: number; slot: number; username: string | 
 
 export function PlayersTab() {
   const { data, isLoading } = useAdminUsers()
-  const toggle     = useToggleAdmin()
-  const deleteUser = useDeleteUser()
-  const addNpc     = useAddNpc()
+  const toggle         = useToggleAdmin()
+  const deleteUser     = useDeleteUser()
+  const [newNpcId, setNewNpcId] = useState<string | null>(null)
+  const addNpc         = useAddNpc((id) => {
+    setNewNpcId(id)
+    setTimeout(() => setNewNpcId(null), 8000)
+  })
   const [selected, setSelected] = useState<Coords | null>(null)
   const [now, setNow] = useState(() => Math.floor(Date.now() / 1000))
 
@@ -80,8 +84,9 @@ export function PlayersTab() {
   // ── List view ───────────────────────────────────────────────────────────
   function UserRow({ u }: { u: AdminUser }) {
     const canSeeProfile = !!u.kingdom
+    const isNew = u.id === newNpcId
     return (
-      <div className="flex items-center gap-3 px-4 py-3">
+      <div className={`flex items-center gap-3 px-4 py-3 transition-colors ${isNew ? 'bg-forest/10 ring-1 ring-inset ring-forest/30' : ''}`}>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <p className="font-ui text-sm text-ink font-semibold truncate">
@@ -89,6 +94,7 @@ export function PlayersTab() {
             </p>
             {u.role === 'admin' && <Badge variant="gold">Admin</Badge>}
             {u.isNpc && <Badge variant="stone">NPC</Badge>}
+            {isNew && <Badge variant="forest" className="text-[0.6rem]">Nuevo</Badge>}
           </div>
           {!u.isNpc && <p className="font-body text-[11px] text-ink-muted truncate">{u.email}</p>}
           {u.kingdom && (

@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm'
+import { eq, desc } from 'drizzle-orm'
 import { db, users, kingdoms } from '../_db.js'
 import { getAdminUserId } from '../lib/admin.js'
 import { seedNpcs } from '../lib/season.js'
@@ -64,6 +64,15 @@ export default async function handler(req, res) {
     const takenSlots = new Set(existing.map(k => `${k.realm}:${k.region}:${k.slot}`))
     const seeded = await seedNpcs(takenSlots, now, 1)
     if (seeded === 0) return res.status(409).json({ error: 'no_empty_slots' })
-    return res.json({ ok: true, created: seeded })
+
+    // Return the newly created NPC so the UI can highlight it
+    const [row] = await db
+      .select({ id: users.id, username: users.username, realm: kingdoms.realm, region: kingdoms.region, slot: kingdoms.slot })
+      .from(users)
+      .innerJoin(kingdoms, eq(kingdoms.userId, users.id))
+      .where(eq(users.role, 'npc'))
+      .orderBy(desc(users.createdAt))
+      .limit(1)
+    return res.json({ ok: true, created: seeded, npc: row ?? null })
   }
 }
