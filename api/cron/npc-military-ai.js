@@ -44,6 +44,33 @@ async function getExpeditionDepletion(now) {
   return map
 }
 
+// ── Send spy helper ────────────────────────────────────────────────────────────
+
+async function sendSpyMission(npcKingdom, target, spyMap, universeSpeed, researchRow, now) {
+  const scouts = Math.min(2, npcKingdom.scout ?? 0)
+  if (scouts === 0) return
+  const dist       = calcDistance(npcKingdom, target)
+  const travelSecs = calcDuration(dist, { scout: scouts }, 100, universeSpeed, researchRow, null)
+  await db.insert(armyMissions).values({
+    userId:       npcKingdom.userId,
+    missionType:  'spy',
+    state:        'active',
+    startRealm:   npcKingdom.realm,
+    startRegion:  npcKingdom.region,
+    startSlot:    npcKingdom.slot,
+    targetRealm:  target.realm,
+    targetRegion: target.region,
+    targetSlot:   target.slot,
+    departureTime: now,
+    arrivalTime:  now + travelSecs,
+    units: { scout: scouts },
+  })
+  await upsertUnit(npcKingdom.id, 'scout', (npcKingdom.scout ?? 0) - scouts)
+  npcKingdom.scout = (npcKingdom.scout ?? 0) - scouts
+  if (!spyMap[npcKingdom.userId]) spyMap[npcKingdom.userId] = { inFlight: false, results: [] }
+  spyMap[npcKingdom.userId].inFlight = true
+}
+
 // ── Attack AI ─────────────────────────────────────────────────────────────────
 
 async function attackAI(npcKingdom, researchRow, allKingdoms, bashMap, spyMap, now, cfg) {
@@ -65,17 +92,17 @@ async function attackAI(npcKingdom, researchRow, allKingdoms, bashMap, spyMap, n
   const activeMissions = await db.select({ id: armyMissions.id })
     .from(armyMissions)
     .where(and(
-      eq(armyMissions.missionType,  'attack'),
-      eq(armyMissions.state,        'active'),
-      eq(armyMissions.startRealm,   npcKingdom.realm),
-      eq(armyMissions.startRegion,  npcKingdom.region),
-      eq(armyMissions.startSlot,    npcKingdom.slot),
+      eq(armyMissions.missionType, 'attack'),
+      eq(armyMissions.state,       'active'),
+      eq(armyMissions.startRealm,  npcKingdom.realm),
+      eq(armyMissions.startRegion, npcKingdom.region),
+      eq(armyMissions.startSlot,   npcKingdom.slot),
     ))
   const maxMissions = cls === 'general' ? 2 : 1
   if (activeMissions.length >= maxMissions) return false
 
-  const radius = 1 + (cls === 'discoverer' ? 1 : 0)
   const atkCoord = `${npcKingdom.realm}:${npcKingdom.region}:${npcKingdom.slot}`
+  const radius   = 1 + (cls === 'discoverer' ? 1 : 0)
   const sameRegion = allKingdoms.filter(
     p => p.id !== npcKingdom.id &&
          !p.isBoss &&
@@ -93,30 +120,10 @@ async function attackAI(npcKingdom, researchRow, allKingdoms, bashMap, spyMap, n
 
   if (candidates.length === 0) return false
 
-  const npcTotal = (npcKingdom.wood ?? 0) + (npcKingdom.stone ?? 0) + (npcKingdom.grain ?? 0)
-  const minResources = Math.max(2000, npcTotal * 0.3)
-  const eligible = candidates.filter(p => ((p.wood ?? 0) + (p.stone ?? 0) + (p.grain ?? 0)) >= minResources)
-  if (eligible.length === 0) return false
-
-  const withinLimit = eligible.filter(p => {
-    const key = `${atkCoord}→${p.realm}:${p.region}:${p.slot}`
-    return (bashMap[key] ?? 0) < NPC_BASH_LIMIT
-  })
-  if (withinLimit.length === 0) return false
-
-  const totalWeight = withinLimit.reduce((s, p) => s + Math.max(1, (p.wood ?? 0) + (p.stone ?? 0) + (p.grain ?? 0)), 0)
-  let rand = Math.random() * totalWeight
-  let target = withinLimit[withinLimit.length - 1]
-  for (const p of withinLimit) {
-    rand -= Math.max(1, (p.wood ?? 0) + (p.stone ?? 0) + (p.grain ?? 0))
-    if (rand <= 0) { target = p; break }
-  }
-
+  // Build attack force (used in both scout and blind paths)
   const minRatio  = cls === 'general' ? 0.70 : personality === 'economy' ? 0.50 : 0.55
   const maxRatio  = cls === 'general' ? 0.90 : personality === 'economy' ? 0.70 : 0.75
-  // Cap at (1 - FLEET_RESERVE) so the NPC always keeps ≥20% of its combat fleet home
   const sendRatio = Math.min(minRatio + Math.random() * (maxRatio - minRatio), 1 - FLEET_RESERVE)
-
   const force = {}
   let totalSent = 0
   for (const u of UNIT_KEYS) {
@@ -127,108 +134,104 @@ async function attackAI(npcKingdom, researchRow, allKingdoms, bashMap, spyMap, n
   }
   if (totalSent === 0) return false
 
-  const cargo           = calcCargoCapacity(force)
-  const targetResources = (target.wood ?? 0) + (target.stone ?? 0) + (target.grain ?? 0)
-
-  if (cargo === 0) {
-    if (personality === 'military' || cls === 'general') {
-      // Military value: only attack if target has resources OR significant combat units
-      // For player targets unitTotal is unknown — allow (spy handles risk assessment)
-      const targetUnits = target.unitTotal ?? null
-      if (targetResources === 0 && targetUnits !== null && targetUnits < 5) return false
-    } else {
-      // Economy/balanced: no point attacking without a way to carry loot
-      if (targetResources > 0) return false
-    }
-  }
-
+  const cargo         = calcCargoCapacity(force)
   const universeSpeed = parseFloat(cfg.fleet_speed_war ?? 1)
-  const dist          = calcDistance(npcKingdom, target)
   const npcCharClass  = cls === 'general' ? 'general' : null
-  const travelSecs    = calcDuration(dist, force, 100, universeSpeed, researchRow, npcCharClass)
-  const arrivalTime   = now + travelSecs
 
-  // Espionaje previo al ataque — NPCs con exploradores evalúan riesgo antes de atacar
-  if ((npcKingdom.scout ?? 0) > 0 && !npcKingdom.isBoss) {
+  async function doAttack(target) {
+    const dist        = calcDistance(npcKingdom, target)
+    const travelSecs  = calcDuration(dist, force, 100, universeSpeed, researchRow, npcCharClass)
+    const arrivalTime = now + travelSecs
+    await db.insert(armyMissions).values({
+      userId:       npcKingdom.userId,
+      missionType:  'attack',
+      state:        'active',
+      startRealm:   npcKingdom.realm,
+      startRegion:  npcKingdom.region,
+      startSlot:    npcKingdom.slot,
+      targetRealm:  target.realm,
+      targetRegion: target.region,
+      targetSlot:   target.slot,
+      departureTime: now,
+      arrivalTime,
+      units: force,
+    })
+    await db.update(npcState).set({ lastAttackAt: now, updatedAt: new Date() })
+      .where(eq(npcState.userId, npcKingdom.userId))
+    for (const [u, n] of Object.entries(force)) {
+      await upsertUnit(npcKingdom.id, u, (npcKingdom[u] ?? 0) - n)
+    }
+    const bk = `${atkCoord}→${target.realm}:${target.region}:${target.slot}`
+    bashMap[bk] = (bashMap[bk] ?? 0) + 1
+    if (!target.isNpc && target.userId) {
+      const eta = Math.round(travelSecs / 60)
+      sendPush(target.userId, {
+        title: '⚔️ ¡Ataque entrante!',
+        body: `${npcKingdom.name} (NPC) te ataca. Llega en ~${eta} min.`,
+        url: '/armies',
+        tag: 'incoming-attack',
+      }).catch(() => {})
+    }
+    return true
+  }
+
+  // ── NPCs con exploradores: decisiones basadas en intel de espionaje ──────
+  if ((npcKingdom.scout ?? 0) > 0) {
     const spyState = spyMap[npcKingdom.userId]
-    const targetKey = `${target.realm}:${target.region}:${target.slot}`
 
-    if (spyState?.inFlight) {
-      return false // espía en ruta — esperar resultado
+    // Espía en ruta — esperar resultado antes de actuar
+    if (spyState?.inFlight) return false
+
+    const candidateKeys = new Set(candidates.map(p => `${p.realm}:${p.region}:${p.slot}`))
+    const usableIntel   = (spyState?.results ?? []).filter(r => candidateKeys.has(r.targetKey))
+
+    if (usableIntel.length > 0) {
+      const riskRatio = { economy: 1.5, balanced: 0.8, military: 0.5 }[personality] ?? 0.8
+      const atkTotal  = Object.values(force).reduce((s, n) => s + n, 0)
+
+      const eligible = usableIntel
+        .map(({ targetKey, result }) => {
+          const res        = (result.resources?.wood ?? 0) + (result.resources?.stone ?? 0) + (result.resources?.grain ?? 0)
+          const defUnits   = Object.values(result.units   ?? {}).reduce((s, n) => s + n, 0)
+          const defDefense = Object.values(result.defense ?? {}).reduce((s, n) => s + n, 0)
+          const totalDef   = defUnits + defDefense
+          const tooRisky   = totalDef > 0 && atkTotal < totalDef * riskRatio
+          const bashKey    = `${atkCoord}→${targetKey}`
+          const bashed     = (bashMap[bashKey] ?? 0) >= NPC_BASH_LIMIT
+          // Prioritize resources if has cargo, otherwise prefer weaker defenders
+          const score      = cargo > 0 ? res : (1000 / (1 + totalDef))
+          const target     = candidates.find(p => `${p.realm}:${p.region}:${p.slot}` === targetKey)
+          return { target, score, tooRisky, bashed }
+        })
+        .filter(e => e.target && !e.tooRisky && !e.bashed)
+        .sort((a, b) => b.score - a.score)
+
+      if (eligible.length > 0) return await doAttack(eligible[0].target)
+      return false // todos demasiado arriesgados o en bash limit
     }
 
-    if (spyState?.result && spyState.targetKey === targetKey) {
-      // Tenemos inteligencia reciente sobre este objetivo — evaluar riesgo
-      const atkTotal   = Object.values(force).reduce((s, n) => s + n, 0)
-      const defUnits   = Object.values(spyState.result.units   ?? {}).reduce((s, n) => s + n, 0)
-      const defDefense = Object.values(spyState.result.defense ?? {}).reduce((s, n) => s + n, 0)
-      const totalDef   = defUnits + defDefense
-      const riskRatio  = { economy: 1.5, balanced: 0.8, military: 0.5 }[personality] ?? 0.8
-      if (totalDef > 0 && atkTotal < totalDef * riskRatio) {
-        return false // demasiado arriesgado — abortar
-      }
-      // Riesgo aceptable → proceder con el ataque (fall through)
-    } else {
-      // Sin inteligencia para este objetivo → enviar explorador primero
-      const scouts = Math.min(2, npcKingdom.scout ?? 0)
-      const spyDist     = calcDistance(npcKingdom, target)
-      const spyTravelSecs = calcDuration(spyDist, { scout: scouts }, 100, universeSpeed, researchRow, null)
-      await db.insert(armyMissions).values({
-        userId:       npcKingdom.userId,
-        missionType:  'spy',
-        state:        'active',
-        startRealm:   npcKingdom.realm,
-        startRegion:  npcKingdom.region,
-        startSlot:    npcKingdom.slot,
-        targetRealm:  target.realm,
-        targetRegion: target.region,
-        targetSlot:   target.slot,
-        departureTime: now,
-        arrivalTime:  now + spyTravelSecs,
-        units: { scout: scouts },
-      })
-      await upsertUnit(npcKingdom.id, 'scout', (npcKingdom.scout ?? 0) - scouts)
-      npcKingdom.scout = (npcKingdom.scout ?? 0) - scouts
-      spyMap[npcKingdom.userId] = { inFlight: true, result: null, targetKey }
-      return false // ataque aplazado hasta que vuelva el espía
-    }
+    // Sin inteligencia útil → espiar objetivo desconocido
+    const spiedKeys = new Set((spyState?.results ?? []).map(r => r.targetKey))
+    const unspied   = candidates.filter(p => !spiedKeys.has(`${p.realm}:${p.region}:${p.slot}`))
+    const spyTarget = unspied.length > 0
+      ? unspied[Math.floor(Math.random() * unspied.length)]
+      : candidates[Math.floor(Math.random() * candidates.length)]
+    await sendSpyMission(npcKingdom, spyTarget, spyMap, universeSpeed, researchRow, now)
+    return false
   }
 
-  await db.insert(armyMissions).values({
-    userId:       npcKingdom.userId,
-    missionType:  'attack',
-    state:        'active',
-    startRealm:   npcKingdom.realm,
-    startRegion:  npcKingdom.region,
-    startSlot:    npcKingdom.slot,
-    targetRealm:  target.realm,
-    targetRegion: target.region,
-    targetSlot:   target.slot,
-    departureTime: now,
-    arrivalTime,
-    units: force,
+  // ── NPCs sin exploradores ─────────────────────────────────────────────────
+  // Economy y balanced no atacan sin inteligencia previa
+  if (personality !== 'military' && cls !== 'general') return false
+  // Military y general: 15% de probabilidad de ataque ciego
+  if (Math.random() > 0.15) return false
+
+  const eligible = candidates.filter(p => {
+    const k = `${atkCoord}→${p.realm}:${p.region}:${p.slot}`
+    return (bashMap[k] ?? 0) < NPC_BASH_LIMIT
   })
-
-  // Update npcState.lastAttackAt
-  await db.update(npcState).set({ lastAttackAt: now, updatedAt: new Date() })
-    .where(eq(npcState.userId, npcKingdom.userId))
-
-  // Deduct units from units table
-  for (const [u, n] of Object.entries(force)) {
-    await upsertUnit(npcKingdom.id, u, (npcKingdom[u] ?? 0) - n)
-  }
-
-  if (!target.isNpc && target.userId) {
-    const eta = Math.round(travelSecs / 60)
-    sendPush(target.userId, {
-      title: '⚔️ ¡Ataque entrante!',
-      body: `${npcKingdom.name} (NPC) te ataca. Llega en ~${eta} min.`,
-      url: '/armies',
-      tag: 'incoming-attack',
-    }).catch(() => {})
-  }
-
-  return true
+  if (eligible.length === 0) return false
+  return await doAttack(eligible[Math.floor(Math.random() * eligible.length)])
 }
 
 // ── Scavenge AI ───────────────────────────────────────────────────────────────
@@ -469,7 +472,7 @@ export default async function handler(req, res) {
   const npcKingdomIds = npcRows.map(r => r.k.id)
   const npcUserIds    = npcRows.map(r => r.k.userId)
 
-  // Spy missions from last 2h — used to decide if NPC should send scout before attacking
+  // Spy missions from last 4h — intel window for NPC targeting decisions
   const recentSpyMissions = npcUserIds.length
     ? await db.select({
         userId:       armyMissions.userId,
@@ -482,20 +485,23 @@ export default async function handler(req, res) {
         .where(and(
           inArray(armyMissions.userId, npcUserIds),
           eq(armyMissions.missionType, 'spy'),
-          gte(armyMissions.departureTime, now - 7200),
+          gte(armyMissions.departureTime, now - 14400),
         ))
     : []
 
-  // spyMap: userId → { inFlight, result, targetKey }
+  // spyMap: userId → { inFlight: bool, results: [{ targetKey, result }] }
   const spyMap = {}
   for (const s of recentSpyMissions) {
-    if (!spyMap[s.userId]) spyMap[s.userId] = { inFlight: false, result: null, targetKey: null }
+    if (!spyMap[s.userId]) spyMap[s.userId] = { inFlight: false, results: [] }
     if (s.state === 'active') {
       spyMap[s.userId].inFlight = true
-    } else if (s.state === 'returning' && s.result && !spyMap[s.userId].result) {
+    } else if (s.state === 'returning' && s.result) {
       try {
-        spyMap[s.userId].result    = JSON.parse(s.result)
-        spyMap[s.userId].targetKey = `${s.targetRealm}:${s.targetRegion}:${s.targetSlot}`
+        const parsed    = JSON.parse(s.result)
+        const targetKey = `${s.targetRealm}:${s.targetRegion}:${s.targetSlot}`
+        if (!spyMap[s.userId].results.some(r => r.targetKey === targetKey)) {
+          spyMap[s.userId].results.push({ targetKey, result: parsed })
+        }
       } catch {}
     }
   }
@@ -556,26 +562,21 @@ export default async function handler(req, res) {
   }))
 
   // ── Load player kingdoms ─────────────────────────────────────────────────
-  const playerRows = await db.select({ k: kingdoms, userRole: users.role })
+  const playerRows = await db.select({ k: kingdoms })
     .from(kingdoms)
     .innerJoin(users, eq(kingdoms.userId, users.id))
     .where(ne(users.role, 'npc'))
 
-  const playerKingdoms = playerRows.map(({ k, userRole }) => ({
-    ...k,
-    isNpc: userRole === 'npc',
-    isBoss: false,
-  }))
-
   const allKingdoms = [
-    ...playerKingdoms,
+    ...playerRows.map(({ k }) => ({
+      id: k.id, userId: k.userId, name: k.name,
+      isNpc: false, isBoss: false,
+      realm: k.realm, region: k.region, slot: k.slot,
+    })),
     ...allNpcKingdoms.map(k => ({
       id: k.id, userId: k.userId, name: k.name,
       isNpc: true, isBoss: k.isBoss,
       realm: k.realm, region: k.region, slot: k.slot,
-      wood: k.wood, stone: k.stone, grain: k.grain,
-      // Sum of combat units — used for military value check in attackAI
-      unitTotal: [...UNIT_COMBAT_SET].reduce((s, u) => s + (k[u] ?? 0), 0),
     })),
   ]
 
