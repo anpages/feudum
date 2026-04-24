@@ -380,8 +380,9 @@ const DECISION_FILTERS = [
   { key: 'all',      label: 'Todos'        },
   { key: 'saving',   label: 'Ahorrando'    },
   { key: 'waiting',  label: 'Ocupado'      },
-  { key: 'building', label: 'Construyendo' },
-  { key: 'training', label: 'Entrenando'   },
+  { key: 'building',    label: 'Construyendo'  },
+  { key: 'training',    label: 'Entrenando'    },
+  { key: 'researching', label: 'Investigando'  },
 ] as const
 
 const PERSONALITY_BADGE: Record<string, { label: string; cls: string }> = {

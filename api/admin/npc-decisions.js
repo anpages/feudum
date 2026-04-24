@@ -7,7 +7,8 @@ const FILTERS = {
   saving:   d => d.startsWith('ahorrando'),
   waiting:  d => d.startsWith('en cola') || d.startsWith('ocupado'),
   building: d => d.startsWith('hito') || d.startsWith('crecimiento') || d.startsWith('energía') || d.startsWith('almacén') || d.startsWith('requisito'),
-  training: d => d.startsWith('entrenando') || d.startsWith('investigando'),
+  training:    d => d.startsWith('entrenando'),
+  researching: d => d.startsWith('investigando'),
 }
 
 export default async function handler(req, res) {
@@ -67,7 +68,8 @@ export default async function handler(req, res) {
     saving:   rows.filter(r => !r.isBoss && FILTERS.saving((r.lastDecision ?? '').toLowerCase())).length,
     waiting:  rows.filter(r => !r.isBoss && FILTERS.waiting((r.lastDecision ?? '').toLowerCase())).length,
     building: rows.filter(r => !r.isBoss && FILTERS.building((r.lastDecision ?? '').toLowerCase())).length,
-    training: rows.filter(r => !r.isBoss && FILTERS.training((r.lastDecision ?? '').toLowerCase())).length,
+    training:    rows.filter(r => !r.isBoss && FILTERS.training((r.lastDecision ?? '').toLowerCase())).length,
+    researching: rows.filter(r => !r.isBoss && FILTERS.researching((r.lastDecision ?? '').toLowerCase())).length,
   }
 
   return res.json({ decisions, totalByFilter, now })
