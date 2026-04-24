@@ -14,7 +14,7 @@ const ALL_RESEARCH = [
   'alchemy','pyromancy','runemastery','mysticism','dragonlore',
   'fortification','swordsmanship','armoury',
   'horsemanship','cartography','tradeRoutes','logistics',
-  'spycraft','exploration','diplomaticNetwork',
+  'spycraft','exploration','diplomaticNetwork','divineBlessing',
 ]
 
 const MOBILE_KEYS = [

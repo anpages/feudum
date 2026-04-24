@@ -373,11 +373,12 @@ function MilitaryHistoryTable({ history }: { history: MilitaryAiTick[] }) {
 // ── NPC Decisions card ─────────────────────────────────────────────────────────
 
 const DECISION_FILTERS = [
-  { key: 'all',         label: 'Todos'        },
-  { key: 'saving',      label: 'Ahorrando'    },
-  { key: 'building',    label: 'Construyendo' },
-  { key: 'training',    label: 'Entrenando'   },
-  { key: 'researching', label: 'Investigando' },
+  { key: 'all',               label: 'Todos'           },
+  { key: 'saving',            label: 'Ahorrando'       },
+  { key: 'building',          label: 'Construyendo'    },
+  { key: 'training',          label: 'Entrenando'      },
+  { key: 'researching',       label: 'Investigando'    },
+  { key: 'research_activity', label: 'Research (todo)' },
 ] as const
 
 const PERSONALITY_BADGE: Record<string, { label: string; cls: string }> = {
@@ -896,6 +897,7 @@ export function NpcMonitorTab() {
               ['Arte del Espionaje',   'spycraft',          4],
               ['Exploración',          'exploration',       3],
               ['Red Diplomática',      'diplomaticNetwork', 3],
+              ['Bendición Divina',     'divineBlessing',    2],
             ] as [string, string, number][]).map(([lbl, key, weight]) => {
               const cap = key.charAt(0).toUpperCase() + key.slice(1)
               const avgVal  = (agg.researchStats[`avg${cap}`] ?? 0) as number

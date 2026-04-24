@@ -7,7 +7,9 @@ const FILTERS = {
   saving:      d => d.startsWith('ahorrando'),
   building:    d => d.startsWith('hito') || d.startsWith('crecimiento') || d.startsWith('energía') || d.startsWith('almacén') || d.startsWith('requisito') || (d.startsWith('ocupado') && d.includes('construyendo')),
   training:    d => d.startsWith('entrenando') || (d.startsWith('ocupado') && d.includes('entrenando')),
-  researching: d => d.startsWith('investigando'),
+  researching: d => d.startsWith('investigando') || d.startsWith('investigación') || d.startsWith('investigado'),
+  // research_activity: investigando activamente + ahorrando para investigar (bloqueados por recursos)
+  research_activity: d => d.startsWith('investigando') || d.startsWith('investigación') || d.startsWith('investigado') || (d.startsWith('ahorrando') && d.includes('investigar')),
 }
 
 export default async function handler(req, res) {
@@ -63,11 +65,12 @@ export default async function handler(req, res) {
     .slice(0, limit)
 
   const totalByFilter = {
-    all:         rows.filter(r => !r.isBoss).length,
-    saving:      rows.filter(r => !r.isBoss && FILTERS.saving((r.lastDecision ?? '').toLowerCase())).length,
-    building:    rows.filter(r => !r.isBoss && FILTERS.building((r.lastDecision ?? '').toLowerCase())).length,
-    training:    rows.filter(r => !r.isBoss && FILTERS.training((r.lastDecision ?? '').toLowerCase())).length,
-    researching: rows.filter(r => !r.isBoss && FILTERS.researching((r.lastDecision ?? '').toLowerCase())).length,
+    all:               rows.filter(r => !r.isBoss).length,
+    saving:            rows.filter(r => !r.isBoss && FILTERS.saving((r.lastDecision ?? '').toLowerCase())).length,
+    building:          rows.filter(r => !r.isBoss && FILTERS.building((r.lastDecision ?? '').toLowerCase())).length,
+    training:          rows.filter(r => !r.isBoss && FILTERS.training((r.lastDecision ?? '').toLowerCase())).length,
+    researching:       rows.filter(r => !r.isBoss && FILTERS.researching((r.lastDecision ?? '').toLowerCase())).length,
+    research_activity: rows.filter(r => !r.isBoss && FILTERS.research_activity((r.lastDecision ?? '').toLowerCase())).length,
   }
 
   return res.json({ decisions, totalByFilter, now })
