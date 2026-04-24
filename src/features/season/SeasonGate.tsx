@@ -1,5 +1,5 @@
 import { Outlet, useLocation } from 'react-router-dom'
-import { Loader2, Swords, Trophy, Crown, Star } from 'lucide-react'
+import { Loader2, Swords, Trophy, Crown, Star, LogOut } from 'lucide-react'
 import { useAuth } from '@/features/auth/useAuth'
 import { useSeason, useJoinSeason, useSeasonSummary } from './useSeason'
 import { useKingdoms } from '@/features/kingdom/useKingdom'
@@ -185,6 +185,7 @@ function SeasonSummaryPage({ isAdmin }: { isAdmin: boolean }) {
 
 function JoinSeasonPage({ seasonNumber }: { seasonNumber: number }) {
   const join = useJoinSeason()
+  const { logout, user } = useAuth()
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-6 gap-8">
@@ -223,6 +224,19 @@ function JoinSeasonPage({ seasonNumber }: { seasonNumber: number }) {
             ? <><Loader2 size={16} className="animate-spin" /> Uniéndose…</>
             : 'Comenzar temporada'}
         </Button>
+      </div>
+
+      <div className="anim-fade-up-2 text-center">
+        <p className="font-ui text-xs text-ink-muted mb-2">
+          Conectado como <span className="text-ink-mid">{user?.username ?? user?.id?.slice(0, 8)}</span>
+        </p>
+        <button
+          onClick={logout}
+          className="inline-flex items-center gap-1.5 font-ui text-xs text-ink-muted hover:text-crimson transition-colors"
+        >
+          <LogOut size={13} />
+          Cerrar sesión
+        </button>
       </div>
     </div>
   )
