@@ -411,18 +411,19 @@ async function attemptTrainTroops(kingdom, personality, cls, researchMap, cfg, n
 
     for (const req of unitDef.requires ?? []) {
       if (req.type === 'building' && (kingdom[req.id] ?? 0) < req.level) {
-        blockedByBuilding = true  // scan all reqs — don't break, research may still be queueable
+        blockedByBuilding = true; break  // building absent → skip unit; RESEARCH_PRIORITY handles research
       }
-      if (req.type === 'research' && (researchMap[req.id] ?? 0) < req.level && !missingResearch) {
-        missingResearch = req.id
+      if (req.type === 'research' && (researchMap[req.id] ?? 0) < req.level) {
+        missingResearch = req.id; break
       }
     }
 
-    // Queue missing research even when building is also pending — parallel progress
+    if (blockedByBuilding) continue
+
+    // Research missing but building satisfied → queue the research
     if (missingResearch) {
       return await attemptResearch(kingdom, missingResearch, researchMap, cfg, now)
     }
-    if (blockedByBuilding) continue
 
     const cost = UNIT_COSTS[unitId]
     if (!cost) continue
