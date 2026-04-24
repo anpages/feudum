@@ -1,18 +1,22 @@
 import { useState } from 'react'
 import { Navigate } from 'react-router-dom'
-import { Settings, Users, ScrollText, Compass, Activity } from 'lucide-react'
+import { Settings, Users, ScrollText, Compass, Activity, Eye, Recycle } from 'lucide-react'
 import { useAuth } from '@/features/auth/useAuth'
 import { ServerTab }      from './tabs/ServerTab'
 import { PlayersTab }     from './tabs/PlayersTab'
 import { BattlesTab }     from './tabs/BattlesTab'
 import { ExpeditionsTab } from './tabs/ExpeditionsTab'
 import { NpcMonitorTab }  from './tabs/NpcMonitorTab'
+import { SpyTab }         from './tabs/SpyTab'
+import { ScavengeTab }    from './tabs/ScavengeTab'
 
-type Tab = 'server' | 'players' | 'battles' | 'expeditions' | 'npc_monitor'
+type Tab = 'server' | 'players' | 'battles' | 'expeditions' | 'npc_monitor' | 'spy' | 'scavenge'
 
 const TABS: { id: Tab; label: string; Icon: typeof Settings }[] = [
   { id: 'npc_monitor', label: 'NPCs Monitor', Icon: Activity },
   { id: 'battles',     label: 'Combates',     Icon: ScrollText },
+  { id: 'spy',         label: 'Espionaje',    Icon: Eye },
+  { id: 'scavenge',    label: 'Carroñeo',     Icon: Recycle },
   { id: 'expeditions', label: 'Expediciones', Icon: Compass },
   { id: 'players',     label: 'Jugadores',    Icon: Users },
   { id: 'server',      label: 'Servidor',     Icon: Settings },
@@ -50,6 +54,8 @@ export function AdminPage() {
         {tab === 'server'      && <ServerTab />}
         {tab === 'players'     && <PlayersTab />}
         {tab === 'battles'     && <BattlesTab />}
+        {tab === 'spy'         && <SpyTab />}
+        {tab === 'scavenge'    && <ScavengeTab />}
         {tab === 'expeditions' && <ExpeditionsTab />}
         {tab === 'npc_monitor' && <NpcMonitorTab />}
       </div>

@@ -367,3 +367,53 @@ export interface NpcStatsResponse {
   aggregate: NpcAggregate
   healthHistory: NpcHealthReport[]
 }
+
+export interface AdminSpyMission {
+  id: string
+  userId: string
+  state: string
+  startRealm: number; startRegion: number; startSlot: number
+  targetRealm: number; targetRegion: number; targetSlot: number
+  departureTime: number; arrivalTime: number; returnTime: number | null
+  scouts: number
+  attackerName: string; attackerIsNpc: boolean
+  targetName: string;   targetIsNpc: boolean
+  detected: boolean
+  resources: { wood: number; stone: number; grain: number } | null
+  hasUnits: boolean
+  hasDefense: boolean
+}
+
+export interface AdminSpyResponse {
+  active:  AdminSpyMission[]
+  recent:  AdminSpyMission[]
+  metrics: { activeNow: number; sent24h: number; detected24h: number; withResources: number }
+  now: number
+}
+
+export interface AdminScavengeMission {
+  id: string
+  userId: string
+  state: string
+  startRealm: number; startRegion: number; startSlot: number
+  targetRealm: number; targetRegion: number; targetSlot: number
+  departureTime: number; arrivalTime: number; returnTime: number | null
+  attackerName: string; attackerIsNpc: boolean
+  targetCoord: string
+  debrisNow: { wood: number; stone: number } | null
+  woodLoad: number; stoneLoad: number
+}
+
+export interface AdminScavengeResponse {
+  active:  AdminScavengeMission[]
+  recent:  AdminScavengeMission[]
+  metrics: {
+    activeNow: number
+    sent24h: number
+    collected24hWood: number
+    collected24hStone: number
+    totalDebrisAvailable: number
+    activeDebrisFields: number
+  }
+  now: number
+}
