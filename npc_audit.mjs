@@ -67,6 +67,7 @@ const BUILDINGS_LIST = ['sawmill','quarry','grainFarm','windmill','barracks','wo
   'engineersGuild','academy','granary','stonehouse','silo','cathedral','alchemistTower','ambassadorHall','armoury']
 const COMBAT  = ['squire','knight','paladin','warlord','grandKnight','siegeMaster','warMachine','dragonKnight']
 const SUPPORT = ['merchant','caravan','scavenger','colonist','scout']
+const DEFENSE = ['beacon','archer','crossbowman','moat','ballista','mageTower','palisade','catapult','trebuchet','castleWall','dragonCannon']
 const RESEARCH_LIST = ['alchemy','pyromancy','runemastery','mysticism','dragonlore',
   'fortification','swordsmanship','armoury','horsemanship','cartography',
   'tradeRoutes','logistics','spycraft','exploration','diplomaticNetwork']
@@ -116,7 +117,9 @@ if (!seasonActive) console.log('  ⚠ TEMPORADA NO ACTIVA — los crons están p
 if (sleeping)      console.log('  💤 HORA DE SUEÑO (1h–8h UTC) — npc-builder reduce actividad')
 console.log('══════════════════════════════════════════════════')
 console.log(`\nTotal NPCs: ${npcs.length}  |  Bosses: ${bosses.length}`)
+const defFn = n => DEFENSE.some(u => (n[u]??0) > 0)
 console.log(`Con ejército:  ${npcs.filter(n=>army(n)>0).length} (${pct(npcs.filter(n=>army(n)>0).length, npcs.length)})`)
+console.log(`Con defensa:   ${npcs.filter(defFn).length} (${pct(npcs.filter(defFn).length, npcs.length)})`)
 console.log(`Con merchant:  ${npcs.filter(n=>(n.merchant??0)>0).length}`)
 console.log(`Con scavenger: ${npcs.filter(n=>(n.scavenger??0)>0).length}`)
 console.log(`Con colonist:  ${npcs.filter(n=>(n.colonist??0)>0).length}`)
@@ -230,6 +233,16 @@ console.log('\n── Soporte ──')
 for (const u of SUPPORT) {
   const total = npcs.reduce((s,n)=>s+(n[u]??0),0)
   if (total>0) console.log(`  ${u.padEnd(14)} total ${String(total).padStart(6)}  NPCs ${npcs.filter(n=>(n[u]??0)>0).length}`)
+}
+console.log('\n── Defensa ──')
+const defTotal = DEFENSE.reduce((s,u) => s + npcs.reduce((t,n)=>t+(n[u]??0),0), 0)
+if (defTotal === 0) {
+  console.log('  (ningún NPC tiene estructuras defensivas)')
+} else {
+  for (const u of DEFENSE) {
+    const total = npcs.reduce((s,n)=>s+(n[u]??0),0)
+    if (total>0) console.log(`  ${u.padEnd(14)} total ${String(total).padStart(6)}  NPCs ${npcs.filter(n=>(n[u]??0)>0).length}`)
+  }
 }
 
 // ── Investigación ─────────────────────────────────────────────────────────────
