@@ -163,15 +163,21 @@ export function OverviewPage() {
 
       {/* ── Kingdom identity banner ── */}
       <Card className="p-5 anim-fade-up">
-        <div className="flex items-start justify-between gap-4 flex-wrap">
-          <div>
-            <p className="font-body text-xs text-ink-muted/60 uppercase tracking-widest mb-1">Panel de mando</p>
-            <h1 className="font-display text-2xl text-gold-dim leading-tight">{kingdom?.name ?? '—'}</h1>
-            <p className="font-body text-sm text-ink-muted mt-1">
-              Reino {kingdom?.realm ?? '—'} · Región {kingdom?.region ?? '—'} · Posición {kingdom?.slot ?? '—'}
-            </p>
-          </div>
+
+        {/* Header: label + coords badge */}
+        <div className="flex items-start justify-between gap-3 mb-3">
+          <span className="section-heading mb-0">Panel de mando</span>
+          {kingdom?.realm != null && (
+            <span className="font-ui text-[0.65rem] tabular-nums text-ink-muted border border-gold/20 bg-parchment-warm px-2 py-0.5 rounded shrink-0">
+              {kingdom.realm}:{kingdom.region}:{kingdom.slot}
+            </span>
+          )}
         </div>
+
+        {/* Kingdom name */}
+        <h1 className="font-display text-2xl text-ink leading-tight">
+          {kingdom?.name ?? '—'}
+        </h1>
 
         {/* Stats grid */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-3 mt-4 pt-4 border-t border-gold/10">
@@ -184,8 +190,8 @@ export function OverviewPage() {
               : null
             return (
               <div>
-                <p className="font-ui text-[0.55rem] uppercase tracking-widest text-ink-muted/50 mb-0.5">Clima</p>
-                <p className="font-ui text-xs text-ink-muted">
+                <p className="font-ui text-[0.6rem] uppercase tracking-widest text-ink-muted/60 mb-1">Clima</p>
+                <p className="font-ui text-xs text-ink-mid">
                   {tempAvg !== null ? `🌡️ ${tempLabel(tempAvg)}` : '—'}
                 </p>
               </div>
@@ -194,7 +200,7 @@ export function OverviewPage() {
 
           {/* Clase */}
           <div>
-            <p className="font-ui text-[0.55rem] uppercase tracking-widest text-ink-muted/50 mb-0.5">Clase</p>
+            <p className="font-ui text-[0.6rem] uppercase tracking-widest text-ink-muted/60 mb-1">Clase</p>
             {charClass ? (
               <p className={`font-ui text-xs font-semibold ${charClass.color}`}>
                 {charClass.emoji} {charClass.label}
@@ -211,7 +217,7 @@ export function OverviewPage() {
 
           {/* Temporada */}
           <div>
-            <p className="font-ui text-[0.55rem] uppercase tracking-widest text-ink-muted/50 mb-0.5">Temporada</p>
+            <p className="font-ui text-[0.6rem] uppercase tracking-widest text-ink-muted/60 mb-1">Temporada</p>
             {season?.seasonNumber ? (() => {
               const ended = season.seasonState === 'ended'
               return (
@@ -225,7 +231,7 @@ export function OverviewPage() {
 
           {/* Tiempo / Ganador */}
           <div>
-            <p className="font-ui text-[0.55rem] uppercase tracking-widest text-ink-muted/50 mb-0.5">
+            <p className="font-ui text-[0.6rem] uppercase tracking-widest text-ink-muted/60 mb-1">
               {season?.seasonState === 'ended' ? 'Ganador' : 'Tiempo restante'}
             </p>
             {season?.seasonState === 'ended' && season.winner ? (
@@ -233,7 +239,7 @@ export function OverviewPage() {
                 <Trophy size={11} />{season.winner.username}
               </p>
             ) : seasonTimeLeft > 0 ? (
-              <p className="font-ui text-xs text-ink-muted flex items-center gap-1">
+              <p className="font-ui text-xs text-ink-mid flex items-center gap-1">
                 <Timer size={11} />{formatSeasonTime(seasonTimeLeft)}
               </p>
             ) : (
