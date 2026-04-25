@@ -430,21 +430,22 @@ function StatRow({
 function QueueRow({
   icon, label: lbl, finishesAt, startedAt, color,
 }: { icon: ReactNode; label: string; finishesAt: number; startedAt?: number; color: 'gold' | 'forest' | 'stone' }) {
-  const nowSec = Math.floor(Date.now() / 1000)
-  const pending = startedAt !== undefined && startedAt > nowSec
-  const [remaining, setRemaining] = useState(() =>
-    pending ? 0 : Math.max(0, finishesAt - nowSec)
-  )
-  const [total] = useState(pending ? 0 : Math.max(0, finishesAt - nowSec))
+  // Force a re-render every second — remaining is derived fresh each render
+  // so transitions from "En cola" → active work correctly after a data refetch.
+  const [, tick] = useState(0)
+  const pending = startedAt !== undefined && startedAt > Math.floor(Date.now() / 1000)
 
   useEffect(() => {
     if (pending) return
-    const id = setInterval(() => setRemaining(r => Math.max(0, r - 1)), 1000)
+    const id = setInterval(() => tick(n => n + 1), 1000)
     return () => clearInterval(id)
   }, [pending])
 
+  const now      = Math.floor(Date.now() / 1000)
+  const remaining = pending ? 0 : Math.max(0, finishesAt - now)
+  const total     = startedAt != null ? Math.max(1, finishesAt - startedAt) : remaining
+  const pct       = total > 0 ? Math.max(0, Math.min(100, (total - remaining) / total * 100)) : (pending ? 0 : 100)
   const colorClass = { gold: 'text-gold', forest: 'text-forest-light', stone: 'text-ink-muted' }[color]
-  const pct = total > 0 ? Math.max(0, Math.min(100, ((total - remaining) / total) * 100)) : (pending ? 0 : 100)
 
   return (
     <Card className="p-3">
