@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { adminService } from '../services/adminService'
 import { formatResource } from '@/lib/format'
 import { label } from '@/lib/labels'
-import type { NpcTickResult, CombatEngineTick, MilitaryAiTick, NpcDecision, NpcCurrentTask, NpcHealthReport } from '../types'
+import type { NpcTickResult, CombatEngineTick, MilitaryAiTick, NpcDecision, NpcCurrentTask, NpcHealthReport, NpcHealthGrowthDelta } from '../types'
 
 // ── Translation ────────────────────────────────────────────────────────────────
 
@@ -627,6 +627,22 @@ function StatusBadge({ status }: { status: NpcHealthReport['status'] }) {
   )
 }
 
+function GrowthDeltaCell({ delta }: { delta: NpcHealthGrowthDelta | null | undefined }) {
+  if (!delta) return <span className="text-ink-muted">—</span>
+  const bldOk = delta.buildings > 0
+  const cmbOk = delta.combat    > 0
+  return (
+    <div className="flex flex-col items-end gap-0.5">
+      <span className={`font-ui text-[0.65rem] tabular-nums ${bldOk ? 'text-forest-light' : 'text-crimson-light'}`}>
+        {bldOk ? '+' : ''}{delta.buildings} edif.
+      </span>
+      <span className={`font-ui text-[0.65rem] tabular-nums ${cmbOk ? 'text-forest-light' : delta.combat < 0 ? 'text-crimson-light' : 'text-ink-muted'}`}>
+        {cmbOk ? '+' : ''}{delta.combat} comb.
+      </span>
+    </div>
+  )
+}
+
 function HealthHistorySection({ reports }: { reports: NpcHealthReport[] }) {
   const [expanded, setExpanded] = useState<number | null>(null)
   if (reports.length === 0) {
@@ -670,11 +686,11 @@ function HealthHistorySection({ reports }: { reports: NpcHealthReport[] }) {
             <tr className="border-b border-gold/10 font-ui text-ink-muted uppercase tracking-wider text-[0.55rem]">
               <th className="text-left py-2 px-2 whitespace-nowrap">Hora</th>
               <th className="text-center py-2 px-2">Estado</th>
-              <th className="text-right py-2 px-2">Ahorrando</th>
-              <th className="text-right py-2 px-2">Cantera</th>
-              <th className="text-right py-2 px-2">Aserrad.</th>
-              <th className="text-right py-2 px-2">Piedra/h</th>
-              <th className="text-right py-2 px-2">Unidades</th>
+              <th className="text-right py-2 px-2">% Ahorrando</th>
+              <th className="text-right py-2 px-2">Δ 4h</th>
+              <th className="text-right py-2 px-2">Cuartel</th>
+              <th className="text-right py-2 px-2">Taller</th>
+              <th className="text-right py-2 px-2">Combate</th>
               {hasAnomalies && <th className="text-left py-2 px-2">Anomalías</th>}
             </tr>
           </thead>
@@ -682,13 +698,18 @@ function HealthHistorySection({ reports }: { reports: NpcHealthReport[] }) {
             {sorted.map((r, i) => {
               const m = r.metrics
               const isExpanded = expanded === i
+              const savingColor = r.stagnant
+                ? 'text-crimson-light font-bold'
+                : !r.sleep && m.savingPct >= 85
+                  ? 'text-gold'
+                  : m.savingPct >= 60 ? 'text-ink-muted' : 'text-forest-light'
               return (
                 <React.Fragment key={r.ts}>
                 <tr
                   onClick={() => setExpanded(isExpanded ? null : i)}
                   className={`border-b border-gold/5 cursor-pointer transition-colors
                     ${i === 0 ? 'bg-gold/5' : ''}
-                    ${r.status === 'critical' ? 'bg-crimson/5' : r.status === 'warning' ? 'bg-gold/5' : ''}
+                    ${r.status === 'critical' ? 'bg-crimson/5' : r.stagnant ? 'bg-gold/5' : ''}
                     hover:bg-parchment-warm/20`}
                 >
                   <td className="py-1.5 px-2 text-ink-muted tabular-nums whitespace-nowrap">
@@ -699,15 +720,17 @@ function HealthHistorySection({ reports }: { reports: NpcHealthReport[] }) {
                   <td className="py-1.5 px-2 text-center">
                     <StatusBadge status={r.status} />
                   </td>
-                  <td className={`py-1.5 px-2 text-right tabular-nums font-semibold ${!r.sleep && m.savingPct >= 85 ? 'text-crimson-light' : m.savingPct >= 60 ? 'text-gold' : 'text-forest-light'}`}>
+                  <td className={`py-1.5 px-2 text-right tabular-nums ${savingColor}`}>
                     {m.savingPct}%
                   </td>
-                  <td className={`py-1.5 px-2 text-right tabular-nums ${m.avgQuarry < 2 ? 'text-crimson-light' : m.avgQuarry < 4 ? 'text-gold' : 'text-forest-light'}`}>
-                    lv{m.avgQuarry}
+                  <td className="py-1.5 px-2 text-right">
+                    <GrowthDeltaCell delta={r.growthDelta} />
                   </td>
-                  <td className="py-1.5 px-2 text-right tabular-nums text-ink-muted">lv{m.avgSawmill}</td>
-                  <td className={`py-1.5 px-2 text-right tabular-nums ${m.avgStoneProd < 30 ? 'text-crimson-light' : 'text-ink-muted'}`}>
-                    {m.avgStoneProd}
+                  <td className={`py-1.5 px-2 text-right tabular-nums ${m.avgBarracks < 2 ? 'text-crimson-light' : m.avgBarracks < 4 ? 'text-gold' : 'text-forest-light'}`}>
+                    lv{m.avgBarracks}
+                  </td>
+                  <td className={`py-1.5 px-2 text-right tabular-nums ${m.avgWorkshop < 1 ? 'text-ink-muted' : m.avgWorkshop < 3 ? 'text-gold' : 'text-forest-light'}`}>
+                    lv{m.avgWorkshop}
                   </td>
                   <td className={`py-1.5 px-2 text-right tabular-nums ${m.totalCombatUnits === 0 ? 'text-ink-muted' : 'text-forest-light font-semibold'}`}>
                     {m.totalCombatUnits === 0 ? '—' : m.totalCombatUnits.toLocaleString()}

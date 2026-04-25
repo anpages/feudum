@@ -336,16 +336,32 @@ export interface NpcHealthMetrics {
   npcCount: number
   savingPct: number
   activePct: number
+  // Growth indicators — compared between snapshots
+  totalBuildingScore: number
+  totalCombatUnits: number
+  totalSupportUnits: number
+  // Key building averages
   avgSawmill: number
   avgQuarry: number
-  avgWindmill: number
+  avgGrainFarm?: number
+  avgWindmill?: number
+  avgWorkshop: number
+  avgEngineersGuild?: number
   avgBarracks: number
+  avgAcademy?: number
+  avgCathedral?: number
+  // Production
   avgWoodProd: number
   avgStoneProd: number
-  totalCombatUnits: number
-  npcsWithUnits: number
   seasonAgeHours: number
   economySpeed: number
+}
+
+export interface NpcHealthGrowthDelta {
+  buildings: number
+  combat: number
+  support: number
+  total: number
 }
 
 export interface NpcHealthReport {
@@ -354,6 +370,8 @@ export interface NpcHealthReport {
   metrics: NpcHealthMetrics
   anomalies: string[]
   sleep?: boolean
+  stagnant?: boolean
+  growthDelta?: NpcHealthGrowthDelta | null
 }
 
 export interface NpcStatsResponse {

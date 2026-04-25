@@ -92,7 +92,6 @@ export function OverviewPage() {
     .sort((a, b) => a.inQueue!.finishesAt - b.inQueue!.finishesAt) ?? []
   const allUnits = [...(barracksData?.units ?? []), ...(barracksData?.support ?? []), ...(barracksData?.defenses ?? [])]
   const queuedUnits = allUnits.filter(u => !!u.inQueue)
-  const hasQueue = !!(queuedBuildings.length || queuedResearch.length || queuedUnits.length)
 
   const tempAvg = (kingdom as Record<string, unknown> | null)?.tempAvg as number | undefined
   const charClass = user?.characterClass ? CLASS_INFO[user.characterClass] : null
@@ -256,10 +255,10 @@ export function OverviewPage() {
         </div>
       </section>
 
-      {/* ── Active queues ── */}
+      {/* ── Installations queue ── */}
       <section className="anim-fade-up-3">
-        <span className="section-heading">Colas activas</span>
-        {hasQueue ? (
+        <span className="section-heading">Instalaciones en progreso</span>
+        {(queuedBuildings.length > 0 || queuedResearch.length > 0) ? (
           <div className="space-y-2">
             {queuedBuildings.map(b => (
               <QueueRow
@@ -281,6 +280,22 @@ export function OverviewPage() {
                 color="forest"
               />
             ))}
+          </div>
+        ) : (
+          <Card className="p-4">
+            <div className="flex items-center gap-3 text-ink-muted/50">
+              <Clock size={14} />
+              <span className="font-body text-sm">Sin construcciones ni investigaciones activas</span>
+            </div>
+          </Card>
+        )}
+      </section>
+
+      {/* ── Troops queue ── */}
+      <section className="anim-fade-up-4">
+        <span className="section-heading">Tropas en entrenamiento</span>
+        {queuedUnits.length > 0 ? (
+          <div className="space-y-2">
             {queuedUnits.map(u => (
               <QueueRow
                 key={u.id}
@@ -294,8 +309,8 @@ export function OverviewPage() {
         ) : (
           <Card className="p-4">
             <div className="flex items-center gap-3 text-ink-muted/50">
-              <Clock size={14} />
-              <span className="font-body text-sm">No hay colas activas</span>
+              <Swords size={14} />
+              <span className="font-body text-sm">Sin tropas en entrenamiento</span>
             </div>
           </Card>
         )}

@@ -1,8 +1,8 @@
 /**
- * npc-health — snapshot horario de salud del crecimiento NPC.
- * Vercel Cron: cada 4 horas (vercel.json schedule: 0 each-4h).
- * Guarda npc_health_history en settings (últimos 72 reportes = 12 días).
- * Detecta bloqueos, estancamiento y anomalías usando contexto histórico.
+ * npc-health — snapshot de salud NPC cada 4h.
+ * Detecta ESTANCAMIENTO real: savingPct alto + cero crecimiento desde el
+ * snapshot anterior. Un NPC ahorrando entre construcciones es normal; lo
+ * anómalo es que no progrese en edificios ni unidades durante 4h o más.
  */
 import { eq, inArray } from 'drizzle-orm'
 import { db, kingdoms, users, npcState, buildings, units } from '../_db.js'
@@ -10,13 +10,29 @@ import { getSettings, setSetting } from '../lib/settings.js'
 import { isSleepTime } from '../lib/npc-engine.js'
 import { ECONOMY_SPEED } from '../lib/config.js'
 
-const COMBAT_KEYS = ['squire','knight','paladin','warlord','grandKnight','siegeMaster','warMachine','dragonKnight']
-const MAX_HISTORY = 72  // 12 días a razón de 1 reporte cada 4h
+const ALL_BUILDINGS = [
+  'sawmill','quarry','grainFarm','windmill','cathedral',
+  'workshop','engineersGuild','barracks','academy',
+  'granary','stonehouse','silo',
+  'alchemistTower','ambassadorHall','armoury',
+]
+const COMBAT_KEYS  = ['squire','knight','paladin','warlord','grandKnight','siegeMaster','warMachine','dragonKnight']
+const SUPPORT_KEYS = ['merchant','caravan','scavenger','colonist','scout']
+const MAX_HISTORY  = 72  // 12 días a razón de 1 reporte cada 4h
 
 function avg(arr, fn) {
   if (!arr.length) return 0
   return arr.reduce((s, x) => s + (fn(x) ?? 0), 0) / arr.length
 }
+function sumField(arr, fn) {
+  return arr.reduce((s, x) => s + (fn(x) ?? 0), 0)
+}
+function calcBuildingScore(npcs) {
+  return npcs.reduce((t, n) => t + ALL_BUILDINGS.reduce((s, b) => s + (n[b] ?? 0), 0), 0)
+}
+function calcCombatUnits(n) { return COMBAT_KEYS.reduce((s, k)  => s + (n[k] ?? 0), 0) }
+function calcSupportUnits(n){ return SUPPORT_KEYS.reduce((s, k) => s + (n[k] ?? 0), 0) }
+function avgBld(npcs, key)  { return parseFloat(avg(npcs, n => n[key] ?? 0).toFixed(1)) }
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).end()
@@ -70,32 +86,40 @@ export default async function handler(req, res) {
 
   if (allNpcs.length === 0) return res.json({ ok: true, skipped: 'no_regular_npcs' })
 
-  const combatUnits = n => COMBAT_KEYS.reduce((s, u) => s + (n[u] ?? 0), 0)
-
   // ── Métricas ───────────────────────────────────────────────────────────────
-  const savingCount      = allNpcs.filter(n => (n.lastDecision ?? '').toLowerCase().startsWith('ahorrando')).length
-  const savingPct        = Math.round(savingCount / allNpcs.length * 100)
-  const totalCombatUnits = allNpcs.reduce((s, n) => s + combatUnits(n), 0)
-  const npcsWithUnits    = allNpcs.filter(n => combatUnits(n) > 0).length
+  const savingCount       = allNpcs.filter(n => (n.lastDecision ?? '').toLowerCase().startsWith('ahorrando')).length
+  const savingPct         = Math.round(savingCount / allNpcs.length * 100)
+  const totalCombatUnits  = sumField(allNpcs, calcCombatUnits)
+  const totalSupportUnits = sumField(allNpcs, calcSupportUnits)
+  const totalBuildingScore = calcBuildingScore(allNpcs)
 
   const seasonStart    = parseInt(cfg.season_start ?? '0', 10)
   const seasonAgeHours = seasonStart > 0 ? parseFloat(((now - seasonStart) / 3600).toFixed(1)) : 0
   const speed          = parseFloat(cfg.economy_speed ?? ECONOMY_SPEED)
 
   const metrics = {
-    npcCount:        allNpcs.length,
+    npcCount:           allNpcs.length,
     savingPct,
-    activePct:       100 - savingPct,
-    avgSawmill:      parseFloat(avg(allNpcs, n => n.sawmill  ?? 0).toFixed(1)),
-    avgQuarry:       parseFloat(avg(allNpcs, n => n.quarry   ?? 0).toFixed(1)),
-    avgWindmill:     parseFloat(avg(allNpcs, n => n.windmill ?? 0).toFixed(1)),
-    avgBarracks:     parseFloat(avg(allNpcs, n => n.barracks ?? 0).toFixed(1)),
-    avgWoodProd:     Math.round(avg(allNpcs, n => n.woodProduction  ?? 0)),
-    avgStoneProd:    Math.round(avg(allNpcs, n => n.stoneProduction ?? 0)),
+    activePct:          100 - savingPct,
+    // Indicadores de crecimiento (se comparan con el snapshot anterior)
+    totalBuildingScore,
     totalCombatUnits,
-    npcsWithUnits,
+    totalSupportUnits,
+    // Edificios clave para diagnóstico
+    avgSawmill:         avgBld(allNpcs, 'sawmill'),
+    avgQuarry:          avgBld(allNpcs, 'quarry'),
+    avgGrainFarm:       avgBld(allNpcs, 'grainFarm'),
+    avgWindmill:        avgBld(allNpcs, 'windmill'),
+    avgWorkshop:        avgBld(allNpcs, 'workshop'),
+    avgEngineersGuild:  avgBld(allNpcs, 'engineersGuild'),
+    avgBarracks:        avgBld(allNpcs, 'barracks'),
+    avgAcademy:         avgBld(allNpcs, 'academy'),
+    avgCathedral:       avgBld(allNpcs, 'cathedral'),
+    // Producción
+    avgWoodProd:        Math.round(avg(allNpcs, n => n.woodProduction  ?? 0)),
+    avgStoneProd:       Math.round(avg(allNpcs, n => n.stoneProduction ?? 0)),
     seasonAgeHours,
-    economySpeed:    speed,
+    economySpeed:       speed,
   }
 
   // ── Historial existente ────────────────────────────────────────────────────
@@ -103,51 +127,60 @@ export default async function handler(req, res) {
   try { if (cfg.npc_health_history) history = JSON.parse(cfg.npc_health_history) }
   catch { history = [] }
 
-  // ── Detección de anomalías ─────────────────────────────────────────────────
-  const anomalies = []
-  const inSleep = isSleepTime(now)
+  // ── Comparación con snapshot anterior ─────────────────────────────────────
+  const prevMetrics = history.length > 0 ? history[history.length - 1].metrics : null
 
-  // Durante la ventana de sueño (1h-8h UTC) los lastDecision están rancios —
-  // la mayoría de NPCs no se reprocesa en horas, así que savingPct no refleja
-  // la realidad y dispara falsos positivos.
-  if (!inSleep && savingPct >= 85) {
-    anomalies.push(`${savingPct}% NPCs bloqueados (ahorrando)`)
+  let growthDelta = null
+  if (prevMetrics) {
+    const bldDelta     = totalBuildingScore - (prevMetrics.totalBuildingScore ?? 0)
+    const combatDelta  = totalCombatUnits   - (prevMetrics.totalCombatUnits  ?? 0)
+    const supportDelta = totalSupportUnits  - (prevMetrics.totalSupportUnits ?? 0)
+    growthDelta = { buildings: bldDelta, combat: combatDelta, support: supportDelta, total: bldDelta + combatDelta + supportDelta }
   }
 
-  if (totalCombatUnits === 0 && seasonAgeHours >= 48) {
+  const inSleep = isSleepTime(now)
+
+  // Estancamiento real = alto savingPct + cero crecimiento en edificios y unidades.
+  // Si los edificios crecen, los NPCs están funcionando aunque lastDecision diga "ahorrando".
+  const isStagnant = !inSleep
+    && savingPct >= 85
+    && growthDelta !== null
+    && growthDelta.buildings <= 0
+    && growthDelta.combat    <= 0
+
+  // Lecturas no-sleep consecutivas marcadas como estancamiento
+  const recentNonSleep  = history.slice(-8).filter(r => !r.sleep)
+  const consecStagnant  = recentNonSleep.reduce((n, r) => r.stagnant ? n + 1 : 0, 0)
+
+  // ── Detección de anomalías ─────────────────────────────────────────────────
+  const anomalies = []
+
+  if (isStagnant && growthDelta) {
+    const bldStr  = growthDelta.buildings <= 0 ? 'sin cambio en edificios'  : `+${growthDelta.buildings} niveles`
+    const cmbStr  = growthDelta.combat    <= 0 ? 'sin cambio en combate'    : `+${growthDelta.combat} unidades`
+    anomalies.push(`Estancamiento: ${bldStr}, ${cmbStr} en las últimas 4h (${savingPct}% ahorrando)`)
+  }
+
+  if (isStagnant && consecStagnant >= 2) {
+    anomalies.push(`Sin progreso en ${consecStagnant + 1} lecturas consecutivas (${(consecStagnant + 1) * 4}h) — revisar IA builder`)
+  }
+
+  if (totalCombatUnits === 0 && seasonAgeHours >= 72) {
     anomalies.push(`Sin unidades de combate tras ${Math.round(seasonAgeHours)}h de temporada`)
   }
 
-  if (metrics.avgQuarry < 3 && seasonAgeHours >= 72) {
-    anomalies.push(`Cantera en lv${metrics.avgQuarry} prom. tras ${Math.round(seasonAgeHours)}h — piedra insuficiente`)
-  }
-
-  if (metrics.avgStoneProd < 30 && seasonAgeHours >= 96) {
-    anomalies.push(`Producción de piedra muy baja (${metrics.avgStoneProd}/h base) tras ${Math.round(seasonAgeHours)}h`)
-  }
-
-  // Tendencia: 3 lecturas consecutivas con ≥85% bloqueados (excluir ventana de sueño)
-  const recent3 = history.slice(-3).filter(r => !r.sleep)
-  const allStuck = !inSleep && recent3.length >= 3 && recent3.every(r => (r.metrics?.savingPct ?? 0) >= 85)
-  if (allStuck && savingPct >= 85) {
-    anomalies.push(`Bloqueados en ${recent3.length + 1} lecturas consecutivas — revisar IA`)
-  }
-
-  // Tendencia: cantera sin progreso en 3 lecturas
-  if (history.length >= 3) {
-    const last3Quarry = history.slice(-3).map(r => r.metrics?.avgQuarry ?? 0)
-    if (last3Quarry.every(v => v === metrics.avgQuarry) && metrics.avgQuarry < 3) {
-      anomalies.push(`Cantera sin progreso en las últimas ${last3Quarry.length + 1} lecturas (lv${metrics.avgQuarry})`)
-    }
+  // Cantera baja: solo si no está progresando (growthDelta nulo o sin mejora en edificios)
+  if (metrics.avgQuarry < 3 && seasonAgeHours >= 96 && growthDelta !== null && growthDelta.buildings <= 0) {
+    anomalies.push(`Cantera lv${metrics.avgQuarry} prom. sin progreso tras ${Math.round(seasonAgeHours)}h`)
   }
 
   // ── Estado final ───────────────────────────────────────────────────────────
   let status = 'ok'
   if (anomalies.length > 0)                               status = 'warning'
-  if (allStuck && savingPct >= 85)                        status = 'critical'
+  if (isStagnant && consecStagnant >= 2)                  status = 'critical'
   if (totalCombatUnits === 0 && seasonAgeHours >= 72)     status = 'critical'
 
-  const report = { ts: now, status, metrics, anomalies, sleep: isSleepTime(now) }
+  const report = { ts: now, status, metrics, anomalies, sleep: inSleep, stagnant: isStagnant, growthDelta }
 
   history.push(report)
   if (history.length > MAX_HISTORY) history = history.slice(-MAX_HISTORY)
