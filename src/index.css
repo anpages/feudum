@@ -5,21 +5,21 @@
 
 @theme {
   /* ── Text ── */
-  --color-ink:            #1c1208;
-  --color-ink-mid:        #4a3820;
-  --color-ink-muted:      #8a7456;
+  --color-ink:            #0f172a;
+  --color-ink-mid:        #1e3a5f;
+  --color-ink-muted:      #64748b;
 
   /* ── Surfaces ── */
-  --color-parchment:      #faf6ef;
-  --color-parchment-warm: #f4ead8;
-  --color-parchment-deep: #ede3cc;
+  --color-parchment:      #f8fafc;
+  --color-parchment-warm: #eff6ff;
+  --color-parchment-deep: #dbeafe;
   --color-surface:        #ffffff;
 
   /* ── Accents ── */
-  --color-gold:           #b8860b;
-  --color-gold-light:     #d4a017;
-  --color-gold-dim:       #8a6e1a;
-  --color-gold-soft:      #fef9e7;
+  --color-gold:           #2563eb;
+  --color-gold-light:     #3b82f6;
+  --color-gold-dim:       #1d4ed8;
+  --color-gold-soft:      #eff6ff;
 
   /* ── Status ── */
   --color-crimson:        #9b1a1a;
@@ -44,8 +44,8 @@ html { scroll-behavior: smooth; }
 
 body {
   margin: 0;
-  background-color: #faf6ef;
-  color: #1c1208;
+  background-color: #f8fafc;
+  color: #0f172a;
   font-family: "Outfit", sans-serif;
   font-size: 16px;
   line-height: 1.6;
@@ -66,13 +66,13 @@ p { margin: 0; }
 a { color: inherit; text-decoration: none; }
 
 ::-webkit-scrollbar              { width: 5px; height: 5px; }
-::-webkit-scrollbar-track        { background: #ede3cc; }
-::-webkit-scrollbar-thumb        { background: rgba(184,134,11,0.28); border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover  { background: rgba(184,134,11,0.5); }
+::-webkit-scrollbar-track        { background: #dbeafe; }
+::-webkit-scrollbar-thumb        { background: rgba(37,99,235,0.28); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover  { background: rgba(37,99,235,0.5); }
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar                    { -ms-overflow-style: none; scrollbar-width: none; }
 
-:focus-visible { outline: 2px solid rgba(184,134,11,0.5); outline-offset: 2px; }
+:focus-visible { outline: 2px solid rgba(37,99,235,0.5); outline-offset: 2px; }
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ GAME LAYOUT ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 
