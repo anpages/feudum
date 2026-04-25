@@ -1,5 +1,5 @@
 import { type ReactNode, useState, useEffect, useRef, useCallback } from 'react'
-import { Clock, TrendingUp, Hammer, FlaskConical, Swords, Shield, ChevronRight, Zap, TreePine, Mountain, Wheat, AlertTriangle, Timer, Trophy } from 'lucide-react'
+import { Clock, TrendingUp, Hammer, FlaskConical, Swords, Shield, Zap, TreePine, Mountain, Wheat, AlertTriangle, Timer, Trophy } from 'lucide-react'
 import {
   GiAnvil, GiSpellBook, GiCrossedSwords, GiDragonHead, GiLaurelCrown,
 } from 'react-icons/gi'
@@ -295,20 +295,67 @@ export function OverviewPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
 
           {/* Kingdom stats */}
-          <Card className="p-4 space-y-3">
-            <p className="font-ui text-[0.6rem] text-ink-muted/60 uppercase tracking-widest">Desarrollo</p>
-            <StatRow icon={<GiAnvil size={13} />} label="Edificios" value={`${buildingCount}`} note={`Nv. total ${buildingTotalLevels}`} onClick={() => navigate('/buildings')} />
-            <StatRow icon={<GiSpellBook size={13} />} label="Investigaciones" value={`${researchCount}`} note={`Nv. total ${researchTotalLevels}`} onClick={() => navigate('/research')} />
+          <Card className="p-4">
+            <span className="section-heading">Desarrollo</span>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                onClick={() => navigate('/buildings')}
+                className="flex flex-col items-center text-center p-3 rounded-lg border border-gold/15 hover:border-gold/30 hover:bg-gold/5 transition-all"
+              >
+                <div className="w-9 h-9 rounded-lg bg-parchment-warm border border-gold/20 flex items-center justify-center mb-2.5">
+                  <GiAnvil size={17} className="text-gold-dim" />
+                </div>
+                <span className="font-ui text-2xl font-bold text-ink tabular-nums leading-none">{buildingCount}</span>
+                <span className="font-ui text-[0.58rem] text-ink-muted/60 uppercase tracking-wide mt-1">Edificios</span>
+                <span className="font-body text-[0.58rem] text-ink-muted/40 mt-0.5">Nv. total {buildingTotalLevels}</span>
+              </button>
+              <button
+                onClick={() => navigate('/research')}
+                className="flex flex-col items-center text-center p-3 rounded-lg border border-gold/15 hover:border-gold/30 hover:bg-gold/5 transition-all"
+              >
+                <div className="w-9 h-9 rounded-lg bg-parchment-warm border border-gold/20 flex items-center justify-center mb-2.5">
+                  <GiSpellBook size={17} className="text-gold-dim" />
+                </div>
+                <span className="font-ui text-2xl font-bold text-ink tabular-nums leading-none">{researchCount}</span>
+                <span className="font-ui text-[0.58rem] text-ink-muted/60 uppercase tracking-wide mt-1">Investigaciones</span>
+                <span className="font-body text-[0.58rem] text-ink-muted/40 mt-0.5">Nv. total {researchTotalLevels}</span>
+              </button>
+            </div>
           </Card>
 
           {/* Military stats */}
-          <Card className="p-4 space-y-3">
+          <Card className="p-4">
             <div className="flex items-center justify-between">
-              <p className="font-ui text-[0.6rem] text-ink-muted/60 uppercase tracking-widest">Fuerza militar</p>
-              <p className="font-ui text-[0.6rem] text-ink-muted/50 tabular-nums">{totalUnitCount} unidades</p>
+              <span className="section-heading mb-0">Fuerza militar</span>
+              <button
+                onClick={() => setMilitaryOpen(true)}
+                className="font-ui text-[0.6rem] text-ink-muted/50 hover:text-ink-muted tabular-nums transition-colors"
+              >
+                {totalUnitCount} unidades →
+              </button>
             </div>
-            <StatRow icon={<GiCrossedSwords size={13} />} label="Potencia ofensiva" value={formatResource(totalAttackPower)} onClick={() => setMilitaryOpen(true)} />
-            <StatRow icon={<Shield size={13} />} label="Potencia defensiva" value={formatResource(totalShieldPower)} onClick={() => setMilitaryOpen(true)} />
+            <div className="grid grid-cols-2 gap-3 mt-3">
+              <button
+                onClick={() => setMilitaryOpen(true)}
+                className="flex flex-col items-center text-center p-3 rounded-lg border border-crimson/15 hover:border-crimson/30 hover:bg-crimson/5 transition-all"
+              >
+                <div className="w-9 h-9 rounded-lg bg-crimson/8 border border-crimson/20 flex items-center justify-center mb-2.5">
+                  <GiCrossedSwords size={17} className="text-crimson" />
+                </div>
+                <span className="font-ui text-xl font-bold text-ink tabular-nums leading-none">{formatResource(totalAttackPower)}</span>
+                <span className="font-ui text-[0.58rem] text-ink-muted/60 uppercase tracking-wide mt-1">Ofensiva</span>
+              </button>
+              <button
+                onClick={() => setMilitaryOpen(true)}
+                className="flex flex-col items-center text-center p-3 rounded-lg border border-forest/15 hover:border-forest/30 hover:bg-forest/5 transition-all"
+              >
+                <div className="w-9 h-9 rounded-lg bg-forest/8 border border-forest/20 flex items-center justify-center mb-2.5">
+                  <Shield size={17} className="text-forest-light" />
+                </div>
+                <span className="font-ui text-xl font-bold text-ink tabular-nums leading-none">{formatResource(totalShieldPower)}</span>
+                <span className="font-ui text-[0.58rem] text-ink-muted/60 uppercase tracking-wide mt-1">Defensiva</span>
+              </button>
+            </div>
           </Card>
 
         </div>
@@ -467,22 +514,6 @@ function ProductionRow({
   )
 }
 
-function StatRow({
-  icon, label: lbl, value, note, highlight, onClick,
-}: { icon: ReactNode; label: string; value: string; note?: string; highlight?: boolean; onClick?: () => void }) {
-  return (
-    <button
-      className="w-full flex items-center gap-2.5 group hover:opacity-80 transition-opacity text-left"
-      onClick={onClick}
-    >
-      <span className={`shrink-0 ${highlight ? 'text-gold' : 'text-gold/50'}`}>{icon}</span>
-      <span className={`font-ui text-sm font-semibold tabular-nums ${highlight ? 'text-gold' : 'text-ink'}`}>{value}</span>
-      <span className="font-ui text-xs text-ink-muted">{lbl}</span>
-      <span className="font-body text-xs text-ink-muted/50 ml-auto">{note}</span>
-      <ChevronRight size={12} className="text-ink-muted/30 group-hover:text-ink-muted/60 shrink-0" />
-    </button>
-  )
-}
 
 function QueueRow({
   icon, label: lbl, finishesAt, startedAt, color, onCountdownEnd,
