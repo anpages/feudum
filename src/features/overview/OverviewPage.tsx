@@ -1,5 +1,5 @@
 import { type ReactNode, useState, useEffect, useRef, useCallback } from 'react'
-import { Clock, TrendingUp, Hammer, FlaskConical, Swords, Send, Shield, ChevronRight, Zap, TreePine, Mountain, Wheat, AlertTriangle, Timer, Trophy } from 'lucide-react'
+import { Clock, TrendingUp, Hammer, FlaskConical, Swords, Shield, ChevronRight, Zap, TreePine, Mountain, Wheat, AlertTriangle, Timer, Trophy } from 'lucide-react'
 import {
   GiAnvil, GiSpellBook, GiCrossedSwords, GiDragonHead, GiLaurelCrown,
 } from 'react-icons/gi'
@@ -16,7 +16,8 @@ import { useSeason } from '@/features/season/useSeason'
 import { applyOptimisticCompletions } from '@/features/queues/applyOptimisticCompletions'
 import { formatResource, formatDuration } from '@/lib/format'
 import { label as unitLabel } from '@/lib/labels'
-import { tempLabel } from '@/lib/terrain'
+import { MISSION_META } from '@/features/armies/armiesMeta'
+import type { ArmyMission } from '@/shared/types'
 import { Card } from '@/components/ui/Card'
 import { Sheet } from '@/components/ui/Sheet'
 
@@ -73,8 +74,7 @@ export function OverviewPage() {
   const totalAttackPower = allBarracksUnits.reduce((s, u) => s + u.count * effBonus(u.attack, sword), 0)
   const totalShieldPower = allBarracksUnits.reduce((s, u) => s + u.count * effBonus(u.shield, arm),   0)
   const totalUnitCount   = allBarracksUnits.reduce((s, u) => s + u.count, 0)
-  const activeMissions = armiesData?.missions.filter(m => m.state === 'active').length ?? 0
-  const returningMissions = armiesData?.missions.filter(m => m.state === 'returning').length ?? 0
+  const activeMissions = armiesData?.missions.filter(m => m.state !== 'completed') ?? []
   const incomingHostileCount = armiesData?.incomingMissions.filter(m => m.threatLevel === 'hostile').length ?? 0
   const underAttack = armiesData?.underAttack ?? false
 
@@ -126,7 +126,6 @@ export function OverviewPage() {
     return () => { if (refetchTimerRef.current) clearTimeout(refetchTimerRef.current) }
   }, [queuedBuildings, queuedResearch, queuedUnits, handleQueueEnd])
 
-  const tempAvg = (kingdom as Record<string, unknown> | null)?.tempAvg as number | undefined
   const charClass = user?.characterClass ? CLASS_INFO[user.characterClass] : null
 
   const { data: season } = useSeason()
@@ -174,11 +173,6 @@ export function OverviewPage() {
 
         {/* Tags row */}
         <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-gold/10">
-          {tempAvg !== undefined && (
-            <span className="inline-flex items-center gap-1.5 font-ui text-xs px-2.5 py-1 rounded-full border text-ink-muted/70 border-current/20 bg-current/5">
-              🌡️ {tempLabel(tempAvg)}
-            </span>
-          )}
           {charClass && (
             <span className={`inline-flex items-center gap-1.5 font-ui text-xs px-2.5 py-1 rounded-full border ${charClass.color} border-current/25 bg-current/5`}>
               {charClass.emoji} {charClass.label}
@@ -276,16 +270,13 @@ export function OverviewPage() {
       </section>
 
       {/* ── Misiones activas ── */}
-      {(activeMissions > 0 || returningMissions > 0) && (
+      {activeMissions.length > 0 && (
         <section className="anim-fade-up-2">
           <span className="section-heading">Misiones en marcha</span>
-          <Card className="p-4 space-y-3">
-            {activeMissions > 0 && (
-              <StatRow icon={<Send size={12} />} label="En camino" value={`${activeMissions}`} note={activeMissions === 1 ? 'misión activa' : 'misiones activas'} highlight onClick={() => navigate('/armies')} />
-            )}
-            {returningMissions > 0 && (
-              <StatRow icon={<Send size={12} className="rotate-180" />} label="Regresando" value={`${returningMissions}`} note={returningMissions === 1 ? 'misión' : 'misiones'} highlight onClick={() => navigate('/armies')} />
-            )}
+          <Card className="px-4 py-1">
+            {activeMissions.map(m => (
+              <MiniMissionRow key={m.id} mission={m} onClick={() => navigate('/armies')} />
+            ))}
           </Card>
         </section>
       )}
@@ -561,7 +552,50 @@ function MilitarySheetContent({ units, support, defenses, inMissions }: {
   )
 }
 
-// ── Development sheet content ─────────────────────────────────────────────────
+// ── Mini mission row ──────────────────────────────────────────────────────────
+
+function MiniMissionRow({ mission, onClick }: { mission: ArmyMission; onClick: () => void }) {
+  const isReturning = mission.state === 'returning'
+  const isExploring = mission.state === 'exploring'
+  const meta        = MISSION_META[mission.missionType]
+  const Icon        = meta.Icon
+  const coord       = isReturning ? mission.origin : mission.target
+  const targetTime  = isReturning ? (mission.returnTime ?? 0) : mission.arrivalTime
+  const [secs, setSecs] = useState(() => Math.max(0, targetTime - Math.floor(Date.now() / 1000)))
+
+  useEffect(() => {
+    const id = setInterval(() => setSecs(Math.max(0, targetTime - Math.floor(Date.now() / 1000))), 1000)
+    return () => clearInterval(id)
+  }, [targetTime])
+
+  const stateLabel   = isReturning ? 'Regresando' : isExploring ? 'Explorando' : 'En camino'
+  const stateCls     = isReturning ? 'text-forest bg-forest/8' : 'text-gold-dim bg-gold/8'
+
+  return (
+    <button
+      onClick={onClick}
+      className="w-full flex items-center gap-3 py-2.5 border-b border-gold/8 last:border-0 hover:bg-gold/4 -mx-4 px-4 transition-colors text-left"
+    >
+      <Icon size={14} className={`${meta.color} shrink-0`} />
+      <div className="flex-1 min-w-0">
+        <span className="font-ui text-xs font-semibold text-ink">{meta.label}</span>
+        <span className="font-ui text-[0.6rem] text-ink-muted/70 ml-2 tabular-nums">
+          {coord.realm}:{coord.region}:{coord.slot}
+        </span>
+      </div>
+      <div className="flex items-center gap-2 shrink-0">
+        <span className={`font-ui text-[0.6rem] font-semibold px-1.5 py-0.5 rounded-full ${stateCls}`}>
+          {stateLabel}
+        </span>
+        <span className="font-ui text-xs tabular-nums text-ink-muted w-14 text-right">
+          {formatDuration(secs)}
+        </span>
+      </div>
+    </button>
+  )
+}
+
+// ── Skeleton ──────────────────────────────────────────────────────────────────
 
 function OverviewSkeleton() {
   return (

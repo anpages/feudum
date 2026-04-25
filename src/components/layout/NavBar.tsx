@@ -5,11 +5,9 @@ import {
   Sun, Moon, Monitor,
   type LucideIcon,
 } from 'lucide-react'
-import { useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@/features/auth/useAuth'
 import { useTheme, type ThemeMode } from '@/lib/theme'
-
-import type { ArmiesResponse } from '@/features/armies/types'
+import { useArmies } from '@/features/armies/useArmies'
 
 interface NavItem {
   to: string
@@ -43,10 +41,9 @@ const THEME_OPTIONS: { mode: ThemeMode; Icon: LucideIcon; label: string }[] = [
 
 export function NavBar({ isOpen, onClose }: Props) {
   const { user } = useAuth()
-  const qc = useQueryClient()
   const { mode, setMode } = useTheme()
-  const armiesData  = qc.getQueryData<ArmiesResponse>(['armies'])
-  const underAttack = armiesData?.underAttack ?? false
+  const { data: armiesData } = useArmies()
+  const underAttack    = armiesData?.underAttack ?? false
   const activeMissions = (armiesData?.missions ?? []).filter(m => m.state !== 'completed').length
 
   return (
@@ -77,8 +74,8 @@ export function NavBar({ isOpen, onClose }: Props) {
             <Icon size={16} className="nav-icon shrink-0" />
             <span className="flex-1">{label}</span>
             {to === '/armies' && (activeMissions > 0 || underAttack) && (
-              <span className={`ml-auto min-w-[1.25rem] h-5 rounded-full flex items-center justify-center font-ui text-[0.6rem] font-bold px-1 tabular-nums ${
-                underAttack ? 'bg-crimson text-white animate-pulse' : 'bg-gold text-white'
+              <span className={`ml-auto min-w-[1rem] h-4 rounded-full flex items-center justify-center font-ui text-[0.55rem] font-bold px-1 tabular-nums ${
+                underAttack ? 'bg-crimson/80 text-white animate-pulse' : 'bg-gold/80 text-white'
               }`}>
                 {activeMissions > 0 ? activeMissions : '!'}
               </span>
