@@ -866,18 +866,18 @@ async function growNpc(kingdom, cfg, now, researchMap, debrisRegions, colonizeAc
   const flavor    = getTickFlavor(personality, kingdom, ageHours)
   const hasTroops = (kingdom.barracks ?? 0) >= 1
 
-  let primaryResult, secondaryResult
+  let primaryResult, secondaryResult, defenseResult
 
   if (flavor === 'research') {
     primaryResult = await attemptResearchProactive(kingdom, personality, researchMap, cfg, now)
     if (!kingdom.currentTask) {
       secondaryResult = await attemptBuildWeighted(kingdom, personality, cfg, now, researchMap)
     }
-    if (hasTroops) await attemptTrainDefenses(kingdom, personality, researchMap)
+    if (hasTroops) defenseResult = await attemptTrainDefenses(kingdom, personality, researchMap)
   } else if (flavor === 'troops') {
     if (hasTroops) {
       primaryResult = await attemptTrainTroops(kingdom, personality, cls, researchMap, cfg, now)
-      await attemptTrainDefenses(kingdom, personality, researchMap)
+      defenseResult = await attemptTrainDefenses(kingdom, personality, researchMap)
     }
     if (!kingdom.currentTask) {
       secondaryResult = await attemptBuildWeighted(kingdom, personality, cfg, now, researchMap)
@@ -887,13 +887,15 @@ async function growNpc(kingdom, cfg, now, researchMap, debrisRegions, colonizeAc
     if (hasTroops && !kingdom.currentTask) {
       secondaryResult = await attemptTrainTroops(kingdom, personality, cls, researchMap, cfg, now)
     }
-    if (hasTroops) await attemptTrainDefenses(kingdom, personality, researchMap)
+    if (hasTroops) defenseResult = await attemptTrainDefenses(kingdom, personality, researchMap)
   }
 
-  const isActive = (r) => r && !['saving', 'blocked', 'waiting', 'error', 'research_busy', 'no_research'].includes(r?.action)
-  if (isActive(primaryResult))   return primaryResult
-  if (isActive(secondaryResult)) return secondaryResult
-  return primaryResult ?? secondaryResult ?? { action: 'saving' }
+  const isActive = (r) => r && !['saving', 'blocked', 'waiting', 'error', 'research_busy', 'no_research',
+    'skipped_defense', 'no_defense_affordable'].includes(r?.action)
+  const builtDefense = defenseResult?.action === 'defense'
+  if (isActive(primaryResult))   return { ...primaryResult,   builtDefense }
+  if (isActive(secondaryResult)) return { ...secondaryResult, builtDefense }
+  return { ...(primaryResult ?? secondaryResult ?? { action: 'saving' }), builtDefense }
 }
 
 // ── Handler ───────────────────────────────────────────────────────────────────
@@ -1029,6 +1031,7 @@ export default async function handler(req, res) {
         if (growResult.isSupport) trainedSupport++
         if (growResult.isDefense) trainedDefense++
       }
+      if (growResult?.builtDefense) trainedDefense++
       if (growResult?.action === 'saving')    saved++
       if (growResult?.action === 'waiting')   waiting++
       if (growResult?.action === 'fleetsave') fleetsaved++
