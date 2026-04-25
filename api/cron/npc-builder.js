@@ -623,6 +623,16 @@ async function attemptTrainDefenses(kingdom, personality, researchMap) {
     kingdom[unitId] = newCount
   }
 
+  // Append defense info to lastDecision without losing the primary action context
+  const prevDecision = kingdom.lastDecision ?? ''
+  const defNote = `defensa: ${lastDef} ×${totalBuilt}`
+  const newDecision = prevDecision && !prevDecision.includes('defensa:')
+    ? `${prevDecision} | ${defNote}`
+    : defNote
+  await db.update(npcState).set({ lastDecision: newDecision, updatedAt: new Date() })
+    .where(eq(npcState.userId, kingdom.userId))
+  kingdom.lastDecision = newDecision
+
   return { action: 'defense', unit: lastDef, count: totalBuilt, isDefense: true }
 }
 

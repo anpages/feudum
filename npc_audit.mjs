@@ -156,14 +156,17 @@ for (const [k,v] of Object.entries(ageBuckets))
 const deciding = {}
 for (const { n } of classified) {
   const d = (n.lastDecision ?? 'sin decisión').toLowerCase()
-  const key = d.startsWith('ahorrando')      ? 'ahorrando'      :
-              d.startsWith('construyendo')    ? 'construyendo'   :
-              d.startsWith('entrenando')      ? 'entrenando'     :
-              d.startsWith('investigando')    ? 'investigando'   :
-              d.startsWith('crecimiento')     ? 'crecimiento'    :
-              d.startsWith('reserva')         ? 'reserva flota'  :
-              d.startsWith('investigación')   ? 'investigación'  :
-              d.slice(0, 40)
+  const hasDefensa = d.includes('defensa:')
+  const base = d.startsWith('ahorrando')      ? 'ahorrando'      :
+               d.startsWith('construyendo')   ? 'construyendo'   :
+               d.startsWith('entrenando')     ? 'entrenando'     :
+               d.startsWith('investigando')   ? 'investigando'   :
+               d.startsWith('crecimiento')    ? 'crecimiento'    :
+               d.startsWith('reserva')        ? 'reserva flota'  :
+               d.startsWith('investigación')  ? 'investigación'  :
+               d.startsWith('defensa:')       ? 'defensa'        :
+               d.slice(0, 40)
+  const key = hasDefensa && base !== 'defensa' ? `${base} + defensa` : base
   deciding[key] = (deciding[key] ?? 0) + 1
 }
 console.log('\n── Decisiones raw ──')
