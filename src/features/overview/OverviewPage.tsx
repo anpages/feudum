@@ -644,7 +644,11 @@ function MiniMissionRow({ mission, onClick }: { mission: ArmyMission; onClick: (
   const meta        = MISSION_META[mission.missionType]
   const Icon        = meta.Icon
   const coord       = isReturning ? mission.origin : mission.target
-  const targetTime  = isReturning ? (mission.returnTime ?? 0) : mission.arrivalTime
+  const targetTime  = isReturning
+    ? (mission.returnTime ?? 0)
+    : isExploring
+      ? mission.arrivalTime + (mission.holdingTime ?? 0)
+      : mission.arrivalTime
   const [secs, setSecs] = useState(() => Math.max(0, targetTime - Math.floor(Date.now() / 1000)))
 
   useEffect(() => {
