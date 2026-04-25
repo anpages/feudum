@@ -263,11 +263,21 @@ export function OverviewPage() {
                   </span>
                 )}
               </div>
-              <div className="grid grid-cols-3 gap-3">
-                <ProductionRow icon={<TreePine size={14} />} label="Madera" rate={kingdom?.woodProduction ?? 0}  current={resources.wood}  cap={kingdom?.woodCapacity}  deficit={deficit} />
-                <ProductionRow icon={<Mountain size={14} />} label="Piedra" rate={kingdom?.stoneProduction ?? 0} current={resources.stone} cap={kingdom?.stoneCapacity} deficit={deficit} />
-                <ProductionRow icon={<Wheat size={14} />}    label="Grano"  rate={kingdom?.grainProduction ?? 0} current={resources.grain} cap={kingdom?.grainCapacity} deficit={deficit} />
-              </div>
+              {(() => {
+                const kk2 = kingdom as Record<string, unknown> | null
+                const tMin = kk2?.tempMin as number | null | undefined
+                const tMax = kk2?.tempMax as number | null | undefined
+                const tempFactor = tMax != null
+                  ? Math.max(0.1, 1.44 - 0.004 * calcTempAvg(tMin, tMax))
+                  : undefined
+                return (
+                  <div className="grid grid-cols-3 gap-3">
+                    <ProductionRow icon={<TreePine size={14} />} label="Madera" rate={kingdom?.woodProduction ?? 0}  current={resources.wood}  cap={kingdom?.woodCapacity}  deficit={deficit} />
+                    <ProductionRow icon={<Mountain size={14} />} label="Piedra" rate={kingdom?.stoneProduction ?? 0} current={resources.stone} cap={kingdom?.stoneCapacity} deficit={deficit} />
+                    <ProductionRow icon={<Wheat size={14} />}    label="Grano"  rate={kingdom?.grainProduction ?? 0} current={resources.grain} cap={kingdom?.grainCapacity} deficit={deficit} tempFactor={tempFactor} />
+                  </div>
+                )
+              })()}
             </>
           )
         })()}
@@ -407,10 +417,11 @@ export function OverviewPage() {
 // ── Sub-components ────────────────────────────────────────────────────────────
 
 function ProductionRow({
-  icon, label, rate, current, cap, deficit,
-}: { icon: ReactNode; label: string; rate: number; current?: number; cap?: number; deficit?: boolean }) {
+  icon, label, rate, current, cap, deficit, tempFactor,
+}: { icon: ReactNode; label: string; rate: number; current?: number; cap?: number; deficit?: boolean; tempFactor?: number }) {
   const pct = cap && cap > 0 ? Math.min(100, ((current ?? 0) / cap) * 100) : 0
   const full = cap !== undefined && (current ?? 0) >= cap
+  const tempPct = tempFactor !== undefined ? Math.round((tempFactor - 1) * 100) : null
   return (
     <Card className="p-3">
       <div className="flex items-center gap-1.5 mb-2">
@@ -422,10 +433,17 @@ function ProductionRow({
       <p className={`font-ui text-lg tabular-nums font-semibold leading-none ${deficit ? 'text-crimson' : 'text-ink'}`}>
         {formatResource(rate)}
       </p>
-      <p className={`flex items-center gap-0.5 mt-1 text-[0.6rem] ${deficit ? 'text-crimson/60' : 'text-forest-light'}`}>
-        <TrendingUp size={8} />
-        <span>/h · neto</span>
-      </p>
+      <div className="flex items-center justify-between mt-1">
+        <p className={`flex items-center gap-0.5 text-[0.6rem] ${deficit ? 'text-crimson/60' : 'text-forest-light'}`}>
+          <TrendingUp size={8} />
+          <span>/h · neto</span>
+        </p>
+        {tempPct !== null && (
+          <span className={`font-ui text-[0.6rem] tabular-nums font-semibold ${tempPct >= 0 ? 'text-forest' : 'text-crimson/70'}`}>
+            🌡️ {tempPct >= 0 ? '+' : ''}{tempPct}%
+          </span>
+        )}
+      </div>
       {cap !== undefined && (
         <div className="mt-2 pt-2 border-t border-gold/10 space-y-1">
           <div className="flex items-center justify-between">
