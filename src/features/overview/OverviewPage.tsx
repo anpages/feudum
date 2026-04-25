@@ -173,56 +173,74 @@ export function OverviewPage() {
           </div>
         </div>
 
-        {/* Tags row */}
-        <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-gold/10">
-          {kingdom?.tempMax != null && (() => {
+        {/* Stats grid */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-3 mt-4 pt-4 border-t border-gold/10">
+
+          {/* Clima */}
+          {(() => {
             const kk = kingdom as Record<string, unknown>
-            const tempAvg = calcTempAvg(kk.tempMin as number, kk.tempMax as number)
+            const tempAvg = kingdom?.tempMax != null
+              ? calcTempAvg(kk.tempMin as number, kk.tempMax as number)
+              : null
             return (
-              <span className="inline-flex items-center gap-1.5 font-ui text-xs px-2.5 py-1 rounded-full border text-ink-muted/70 border-current/20 bg-current/5">
-                🌡️ {tempLabel(tempAvg)}
-              </span>
+              <div>
+                <p className="font-ui text-[0.55rem] uppercase tracking-widest text-ink-muted/50 mb-0.5">Clima</p>
+                <p className="font-ui text-xs text-ink-muted">
+                  {tempAvg !== null ? `🌡️ ${tempLabel(tempAvg)}` : '—'}
+                </p>
+              </div>
             )
           })()}
-          {charClass && (
-            <span className={`inline-flex items-center gap-1.5 font-ui text-xs px-2.5 py-1 rounded-full border ${charClass.color} border-current/25 bg-current/5`}>
-              {charClass.emoji} {charClass.label}
-            </span>
-          )}
-          {!charClass && (
-            <button
-              onClick={() => navigate('/profile')}
-              className="inline-flex items-center gap-1.5 font-ui text-xs px-2.5 py-1 rounded-full border border-gold/20 text-ink-muted/60 hover:text-gold hover:border-gold/40 transition-colors"
-            >
-              Elige una clase de personaje →
-            </button>
-          )}
-          {season?.seasonNumber && (() => {
-            const ended = season.seasonState === 'ended'
-            return (
-              <>
-                <span className={`inline-flex items-center gap-1.5 font-ui text-xs px-2.5 py-1 rounded-full border ${ended ? 'text-gold border-gold/25 bg-gold/5' : 'text-crimson-light border-crimson/25 bg-crimson/5'}`}>
-                  {ended
-                    ? <GiLaurelCrown size={11} />
-                    : <GiDragonHead  size={11} />
-                  }
+
+          {/* Clase */}
+          <div>
+            <p className="font-ui text-[0.55rem] uppercase tracking-widest text-ink-muted/50 mb-0.5">Clase</p>
+            {charClass ? (
+              <p className={`font-ui text-xs font-semibold ${charClass.color}`}>
+                {charClass.emoji} {charClass.label}
+              </p>
+            ) : (
+              <button
+                onClick={() => navigate('/profile')}
+                className="font-ui text-xs text-gold/70 hover:text-gold transition-colors"
+              >
+                Elegir →
+              </button>
+            )}
+          </div>
+
+          {/* Temporada */}
+          <div>
+            <p className="font-ui text-[0.55rem] uppercase tracking-widest text-ink-muted/50 mb-0.5">Temporada</p>
+            {season?.seasonNumber ? (() => {
+              const ended = season.seasonState === 'ended'
+              return (
+                <p className={`font-ui text-xs font-semibold flex items-center gap-1 ${ended ? 'text-gold' : 'text-crimson-light'}`}>
+                  {ended ? <GiLaurelCrown size={11} /> : <GiDragonHead size={11} />}
                   T{season.seasonNumber} — {ended ? 'Finalizada' : 'En curso'}
-                </span>
-                {!ended && seasonTimeLeft > 0 && (
-                  <span className="inline-flex items-center gap-1.5 font-ui text-xs px-2.5 py-1 rounded-full border text-ink-muted/60 border-gold/15 bg-gold/4">
-                    <Timer size={11} />
-                    {formatSeasonTime(seasonTimeLeft)}
-                  </span>
-                )}
-                {ended && season.winner && (
-                  <span className="inline-flex items-center gap-1.5 font-ui text-xs px-2.5 py-1 rounded-full border text-gold border-gold/25 bg-gold/5">
-                    <Trophy size={11} />
-                    {season.winner.username}
-                  </span>
-                )}
-              </>
-            )
-          })()}
+                </p>
+              )
+            })() : <p className="font-ui text-xs text-ink-muted/40">—</p>}
+          </div>
+
+          {/* Tiempo / Ganador */}
+          <div>
+            <p className="font-ui text-[0.55rem] uppercase tracking-widest text-ink-muted/50 mb-0.5">
+              {season?.seasonState === 'ended' ? 'Ganador' : 'Tiempo restante'}
+            </p>
+            {season?.seasonState === 'ended' && season.winner ? (
+              <p className="font-ui text-xs font-semibold text-gold flex items-center gap-1">
+                <Trophy size={11} />{season.winner.username}
+              </p>
+            ) : seasonTimeLeft > 0 ? (
+              <p className="font-ui text-xs text-ink-muted flex items-center gap-1">
+                <Timer size={11} />{formatSeasonTime(seasonTimeLeft)}
+              </p>
+            ) : (
+              <p className="font-ui text-xs text-ink-muted/40">—</p>
+            )}
+          </div>
+
         </div>
       </Card>
 
