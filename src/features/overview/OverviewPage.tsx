@@ -1,5 +1,5 @@
 import { type ReactNode, useState, useEffect, useRef, useCallback } from 'react'
-import { Clock, TrendingUp, Hammer, FlaskConical, Swords, Shield, Zap, TreePine, Mountain, Wheat, AlertTriangle, MapPin } from 'lucide-react'
+import { Clock, TrendingUp, Hammer, FlaskConical, Swords, Shield, Zap, TreePine, Mountain, Wheat, AlertTriangle, MapPin, Thermometer, Flame, Trophy, Timer, Compass, Pickaxe, type LucideIcon } from 'lucide-react'
 import { GiAnvil, GiSpellBook, GiCrossedSwords } from 'react-icons/gi'
 import { useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
@@ -32,10 +32,10 @@ function formatSeasonTime(seconds: number): string {
   return `${minutes}m`
 }
 
-const CLASS_INFO: Record<string, { emoji: string; label: string; color: string; badgeCls: string }> = {
-  collector:  { emoji: '⛏️', label: 'Coleccionista', color: 'text-forest-light',  badgeCls: 'border-forest/30 bg-forest/8 text-forest-light'  },
-  general:    { emoji: '⚔️', label: 'General',       color: 'text-crimson-light', badgeCls: 'border-crimson/30 bg-crimson/8 text-crimson-light' },
-  discoverer: { emoji: '🧭', label: 'Explorador',    color: 'text-gold',          badgeCls: 'border-gold/35 bg-gold/8 text-gold-dim'           },
+const CLASS_INFO: Record<string, { Icon: LucideIcon; label: string; color: string; badgeCls: string }> = {
+  collector:  { Icon: Pickaxe, label: 'Coleccionista', color: 'text-forest-light',  badgeCls: 'border-forest/30 bg-forest/8 text-forest-light'  },
+  general:    { Icon: Swords,  label: 'General',       color: 'text-crimson-light', badgeCls: 'border-crimson/30 bg-crimson/8 text-crimson-light' },
+  discoverer: { Icon: Compass, label: 'Explorador',    color: 'text-gold',          badgeCls: 'border-gold/35 bg-gold/8 text-gold-dim'           },
 }
 
 const BUILDING_KEYS = [
@@ -179,8 +179,9 @@ export function OverviewPage() {
         <div className="flex items-center gap-3 flex-wrap">
           <h1 className="font-display text-2xl text-ink leading-tight">{kingdom?.name ?? '—'}</h1>
           {charClass ? (
-            <span className={`font-ui text-xs font-semibold px-2.5 py-1 rounded-full border shrink-0 ${charClass.badgeCls}`}>
-              {charClass.emoji} {charClass.label}
+            <span className={`font-ui text-xs font-semibold px-2.5 py-1 rounded-full border shrink-0 flex items-center gap-1.5 ${charClass.badgeCls}`}>
+              <charClass.Icon size={11} />
+              {charClass.label}
             </span>
           ) : (
             <button onClick={() => navigate('/profile')} className="font-ui text-xs text-gold/60 hover:text-gold transition-colors shrink-0">
@@ -202,14 +203,14 @@ export function OverviewPage() {
               <div className="rounded-lg border border-gold/15 bg-parchment-warm/50 px-3.5 py-3 space-y-2">
                 <p className="font-ui text-[0.55rem] uppercase tracking-widest text-ink-muted/50 leading-none">Entorno</p>
                 <div className="flex items-center gap-2">
-                  <span className="text-sm leading-none shrink-0">🌡️</span>
+                  <Thermometer size={13} className="text-ink-muted/50 shrink-0" />
                   <span className="font-ui text-xs font-medium text-ink-mid">
                     {tempAvg !== null ? tempLabel(tempAvg) : '—'}
                   </span>
                 </div>
                 {terrain && (
                   <div className="flex items-center gap-2">
-                    <span className="text-sm leading-none shrink-0">🏔️</span>
+                    <Mountain size={13} className="text-ink-muted/50 shrink-0" />
                     <span className={`font-ui text-xs font-medium ${terrain.bonus ? 'text-ink-mid' : 'text-ink-muted/60'}`}>
                       {terrain.label}
                     </span>
@@ -229,7 +230,10 @@ export function OverviewPage() {
               <div className="rounded-lg border border-gold/15 bg-parchment-warm/50 px-3.5 py-3 space-y-2">
                 <p className="font-ui text-[0.55rem] uppercase tracking-widest text-ink-muted/50 leading-none">Temporada</p>
                 <div className="flex items-center gap-2">
-                  <span className="text-sm leading-none shrink-0">{ended ? '👑' : '🐉'}</span>
+                  {ended
+                    ? <Trophy size={13} className="text-gold/70 shrink-0" />
+                    : <Flame  size={13} className="text-crimson/70 shrink-0" />
+                  }
                   {season?.seasonNumber ? (
                     <span className={`font-ui text-xs font-semibold ${ended ? 'text-gold' : 'text-crimson-light'}`}>
                       T{season.seasonNumber} — {ended ? 'Finalizada' : 'En curso'}
@@ -239,7 +243,10 @@ export function OverviewPage() {
                   )}
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-sm leading-none shrink-0">{ended && season?.winner ? '🏆' : '⏱️'}</span>
+                  {ended && season?.winner
+                    ? <Trophy size={13} className="text-gold/70 shrink-0" />
+                    : <Timer  size={13} className="text-ink-muted/50 shrink-0" />
+                  }
                   {ended && season?.winner ? (
                     <span className="font-ui text-xs font-semibold text-gold">{season.winner.username}</span>
                   ) : seasonTimeLeft > 0 ? (
