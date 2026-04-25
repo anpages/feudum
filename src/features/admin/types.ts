@@ -361,6 +361,7 @@ export interface NpcHealthGrowthDelta {
   buildings: number
   combat: number
   support: number
+  defense: number
   total: number
 }
 

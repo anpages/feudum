@@ -18,6 +18,7 @@ const ALL_BUILDINGS = [
 ]
 const COMBAT_KEYS  = ['squire','knight','paladin','warlord','grandKnight','siegeMaster','warMachine','dragonKnight']
 const SUPPORT_KEYS = ['merchant','caravan','scavenger','colonist','scout']
+const DEFENSE_KEYS = ['beacon','archer','crossbowman','moat','ballista','mageTower','palisade','catapult','trebuchet','castleWall','dragonCannon']
 const MAX_HISTORY  = 72  // 12 días a razón de 1 reporte cada 4h
 
 function avg(arr, fn) {
@@ -30,8 +31,9 @@ function sumField(arr, fn) {
 function calcBuildingScore(npcs) {
   return npcs.reduce((t, n) => t + ALL_BUILDINGS.reduce((s, b) => s + (n[b] ?? 0), 0), 0)
 }
-function calcCombatUnits(n) { return COMBAT_KEYS.reduce((s, k)  => s + (n[k] ?? 0), 0) }
-function calcSupportUnits(n){ return SUPPORT_KEYS.reduce((s, k) => s + (n[k] ?? 0), 0) }
+function calcCombatUnits(n)  { return COMBAT_KEYS.reduce((s, k)  => s + (n[k] ?? 0), 0) }
+function calcSupportUnits(n) { return SUPPORT_KEYS.reduce((s, k) => s + (n[k] ?? 0), 0) }
+function calcDefenseUnits(n) { return DEFENSE_KEYS.reduce((s, k) => s + (n[k] ?? 0), 0) }
 function avgBld(npcs, key)  { return parseFloat(avg(npcs, n => n[key] ?? 0).toFixed(1)) }
 
 export default async function handler(req, res) {
@@ -87,10 +89,11 @@ export default async function handler(req, res) {
   if (allNpcs.length === 0) return res.json({ ok: true, skipped: 'no_regular_npcs' })
 
   // ── Métricas ───────────────────────────────────────────────────────────────
-  const savingCount       = allNpcs.filter(n => (n.lastDecision ?? '').toLowerCase().startsWith('ahorrando')).length
-  const savingPct         = Math.round(savingCount / allNpcs.length * 100)
-  const totalCombatUnits  = sumField(allNpcs, calcCombatUnits)
-  const totalSupportUnits = sumField(allNpcs, calcSupportUnits)
+  const savingCount        = allNpcs.filter(n => (n.lastDecision ?? '').toLowerCase().startsWith('ahorrando')).length
+  const savingPct          = Math.round(savingCount / allNpcs.length * 100)
+  const totalCombatUnits   = sumField(allNpcs, calcCombatUnits)
+  const totalSupportUnits  = sumField(allNpcs, calcSupportUnits)
+  const totalDefenseUnits  = sumField(allNpcs, calcDefenseUnits)
   const totalBuildingScore = calcBuildingScore(allNpcs)
 
   const seasonStart    = parseInt(cfg.season_start ?? '0', 10)
@@ -105,6 +108,7 @@ export default async function handler(req, res) {
     totalBuildingScore,
     totalCombatUnits,
     totalSupportUnits,
+    totalDefenseUnits,
     // Edificios clave para diagnóstico
     avgSawmill:         avgBld(allNpcs, 'sawmill'),
     avgQuarry:          avgBld(allNpcs, 'quarry'),
@@ -135,7 +139,8 @@ export default async function handler(req, res) {
     const bldDelta     = totalBuildingScore - (prevMetrics.totalBuildingScore ?? 0)
     const combatDelta  = totalCombatUnits   - (prevMetrics.totalCombatUnits  ?? 0)
     const supportDelta = totalSupportUnits  - (prevMetrics.totalSupportUnits ?? 0)
-    growthDelta = { buildings: bldDelta, combat: combatDelta, support: supportDelta, total: bldDelta + combatDelta + supportDelta }
+    const defenseDelta = totalDefenseUnits  - (prevMetrics.totalDefenseUnits ?? 0)
+    growthDelta = { buildings: bldDelta, combat: combatDelta, support: supportDelta, defense: defenseDelta, total: bldDelta + combatDelta + supportDelta + defenseDelta }
   }
 
   const inSleep = isSleepTime(now)
@@ -147,6 +152,7 @@ export default async function handler(req, res) {
     && growthDelta !== null
     && growthDelta.buildings <= 0
     && growthDelta.combat    <= 0
+    && growthDelta.defense   <= 0
 
   // Lecturas no-sleep consecutivas marcadas como estancamiento
   const recentNonSleep  = history.slice(-8).filter(r => !r.sleep)
@@ -156,9 +162,10 @@ export default async function handler(req, res) {
   const anomalies = []
 
   if (isStagnant && growthDelta) {
-    const bldStr  = growthDelta.buildings <= 0 ? 'sin cambio en edificios'  : `+${growthDelta.buildings} niveles`
-    const cmbStr  = growthDelta.combat    <= 0 ? 'sin cambio en combate'    : `+${growthDelta.combat} unidades`
-    anomalies.push(`Estancamiento: ${bldStr}, ${cmbStr} en las últimas 4h (${savingPct}% ahorrando)`)
+    const bldStr = growthDelta.buildings <= 0 ? 'sin cambio en edificios' : `+${growthDelta.buildings} niveles`
+    const cmbStr = growthDelta.combat    <= 0 ? 'sin cambio en combate'   : `+${growthDelta.combat} unidades`
+    const defStr = growthDelta.defense   <= 0 ? 'sin defensa'             : `+${growthDelta.defense} def.`
+    anomalies.push(`Estancamiento: ${bldStr}, ${cmbStr}, ${defStr} en las últimas 4h (${savingPct}% ahorrando)`)
   }
 
   if (isStagnant && consecStagnant >= 2) {

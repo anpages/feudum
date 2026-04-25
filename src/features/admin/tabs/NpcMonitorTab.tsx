@@ -631,6 +631,7 @@ function GrowthDeltaCell({ delta }: { delta: NpcHealthGrowthDelta | null | undef
   if (!delta) return <span className="text-ink-muted">—</span>
   const bldOk = delta.buildings > 0
   const cmbOk = delta.combat    > 0
+  const defOk = (delta.defense  ?? 0) > 0
   return (
     <div className="flex flex-col items-end gap-0.5">
       <span className={`font-ui text-[0.65rem] tabular-nums ${bldOk ? 'text-forest-light' : 'text-crimson-light'}`}>
@@ -638,6 +639,9 @@ function GrowthDeltaCell({ delta }: { delta: NpcHealthGrowthDelta | null | undef
       </span>
       <span className={`font-ui text-[0.65rem] tabular-nums ${cmbOk ? 'text-forest-light' : delta.combat < 0 ? 'text-crimson-light' : 'text-ink-muted'}`}>
         {cmbOk ? '+' : ''}{delta.combat} comb.
+      </span>
+      <span className={`font-ui text-[0.65rem] tabular-nums ${defOk ? 'text-forest-light' : 'text-ink-muted'}`}>
+        {defOk ? '+' : ''}{delta.defense ?? 0} def.
       </span>
     </div>
   )
