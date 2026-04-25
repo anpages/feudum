@@ -535,10 +535,28 @@ async function attemptTrainTroops(kingdom, personality, cls, researchMap, cfg, n
   }
 }
 
+// Minimum count of a defense type before progressing to the next tier.
+// Mirrors how troops work: build enough cheap defense, then graduate upward.
+const DEFENSE_SOFT_CAP = {
+  beacon:      5,
+  archer:      20,
+  crossbowman: 10,
+  moat:        5,
+  ballista:    5,
+  mageTower:   5,
+  palisade:    2,
+  catapult:    3,
+  trebuchet:   3,
+  castleWall:  2,
+  dragonCannon: 2,
+}
+
 // Trains a batch of defense structures using leftover resources.
 // Called as a second pass after attemptTrainTroops — defenses are instant (no queue).
 // Only runs when combatTotal >= ATTACK_THRESHOLD so economy-first NPCs build a
 // base army before investing in walls.
+// Progresses through tiers: once a type hits DEFENSE_SOFT_CAP, the next tick
+// skips it and trains the next affordable tier (beacon → archer → crossbowman → …)
 async function attemptTrainDefenses(kingdom, personality, researchMap) {
   const combatTotal = [...UNIT_COMBAT_SET].reduce((s, u) => s + (kingdom[u] ?? 0), 0)
   if (combatTotal < ATTACK_THRESHOLD[personality]) return { action: 'skipped_defense' }
@@ -552,6 +570,10 @@ async function attemptTrainDefenses(kingdom, personality, researchMap) {
   let lastDef = ''
 
   for (const unitId of defPriority) {
+    // Skip this tier if NPC already has enough — graduate to next
+    const cap = DEFENSE_SOFT_CAP[unitId] ?? 3
+    if ((kingdom[unitId] ?? 0) >= cap) continue
+
     const unitDef = ALL_UNITS.find(u => u.id === unitId)
     if (!unitDef) continue
 
@@ -573,14 +595,16 @@ async function attemptTrainDefenses(kingdom, personality, researchMap) {
     )
     if (canAfford <= 0) continue
 
-    const batch = Math.min(canAfford, defBatchCap)
+    // Only fill up to the soft cap for this tier
+    const stillNeeded = cap - (kingdom[unitId] ?? 0)
+    const batch = Math.min(canAfford, defBatchCap, stillNeeded)
     wood  -= cost.wood  * batch
     stone -= cost.stone * batch
     grain -= (cost.grain ?? 0) * batch
     patch[unitId] = (kingdom[unitId] ?? 0) + batch
     totalBuilt += batch
     lastDef = unitId
-    break  // one defense type per tick — keep it proportional
+    break  // one defense tier per tick
   }
 
   if (totalBuilt === 0) return { action: 'no_defense_affordable' }
