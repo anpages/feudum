@@ -166,7 +166,7 @@ export function OverviewPage() {
 
         {/* Header: label + coords badge */}
         <div className="flex items-start justify-between gap-3 mb-3">
-          <span className="section-heading mb-0">Panel de mando</span>
+          <span className="section-heading !mb-0">Panel de mando</span>
           {kingdom?.realm != null && (
             <span className="font-ui text-[0.65rem] tabular-nums text-ink-muted border border-gold/20 bg-parchment-warm px-2 py-0.5 rounded shrink-0">
               {kingdom.realm}:{kingdom.region}:{kingdom.slot}
@@ -260,8 +260,8 @@ export function OverviewPage() {
           const factor  = cons > 0 ? Math.min(1, prod / cons) : 1
           return (
             <>
-              <div className="flex items-center justify-between mb-3.5">
-                <span className="section-heading mb-0">Producción por hora</span>
+              <div className="flex items-center justify-between mb-[0.875rem]">
+                <span className="section-heading !mb-0">Producción por hora</span>
                 {deficit && (
                   <span className="flex items-center gap-1 font-ui text-[0.6rem] text-crimson font-semibold uppercase tracking-wide">
                     <Zap size={9} />
@@ -326,7 +326,7 @@ export function OverviewPage() {
           {/* Military stats */}
           <Card className="p-4">
             <div className="flex items-center justify-between">
-              <span className="section-heading mb-0">Fuerza militar</span>
+              <span className="section-heading !mb-0">Fuerza militar</span>
               <button
                 onClick={() => setMilitaryOpen(true)}
                 className="font-ui text-[0.6rem] text-ink-muted/50 hover:text-ink-muted tabular-nums transition-colors"
