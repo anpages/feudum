@@ -1,5 +1,5 @@
 import { type ReactNode, useState, useEffect, useRef, useCallback } from 'react'
-import { Clock, TrendingUp, Hammer, FlaskConical, Swords, Shield, Zap, TreePine, Mountain, Wheat, AlertTriangle, Timer, Trophy } from 'lucide-react'
+import { Clock, TrendingUp, Hammer, FlaskConical, Swords, Shield, Zap, TreePine, Mountain, Wheat, AlertTriangle, Timer, Trophy, MapPin } from 'lucide-react'
 import {
   GiAnvil, GiSpellBook, GiCrossedSwords, GiDragonHead, GiLaurelCrown,
 } from 'react-icons/gi'
@@ -170,7 +170,8 @@ export function OverviewPage() {
         <div className="flex items-start justify-between gap-3 mb-3">
           <span className="section-heading !mb-0">Panel de mando</span>
           {kingdom?.realm != null && (
-            <span className="font-ui text-[0.65rem] tabular-nums text-ink-muted border border-gold/20 bg-parchment-warm px-2 py-0.5 rounded shrink-0">
+            <span className="font-ui text-xs tabular-nums font-semibold text-ink-mid border border-gold/40 bg-gold/8 px-2.5 py-1 rounded-md shrink-0 flex items-center gap-1.5">
+              <MapPin size={10} className="text-gold shrink-0" />
               {kingdom.realm}:{kingdom.region}:{kingdom.slot}
             </span>
           )}
