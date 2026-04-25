@@ -1,8 +1,6 @@
 import { type ReactNode, useState, useEffect, useRef, useCallback } from 'react'
-import { Clock, TrendingUp, Hammer, FlaskConical, Swords, Shield, Zap, TreePine, Mountain, Wheat, AlertTriangle, Timer, Trophy, MapPin } from 'lucide-react'
-import {
-  GiAnvil, GiSpellBook, GiCrossedSwords, GiDragonHead, GiLaurelCrown,
-} from 'react-icons/gi'
+import { Clock, TrendingUp, Hammer, FlaskConical, Swords, Shield, Zap, TreePine, Mountain, Wheat, AlertTriangle, MapPin } from 'lucide-react'
+import { GiAnvil, GiSpellBook, GiCrossedSwords } from 'react-icons/gi'
 import { useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { useKingdom } from '@/features/kingdom/useKingdom'
@@ -183,21 +181,17 @@ export function OverviewPage() {
         </h1>
 
         {/* Stats grid */}
-        <div className="grid grid-cols-3 sm:grid-cols-5 gap-x-4 gap-y-3 mt-4 pt-4 border-t border-gold/10">
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-2 mt-4 pt-4 border-t border-gold/10">
 
           {/* Clima */}
           {(() => {
             const kk = kingdom as Record<string, unknown>
             const tempAvg = kingdom?.tempMax != null
-              ? calcTempAvg(kk.tempMin as number, kk.tempMax as number)
-              : null
+              ? calcTempAvg(kk.tempMin as number, kk.tempMax as number) : null
             return (
-              <div>
-                <p className="font-ui text-[0.6rem] uppercase tracking-widest text-ink-muted/60 mb-1">Clima</p>
-                <p className="font-ui text-xs text-ink-mid">
-                  {tempAvg !== null ? `🌡️ ${tempLabel(tempAvg)}` : '—'}
-                </p>
-              </div>
+              <StatPill icon="🌡️" label="Clima">
+                <span className="text-ink-mid">{tempAvg !== null ? tempLabel(tempAvg) : '—'}</span>
+              </StatPill>
             )
           })()}
 
@@ -205,63 +199,47 @@ export function OverviewPage() {
           {kingdom?.slot != null && (() => {
             const terrain = slotTerrainInfo(kingdom.slot)
             return (
-              <div>
-                <p className="font-ui text-[0.6rem] uppercase tracking-widest text-ink-muted/60 mb-1">Terreno</p>
-                <p className={`font-ui text-xs font-semibold ${terrain.bonus ? 'text-forest-light' : 'text-ink-muted/60'}`}>
-                  🏔️ {terrain.label}{terrain.bonus ? ` · ${terrain.bonus}` : ''}
-                </p>
-              </div>
+              <StatPill icon="🏔️" label="Terreno">
+                <span className={terrain.bonus ? 'text-ink-mid' : 'text-ink-muted/60'}>{terrain.label}</span>
+                {terrain.bonus && (
+                  <span className="font-ui text-[0.6rem] font-semibold text-forest-light mt-0.5 block">{terrain.bonus}</span>
+                )}
+              </StatPill>
             )
           })()}
 
           {/* Clase */}
-          <div>
-            <p className="font-ui text-[0.6rem] uppercase tracking-widest text-ink-muted/60 mb-1">Clase</p>
+          <StatPill icon={charClass?.emoji ?? '🏰'} label="Clase">
             {charClass ? (
-              <p className={`font-ui text-xs font-semibold ${charClass.color}`}>
-                {charClass.emoji} {charClass.label}
-              </p>
+              <span className={charClass.color}>{charClass.label}</span>
             ) : (
-              <button
-                onClick={() => navigate('/profile')}
-                className="font-ui text-xs text-gold/70 hover:text-gold transition-colors"
-              >
+              <button onClick={() => navigate('/profile')} className="font-ui text-xs text-gold/70 hover:text-gold transition-colors">
                 Elegir →
               </button>
             )}
-          </div>
+          </StatPill>
 
           {/* Temporada */}
-          <div>
-            <p className="font-ui text-[0.6rem] uppercase tracking-widest text-ink-muted/60 mb-1">Temporada</p>
+          <StatPill icon={season?.seasonState === 'ended' ? '👑' : '🐉'} label="Temporada">
             {season?.seasonNumber ? (() => {
               const ended = season.seasonState === 'ended'
-              return (
-                <p className={`font-ui text-xs font-semibold flex items-center gap-1 ${ended ? 'text-gold' : 'text-crimson-light'}`}>
-                  {ended ? <GiLaurelCrown size={11} /> : <GiDragonHead size={11} />}
-                  T{season.seasonNumber} — {ended ? 'Finalizada' : 'En curso'}
-                </p>
-              )
-            })() : <p className="font-ui text-xs text-ink-muted/40">—</p>}
-          </div>
+              return <span className={ended ? 'text-gold' : 'text-crimson-light'}>T{season.seasonNumber} — {ended ? 'Finalizada' : 'En curso'}</span>
+            })() : <span className="text-ink-muted/40">—</span>}
+          </StatPill>
 
           {/* Tiempo / Ganador */}
-          <div>
-            <p className="font-ui text-[0.6rem] uppercase tracking-widest text-ink-muted/60 mb-1">
-              {season?.seasonState === 'ended' ? 'Ganador' : 'Tiempo restante'}
-            </p>
-            {season?.seasonState === 'ended' && season.winner ? (
-              <p className="font-ui text-xs font-semibold text-gold flex items-center gap-1">
-                <Trophy size={11} />{season.winner.username}
-              </p>
-            ) : seasonTimeLeft > 0 ? (
-              <p className="font-ui text-xs text-ink-mid flex items-center gap-1">
-                <Timer size={11} />{formatSeasonTime(seasonTimeLeft)}
-              </p>
-            ) : (
-              <p className="font-ui text-xs text-ink-muted/40">—</p>
-            )}
-          </div>
+          <StatPill
+            icon={season?.seasonState === 'ended' ? '🏆' : '⏱️'}
+            label={season?.seasonState === 'ended' ? 'Ganador' : 'Tiempo'}
+            className="col-span-2 lg:col-span-1"
+          >
+            {season?.seasonState === 'ended' && season.winner
+              ? <span className="text-gold">{season.winner.username}</span>
+              : seasonTimeLeft > 0
+                ? <span className="text-ink-mid">{formatSeasonTime(seasonTimeLeft)}</span>
+                : <span className="text-ink-muted/40">—</span>
+            }
+          </StatPill>
 
         </div>
       </Card>
@@ -487,6 +465,20 @@ export function OverviewPage() {
 }
 
 // ── Sub-components ────────────────────────────────────────────────────────────
+
+function StatPill({ icon, label, children, className = '' }: {
+  icon: ReactNode; label: string; children: ReactNode; className?: string
+}) {
+  return (
+    <div className={`rounded-lg border border-gold/15 bg-parchment-warm/60 px-3 py-2.5 flex flex-col gap-1.5 min-w-0 ${className}`}>
+      <div className="flex items-center gap-1.5">
+        <span className="text-sm leading-none">{icon}</span>
+        <span className="font-ui text-[0.55rem] uppercase tracking-widest text-ink-muted/50 leading-none">{label}</span>
+      </div>
+      <div className="font-ui text-xs font-semibold leading-tight min-w-0">{children}</div>
+    </div>
+  )
+}
 
 function ProductionRow({
   icon, label, rate, current, cap, deficit, tempFactor, slotFactor,
