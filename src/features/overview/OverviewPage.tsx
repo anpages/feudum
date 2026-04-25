@@ -336,7 +336,7 @@ export function OverviewPage() {
                 {totalUnitCount} unidades →
               </button>
             </div>
-            <div className="grid grid-cols-2 gap-3 mt-3">
+            <div className="grid grid-cols-2 gap-3 mt-[0.875rem]">
               <button
                 onClick={() => setMilitaryOpen(true)}
                 className="flex flex-col items-center text-center p-3 rounded-lg border border-crimson/15 hover:border-crimson/30 hover:bg-crimson/5 transition-all"
@@ -344,7 +344,7 @@ export function OverviewPage() {
                 <div className="w-9 h-9 rounded-lg bg-crimson/8 border border-crimson/20 flex items-center justify-center mb-2.5">
                   <GiCrossedSwords size={17} className="text-crimson" />
                 </div>
-                <span className="font-ui text-xl font-bold text-ink tabular-nums leading-none">{formatResource(totalAttackPower)}</span>
+                <span className="font-ui text-2xl font-bold text-ink tabular-nums leading-none">{formatResource(totalAttackPower)}</span>
                 <span className="font-ui text-[0.58rem] text-ink-muted/60 uppercase tracking-wide mt-1">Ofensiva</span>
                 <span className="font-body text-[0.58rem] text-ink-muted/40 mt-0.5">{combatUnitCount} unidades</span>
               </button>
@@ -355,7 +355,7 @@ export function OverviewPage() {
                 <div className="w-9 h-9 rounded-lg bg-forest/8 border border-forest/20 flex items-center justify-center mb-2.5">
                   <Shield size={17} className="text-forest-light" />
                 </div>
-                <span className="font-ui text-xl font-bold text-ink tabular-nums leading-none">{formatResource(totalShieldPower)}</span>
+                <span className="font-ui text-2xl font-bold text-ink tabular-nums leading-none">{formatResource(totalShieldPower)}</span>
                 <span className="font-ui text-[0.58rem] text-ink-muted/60 uppercase tracking-wide mt-1">Defensiva</span>
                 <span className="font-body text-[0.58rem] text-ink-muted/40 mt-0.5">{defenseUnitCount} defensas</span>
               </button>
