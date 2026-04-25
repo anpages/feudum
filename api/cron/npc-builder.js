@@ -24,7 +24,7 @@ import {
   RESEARCH_PRIORITY, RESEARCH_TARGETS,
   npcPersonality, npcClass,
   isSleepTime, getNpcDelay, getTargetLevels, getTickFlavor, calcEnergyBalance,
-  EMPTY_RESEARCH,
+  totalArmy, EMPTY_RESEARCH,
 } from '../lib/npc-engine.js'
 
 // ── Esfuerzo de construcción ──────────────────────────────────────────────────
@@ -697,8 +697,10 @@ async function attemptResearchProactive(kingdom, personality, researchMap, cfg, 
     if ((researchMap[researchId] ?? 0) >= target) continue
 
     const r = await attemptResearch(kingdom, researchId, researchMap, cfg, now)
-    // 'error' means research ID not found — skip it; anything else is actionable or blocked
-    if (r.action !== 'error') return r
+    // 'error' → tech not found, skip
+    // 'saving' → can't afford yet, continue to next affordable tech
+    // anything else (researching, research_busy) → actionable, return
+    if (r.action !== 'error' && r.action !== 'saving') return r
   }
 
   await setDecision(kingdom, 'Sin investigación proactiva pendiente')
@@ -878,6 +880,18 @@ async function growNpc(kingdom, cfg, now, researchMap, debrisRegions, colonizeAc
     if (hasTroops) {
       primaryResult = await attemptTrainTroops(kingdom, personality, cls, researchMap, cfg, now)
       defenseResult = await attemptTrainDefenses(kingdom, personality, researchMap)
+      // Push combat research alongside troop training — only when no research is running
+      // and the NPC has an active army worth boosting.
+      if (!kingdom.currentResearch && totalArmy(kingdom) > 0) {
+        const combatTechs = ['swordsmanship', 'armoury', 'fortification']
+        const combatTargets = RESEARCH_TARGETS[personality] ?? RESEARCH_TARGETS.balanced
+        for (const tech of combatTechs) {
+          if ((researchMap[tech] ?? 0) < (combatTargets[tech] ?? 0)) {
+            await attemptResearch(kingdom, tech, researchMap, cfg, now)
+            break
+          }
+        }
+      }
     }
     if (!kingdom.currentTask) {
       secondaryResult = await attemptBuildWeighted(kingdom, personality, cfg, now, researchMap)

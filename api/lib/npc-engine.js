@@ -280,11 +280,11 @@ export const RESEARCH_TARGETS = {
   },
   military: {
     alchemy: 8, horsemanship: 6, fortification: 6, swordsmanship: 6, cartography: 6,
-    spycraft: 3, pyromancy: 12, runemastery: 5, armoury: 7, logistics: 6,
+    spycraft: 4, pyromancy: 12, runemastery: 5, armoury: 7, logistics: 6,
     exploration: 4, mysticism: 6, tradeRoutes: 7, dragonlore: 7, divineBlessing: 2, diplomaticNetwork: 2,
   },
   balanced: {
-    alchemy: 8, horsemanship: 6, cartography: 6, spycraft: 3, fortification: 5,
+    alchemy: 8, horsemanship: 6, cartography: 6, spycraft: 4, fortification: 5,
     swordsmanship: 5, pyromancy: 12, runemastery: 5, exploration: 5, logistics: 4,
     armoury: 5, mysticism: 6, tradeRoutes: 7, dragonlore: 7, divineBlessing: 2, diplomaticNetwork: 2,
   },
