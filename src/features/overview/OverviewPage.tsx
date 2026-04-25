@@ -94,6 +94,7 @@ export function OverviewPage() {
     .sort((a, b) => a.inQueue!.finishesAt - b.inQueue!.finishesAt) ?? []
   const allUnits = [...(barracksData?.units ?? []), ...(barracksData?.support ?? []), ...(barracksData?.defenses ?? [])]
   const queuedUnits = allUnits.filter(u => !!u.inQueue)
+    .sort((a, b) => a.inQueue!.finishesAt - b.inQueue!.finishesAt)
 
   // Refetch queue data the moment the next active item completes so the
   // following item starts showing its timer without needing a page navigation.
