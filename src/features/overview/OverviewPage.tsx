@@ -250,7 +250,7 @@ export function OverviewPage() {
         })()}
       </section>
 
-      {/* ── Stats + missions in a horizontal layout ── */}
+      {/* ── Estado ── */}
       <section className="anim-fade-up-2">
         <span className="section-heading">Estado</span>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -272,21 +272,23 @@ export function OverviewPage() {
             <StatRow icon={<Shield size={13} />} label="Potencia defensiva" value={formatResource(totalShieldPower)} onClick={() => setMilitaryOpen(true)} />
           </Card>
 
-          {/* Active missions */}
-          {(activeMissions > 0 || returningMissions > 0) && (
-            <Card className="p-4 space-y-3 sm:col-span-2">
-              <p className="font-ui text-[0.6rem] text-ink-muted/60 uppercase tracking-widest">Misiones en marcha</p>
-              {activeMissions > 0 && (
-                <StatRow icon={<Send size={12} />} label="En camino" value={`${activeMissions}`} note={activeMissions === 1 ? 'misión activa' : 'misiones activas'} highlight onClick={() => navigate('/armies')} />
-              )}
-              {returningMissions > 0 && (
-                <StatRow icon={<Send size={12} className="rotate-180" />} label="Regresando" value={`${returningMissions}`} note={returningMissions === 1 ? 'misión' : 'misiones'} highlight onClick={() => navigate('/armies')} />
-              )}
-            </Card>
-          )}
-
         </div>
       </section>
+
+      {/* ── Misiones activas ── */}
+      {(activeMissions > 0 || returningMissions > 0) && (
+        <section className="anim-fade-up-2">
+          <span className="section-heading">Misiones en marcha</span>
+          <Card className="p-4 space-y-3">
+            {activeMissions > 0 && (
+              <StatRow icon={<Send size={12} />} label="En camino" value={`${activeMissions}`} note={activeMissions === 1 ? 'misión activa' : 'misiones activas'} highlight onClick={() => navigate('/armies')} />
+            )}
+            {returningMissions > 0 && (
+              <StatRow icon={<Send size={12} className="rotate-180" />} label="Regresando" value={`${returningMissions}`} note={returningMissions === 1 ? 'misión' : 'misiones'} highlight onClick={() => navigate('/armies')} />
+            )}
+          </Card>
+        </section>
+      )}
 
       {/* ── Buildings queue ── */}
       <section className="anim-fade-up-3">
