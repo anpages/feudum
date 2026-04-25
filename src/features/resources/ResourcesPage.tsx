@@ -14,7 +14,7 @@ import { BuildingCard } from '@/features/buildings/components/BuildingCard'
 import { BUILDING_META } from '@/features/buildings/buildingMeta'
 import type { BuildingInfo } from '@/features/buildings/types'
 import { formatResource } from '@/lib/format'
-import { tempLabel } from '@/lib/terrain'
+import { tempLabel, slotTerrainInfo } from '@/lib/terrain'
 
 const SECTIONS = [
   {
@@ -106,8 +106,8 @@ export function ResourcesPage() {
         </button>
       </div>
 
-      {/* Energy + temperature status */}
-      <div className="grid grid-cols-2 gap-3 anim-fade-up-1">
+      {/* Energy + environment status */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 anim-fade-up-1">
         <Card className="p-3">
           <div className="flex items-center gap-2 mb-1">
             <Zap size={12} className={(energyProduced ?? 0) >= (energyConsumed ?? 0) ? 'text-forest-light' : 'text-crimson'} />
@@ -143,6 +143,25 @@ export function ResourcesPage() {
               <p className={`font-body text-[0.6rem] mt-1 ${isBoost ? 'text-forest' : 'text-crimson/70'}`}>
                 {isBoost ? '+' : ''}{pct - 100}% producción de grano
               </p>
+            </Card>
+          )
+        })()}
+        {kingdom?.slot != null && (() => {
+          const terrain = slotTerrainInfo(kingdom.slot)
+          return (
+            <Card className="p-3">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-[0.7rem]">🏔️</span>
+                <span className="font-ui text-[0.6rem] uppercase tracking-widest text-ink-muted/60">Terreno</span>
+              </div>
+              <p className="font-ui text-sm font-semibold text-ink leading-none">{terrain.label}</p>
+              {terrain.bonus ? (
+                <p className="font-body text-[0.6rem] mt-1 text-forest">
+                  {terrain.bonus}
+                </p>
+              ) : (
+                <p className="font-body text-[0.6rem] mt-1 text-ink-muted/50">Sin bonificación</p>
+              )}
             </Card>
           )
         })()}

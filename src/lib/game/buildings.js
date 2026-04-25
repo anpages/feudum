@@ -119,14 +119,36 @@ export function buildTime(wood, stone, nextLevel, workshopLevel, engineersGuildL
   return Math.max(1, Math.round(((wood + stone) / divisor) * 3600))
 }
 
-// ── Production formulas (per hour at given level) ────────────────────────────
+// ── Slot production bonuses (OGame position bonuses) ─────────────────────────
+// Inner slots (1-3): stone/crystal bonus — rocky terrain close to the sun.
+// Middle slots (6-10): wood/metal bonus — dense forests and mineral belt.
+// Outer slots: grain bonus via cold temperature (separate mechanic).
+// Source: OGameX PlanetService::getProductionForPositionBonuses()
 
-export function woodProduction(level) {
-  return level === 0 ? 0 : 30 * level * Math.pow(1.1, level)
+export const SLOT_PRODUCTION_BONUSES = {
+  1:  { wood: 1,    stone: 1.40 },
+  2:  { wood: 1,    stone: 1.30 },
+  3:  { wood: 1,    stone: 1.20 },
+  6:  { wood: 1.17, stone: 1    },
+  7:  { wood: 1.23, stone: 1    },
+  8:  { wood: 1.35, stone: 1    },
+  9:  { wood: 1.23, stone: 1    },
+  10: { wood: 1.17, stone: 1    },
 }
 
-export function stoneProduction(level) {
-  return level === 0 ? 0 : 20 * level * Math.pow(1.1, level)
+/** Returns { wood, stone } production multipliers for the given slot. */
+export function getSlotBonuses(slot) {
+  return SLOT_PRODUCTION_BONUSES[slot] ?? { wood: 1, stone: 1 }
+}
+
+// ── Production formulas (per hour at given level) ────────────────────────────
+
+export function woodProduction(level, factor = 1) {
+  return level === 0 ? 0 : 30 * level * Math.pow(1.1, level) * factor
+}
+
+export function stoneProduction(level, factor = 1) {
+  return level === 0 ? 0 : 20 * level * Math.pow(1.1, level) * factor
 }
 
 // ── Temperature (OGame slot ranges, medieval climate theme) ──────────────────
@@ -225,17 +247,12 @@ export function buildingRequirementsMet(def, kingdom, research) {
 
 export function applyBuildingEffect(building, newLevel, kingdom = {}) {
   const patch = { [building]: newLevel }
-  const tempAvg = calcTempAvg(kingdom.tempMin, kingdom.tempMax)
+  const tempAvg    = calcTempAvg(kingdom.tempMin, kingdom.tempMax)
+  const slotBonuses = getSlotBonuses(kingdom.slot)
 
-  if (building === 'sawmill') {
-    patch.woodProduction = woodProduction(newLevel)
-  }
-  if (building === 'quarry') {
-    patch.stoneProduction = stoneProduction(newLevel)
-  }
-  if (building === 'grainFarm') {
-    patch.grainProduction = grainProduction(newLevel, tempAvg)
-  }
+  if (building === 'sawmill')   patch.woodProduction  = woodProduction(newLevel, slotBonuses.wood)
+  if (building === 'quarry')    patch.stoneProduction = stoneProduction(newLevel, slotBonuses.stone)
+  if (building === 'grainFarm') patch.grainProduction = grainProduction(newLevel, tempAvg)
   if (building === 'granary')    patch.woodCapacity  = storageCapacity(newLevel)
   if (building === 'stonehouse') patch.stoneCapacity = storageCapacity(newLevel)
   if (building === 'silo')       patch.grainCapacity = storageCapacity(newLevel)

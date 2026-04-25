@@ -16,8 +16,8 @@ import { useSeason } from '@/features/season/useSeason'
 import { applyOptimisticCompletions } from '@/features/queues/applyOptimisticCompletions'
 import { formatResource, formatDuration } from '@/lib/format'
 import { label as unitLabel } from '@/lib/labels'
-import { tempLabel } from '@/lib/terrain'
-import { calcTempAvg } from '@/lib/game/buildings'
+import { tempLabel, slotTerrainInfo } from '@/lib/terrain'
+import { calcTempAvg, getSlotBonuses } from '@/lib/game/buildings'
 import { MISSION_META } from '@/features/armies/armiesMeta'
 import type { ArmyMission } from '@/shared/types'
 import { Card } from '@/components/ui/Card'
@@ -201,6 +201,20 @@ export function OverviewPage() {
             )
           })()}
 
+          {/* Terreno — only shown when slot gives a production bonus */}
+          {kingdom?.slot != null && (() => {
+            const terrain = slotTerrainInfo(kingdom.slot)
+            if (!terrain.bonus) return null
+            return (
+              <div>
+                <p className="font-ui text-[0.6rem] uppercase tracking-widest text-ink-muted/60 mb-1">Terreno</p>
+                <p className="font-ui text-xs font-semibold text-forest-light">
+                  🏔️ {terrain.bonus}
+                </p>
+              </div>
+            )
+          })()}
+
           {/* Clase */}
           <div>
             <p className="font-ui text-[0.6rem] uppercase tracking-widest text-ink-muted/60 mb-1">Clase</p>
@@ -279,10 +293,11 @@ export function OverviewPage() {
                 const tempFactor = tMax != null
                   ? Math.max(0.1, 1.44 - 0.004 * calcTempAvg(tMin, tMax))
                   : undefined
+                const slotBonuses = kingdom?.slot != null ? getSlotBonuses(kingdom.slot) : null
                 return (
                   <div className="grid grid-cols-3 gap-3">
-                    <ProductionRow icon={<TreePine size={14} />} label="Madera" rate={kingdom?.woodProduction ?? 0}  current={resources.wood}  cap={kingdom?.woodCapacity}  deficit={deficit} />
-                    <ProductionRow icon={<Mountain size={14} />} label="Piedra" rate={kingdom?.stoneProduction ?? 0} current={resources.stone} cap={kingdom?.stoneCapacity} deficit={deficit} />
+                    <ProductionRow icon={<TreePine size={14} />} label="Madera" rate={kingdom?.woodProduction ?? 0}  current={resources.wood}  cap={kingdom?.woodCapacity}  deficit={deficit} slotFactor={slotBonuses?.wood} />
+                    <ProductionRow icon={<Mountain size={14} />} label="Piedra" rate={kingdom?.stoneProduction ?? 0} current={resources.stone} cap={kingdom?.stoneCapacity} deficit={deficit} slotFactor={slotBonuses?.stone} />
                     <ProductionRow icon={<Wheat size={14} />}    label="Grano"  rate={kingdom?.grainProduction ?? 0} current={resources.grain} cap={kingdom?.grainCapacity} deficit={deficit} tempFactor={tempFactor} />
                   </div>
                 )
@@ -475,11 +490,12 @@ export function OverviewPage() {
 // ── Sub-components ────────────────────────────────────────────────────────────
 
 function ProductionRow({
-  icon, label, rate, current, cap, deficit, tempFactor,
-}: { icon: ReactNode; label: string; rate: number; current?: number; cap?: number; deficit?: boolean; tempFactor?: number }) {
+  icon, label, rate, current, cap, deficit, tempFactor, slotFactor,
+}: { icon: ReactNode; label: string; rate: number; current?: number; cap?: number; deficit?: boolean; tempFactor?: number; slotFactor?: number }) {
   const pct = cap && cap > 0 ? Math.min(100, ((current ?? 0) / cap) * 100) : 0
   const full = cap !== undefined && (current ?? 0) >= cap
   const tempPct = tempFactor !== undefined ? Math.round((tempFactor - 1) * 100) : null
+  const slotPct = slotFactor !== undefined && slotFactor > 1 ? Math.round((slotFactor - 1) * 100) : null
   return (
     <Card className="p-3">
       <div className="flex items-center gap-1.5 mb-2">
@@ -499,6 +515,11 @@ function ProductionRow({
         {tempPct !== null && (
           <span className={`font-ui text-[0.6rem] tabular-nums font-semibold ${tempPct >= 0 ? 'text-forest' : 'text-crimson/70'}`}>
             🌡️ {tempPct >= 0 ? '+' : ''}{tempPct}%
+          </span>
+        )}
+        {slotPct !== null && (
+          <span className="font-ui text-[0.6rem] tabular-nums font-semibold text-forest">
+            🏔️ +{slotPct}%
           </span>
         )}
       </div>

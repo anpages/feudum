@@ -7,6 +7,8 @@ declare module '@/lib/game/buildings' {
   export const SLOT_TEMP_RANGES: (null | [number, number])[]
   export function randomTempForSlot(slot: number): { tempMin: number; tempMax: number }
   export function calcTempAvg(tempMin: number | null | undefined, tempMax: number | null | undefined): number
+  export const SLOT_PRODUCTION_BONUSES: Record<number, { wood: number; stone: number }>
+  export function getSlotBonuses(slot: number | null | undefined): { wood: number; stone: number }
   export const BUILDINGS: Array<{
     id: string
     woodBase: number
@@ -17,8 +19,8 @@ declare module '@/lib/game/buildings' {
   }>
   export function buildCost(woodBase: number, stoneBase: number, factor: number, level: number, grainBase?: number): { wood: number; stone: number; grain: number }
   export function buildTime(wood: number, stone: number, nextLevel: number, workshopLevel: number, engineersGuildLevel: number, speed?: number): number
-  export function woodProduction(level: number): number
-  export function stoneProduction(level: number): number
+  export function woodProduction(level: number, factor?: number): number
+  export function stoneProduction(level: number, factor?: number): number
   export function grainProduction(level: number, tempAvg?: number): number
   export function windmillEnergy(level: number): number
   export function cathedralEnergy(level: number, alchemyLevel?: number): number
