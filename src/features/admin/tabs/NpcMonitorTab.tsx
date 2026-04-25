@@ -124,15 +124,14 @@ function UnitAdoptionRow({ label, withUnit, total, totalUnits, color = 'bg-gold'
 }) {
   const p = pct(withUnit, total)
   return (
-    <div className="space-y-1">
-      <div className="flex items-center justify-between">
-        <span className="font-ui text-xs text-ink">{label}</span>
-        <div className="flex items-baseline gap-2">
-          <span className="font-ui text-[0.6rem] text-ink-muted">{withUnit}/{total} NPCs</span>
-          <span className="font-ui text-xs font-semibold text-ink tabular-nums">{formatResource(totalUnits)}</span>
-        </div>
+    <div className="flex items-center gap-3">
+      <span className="font-ui text-xs text-ink-muted w-28 shrink-0">{label}</span>
+      <div className="flex-1 space-y-0.5">
+        <FillBar value={withUnit} max={total} color={p > 50 ? 'bg-forest-light' : p > 10 ? color : 'bg-ink-muted/40'} />
       </div>
-      <FillBar value={withUnit} max={total} color={p > 50 ? 'bg-forest-light' : p > 10 ? color : 'bg-ink-muted/40'} />
+      <span className="font-ui text-xs tabular-nums text-ink w-24 text-right shrink-0">
+        {formatResource(totalUnits)} <span className="text-ink-muted/50">·</span> {withUnit}/{total}
+      </span>
     </div>
   )
 }
@@ -934,10 +933,9 @@ export function NpcMonitorTab() {
                 <div key={key} className="flex items-center gap-3">
                   <span className="font-ui text-xs text-ink-muted w-36 shrink-0">{lbl}</span>
                   <div className="flex-1 space-y-0.5"><FillBar value={avgVal} max={weight} color="bg-gold/70" /></div>
-                  <span className="font-ui text-xs tabular-nums text-ink w-28 text-right shrink-0">
-                    <span className="text-ink-muted text-[0.6rem]">pr.</span> {avgVal}{' '}
-                    <span className="text-ink-muted text-[0.6rem]">máx.</span> {maxVal}{' '}
-                    <span className="text-ink-muted text-[0.6rem]">({withVal}/{agg.total})</span>
+                  <span className="font-ui text-xs tabular-nums text-ink w-20 text-right shrink-0">
+                    {avgVal} <span className="text-ink-muted/50">/</span> {maxVal}
+                    <span className="text-ink-muted/60 text-[0.6rem] ml-1">({withVal}/{agg.total})</span>
                   </span>
                 </div>
               )
