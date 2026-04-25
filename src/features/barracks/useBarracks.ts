@@ -2,9 +2,11 @@ import { useRef, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { barracksService } from './services/barracksService'
 import { getActiveKingdomId } from '@/features/kingdom/useKingdom'
+import { deductResources } from '@/features/kingdom/deductResources'
 import { toast } from '@/lib/toast'
 import { UNIT_LABELS } from '@/lib/labels'
 import type { UnitInfo, BarracksResponse } from './types'
+import type { Kingdom } from '@/../db/schema'
 
 export type { UnitInfo, BarracksResponse }
 
@@ -38,6 +40,7 @@ export function useTrainUnit() {
   const qc = useQueryClient()
   const activeId = getActiveKingdomId()
   const key = ['barracks', activeId] as const
+  const kingdomKey = ['kingdom', activeId] as const
 
   return useMutation({
     mutationKey: ['mutate', 'unit'],
@@ -48,7 +51,18 @@ export function useTrainUnit() {
       await qc.cancelQueries({ queryKey: key })
       const prev = qc.getQueryData<BarracksResponse>(key)
 
+      let prevKingdom: Kingdom | undefined
       if (prev) {
+        const allUnits = [...prev.units, ...prev.support, ...prev.defenses, ...(prev.missiles ?? [])]
+        const unitInfo = allUnits.find(u => u.id === unit)
+        if (unitInfo) {
+          prevKingdom = deductResources(qc, kingdomKey, {
+            wood:  unitInfo.woodBase  * amount,
+            stone: unitInfo.stoneBase * amount,
+            grain: (unitInfo.grainBase ?? 0) * amount,
+          })
+        }
+
         const findAndUpdate = (list: UnitInfo[]) =>
           list.map(u => {
             if (u.id !== unit) return u
@@ -65,7 +79,7 @@ export function useTrainUnit() {
         })
       }
 
-      return { prev }
+      return { prev, prevKingdom }
     },
 
     onSuccess: (data, { unit }) => {
@@ -80,6 +94,7 @@ export function useTrainUnit() {
 
     onError: (_err, _vars, context) => {
       if (context?.prev) qc.setQueryData<BarracksResponse>(key, context.prev)
+      if (context?.prevKingdom) qc.setQueryData(kingdomKey, context.prevKingdom)
     },
 
     onSettled: () => {

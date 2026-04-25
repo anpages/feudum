@@ -2,9 +2,11 @@ import { useRef, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { buildingsService } from './services/buildingsService'
 import { getActiveKingdomId } from '@/features/kingdom/useKingdom'
+import { deductResources } from '@/features/kingdom/deductResources'
 import { toast } from '@/lib/toast'
 import { BUILDING_LABELS } from '@/lib/labels'
 import type { BuildingInfo, BuildingsResponse } from './types'
+import type { Kingdom } from '@/../db/schema'
 
 export type { BuildingInfo, BuildingsResponse }
 
@@ -50,6 +52,7 @@ export function useUpgradeBuilding() {
   const qc = useQueryClient()
   const activeId = getActiveKingdomId()
   const key = ['buildings', activeId] as const
+  const kingdomKey = ['kingdom', activeId] as const
 
   return useMutation({
     mutationKey: ['mutate', 'building'],
@@ -59,12 +62,18 @@ export function useUpgradeBuilding() {
       await qc.cancelQueries({ queryKey: key })
       const prev = qc.getQueryData<BuildingsResponse>(key)
 
+      let prevKingdom: Kingdom | undefined
       if (prev) {
         const building = prev.buildings.find(b => b.id === buildingId)
         if (building) {
+          prevKingdom = deductResources(qc, kingdomKey, {
+            wood:  building.costWood,
+            stone: building.costStone,
+            grain: building.costGrain ?? 0,
+          })
+
           const now = Math.floor(Date.now() / 1000)
           const finishesAt = now + building.timeSeconds
-          // If queue already has items, this one is pending (startedAt in future)
           const startedAt = prev.totalQueueCount > 0 ? finishesAt + 1 : now
           qc.setQueryData<BuildingsResponse>(key, {
             ...prev,
@@ -78,7 +87,7 @@ export function useUpgradeBuilding() {
         }
       }
 
-      return { prev }
+      return { prev, prevKingdom }
     },
 
     onSuccess: (data, buildingId) => {
@@ -97,6 +106,7 @@ export function useUpgradeBuilding() {
 
     onError: (err, _buildingId, context) => {
       if (context?.prev) qc.setQueryData<BuildingsResponse>(key, context.prev)
+      if (context?.prevKingdom) qc.setQueryData(kingdomKey, context.prevKingdom)
       try {
         const body = JSON.parse((err as Error).message)
         toast.error(body.error ?? 'Error al iniciar construcción')

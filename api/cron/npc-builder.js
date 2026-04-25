@@ -1029,9 +1029,10 @@ export default async function handler(req, res) {
       if (growResult?.action === 'trained' || growResult?.action === 'training') {
         if (growResult.isCombat)  trainedCombat++
         if (growResult.isSupport) trainedSupport++
-        if (growResult.isDefense) trainedDefense++
       }
-      if (growResult?.builtDefense) trainedDefense++
+      if ((growResult?.action === 'trained' || growResult?.action === 'training') && growResult?.isDefense || growResult?.builtDefense) {
+        trainedDefense++
+      }
       if (growResult?.action === 'saving')    saved++
       if (growResult?.action === 'waiting')   waiting++
       if (growResult?.action === 'fleetsave') fleetsaved++

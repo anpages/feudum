@@ -40,6 +40,7 @@ export function FacilitiesPage() {
   if (isLoading) return <FacilitiesSkeleton />
 
   const buildingMap = Object.fromEntries((data?.buildings ?? []).map(b => [b.id, b]))
+  const queueFull = (data?.totalQueueCount ?? 0) >= 5
 
   function canAfford(b: BuildingInfo) {
     return resources.wood >= b.costWood && resources.stone >= b.costStone && resources.grain >= (b.costGrain ?? 0)
@@ -90,6 +91,7 @@ export function FacilitiesPage() {
                 isAccelerating={accelerate.isPending}
                 onCancel={(queueId) => cancel.mutate(queueId)}
                 isCancelling={cancel.isPending}
+                queueFull={queueFull && !b.inQueue}
                 animClass={`anim-fade-up-${Math.min(i + 1, 5) as 1|2|3|4|5}`}
               />
             )

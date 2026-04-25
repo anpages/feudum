@@ -2,9 +2,11 @@ import { useRef, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { researchService } from './services/researchService'
 import { getActiveKingdomId } from '@/features/kingdom/useKingdom'
+import { deductResources } from '@/features/kingdom/deductResources'
 import { toast } from '@/lib/toast'
 import { RESEARCH_LABELS } from '@/lib/labels'
 import type { ResearchInfo, ResearchResponse } from './types'
+import type { Kingdom } from '@/../db/schema'
 
 export type { ResearchInfo, ResearchResponse }
 
@@ -50,6 +52,7 @@ export function useUpgradeResearch() {
   const qc = useQueryClient()
   const activeId = getActiveKingdomId()
   const key = ['research', activeId] as const
+  const kingdomKey = ['kingdom', activeId] as const
 
   return useMutation({
     mutationKey: ['mutate', 'research'],
@@ -59,9 +62,16 @@ export function useUpgradeResearch() {
       await qc.cancelQueries({ queryKey: key })
       const prev = qc.getQueryData<ResearchResponse>(key)
 
+      let prevKingdom: Kingdom | undefined
       if (prev) {
         const item = prev.research.find(r => r.id === researchId)
         if (item) {
+          prevKingdom = deductResources(qc, kingdomKey, {
+            wood:  item.costWood,
+            stone: item.costStone,
+            grain: item.costGrain ?? 0,
+          })
+
           const now = Math.floor(Date.now() / 1000)
           const finishesAt = now + item.timeSeconds
           qc.setQueryData<ResearchResponse>(key, {
@@ -72,7 +82,7 @@ export function useUpgradeResearch() {
         }
       }
 
-      return { prev }
+      return { prev, prevKingdom }
     },
 
     onSuccess: (data, researchId) => {
@@ -91,6 +101,7 @@ export function useUpgradeResearch() {
 
     onError: (_err, _id, context) => {
       if (context?.prev) qc.setQueryData<ResearchResponse>(key, context.prev)
+      if (context?.prevKingdom) qc.setQueryData(kingdomKey, context.prevKingdom)
     },
 
     onSettled: () => {
