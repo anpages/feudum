@@ -201,24 +201,25 @@ export function OverviewPage() {
             const terrain = kingdom?.slot != null ? slotTerrainInfo(kingdom.slot) : null
             return (
               <div className="rounded-lg border border-gold/15 bg-parchment-warm/50 px-3.5 py-3">
-                <p className="font-ui text-[0.55rem] uppercase tracking-widest text-ink-muted/50 leading-none mb-3">Entorno</p>
-                <div className="space-y-2"><div className="flex items-center gap-2">
-                  <Thermometer size={13} className="text-ink-muted/50 shrink-0" />
-                  <span className="font-ui text-xs font-medium text-ink-mid">
-                    {tempAvg !== null ? tempLabel(tempAvg) : '—'}
-                  </span>
-                </div>
-                {terrain && (
+                <p className="font-ui text-[0.55rem] uppercase tracking-widest text-ink-muted/50">Entorno</p>
+                <div className="mt-3 space-y-2">
                   <div className="flex items-center gap-2">
-                    <Mountain size={13} className="text-ink-muted/50 shrink-0" />
-                    <span className={`font-ui text-xs font-medium ${terrain.bonus ? 'text-ink-mid' : 'text-ink-muted/60'}`}>
-                      {terrain.label}
+                    <Thermometer size={13} className="text-ink-muted/50 shrink-0" />
+                    <span className="font-ui text-xs font-medium text-ink-mid">
+                      {tempAvg !== null ? tempLabel(tempAvg) : '—'}
                     </span>
-                    {terrain.bonus && (
-                      <span className="font-ui text-[0.6rem] font-semibold text-forest-light ml-auto">{terrain.bonus}</span>
-                    )}
                   </div>
-                )}
+                  {terrain && (
+                    <div className="flex items-center gap-2">
+                      <Mountain size={13} className="text-ink-muted/50 shrink-0" />
+                      <span className={`font-ui text-xs font-medium ${terrain.bonus ? 'text-ink-mid' : 'text-ink-muted/60'}`}>
+                        {terrain.label}
+                      </span>
+                      {terrain.bonus && (
+                        <span className="font-ui text-[0.6rem] font-semibold text-forest-light ml-auto">{terrain.bonus}</span>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             )
@@ -229,33 +230,34 @@ export function OverviewPage() {
             const ended = season?.seasonState === 'ended'
             return (
               <div className="rounded-lg border border-gold/15 bg-parchment-warm/50 px-3.5 py-3">
-                <p className="font-ui text-[0.55rem] uppercase tracking-widest text-ink-muted/50 leading-none mb-3">Temporada</p>
-                <div className="space-y-2"><div className="flex items-center gap-2">
-                  {ended
-                    ? <Trophy size={13} className="text-gold/70 shrink-0" />
-                    : <Flame  size={13} className="text-ink-muted/50 shrink-0" />
-                  }
-                  {season?.seasonNumber ? (
-                    <span className={`font-ui text-xs font-semibold ${ended ? 'text-gold' : 'text-ink-mid'}`}>
-                      T{season.seasonNumber} — {ended ? 'Finalizada' : 'En curso'}
-                    </span>
-                  ) : (
-                    <span className="font-ui text-xs text-ink-muted/40">Sin temporada activa</span>
-                  )}
-                </div>
-                <div className="flex items-center gap-2">
-                  {ended && season?.winner
-                    ? <Trophy size={13} className="text-gold/70 shrink-0" />
-                    : <Timer  size={13} className="text-ink-muted/50 shrink-0" />
-                  }
-                  {ended && season?.winner ? (
-                    <span className="font-ui text-xs font-semibold text-gold">{season.winner.username}</span>
-                  ) : seasonTimeLeft > 0 ? (
-                    <span className="font-ui text-xs text-ink-mid">{formatSeasonTime(seasonTimeLeft)} restantes</span>
-                  ) : (
-                    <span className="font-ui text-xs text-ink-muted/40">—</span>
-                  )}
-                </div>
+                <p className="font-ui text-[0.55rem] uppercase tracking-widest text-ink-muted/50">Temporada</p>
+                <div className="mt-3 space-y-2">
+                  <div className="flex items-center gap-2">
+                    {ended
+                      ? <Trophy size={13} className="text-gold/70 shrink-0" />
+                      : <Flame  size={13} className="text-ink-muted/50 shrink-0" />
+                    }
+                    {season?.seasonNumber ? (
+                      <span className={`font-ui text-xs font-semibold ${ended ? 'text-gold' : 'text-ink-mid'}`}>
+                        T{season.seasonNumber} — {ended ? 'Finalizada' : 'En curso'}
+                      </span>
+                    ) : (
+                      <span className="font-ui text-xs text-ink-muted/40">Sin temporada activa</span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {ended && season?.winner
+                      ? <Trophy size={13} className="text-gold/70 shrink-0" />
+                      : <Timer  size={13} className="text-ink-muted/50 shrink-0" />
+                    }
+                    {ended && season?.winner ? (
+                      <span className="font-ui text-xs font-semibold text-gold">{season.winner.username}</span>
+                    ) : seasonTimeLeft > 0 ? (
+                      <span className="font-ui text-xs text-ink-mid">{formatSeasonTime(seasonTimeLeft)} restantes</span>
+                    ) : (
+                      <span className="font-ui text-xs text-ink-muted/40">—</span>
+                    )}
+                  </div>
                 </div>
               </div>
             )
