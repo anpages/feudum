@@ -32,10 +32,10 @@ function formatSeasonTime(seconds: number): string {
   return `${minutes}m`
 }
 
-const CLASS_INFO: Record<string, { emoji: string; label: string; color: string }> = {
-  collector:  { emoji: '⛏️', label: 'Coleccionista', color: 'text-forest-light' },
-  general:    { emoji: '⚔️', label: 'General',       color: 'text-crimson-light' },
-  discoverer: { emoji: '🧭', label: 'Explorador',    color: 'text-gold'         },
+const CLASS_INFO: Record<string, { emoji: string; label: string; color: string; badgeCls: string }> = {
+  collector:  { emoji: '⛏️', label: 'Coleccionista', color: 'text-forest-light',  badgeCls: 'border-forest/30 bg-forest/8 text-forest-light'  },
+  general:    { emoji: '⚔️', label: 'General',       color: 'text-crimson-light', badgeCls: 'border-crimson/30 bg-crimson/8 text-crimson-light' },
+  discoverer: { emoji: '🧭', label: 'Explorador',    color: 'text-gold',          badgeCls: 'border-gold/35 bg-gold/8 text-gold-dim'           },
 }
 
 const BUILDING_KEYS = [
@@ -164,7 +164,7 @@ export function OverviewPage() {
       {/* ── Kingdom identity banner ── */}
       <Card className="p-5 anim-fade-up">
 
-        {/* Header: label + coords badge */}
+        {/* Header: section label + coords badge */}
         <div className="flex items-start justify-between gap-3 mb-3">
           <span className="section-heading !mb-0">Panel de mando</span>
           {kingdom?.realm != null && (
@@ -175,71 +175,82 @@ export function OverviewPage() {
           )}
         </div>
 
-        {/* Kingdom name */}
-        <h1 className="font-display text-2xl text-ink leading-tight">
-          {kingdom?.name ?? '—'}
-        </h1>
+        {/* Kingdom name + class badge */}
+        <div className="flex items-center gap-3 flex-wrap">
+          <h1 className="font-display text-2xl text-ink leading-tight">{kingdom?.name ?? '—'}</h1>
+          {charClass ? (
+            <span className={`font-ui text-xs font-semibold px-2.5 py-1 rounded-full border shrink-0 ${charClass.badgeCls}`}>
+              {charClass.emoji} {charClass.label}
+            </span>
+          ) : (
+            <button onClick={() => navigate('/profile')} className="font-ui text-xs text-gold/60 hover:text-gold transition-colors shrink-0">
+              + Elegir clase
+            </button>
+          )}
+        </div>
 
-        {/* Stats grid */}
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-2 mt-4 pt-4 border-t border-gold/10">
+        {/* Entorno + Temporada cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-4 pt-4 border-t border-gold/10">
 
-          {/* Clima */}
+          {/* Entorno: Clima + Terreno */}
           {(() => {
             const kk = kingdom as Record<string, unknown>
             const tempAvg = kingdom?.tempMax != null
               ? calcTempAvg(kk.tempMin as number, kk.tempMax as number) : null
+            const terrain = kingdom?.slot != null ? slotTerrainInfo(kingdom.slot) : null
             return (
-              <StatPill icon="🌡️" label="Clima">
-                <span className="text-ink-mid">{tempAvg !== null ? tempLabel(tempAvg) : '—'}</span>
-              </StatPill>
-            )
-          })()}
-
-          {/* Terreno */}
-          {kingdom?.slot != null && (() => {
-            const terrain = slotTerrainInfo(kingdom.slot)
-            return (
-              <StatPill icon="🏔️" label="Terreno">
-                <span className={terrain.bonus ? 'text-ink-mid' : 'text-ink-muted/60'}>{terrain.label}</span>
-                {terrain.bonus && (
-                  <span className="font-ui text-[0.6rem] font-semibold text-forest-light mt-0.5 block">{terrain.bonus}</span>
+              <div className="rounded-lg border border-gold/15 bg-parchment-warm/50 px-3.5 py-3 space-y-2">
+                <p className="font-ui text-[0.55rem] uppercase tracking-widest text-ink-muted/50 leading-none">Entorno</p>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm leading-none shrink-0">🌡️</span>
+                  <span className="font-ui text-xs font-medium text-ink-mid">
+                    {tempAvg !== null ? tempLabel(tempAvg) : '—'}
+                  </span>
+                </div>
+                {terrain && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm leading-none shrink-0">🏔️</span>
+                    <span className={`font-ui text-xs font-medium ${terrain.bonus ? 'text-ink-mid' : 'text-ink-muted/60'}`}>
+                      {terrain.label}
+                    </span>
+                    {terrain.bonus && (
+                      <span className="font-ui text-[0.6rem] font-semibold text-forest-light ml-auto">{terrain.bonus}</span>
+                    )}
+                  </div>
                 )}
-              </StatPill>
+              </div>
             )
           })()}
-
-          {/* Clase */}
-          <StatPill icon={charClass?.emoji ?? '🏰'} label="Clase">
-            {charClass ? (
-              <span className={charClass.color}>{charClass.label}</span>
-            ) : (
-              <button onClick={() => navigate('/profile')} className="font-ui text-xs text-gold/70 hover:text-gold transition-colors">
-                Elegir →
-              </button>
-            )}
-          </StatPill>
 
           {/* Temporada */}
-          <StatPill icon={season?.seasonState === 'ended' ? '👑' : '🐉'} label="Temporada">
-            {season?.seasonNumber ? (() => {
-              const ended = season.seasonState === 'ended'
-              return <span className={ended ? 'text-gold' : 'text-crimson-light'}>T{season.seasonNumber} — {ended ? 'Finalizada' : 'En curso'}</span>
-            })() : <span className="text-ink-muted/40">—</span>}
-          </StatPill>
-
-          {/* Tiempo / Ganador */}
-          <StatPill
-            icon={season?.seasonState === 'ended' ? '🏆' : '⏱️'}
-            label={season?.seasonState === 'ended' ? 'Ganador' : 'Tiempo'}
-            className="col-span-2 lg:col-span-1"
-          >
-            {season?.seasonState === 'ended' && season.winner
-              ? <span className="text-gold">{season.winner.username}</span>
-              : seasonTimeLeft > 0
-                ? <span className="text-ink-mid">{formatSeasonTime(seasonTimeLeft)}</span>
-                : <span className="text-ink-muted/40">—</span>
-            }
-          </StatPill>
+          {(() => {
+            const ended = season?.seasonState === 'ended'
+            return (
+              <div className="rounded-lg border border-gold/15 bg-parchment-warm/50 px-3.5 py-3 space-y-2">
+                <p className="font-ui text-[0.55rem] uppercase tracking-widest text-ink-muted/50 leading-none">Temporada</p>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm leading-none shrink-0">{ended ? '👑' : '🐉'}</span>
+                  {season?.seasonNumber ? (
+                    <span className={`font-ui text-xs font-semibold ${ended ? 'text-gold' : 'text-crimson-light'}`}>
+                      T{season.seasonNumber} — {ended ? 'Finalizada' : 'En curso'}
+                    </span>
+                  ) : (
+                    <span className="font-ui text-xs text-ink-muted/40">Sin temporada activa</span>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm leading-none shrink-0">{ended && season?.winner ? '🏆' : '⏱️'}</span>
+                  {ended && season?.winner ? (
+                    <span className="font-ui text-xs font-semibold text-gold">{season.winner.username}</span>
+                  ) : seasonTimeLeft > 0 ? (
+                    <span className="font-ui text-xs text-ink-mid">{formatSeasonTime(seasonTimeLeft)} restantes</span>
+                  ) : (
+                    <span className="font-ui text-xs text-ink-muted/40">—</span>
+                  )}
+                </div>
+              </div>
+            )
+          })()}
 
         </div>
       </Card>
@@ -465,20 +476,6 @@ export function OverviewPage() {
 }
 
 // ── Sub-components ────────────────────────────────────────────────────────────
-
-function StatPill({ icon, label, children, className = '' }: {
-  icon: ReactNode; label: string; children: ReactNode; className?: string
-}) {
-  return (
-    <div className={`rounded-lg border border-gold/15 bg-parchment-warm/60 px-3 py-2.5 flex flex-col gap-1.5 min-w-0 ${className}`}>
-      <div className="flex items-center gap-1.5">
-        <span className="text-sm leading-none">{icon}</span>
-        <span className="font-ui text-[0.55rem] uppercase tracking-widest text-ink-muted/50 leading-none">{label}</span>
-      </div>
-      <div className="font-ui text-xs font-semibold leading-tight min-w-0">{children}</div>
-    </div>
-  )
-}
 
 function ProductionRow({
   icon, label, rate, current, cap, deficit, tempFactor, slotFactor,
