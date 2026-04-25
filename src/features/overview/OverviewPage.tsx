@@ -231,7 +231,7 @@ export function OverviewPage() {
           const factor  = cons > 0 ? Math.min(1, prod / cons) : 1
           return (
             <>
-              <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center justify-between mb-3.5">
                 <span className="section-heading mb-0">Producción por hora</span>
                 {deficit && (
                   <span className="flex items-center gap-1 font-ui text-[0.6rem] text-crimson font-semibold uppercase tracking-wide">
