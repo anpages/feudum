@@ -969,7 +969,7 @@ export function NpcMonitorTab() {
       <div className="grid lg:grid-cols-2 gap-4">
         <div className="card-medieval p-5 space-y-4">
           <div className="card-corner-tr" /><div className="card-corner-bl" />
-          <h3 className="section-heading">Ejército de combate</h3>
+          <h3 className="section-heading">Ejército de combate (total · NPCs con unidad)</h3>
           <div className="space-y-3">
             <UnitAdoptionRow label="Escudero"        withUnit={agg.withArmy}        total={agg.total} totalUnits={agg.totalSquire}      color="bg-gold/60" />
             <UnitAdoptionRow label="Caballero"       withUnit={agg.withKnight}      total={agg.total} totalUnits={agg.totalKnight}      color="bg-gold/70" />
@@ -981,7 +981,7 @@ export function NpcMonitorTab() {
 
         <div className="card-medieval p-5 space-y-4">
           <div className="card-corner-tr" /><div className="card-corner-bl" />
-          <h3 className="section-heading">Unidades de apoyo</h3>
+          <h3 className="section-heading">Unidades de apoyo (total · NPCs con unidad)</h3>
           <div className="space-y-3">
             <UnitAdoptionRow label="Mercader"   withUnit={agg.withMerchant}  total={agg.total} totalUnits={agg.totalMerchant}  />
             <UnitAdoptionRow label="Caravana"   withUnit={agg.withCaravan}   total={agg.total} totalUnits={agg.totalCaravan}   />
@@ -1001,7 +1001,7 @@ export function NpcMonitorTab() {
       <div className="grid lg:grid-cols-2 gap-4">
         <div className="card-medieval p-5 space-y-4">
           <div className="card-corner-tr" /><div className="card-corner-bl" />
-          <h3 className="section-heading">Defensas</h3>
+          <h3 className="section-heading">Defensas (total · NPCs con defensa)</h3>
           <div className="space-y-3">
             <UnitAdoptionRow label="Arquero"    withUnit={agg.withArcher}      total={agg.total} totalUnits={agg.totalArcher}      color="bg-gold/60" />
             <UnitAdoptionRow label="Ballestero" withUnit={agg.withCrossbowman} total={agg.total} totalUnits={agg.totalCrossbowman} color="bg-gold/70" />
