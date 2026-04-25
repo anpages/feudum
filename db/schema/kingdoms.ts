@@ -10,6 +10,9 @@ export const kingdoms = pgTable('kingdoms', {
   region: integer('region').notNull(),
   slot:   integer('slot').notNull(),
 
+  tempMin: integer('temp_min'),
+  tempMax: integer('temp_max'),
+
   wood:               real('wood').default(500).notNull(),
   woodProduction:     real('wood_production').default(0).notNull(),
   woodCapacity:       real('wood_capacity').default(10000).notNull(),

@@ -14,6 +14,7 @@ import {
 } from '../_db.js'
 import { ECONOMY_SPEED, NPC_DENSITY, UNIVERSE } from './config.js'
 import { npcClass } from './npc-engine.js'
+import { randomTempForSlot } from './buildings.js'
 import { setSetting } from './settings.js'
 import { calcPointsBreakdown } from './points.js'
 import { getBuildingMaps, getResearchMaps, getUnitMaps } from './db-helpers.js'
@@ -199,11 +200,13 @@ export async function seedNpcs(takenSlots, now, count = null) {
         .returning({ id: users.id })
 
       // 2. Insert kingdom
+      const { tempMin, tempMax } = randomTempForSlot(slot)
       const [kingdom] = await db.insert(kingdoms)
         .values({
           userId: npcUser.id,
           name:   npcKingdomName(realm, region, slot),
           realm, region, slot,
+          tempMin, tempMax,
           wood: 500, stone: 500, grain: 500,
           woodCapacity: 10000, stoneCapacity: 10000, grainCapacity: 10000,
           woodProduction: 0, stoneProduction: 0, grainProduction: 0,

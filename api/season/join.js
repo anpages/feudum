@@ -8,6 +8,7 @@ import { db, users, kingdoms, buildings } from '../_db.js'
 import { getSessionUserId } from '../lib/handler.js'
 import { getSettings } from '../lib/settings.js'
 import { UNIVERSE } from '../lib/config.js'
+import { randomTempForSlot } from '../lib/buildings.js'
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end()
@@ -63,6 +64,8 @@ export default async function handler(req, res) {
 
   const kingdomName = `Reino de ${userRow.username ?? 'Jugador'}`
 
+  const { tempMin, tempMax } = randomTempForSlot(pos.slot)
+
   const [kingdom] = await db.insert(kingdoms)
     .values({
       userId:  userId,
@@ -70,6 +73,7 @@ export default async function handler(req, res) {
       realm:   pos.realm,
       region:  pos.region,
       slot:    pos.slot,
+      tempMin, tempMax,
       wood:  500, stone: 500, grain: 500,
       woodCapacity: 10000, stoneCapacity: 10000, grainCapacity: 10000,
       woodProduction: 0, stoneProduction: 0, grainProduction: 0,

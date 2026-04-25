@@ -129,6 +129,41 @@ export function stoneProduction(level) {
   return level === 0 ? 0 : 20 * level * Math.pow(1.1, level)
 }
 
+// ── Temperature (OGame slot ranges, medieval climate theme) ──────────────────
+// Slot 1 = closest to sun (hottest), slot 15 = furthest (coldest).
+// Cold slots produce more grain — same mechanic as OGame deuterium/slot.
+
+export const SLOT_TEMP_RANGES = [
+  null,           // index 0 unused
+  [220, 260],     // slot 1  — Volcánico
+  [170, 210],     // slot 2
+  [120, 160],     // slot 3
+  [70,  110],     // slot 4
+  [60,  100],     // slot 5  — Cálido
+  [50,   90],     // slot 6
+  [40,   80],     // slot 7
+  [30,   70],     // slot 8  — Templado
+  [20,   60],     // slot 9
+  [10,   50],     // slot 10
+  [0,    40],     // slot 11 — Frío
+  [-10,  30],     // slot 12
+  [-50, -10],     // slot 13
+  [-90, -50],     // slot 14 — Glacial
+  [-130, -90],    // slot 15
+]
+
+/** Returns { tempMin, tempMax } for a kingdom at a given slot (with random variation). */
+export function randomTempForSlot(slot) {
+  const range = SLOT_TEMP_RANGES[slot] ?? [0, 40]
+  const tempMax = range[0] + Math.floor(Math.random() * (range[1] - range[0] + 1))
+  return { tempMax, tempMin: tempMax - 40 }
+}
+
+/** Returns integer average temperature. */
+export function calcTempAvg(tempMin, tempMax) {
+  return Math.round(((tempMin ?? 0) + (tempMax ?? 40)) / 2)
+}
+
 /**
  * Grain (deuterium) production including temperature factor.
  * tempAvg: average temperature for the slot (slot1=240°C, slot15=-110°C).
@@ -190,7 +225,7 @@ export function buildingRequirementsMet(def, kingdom, research) {
 
 export function applyBuildingEffect(building, newLevel, kingdom = {}) {
   const patch = { [building]: newLevel }
-  const tempAvg = kingdom.tempAvg ?? 0
+  const tempAvg = calcTempAvg(kingdom.tempMin, kingdom.tempMax)
 
   if (building === 'sawmill') {
     patch.woodProduction = woodProduction(newLevel)

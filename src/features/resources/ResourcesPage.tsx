@@ -62,7 +62,11 @@ export function ResourcesPage() {
     return resources.wood >= b.costWood && resources.stone >= b.costStone && resources.grain >= (b.costGrain ?? 0)
   }
 
-  const tempAvg = (kingdom as Record<string, unknown> | null)?.tempAvg as number | undefined
+  const kk = kingdom as Record<string, unknown> | null
+  const tempMinVal = kk?.tempMin as number | null | undefined
+  const tempMaxVal = kk?.tempMax as number | null | undefined
+  const hasTempData = tempMaxVal != null
+  const tempAvgVal  = hasTempData ? Math.round(((tempMinVal ?? 0) + (tempMaxVal ?? 40)) / 2) : undefined
   const energyProduced = (kingdom as Record<string, unknown> | null)?.energyProduced as number | undefined
   const energyConsumed = (kingdom as Record<string, unknown> | null)?.energyConsumed as number | undefined
 
@@ -125,16 +129,23 @@ export function ResourcesPage() {
             </p>
           )}
         </Card>
-        {tempAvg !== undefined && (
-          <Card className="p-3">
-            <div className="flex items-center gap-2 mb-1">
-              <span className="text-[0.7rem]">🌡️</span>
-              <span className="font-ui text-[0.6rem] uppercase tracking-widest text-ink-muted/60">Temperatura</span>
-            </div>
-            <p className="font-ui text-sm font-semibold text-ink leading-none">{tempLabel(tempAvg)}</p>
-            <p className="font-body text-[0.6rem] text-ink-muted/50 mt-1">Afecta producción de grano</p>
-          </Card>
-        )}
+        {hasTempData && tempAvgVal !== undefined && (() => {
+          const factor = Math.max(0.1, 1.44 - 0.004 * tempAvgVal)
+          const pct    = Math.round(factor * 100)
+          const isBoost = pct > 100
+          return (
+            <Card className="p-3">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-[0.7rem]">🌡️</span>
+                <span className="font-ui text-[0.6rem] uppercase tracking-widest text-ink-muted/60">Clima</span>
+              </div>
+              <p className="font-ui text-sm font-semibold text-ink leading-none">{tempLabel(tempAvgVal)}</p>
+              <p className={`font-body text-[0.6rem] mt-1 ${isBoost ? 'text-forest' : 'text-crimson/70'}`}>
+                {isBoost ? '+' : ''}{pct - 100}% producción de grano
+              </p>
+            </Card>
+          )
+        })()}
       </div>
 
       {/* Building sections */}

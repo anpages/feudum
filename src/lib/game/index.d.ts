@@ -4,6 +4,9 @@
 // pure data + math helpers; runtime correctness is enforced by tests/usage.
 
 declare module '@/lib/game/buildings' {
+  export const SLOT_TEMP_RANGES: (null | [number, number])[]
+  export function randomTempForSlot(slot: number): { tempMin: number; tempMax: number }
+  export function calcTempAvg(tempMin: number | null | undefined, tempMax: number | null | undefined): number
   export const BUILDINGS: Array<{
     id: string
     woodBase: number

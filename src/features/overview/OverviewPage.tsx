@@ -16,6 +16,8 @@ import { useSeason } from '@/features/season/useSeason'
 import { applyOptimisticCompletions } from '@/features/queues/applyOptimisticCompletions'
 import { formatResource, formatDuration } from '@/lib/format'
 import { label as unitLabel } from '@/lib/labels'
+import { tempLabel } from '@/lib/terrain'
+import { calcTempAvg } from '@/lib/game/buildings'
 import { MISSION_META } from '@/features/armies/armiesMeta'
 import type { ArmyMission } from '@/shared/types'
 import { Card } from '@/components/ui/Card'
@@ -173,6 +175,15 @@ export function OverviewPage() {
 
         {/* Tags row */}
         <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-gold/10">
+          {kingdom?.tempMax != null && (() => {
+            const kk = kingdom as Record<string, unknown>
+            const tempAvg = calcTempAvg(kk.tempMin as number, kk.tempMax as number)
+            return (
+              <span className="inline-flex items-center gap-1.5 font-ui text-xs px-2.5 py-1 rounded-full border text-ink-muted/70 border-current/20 bg-current/5">
+                🌡️ {tempLabel(tempAvg)}
+              </span>
+            )
+          })()}
           {charClass && (
             <span className={`inline-flex items-center gap-1.5 font-ui text-xs px-2.5 py-1 rounded-full border ${charClass.color} border-current/25 bg-current/5`}>
               {charClass.emoji} {charClass.label}
