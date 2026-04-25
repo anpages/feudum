@@ -1,5 +1,5 @@
 import { useRef, useEffect } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient, type QueryClient } from '@tanstack/react-query'
 import { buildingsService } from './services/buildingsService'
 import { getActiveKingdomId } from '@/features/kingdom/useKingdom'
 import { deductResources } from '@/features/kingdom/deductResources'
@@ -7,6 +7,20 @@ import { toast } from '@/lib/toast'
 import { BUILDING_LABELS } from '@/lib/labels'
 import type { BuildingInfo, BuildingsResponse } from './types'
 import type { Kingdom } from '@/../db/schema'
+
+export function applyCompletedBuildingQueues(qc: QueryClient) {
+  const now = Math.floor(Date.now() / 1000)
+  qc.setQueriesData<BuildingsResponse>({ queryKey: ['buildings'] }, prev => {
+    if (!prev) return prev
+    let completed = 0
+    const buildings = prev.buildings.map(b => {
+      if (!b.inQueue || b.inQueue.finishesAt > now) return b
+      completed++
+      return { ...b, level: b.inQueue.level, nextLevel: b.inQueue.level + 1, inQueue: null }
+    })
+    return { ...prev, buildings, totalQueueCount: Math.max(0, prev.totalQueueCount - completed) }
+  })
+}
 
 export type { BuildingInfo, BuildingsResponse }
 

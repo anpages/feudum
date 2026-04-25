@@ -1,10 +1,11 @@
 import { useCallback } from 'react'
 import { GiVillage } from 'react-icons/gi'
 import { Card } from '@/components/ui/Card'
-import { useBuildings, useUpgradeBuilding, useCancelBuilding } from '@/features/buildings/useBuildings'
+import { useBuildings, useUpgradeBuilding, useCancelBuilding, applyCompletedBuildingQueues } from '@/features/buildings/useBuildings'
 import { useAccelerate } from '@/features/queues/useAccelerate'
 import { useQueueSync } from '@/features/queues/useQueueSync'
 import { useKingdom } from '@/features/kingdom/useKingdom'
+import { useQueryClient } from '@tanstack/react-query'
 import { useResourceTicker } from '@/features/kingdom/useResourceTicker'
 import { BuildingCard } from '@/features/buildings/components/BuildingCard'
 import { BUILDING_META, FACILITY_BUILDING_IDS } from '@/features/buildings/buildingMeta'
@@ -24,6 +25,7 @@ function FieldsBadge({ used, max, className = '' }: { used: number; max: number;
 }
 
 export function FacilitiesPage() {
+  const qc = useQueryClient()
   const { data, isLoading, refetch } = useBuildings()
   const { data: kingdom } = useKingdom()
   const resources = useResourceTicker(kingdom)
@@ -33,9 +35,13 @@ export function FacilitiesPage() {
   const syncQueues = useQueueSync()
 
   const handleCountdownEnd = useCallback(async () => {
+    applyCompletedBuildingQueues(qc)
     await syncQueues()
     refetch()
-  }, [refetch, syncQueues])
+    qc.invalidateQueries({ queryKey: ['kingdom'] })
+    qc.invalidateQueries({ queryKey: ['research'] })
+    qc.invalidateQueries({ queryKey: ['barracks'] })
+  }, [refetch, syncQueues, qc])
 
   if (isLoading) return <FacilitiesSkeleton />
 
