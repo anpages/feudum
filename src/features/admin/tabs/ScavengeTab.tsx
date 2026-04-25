@@ -39,55 +39,91 @@ function ScavengeRow({ m, now }: { m: AdminScavengeMission; now: number }) {
   const debrisLeft = (m.debrisNow?.wood ?? 0) + (m.debrisNow?.stone ?? 0)
 
   return (
-    <div className="grid grid-cols-[auto_1fr_1fr_auto_auto] items-start gap-x-4 py-3 border-b border-gold/8 last:border-0 px-4 -mx-4">
-      {/* Fecha */}
-      <div className="min-w-[72px] space-y-1">
-        <p className="font-ui text-[0.6rem] text-ink-muted tabular-nums">{formatTs(m.departureTime)}</p>
-        {stateLabel(m.state)}
-      </div>
+    <div className="py-3 border-b border-gold/8 last:border-0 px-4 -mx-4">
+      {/* ── Mobile layout ── */}
+      <div className="sm:hidden space-y-1.5">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <p className="font-ui text-[0.6rem] text-ink-muted tabular-nums shrink-0">{formatTs(m.departureTime)}</p>
+            {stateLabel(m.state)}
+          </div>
+          {isActive && timeMark ? (
+            <p className="font-ui text-xs tabular-nums text-gold shrink-0">{eta(timeMark, now)}</p>
+          ) : !isActive && collected > 0 ? (
+            <p className="font-ui text-xs font-semibold text-gold tabular-nums shrink-0">{formatResource(collected)}</p>
+          ) : null}
+        </div>
 
-      {/* Carroñero */}
-      <div className="min-w-0">
-        <p className="font-ui text-[0.6rem] text-ink-muted">Carroñero</p>
-        <p className="font-ui text-xs font-semibold text-ink truncate">{m.attackerName}</p>
-        <p className="font-ui text-[0.6rem] text-ink-muted">{m.startRealm}:{m.startRegion}:{m.startSlot}</p>
-      </div>
+        <div className="grid grid-cols-2 gap-x-3 gap-y-0.5">
+          <div className="min-w-0">
+            <p className="font-ui text-[0.55rem] text-ink-muted">Carroñero</p>
+            <p className="font-ui text-xs font-semibold text-ink truncate">{m.attackerName}</p>
+            <p className="font-ui text-[0.6rem] text-ink-muted">{m.startRealm}:{m.startRegion}:{m.startSlot}</p>
+          </div>
+          <div className="min-w-0">
+            <p className="font-ui text-[0.55rem] text-ink-muted">Escombros</p>
+            <p className="font-ui text-xs font-semibold text-ink">{m.targetCoord}</p>
+            {debrisLeft > 0
+              ? <p className="font-ui text-[0.6rem] text-gold tabular-nums">{formatResource(debrisLeft)} disp.</p>
+              : <p className="font-ui text-[0.6rem] text-ink-muted/50">Campo vacío</p>
+            }
+          </div>
+        </div>
 
-      {/* Destino (campo de escombros) */}
-      <div className="min-w-0">
-        <p className="font-ui text-[0.6rem] text-ink-muted">Campo de escombros</p>
-        <p className="font-ui text-xs font-semibold text-ink">{m.targetCoord}</p>
-        {debrisLeft > 0
-          ? <p className="font-ui text-[0.6rem] text-gold tabular-nums">{formatResource(debrisLeft)} disponibles</p>
-          : <p className="font-ui text-[0.6rem] text-ink-muted/50">Campo vacío</p>
-        }
-      </div>
-
-      {/* ETA */}
-      <div className="text-right min-w-[60px]">
-        {isActive && timeMark ? (
-          <>
-            <p className="font-ui text-[0.6rem] text-ink-muted">{timeLabel}</p>
-            <p className="font-ui text-xs tabular-nums text-gold">{eta(timeMark, now)}</p>
-          </>
-        ) : (
-          <p className="font-ui text-[0.6rem] text-ink-muted">{formatTs(m.departureTime)}</p>
-        )}
-      </div>
-
-      {/* Resultado */}
-      <div className="text-right min-w-[72px]">
         {!isActive && collected > 0 && (
-          <>
-            <p className="font-ui text-[0.6rem] text-ink-muted">Recogido</p>
-            <p className="font-ui text-xs font-semibold text-gold tabular-nums">{formatResource(collected)}</p>
-            {m.woodLoad  > 0 && <p className="font-ui text-[0.55rem] text-ink-muted">M: {formatResource(m.woodLoad)}</p>}
-            {m.stoneLoad > 0 && <p className="font-ui text-[0.55rem] text-ink-muted">P: {formatResource(m.stoneLoad)}</p>}
-          </>
+          <div className="flex gap-3 font-ui text-[0.55rem] text-ink-muted">
+            {m.woodLoad  > 0 && <span>Madera: {formatResource(m.woodLoad)}</span>}
+            {m.stoneLoad > 0 && <span>Piedra: {formatResource(m.stoneLoad)}</span>}
+          </div>
         )}
-        {!isActive && collected === 0 && (
-          <p className="font-ui text-[0.6rem] text-ink-muted/50">—</p>
-        )}
+      </div>
+
+      {/* ── Desktop layout ── */}
+      <div className="hidden sm:grid grid-cols-[auto_1fr_1fr_auto_auto] items-start gap-x-4">
+        <div className="min-w-[72px] space-y-1">
+          <p className="font-ui text-[0.6rem] text-ink-muted tabular-nums">{formatTs(m.departureTime)}</p>
+          {stateLabel(m.state)}
+        </div>
+
+        <div className="min-w-0">
+          <p className="font-ui text-[0.6rem] text-ink-muted">Carroñero</p>
+          <p className="font-ui text-xs font-semibold text-ink truncate">{m.attackerName}</p>
+          <p className="font-ui text-[0.6rem] text-ink-muted">{m.startRealm}:{m.startRegion}:{m.startSlot}</p>
+        </div>
+
+        <div className="min-w-0">
+          <p className="font-ui text-[0.6rem] text-ink-muted">Campo de escombros</p>
+          <p className="font-ui text-xs font-semibold text-ink">{m.targetCoord}</p>
+          {debrisLeft > 0
+            ? <p className="font-ui text-[0.6rem] text-gold tabular-nums">{formatResource(debrisLeft)} disponibles</p>
+            : <p className="font-ui text-[0.6rem] text-ink-muted/50">Campo vacío</p>
+          }
+        </div>
+
+        <div className="text-right min-w-[60px]">
+          {isActive && timeMark ? (
+            <>
+              <p className="font-ui text-[0.6rem] text-ink-muted">{timeLabel}</p>
+              <p className="font-ui text-xs tabular-nums text-gold">{eta(timeMark, now)}</p>
+            </>
+          ) : (
+            <p className="font-ui text-[0.6rem] text-ink-muted">{formatTs(m.departureTime)}</p>
+          )}
+        </div>
+
+        <div className="text-right min-w-[72px]">
+          {!isActive && collected > 0 && (
+            <>
+              <p className="font-ui text-[0.6rem] text-ink-muted">Recogido</p>
+              <p className="font-ui text-xs font-semibold text-gold tabular-nums">{formatResource(collected)}</p>
+              {m.woodLoad  > 0 && <p className="font-ui text-[0.55rem] text-ink-muted">M: {formatResource(m.woodLoad)}</p>}
+              {m.stoneLoad > 0 && <p className="font-ui text-[0.55rem] text-ink-muted">P: {formatResource(m.stoneLoad)}</p>}
+            </>
+          )}
+          {!isActive && collected === 0 && (
+            <p className="font-ui text-[0.6rem] text-ink-muted/50">—</p>
+          )}
+        </div>
       </div>
     </div>
   )
@@ -105,7 +141,6 @@ export function ScavengeTab() {
   return (
     <div className="space-y-5">
 
-      {/* Explanation */}
       <div className="glass rounded-xl p-4 space-y-1">
         <p className="font-ui text-xs font-semibold text-ink">¿Qué NPCs carroñean y cuándo?</p>
         <p className="font-ui text-[0.7rem] text-ink-muted leading-relaxed">
@@ -113,7 +148,6 @@ export function ScavengeTab() {
         </p>
       </div>
 
-      {/* Metrics */}
       {data?.metrics && (
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
           <StatCard label="Activas ahora"       value={data.metrics.activeNow} />
@@ -131,7 +165,6 @@ export function ScavengeTab() {
         </div>
       )}
 
-      {/* Active */}
       <div className="card-medieval p-5 space-y-3">
         <div className="card-corner-tr" /><div className="card-corner-bl" />
         <h3 className="section-heading">Misiones activas</h3>
@@ -144,7 +177,6 @@ export function ScavengeTab() {
         )}
       </div>
 
-      {/* Recent */}
       <div className="card-medieval p-5 space-y-3">
         <div className="card-corner-tr" /><div className="card-corner-bl" />
         <h3 className="section-heading">Historial reciente (7 días)</h3>

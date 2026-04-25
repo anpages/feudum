@@ -15,6 +15,11 @@ const FILTERS: { id: FilterType; label: string }[] = [
   { id: 'player_vs_player', label: 'JvJ' },
 ]
 
+function formatTs(date: string | number) {
+  return new Date(typeof date === 'number' ? date * 1000 : date)
+    .toLocaleString('es-ES', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+}
+
 function outcomeColor(outcome: string) {
   if (outcome === 'victory') return 'text-forest-light'
   if (outcome === 'defeat')  return 'text-crimson-light'
@@ -40,10 +45,6 @@ function typeTag(row: AdminBattleLog) {
   return <span className="badge badge-forest text-[0.55rem]">JvJ</span>
 }
 
-function unitLabel(id: string) {
-  return UNIT_LABELS[id] ?? id
-}
-
 function UnitList({ units, accent }: { units: Record<string, number>; accent?: string }) {
   const entries = Object.entries(units ?? {}).filter(([, n]) => n > 0)
   if (entries.length === 0) return <span className="text-ink-muted/50">—</span>
@@ -51,7 +52,7 @@ function UnitList({ units, accent }: { units: Record<string, number>; accent?: s
     <div className="flex flex-wrap gap-x-3 gap-y-0.5">
       {entries.map(([id, n]) => (
         <span key={id} className={`font-ui text-[0.6rem] tabular-nums ${accent ?? 'text-ink'}`}>
-          {unitLabel(id)}: {n}
+          {UNIT_LABELS[id] ?? id}: {n}
         </span>
       ))}
     </div>
@@ -61,8 +62,7 @@ function UnitList({ units, accent }: { units: Record<string, number>; accent?: s
 function BattleDetail({ row }: { row: AdminBattleLog }) {
   const lootTotal = (row.lootWood ?? 0) + (row.lootStone ?? 0) + (row.lootGrain ?? 0)
   return (
-    <div className="mt-2 pt-2 border-t border-gold/10 grid grid-cols-2 gap-x-6 gap-y-2">
-      {/* Atacante */}
+    <div className="mt-2 pt-2 border-t border-gold/10 grid grid-cols-2 gap-x-4 gap-y-2">
       <div className="space-y-1.5">
         <p className="font-ui text-[0.55rem] uppercase tracking-widest text-ink-muted">Atacante — {row.attackerName}</p>
         <div>
@@ -75,7 +75,6 @@ function BattleDetail({ row }: { row: AdminBattleLog }) {
         </div>
       </div>
 
-      {/* Defensor */}
       <div className="space-y-1.5">
         <p className="font-ui text-[0.55rem] uppercase tracking-widest text-ink-muted">Defensor — {row.defenderName}</p>
         <div>
@@ -88,7 +87,6 @@ function BattleDetail({ row }: { row: AdminBattleLog }) {
         </div>
       </div>
 
-      {/* Botín */}
       {lootTotal > 0 && (
         <div className="col-span-2 pt-1 border-t border-gold/8">
           <p className="font-ui text-[0.55rem] text-ink-muted mb-0.5">Botín</p>
@@ -137,34 +135,64 @@ function BattleRow({ row }: { row: AdminBattleLog }) {
       className={`py-3 border-b border-gold/8 last:border-0 px-4 -mx-4 rounded transition-colors ${hasDetail ? 'cursor-pointer hover:bg-parchment-warm/30' : ''}`}
       onClick={() => hasDetail && setOpen(o => !o)}
     >
-      <div className="grid grid-cols-[auto_1fr_1fr_auto_auto_auto] items-center gap-x-4">
-        {/* Fecha + tipo */}
+      {/* ── Mobile layout ── */}
+      <div className="sm:hidden space-y-1.5">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <p className="font-ui text-[0.6rem] text-ink-muted tabular-nums shrink-0">{formatTs(row.createdAt)}</p>
+            {typeTag(row)}
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <p className={`font-ui text-xs font-bold ${outcomeColor(row.outcome)}`}>{outcomeLabel(row.outcome)}</p>
+            {hasDetail && <p className="font-ui text-[0.5rem] text-ink-muted/50">{open ? '▲' : '▼'}</p>}
+          </div>
+        </div>
+
+        <div className="flex items-center gap-1.5 text-xs font-ui font-semibold text-ink min-w-0">
+          <span className="truncate flex-1">{row.attackerName}</span>
+          <span className="text-ink-muted/50 shrink-0 text-[0.6rem]">→</span>
+          <span className="truncate flex-1 text-right">{row.defenderName}</span>
+        </div>
+
+        <div className="flex items-center justify-between gap-2 text-[0.6rem] text-ink-muted">
+          <span>{row.attackerCoord} → {row.defenderCoord}</span>
+          <span>{roundsLabel(row.rounds, row.outcome)}</span>
+        </div>
+
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex gap-2 font-ui text-[0.6rem] text-crimson-light">
+            {row.attackerLosses > 0 && <span>Atk −{row.attackerLosses}</span>}
+            {row.defenderLosses > 0 && <span>Def −{row.defenderLosses}</span>}
+            {row.attackerLosses === 0 && row.defenderLosses === 0 && <span className="text-ink-muted/40">Sin bajas</span>}
+          </div>
+          {lootTotal > 0 && (
+            <p className="font-ui text-[0.6rem] font-semibold text-gold tabular-nums">Botín: {formatResource(lootTotal)}</p>
+          )}
+        </div>
+      </div>
+
+      {/* ── Desktop layout ── */}
+      <div className="hidden sm:grid grid-cols-[auto_1fr_1fr_auto_auto_auto] items-center gap-x-4">
         <div className="space-y-1 min-w-[80px]">
-          <p className="font-ui text-[0.6rem] text-ink-muted tabular-nums whitespace-nowrap">
-            {new Date(row.createdAt).toLocaleString('es-ES', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-          </p>
+          <p className="font-ui text-[0.6rem] text-ink-muted tabular-nums whitespace-nowrap">{formatTs(row.createdAt)}</p>
           {typeTag(row)}
         </div>
 
-        {/* Atacante */}
         <div className="min-w-0">
           <p className="font-ui text-xs font-semibold text-ink truncate">{row.attackerName}</p>
           <p className="font-ui text-[0.6rem] text-ink-muted">{row.attackerCoord}</p>
         </div>
 
-        {/* Defensor */}
         <div className="min-w-0">
           <p className="font-ui text-xs font-semibold text-ink truncate">{row.defenderName}</p>
           <p className="font-ui text-[0.6rem] text-ink-muted">{row.defenderCoord}</p>
         </div>
 
-        {/* Resultado */}
         <div className="text-center">
           <p className={`font-ui text-xs font-bold ${outcomeColor(row.outcome)}`}>{outcomeLabel(row.outcome)}</p>
           <p className="font-ui text-[0.6rem] text-ink-muted">{roundsLabel(row.rounds, row.outcome)}</p>
         </div>
 
-        {/* Bajas */}
         <div className="text-right space-y-0.5">
           <p className="font-ui text-[0.6rem] text-ink-muted">Bajas</p>
           <p className="font-ui text-xs tabular-nums text-crimson-light">
@@ -175,7 +203,6 @@ function BattleRow({ row }: { row: AdminBattleLog }) {
           </p>
         </div>
 
-        {/* Botín + expand */}
         <div className="text-right min-w-[56px]">
           <p className="font-ui text-[0.6rem] text-ink-muted">Botín</p>
           <p className={`font-ui text-xs font-semibold tabular-nums ${lootTotal > 0 ? 'text-gold' : 'text-ink-muted/40'}`}>
@@ -205,10 +232,8 @@ export function BattlesTab() {
   return (
     <div className="space-y-5">
 
-      {/* Metrics */}
       {data?.metrics && <MetricsRow metrics={data.metrics} />}
 
-      {/* Filters + list */}
       <div className="card-medieval p-5 space-y-4">
         <div className="card-corner-tr" /><div className="card-corner-bl" />
 
