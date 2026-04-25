@@ -11,11 +11,11 @@ import { useResourceTicker } from '@/features/kingdom/useResourceTicker'
 import { RESEARCH_META, CATEGORIES } from './researchMeta'
 import { ResearchCard } from './components/ResearchCard'
 
-const CATEGORY_ICONS: Record<string, React.ReactNode> = {
-  Ciencia:      <GiCauldron      size={14} />,
-  Combate:      <GiCrossedSwords size={14} />,
-  Logística:    <GiCompass       size={14} />,
-  Inteligencia: <GiScrollQuill   size={14} />,
+const CATEGORY_META: Record<string, { Icon: React.ElementType; description: string }> = {
+  Ciencia:      { Icon: GiCauldron,      description: 'Tecnologías arcanas que desbloquean unidades avanzadas, defensas y capacidades únicas.' },
+  Combate:      { Icon: GiCrossedSwords, description: 'Mejora el ataque, la armadura y las defensas pasivas de todas tus tropas.' },
+  Logística:    { Icon: GiCompass,       description: 'Velocidad de movimiento, capacidad de carga y rutas comerciales.' },
+  Inteligencia: { Icon: GiScrollQuill,   description: 'Espionaje, exploración y aceleración de la investigación.' },
 }
 
 export function ResearchPage() {
@@ -60,14 +60,20 @@ export function ResearchPage() {
         </p>
       </div>
 
-      {CATEGORIES.map(cat => {
+      {CATEGORIES.map((cat, ci) => {
         const catItems = items.filter(r => RESEARCH_META[r.id]?.category === cat)
         if (!catItems.length) return null
+        const { Icon, description } = CATEGORY_META[cat]
         return (
-          <section key={cat}>
-            <div className="flex items-center gap-2 mb-3">
-              <span className="text-gold">{CATEGORY_ICONS[cat]}</span>
-              <span className="section-heading mb-0">{cat}</span>
+          <section key={cat} className={`anim-fade-up-${Math.min(ci + 1, 5) as 1|2|3|4|5}`}>
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-8 h-8 rounded-lg bg-parchment-warm border border-gold/20 flex items-center justify-center shrink-0">
+                <Icon size={17} className="text-gold-dim" />
+              </div>
+              <div>
+                <span className="font-ui text-sm font-bold text-ink uppercase tracking-wider">{cat}</span>
+                <p className="font-body text-xs text-ink-muted/70 mt-0.5 hidden sm:block">{description}</p>
+              </div>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
               {catItems.map((r, i) => {
@@ -115,7 +121,10 @@ function ResearchSkeleton() {
       </div>
       {[1, 2].map(i => (
         <div key={i}>
-          <div className="skeleton h-2.5 w-24 mb-4" />
+          <div className="flex gap-3 mb-4">
+            <div className="skeleton w-8 h-8 rounded-lg" />
+            <div className="space-y-1.5"><div className="skeleton h-3 w-24" /><div className="skeleton h-2.5 w-48" /></div>
+          </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
             {[...Array(3)].map((_, j) => (
               <Card key={j} className="p-5 space-y-4">
