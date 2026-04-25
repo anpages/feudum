@@ -1,10 +1,20 @@
-/** Human-readable temperature label for a slot's tempAvg (slot1=240°C, slot15=-110°C) */
+/**
+ * Converts the internal OGame-scale tempAvg (~[-150, 240]) to a realistic
+ * medieval display temperature (~[-45, 55]°C). The formula and DB values
+ * are unchanged — only the displayed number is remapped.
+ */
+function toDisplayTemp(rawTempAvg: number): number {
+  return Math.round(55 + (rawTempAvg - 240) * (100 / 390))
+}
+
+/** Human-readable temperature label for a slot's internal tempAvg. */
 export function tempLabel(tempAvg: number): string {
-  if (tempAvg >= 160) return `${tempAvg}°C · Volcánico`
-  if (tempAvg >= 80)  return `${tempAvg}°C · Cálido`
-  if (tempAvg >= 20)  return `${tempAvg}°C · Templado`
-  if (tempAvg >= -40) return `${tempAvg}°C · Frío`
-  return `${tempAvg}°C · Glacial`
+  const t = toDisplayTemp(tempAvg)
+  if (t >= 35) return `${t}°C · Volcánico`
+  if (t >= 14) return `${t}°C · Cálido`
+  if (t >= 0)  return `${t}°C · Templado`
+  if (t >= -15) return `${t}°C · Frío`
+  return `${t}°C · Glacial`
 }
 
 /** Human-readable terrain label and bonus description for a given slot. */

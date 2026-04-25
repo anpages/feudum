@@ -183,7 +183,7 @@ export function OverviewPage() {
         </h1>
 
         {/* Stats grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-3 mt-4 pt-4 border-t border-gold/10">
+        <div className="grid grid-cols-3 sm:grid-cols-5 gap-x-4 gap-y-3 mt-4 pt-4 border-t border-gold/10">
 
           {/* Clima */}
           {(() => {
@@ -201,15 +201,14 @@ export function OverviewPage() {
             )
           })()}
 
-          {/* Terreno — only shown when slot gives a production bonus */}
+          {/* Terreno */}
           {kingdom?.slot != null && (() => {
             const terrain = slotTerrainInfo(kingdom.slot)
-            if (!terrain.bonus) return null
             return (
               <div>
                 <p className="font-ui text-[0.6rem] uppercase tracking-widest text-ink-muted/60 mb-1">Terreno</p>
-                <p className="font-ui text-xs font-semibold text-forest-light">
-                  🏔️ {terrain.bonus}
+                <p className={`font-ui text-xs font-semibold ${terrain.bonus ? 'text-forest-light' : 'text-ink-muted/60'}`}>
+                  🏔️ {terrain.label}{terrain.bonus ? ` · ${terrain.bonus}` : ''}
                 </p>
               </div>
             )
