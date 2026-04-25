@@ -29,7 +29,8 @@ import {
   GiMissileLauncher,
 } from 'react-icons/gi'
 import { Card } from '@/components/ui/Card'
-import { useBarracks, useTrainUnit, applyCompletedBarracksQueues } from '@/features/barracks/useBarracks'
+import { useBarracks, useTrainUnit } from '@/features/barracks/useBarracks'
+import { applyOptimisticCompletions } from '@/features/queues/applyOptimisticCompletions'
 import { useAccelerate } from '@/features/queues/useAccelerate'
 import { useQueueSync } from '@/features/queues/useQueueSync'
 import { useKingdom } from '@/features/kingdom/useKingdom'
@@ -89,7 +90,7 @@ export function BarracksPage({ mode }: BarracksPageProps) {
   const syncQueues = useQueueSync()
 
   const handleCountdownEnd = useCallback(async () => {
-    applyCompletedBarracksQueues(qc)
+    applyOptimisticCompletions(qc)
     await syncQueues()
     refetch()
     qc.invalidateQueries({ queryKey: ['armies'] })

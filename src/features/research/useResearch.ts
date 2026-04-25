@@ -1,5 +1,5 @@
 import { useRef, useEffect } from 'react'
-import { useQuery, useMutation, useQueryClient, type QueryClient } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { researchService } from './services/researchService'
 import { getActiveKingdomId } from '@/features/kingdom/useKingdom'
 import { deductResources } from '@/features/kingdom/deductResources'
@@ -7,19 +7,6 @@ import { toast } from '@/lib/toast'
 import { RESEARCH_LABELS } from '@/lib/labels'
 import type { ResearchInfo, ResearchResponse } from './types'
 import type { Kingdom } from '@/../db/schema'
-
-export function applyCompletedResearchQueues(qc: QueryClient) {
-  const now = Math.floor(Date.now() / 1000)
-  qc.setQueriesData<ResearchResponse>({ queryKey: ['research'] }, prev => {
-    if (!prev) return prev
-    return {
-      research: prev.research.map(r => {
-        if (!r.inQueue || r.inQueue.finishesAt > now) return r
-        return { ...r, level: r.inQueue.level, inQueue: null }
-      }),
-    }
-  })
-}
 
 export type { ResearchInfo, ResearchResponse }
 

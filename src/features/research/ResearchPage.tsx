@@ -2,7 +2,8 @@ import { useCallback, useMemo } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { GiCauldron, GiCrossedSwords, GiCompass, GiScrollQuill } from 'react-icons/gi'
 import { Card } from '@/components/ui/Card'
-import { useResearch, useUpgradeResearch, useCancelResearch, applyCompletedResearchQueues } from '@/features/research/useResearch'
+import { useResearch, useUpgradeResearch, useCancelResearch } from '@/features/research/useResearch'
+import { applyOptimisticCompletions } from '@/features/queues/applyOptimisticCompletions'
 import { useAccelerate } from '@/features/queues/useAccelerate'
 import { useQueueSync } from '@/features/queues/useQueueSync'
 import { useKingdom } from '@/features/kingdom/useKingdom'
@@ -28,7 +29,7 @@ export function ResearchPage() {
   const syncQueues = useQueueSync()
 
   const handleCountdownEnd = useCallback(async () => {
-    applyCompletedResearchQueues(qc)
+    applyOptimisticCompletions(qc)
     await syncQueues()
     refetch()
     qc.invalidateQueries({ queryKey: ['buildings'] })

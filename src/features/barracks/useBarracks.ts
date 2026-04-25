@@ -1,5 +1,5 @@
 import { useRef, useEffect } from 'react'
-import { useQuery, useMutation, useQueryClient, type QueryClient } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { barracksService } from './services/barracksService'
 import { getActiveKingdomId } from '@/features/kingdom/useKingdom'
 import { deductResources } from '@/features/kingdom/deductResources'
@@ -7,24 +7,6 @@ import { toast } from '@/lib/toast'
 import { UNIT_LABELS } from '@/lib/labels'
 import type { UnitInfo, BarracksResponse } from './types'
 import type { Kingdom } from '@/../db/schema'
-
-export function applyCompletedBarracksQueues(qc: QueryClient) {
-  const now = Math.floor(Date.now() / 1000)
-  const complete = (list: UnitInfo[]) =>
-    list.map(u => {
-      if (!u.inQueue || u.inQueue.finishesAt > now) return u
-      return { ...u, count: u.count + u.inQueue.amount, inQueue: null }
-    })
-  qc.setQueriesData<BarracksResponse>({ queryKey: ['barracks'] }, prev => {
-    if (!prev) return prev
-    return {
-      units: complete(prev.units),
-      support: complete(prev.support),
-      defenses: complete(prev.defenses),
-      missiles: complete(prev.missiles ?? []),
-    }
-  })
-}
 
 export type { UnitInfo, BarracksResponse }
 

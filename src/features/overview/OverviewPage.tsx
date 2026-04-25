@@ -1,4 +1,4 @@
-import { type ReactNode, useState, useEffect, useRef } from 'react'
+import { type ReactNode, useState, useEffect, useRef, useCallback } from 'react'
 import { Clock, TrendingUp, Hammer, FlaskConical, Swords, Send, Shield, ChevronRight, Zap, TreePine, Mountain, Wheat, AlertTriangle, Timer, Trophy } from 'lucide-react'
 import {
   GiAnvil, GiSpellBook, GiCrossedSwords, GiDragonHead, GiLaurelCrown,
@@ -13,6 +13,7 @@ import { useBarracks } from '@/features/barracks/useBarracks'
 import { useArmies } from '@/features/armies/useArmies'
 import { useAuth } from '@/features/auth/useAuth'
 import { useSeason } from '@/features/season/useSeason'
+import { applyOptimisticCompletions } from '@/features/queues/applyOptimisticCompletions'
 import { formatResource, formatDuration } from '@/lib/format'
 import { label as unitLabel } from '@/lib/labels'
 import { tempLabel } from '@/lib/terrain'
@@ -96,8 +97,19 @@ export function OverviewPage() {
   const queuedUnits = allUnits.filter(u => !!u.inQueue)
     .sort((a, b) => a.inQueue!.finishesAt - b.inQueue!.finishesAt)
 
-  // Refetch queue data the moment the next active item completes so the
-  // following item starts showing its timer without needing a page navigation.
+  // Called when any queue item countdown reaches zero — applies optimistic
+  // updates immediately and also triggers a server refetch.
+  const handleQueueEnd = useCallback(() => {
+    applyOptimisticCompletions(qc)
+    qc.invalidateQueries({ queryKey: ['buildings'] })
+    qc.invalidateQueries({ queryKey: ['research'] })
+    qc.invalidateQueries({ queryKey: ['barracks'] })
+    qc.invalidateQueries({ queryKey: ['kingdom'] })
+  }, [qc])
+
+  // Fallback timer: fires when the next active item finishes. Handles the case
+  // where the page loads with items already past their deadline, or when items
+  // finish while the tab is in the background (QueueRow onCountdownEnd won't fire).
   const refetchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   useEffect(() => {
     const now = Math.floor(Date.now() / 1000)
@@ -109,14 +121,10 @@ export function OverviewPage() {
     const next = activeFinishTimes.filter(t => t > now).sort((a, b) => a - b)[0]
     if (refetchTimerRef.current) clearTimeout(refetchTimerRef.current)
     if (!next) return
-    const delay = (next - now) * 1000 + 800
-    refetchTimerRef.current = setTimeout(() => {
-      qc.invalidateQueries({ queryKey: ['buildings'] })
-      qc.invalidateQueries({ queryKey: ['research'] })
-      qc.invalidateQueries({ queryKey: ['barracks'] })
-    }, delay)
+    const delay = (next - now) * 1000
+    refetchTimerRef.current = setTimeout(handleQueueEnd, delay)
     return () => { if (refetchTimerRef.current) clearTimeout(refetchTimerRef.current) }
-  }, [queuedBuildings, queuedResearch, queuedUnits, qc])
+  }, [queuedBuildings, queuedResearch, queuedUnits, handleQueueEnd])
 
   const tempAvg = (kingdom as Record<string, unknown> | null)?.tempAvg as number | undefined
   const charClass = user?.characterClass ? CLASS_INFO[user.characterClass] : null
@@ -293,6 +301,7 @@ export function OverviewPage() {
                 finishesAt={b.inQueue!.finishesAt}
                 startedAt={b.inQueue!.startedAt}
                 color="gold"
+                onCountdownEnd={handleQueueEnd}
               />
             ))}
           </div>
@@ -319,6 +328,7 @@ export function OverviewPage() {
                 finishesAt={r.inQueue!.finishesAt}
                 startedAt={r.inQueue!.startedAt}
                 color="forest"
+                onCountdownEnd={handleQueueEnd}
               />
             ))}
           </div>
@@ -344,6 +354,7 @@ export function OverviewPage() {
                 label={`${unitLabel(u.id)} × ${u.inQueue!.amount}`}
                 finishesAt={u.inQueue!.finishesAt}
                 color="stone"
+                onCountdownEnd={handleQueueEnd}
               />
             ))}
           </div>
@@ -428,18 +439,27 @@ function StatRow({
 }
 
 function QueueRow({
-  icon, label: lbl, finishesAt, startedAt, color,
-}: { icon: ReactNode; label: string; finishesAt: number; startedAt?: number; color: 'gold' | 'forest' | 'stone' }) {
+  icon, label: lbl, finishesAt, startedAt, color, onCountdownEnd,
+}: { icon: ReactNode; label: string; finishesAt: number; startedAt?: number; color: 'gold' | 'forest' | 'stone'; onCountdownEnd?: () => void }) {
   // Force a re-render every second — remaining is derived fresh each render
   // so transitions from "En cola" → active work correctly after a data refetch.
   const [, tick] = useState(0)
   const pending = startedAt !== undefined && startedAt > Math.floor(Date.now() / 1000)
+  const firedRef = useRef(false)
 
   useEffect(() => {
+    firedRef.current = false
     if (pending) return
-    const id = setInterval(() => tick(n => n + 1), 1000)
+    const id = setInterval(() => {
+      tick(n => n + 1)
+      const rem = Math.max(0, finishesAt - Math.floor(Date.now() / 1000))
+      if (rem === 0 && !firedRef.current) {
+        firedRef.current = true
+        onCountdownEnd?.()
+      }
+    }, 1000)
     return () => clearInterval(id)
-  }, [pending])
+  }, [pending, finishesAt, onCountdownEnd])
 
   const now      = Math.floor(Date.now() / 1000)
   const remaining = pending ? 0 : Math.max(0, finishesAt - now)

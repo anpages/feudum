@@ -4,7 +4,8 @@ import { GiFactory, GiOpenTreasureChest } from 'react-icons/gi'
 import { useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { Card } from '@/components/ui/Card'
-import { useBuildings, useUpgradeBuilding, useCancelBuilding, applyCompletedBuildingQueues } from '@/features/buildings/useBuildings'
+import { useBuildings, useUpgradeBuilding, useCancelBuilding } from '@/features/buildings/useBuildings'
+import { applyOptimisticCompletions } from '@/features/queues/applyOptimisticCompletions'
 import { useAccelerate } from '@/features/queues/useAccelerate'
 import { useQueueSync } from '@/features/queues/useQueueSync'
 import { useKingdom } from '@/features/kingdom/useKingdom'
@@ -44,7 +45,7 @@ export function ResourcesPage() {
   const syncQueues = useQueueSync()
 
   const handleCountdownEnd = useCallback(async () => {
-    applyCompletedBuildingQueues(qc)
+    applyOptimisticCompletions(qc)
     await syncQueues()
     refetch()
     qc.invalidateQueries({ queryKey: ['kingdom'] })
