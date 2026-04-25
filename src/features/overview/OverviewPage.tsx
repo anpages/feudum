@@ -73,9 +73,11 @@ export function OverviewPage() {
   const effBonus = (base: number, lvl: number) => Math.floor(base * (1 + lvl * 0.1))
 
   const allBarracksUnits = [...(barracksData?.units ?? []), ...(barracksData?.support ?? []), ...(barracksData?.defenses ?? [])]
-  const totalAttackPower = allBarracksUnits.reduce((s, u) => s + u.count * effBonus(u.attack, sword), 0)
-  const totalShieldPower = allBarracksUnits.reduce((s, u) => s + u.count * effBonus(u.shield, arm),   0)
-  const totalUnitCount   = allBarracksUnits.reduce((s, u) => s + u.count, 0)
+  const totalAttackPower  = allBarracksUnits.reduce((s, u) => s + u.count * effBonus(u.attack, sword), 0)
+  const totalShieldPower  = allBarracksUnits.reduce((s, u) => s + u.count * effBonus(u.shield, arm),   0)
+  const totalUnitCount    = allBarracksUnits.reduce((s, u) => s + u.count, 0)
+  const combatUnitCount   = (barracksData?.units ?? []).reduce((s, u) => s + u.count, 0)
+  const defenseUnitCount  = (barracksData?.defenses ?? []).reduce((s, u) => s + u.count, 0)
   const activeMissions = armiesData?.missions.filter(m => m.state !== 'completed') ?? []
   const incomingHostileCount = armiesData?.incomingMissions.filter(m => m.threatLevel === 'hostile').length ?? 0
   const underAttack = armiesData?.underAttack ?? false
@@ -344,6 +346,7 @@ export function OverviewPage() {
                 </div>
                 <span className="font-ui text-xl font-bold text-ink tabular-nums leading-none">{formatResource(totalAttackPower)}</span>
                 <span className="font-ui text-[0.58rem] text-ink-muted/60 uppercase tracking-wide mt-1">Ofensiva</span>
+                <span className="font-body text-[0.58rem] text-ink-muted/40 mt-0.5">{combatUnitCount} unidades</span>
               </button>
               <button
                 onClick={() => setMilitaryOpen(true)}
@@ -354,6 +357,7 @@ export function OverviewPage() {
                 </div>
                 <span className="font-ui text-xl font-bold text-ink tabular-nums leading-none">{formatResource(totalShieldPower)}</span>
                 <span className="font-ui text-[0.58rem] text-ink-muted/60 uppercase tracking-wide mt-1">Defensiva</span>
+                <span className="font-body text-[0.58rem] text-ink-muted/40 mt-0.5">{defenseUnitCount} defensas</span>
               </button>
             </div>
           </Card>
