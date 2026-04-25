@@ -535,6 +535,73 @@ async function attemptTrainTroops(kingdom, personality, cls, researchMap, cfg, n
   }
 }
 
+// Trains a batch of defense structures using leftover resources.
+// Called as a second pass after attemptTrainTroops — defenses are instant (no queue).
+// Only runs when combatTotal >= ATTACK_THRESHOLD so economy-first NPCs build a
+// base army before investing in walls.
+async function attemptTrainDefenses(kingdom, personality, researchMap) {
+  const combatTotal = [...UNIT_COMBAT_SET].reduce((s, u) => s + (kingdom[u] ?? 0), 0)
+  if (combatTotal < ATTACK_THRESHOLD[personality]) return { action: 'skipped_defense' }
+
+  const defBatchCap = 5
+  const defPriority = (UNIT_PRIORITY[personality] ?? []).filter(u => UNIT_DEFENSE_SET.has(u))
+
+  let { wood, stone, grain } = kingdom
+  const patch = {}
+  let totalBuilt = 0
+  let lastDef = ''
+
+  for (const unitId of defPriority) {
+    const unitDef = ALL_UNITS.find(u => u.id === unitId)
+    if (!unitDef) continue
+
+    let blocked = false
+    for (const req of unitDef.requires ?? []) {
+      if (req.type === 'building'  && (kingdom[req.id]     ?? 0) < req.level) { blocked = true; break }
+      if (req.type === 'research'  && (researchMap[req.id] ?? 0) < req.level) { blocked = true; break }
+    }
+    if (blocked) continue
+
+    const cost = UNIT_COSTS[unitId]
+    if (!cost) continue
+    if (cost.wood > wood || cost.stone > stone || (cost.grain ?? 0) > grain) continue
+
+    const canAfford = Math.min(
+      cost.wood  > 0 ? Math.floor(wood  / cost.wood)  : Infinity,
+      cost.stone > 0 ? Math.floor(stone / cost.stone) : Infinity,
+      (cost.grain ?? 0) > 0 ? Math.floor(grain / cost.grain) : Infinity,
+    )
+    if (canAfford <= 0) continue
+
+    const batch = Math.min(canAfford, defBatchCap)
+    wood  -= cost.wood  * batch
+    stone -= cost.stone * batch
+    grain -= (cost.grain ?? 0) * batch
+    patch[unitId] = (kingdom[unitId] ?? 0) + batch
+    totalBuilt += batch
+    lastDef = unitId
+    break  // one defense type per tick — keep it proportional
+  }
+
+  if (totalBuilt === 0) return { action: 'no_defense_affordable' }
+
+  await db.update(kingdoms).set({
+    wood, stone, grain,
+    lastResourceUpdate: Math.floor(Date.now() / 1000),
+    updatedAt: new Date(),
+  }).where(eq(kingdoms.id, kingdom.id))
+  kingdom.wood  = wood
+  kingdom.stone = stone
+  kingdom.grain = grain
+
+  for (const [unitId, newCount] of Object.entries(patch)) {
+    await upsertUnit(kingdom.id, unitId, newCount)
+    kingdom[unitId] = newCount
+  }
+
+  return { action: 'defense', unit: lastDef, count: totalBuilt, isDefense: true }
+}
+
 async function attemptBuildWeighted(kingdom, personality, cfg, now, researchMap = {}) {
   const weights = BUILD_WEIGHTS[personality]
 
@@ -772,9 +839,11 @@ async function growNpc(kingdom, cfg, now, researchMap, debrisRegions, colonizeAc
     if (!kingdom.currentTask) {
       secondaryResult = await attemptBuildWeighted(kingdom, personality, cfg, now, researchMap)
     }
+    if (hasTroops) await attemptTrainDefenses(kingdom, personality, researchMap)
   } else if (flavor === 'troops') {
     if (hasTroops) {
       primaryResult = await attemptTrainTroops(kingdom, personality, cls, researchMap, cfg, now)
+      await attemptTrainDefenses(kingdom, personality, researchMap)
     }
     if (!kingdom.currentTask) {
       secondaryResult = await attemptBuildWeighted(kingdom, personality, cfg, now, researchMap)
@@ -784,6 +853,7 @@ async function growNpc(kingdom, cfg, now, researchMap, debrisRegions, colonizeAc
     if (hasTroops && !kingdom.currentTask) {
       secondaryResult = await attemptTrainTroops(kingdom, personality, cls, researchMap, cfg, now)
     }
+    if (hasTroops) await attemptTrainDefenses(kingdom, personality, researchMap)
   }
 
   const isActive = (r) => r && !['saving', 'blocked', 'waiting', 'error', 'research_busy', 'no_research'].includes(r?.action)
