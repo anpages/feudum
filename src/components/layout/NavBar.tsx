@@ -45,7 +45,9 @@ export function NavBar({ isOpen, onClose }: Props) {
   const { user } = useAuth()
   const qc = useQueryClient()
   const { mode, setMode } = useTheme()
-  const underAttack = (qc.getQueryData<ArmiesResponse>(['armies'])?.underAttack) ?? false
+  const armiesData  = qc.getQueryData<ArmiesResponse>(['armies'])
+  const underAttack = armiesData?.underAttack ?? false
+  const activeMissions = (armiesData?.missions ?? []).filter(m => m.state !== 'completed').length
 
   return (
     <nav className={`game-sidebar ${isOpen ? 'open' : ''}`}>
@@ -74,8 +76,12 @@ export function NavBar({ isOpen, onClose }: Props) {
           >
             <Icon size={16} className="nav-icon shrink-0" />
             <span className="flex-1">{label}</span>
-            {to === '/armies' && underAttack && (
-              <span className="ml-auto w-2 h-2 rounded-full bg-crimson animate-pulse" />
+            {to === '/armies' && (activeMissions > 0 || underAttack) && (
+              <span className={`ml-auto min-w-[1.25rem] h-5 rounded-full flex items-center justify-center font-ui text-[0.6rem] font-bold px-1 tabular-nums ${
+                underAttack ? 'bg-crimson text-white animate-pulse' : 'bg-gold text-white'
+              }`}>
+                {activeMissions > 0 ? activeMissions : '!'}
+              </span>
             )}
           </NavLink>
         ))}
