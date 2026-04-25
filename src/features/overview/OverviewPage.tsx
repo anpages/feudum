@@ -1,5 +1,5 @@
 import { type ReactNode, useState, useEffect, useRef, useCallback } from 'react'
-import { Clock, TrendingUp, Hammer, FlaskConical, Swords, Shield, Zap, TreePine, Mountain, Wheat, AlertTriangle, MapPin, Thermometer, Flame, Trophy, Timer, Compass, Pickaxe, type LucideIcon } from 'lucide-react'
+import { Clock, TrendingUp, Hammer, FlaskConical, Swords, Shield, Zap, TreePine, Mountain, Wheat, AlertTriangle, MapPin, Thermometer, Flame, Trophy, Compass, Pickaxe, type LucideIcon } from 'lucide-react'
 import { GiAnvil, GiSpellBook, GiCrossedSwords } from 'react-icons/gi'
 import { useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
@@ -130,6 +130,11 @@ export function OverviewPage() {
 
   const charClass = user?.characterClass ? CLASS_INFO[user.characterClass] : null
 
+  const kdom     = kingdom as Record<string, unknown> | null
+  const tempAvg  = kdom?.tempMax != null
+    ? calcTempAvg(kdom.tempMin as number | null | undefined, kdom.tempMax as number) : null
+  const terrain  = kingdom?.slot != null ? slotTerrainInfo(kingdom.slot) : null
+
   const { data: season } = useSeason()
   const [seasonTimeLeft, setSeasonTimeLeft] = useState(() =>
     Math.max(0, (season?.seasonEnd ?? 0) - Math.floor(Date.now() / 1000))
@@ -162,106 +167,104 @@ export function OverviewPage() {
       )}
 
       {/* ── Kingdom identity banner ── */}
-      <Card className="p-5 anim-fade-up">
+      <Card className="anim-fade-up overflow-hidden p-0">
 
-        {/* Header: section label + coords badge */}
-        <div className="flex items-start justify-between gap-3 mb-3">
-          <span className="section-heading !mb-0">Panel de mando</span>
-          {kingdom?.realm != null && (
-            <span className="font-ui text-xs tabular-nums font-semibold text-ink-mid border border-gold/40 bg-gold/8 px-2.5 py-1 rounded-md shrink-0 flex items-center gap-1.5">
-              <MapPin size={10} className="text-gold shrink-0" />
-              {kingdom.realm}:{kingdom.region}:{kingdom.slot}
-            </span>
-          )}
+        {/* Gold top accent */}
+        <div className="h-px bg-gradient-to-r from-transparent via-gold/50 to-transparent" />
+
+        {/* Hero area */}
+        <div className="bg-gradient-to-br from-parchment-warm/60 to-parchment-deep/30 px-5 pt-4 pb-5">
+
+          {/* Label row */}
+          <div className="flex items-center justify-between mb-4">
+            <span className="section-heading !mb-0">Panel de mando</span>
+            {kingdom?.realm != null && (
+              <span className="inline-flex items-center gap-1 font-ui text-[0.65rem] tabular-nums text-ink-muted/60 border border-gold/20 bg-gold/5 px-2 py-0.5 rounded">
+                <MapPin size={9} className="text-gold/50 shrink-0" />
+                {kingdom.realm}:{kingdom.region}:{kingdom.slot}
+              </span>
+            )}
+          </div>
+
+          {/* Kingdom name + class */}
+          <div className="flex items-start justify-between gap-4">
+            <h1 className="font-display text-[1.85rem] sm:text-[2.4rem] text-ink leading-none min-w-0 break-words">
+              {kingdom?.name ?? '—'}
+            </h1>
+            <div className="shrink-0 mt-1">
+              {charClass ? (
+                <span className={`font-ui text-[0.7rem] font-semibold px-2.5 py-1.5 rounded-lg border flex items-center gap-1.5 ${charClass.badgeCls}`}>
+                  <charClass.Icon size={12} />
+                  {charClass.label}
+                </span>
+              ) : (
+                <button
+                  onClick={() => navigate('/profile')}
+                  className="font-ui text-xs text-gold/50 hover:text-gold border border-gold/15 hover:border-gold/30 px-2.5 py-1.5 rounded-lg transition-colors"
+                >
+                  + Elegir clase
+                </button>
+              )}
+            </div>
+          </div>
+
         </div>
 
-        {/* Kingdom name + class badge */}
-        <div className="flex items-center gap-3 flex-wrap">
-          <h1 className="font-display text-2xl text-ink leading-tight">{kingdom?.name ?? '—'}</h1>
-          {charClass ? (
-            <span className={`font-ui text-xs font-semibold px-2.5 py-1 rounded-full border shrink-0 flex items-center gap-1.5 ${charClass.badgeCls}`}>
-              <charClass.Icon size={11} />
-              {charClass.label}
-            </span>
-          ) : (
-            <button onClick={() => navigate('/profile')} className="font-ui text-xs text-gold/60 hover:text-gold transition-colors shrink-0">
-              + Elegir clase
-            </button>
-          )}
-        </div>
+        {/* Status strip — 3 columns */}
+        <div className="border-t border-gold/12 grid grid-cols-3 divide-x divide-gold/10">
 
-        {/* Entorno + Temporada cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-4 pt-4 border-t border-gold/10">
+          {/* Climate */}
+          <div className="flex items-center gap-2.5 px-3.5 sm:px-4 py-3">
+            <Thermometer size={14} className="text-gold/40 shrink-0" />
+            <div className="min-w-0">
+              <p className="font-ui text-[0.5rem] uppercase tracking-widest text-ink-muted/40 leading-none mb-1.5">Clima</p>
+              <p className="font-ui text-xs text-ink-mid font-medium leading-none truncate">
+                {tempAvg !== null ? tempLabel(tempAvg) : '—'}
+              </p>
+            </div>
+          </div>
 
-          {/* Entorno: Clima + Terreno */}
-          {(() => {
-            const kk = kingdom as Record<string, unknown>
-            const tempAvg = kingdom?.tempMax != null
-              ? calcTempAvg(kk.tempMin as number, kk.tempMax as number) : null
-            const terrain = kingdom?.slot != null ? slotTerrainInfo(kingdom.slot) : null
-            return (
-              <div className="rounded-lg border border-gold/15 bg-parchment-warm/50 px-3.5 py-3">
-                <p className="font-ui text-[0.55rem] uppercase tracking-widest text-ink-muted/50">Entorno</p>
-                <div className="mt-3 space-y-2">
-                  <div className="flex items-center gap-2">
-                    <Thermometer size={13} className="text-ink-muted/50 shrink-0" />
-                    <span className="font-ui text-xs font-medium text-ink-mid">
-                      {tempAvg !== null ? tempLabel(tempAvg) : '—'}
-                    </span>
-                  </div>
-                  {terrain && (
-                    <div className="flex items-center gap-2">
-                      <Mountain size={13} className="text-ink-muted/50 shrink-0" />
-                      <span className={`font-ui text-xs font-medium ${terrain.bonus ? 'text-ink-mid' : 'text-ink-muted/60'}`}>
-                        {terrain.label}
-                      </span>
-                      {terrain.bonus && (
-                        <span className="font-ui text-[0.6rem] font-semibold text-forest-light ml-auto">{terrain.bonus}</span>
-                      )}
-                    </div>
+          {/* Terrain */}
+          <div className="flex items-center gap-2.5 px-3.5 sm:px-4 py-3">
+            <Mountain size={14} className="text-gold/40 shrink-0" />
+            <div className="min-w-0">
+              <p className="font-ui text-[0.5rem] uppercase tracking-widest text-ink-muted/40 leading-none mb-1.5">Terreno</p>
+              <p className="font-ui text-xs text-ink-mid font-medium leading-none truncate">{terrain?.label ?? '—'}</p>
+              {terrain?.bonus && (
+                <p className="font-ui text-[0.58rem] text-forest-light font-bold leading-none mt-1">{terrain.bonus}</p>
+              )}
+            </div>
+          </div>
+
+          {/* Season */}
+          <div className="flex items-center gap-2.5 px-3.5 sm:px-4 py-3">
+            {season?.seasonState === 'ended'
+              ? <Trophy size={14} className="text-gold/60 shrink-0" />
+              : <Flame  size={14} className="text-gold/40 shrink-0" />
+            }
+            <div className="min-w-0">
+              <p className="font-ui text-[0.5rem] uppercase tracking-widest text-ink-muted/40 leading-none mb-1.5">Temporada</p>
+              {season?.seasonNumber ? (
+                <>
+                  <p className={`font-ui text-xs font-medium leading-none ${season.seasonState === 'ended' ? 'text-gold' : 'text-ink-mid'}`}>
+                    {season.seasonState === 'ended' ? `T${season.seasonNumber} · Final` : `T${season.seasonNumber} · En curso`}
+                  </p>
+                  {season.seasonState !== 'ended' && seasonTimeLeft > 0 && (
+                    <p className="font-ui text-[0.58rem] text-ink-muted/50 leading-none mt-1">
+                      {formatSeasonTime(seasonTimeLeft)} restantes
+                    </p>
                   )}
-                </div>
-              </div>
-            )
-          })()}
-
-          {/* Temporada */}
-          {(() => {
-            const ended = season?.seasonState === 'ended'
-            return (
-              <div className="rounded-lg border border-gold/15 bg-parchment-warm/50 px-3.5 py-3">
-                <p className="font-ui text-[0.55rem] uppercase tracking-widest text-ink-muted/50">Temporada</p>
-                <div className="mt-3 space-y-2">
-                  <div className="flex items-center gap-2">
-                    {ended
-                      ? <Trophy size={13} className="text-gold/70 shrink-0" />
-                      : <Flame  size={13} className="text-ink-muted/50 shrink-0" />
-                    }
-                    {season?.seasonNumber ? (
-                      <span className={`font-ui text-xs font-semibold ${ended ? 'text-gold' : 'text-ink-mid'}`}>
-                        T{season.seasonNumber} — {ended ? 'Finalizada' : 'En curso'}
-                      </span>
-                    ) : (
-                      <span className="font-ui text-xs text-ink-muted/40">Sin temporada activa</span>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {ended && season?.winner
-                      ? <Trophy size={13} className="text-gold/70 shrink-0" />
-                      : <Timer  size={13} className="text-ink-muted/50 shrink-0" />
-                    }
-                    {ended && season?.winner ? (
-                      <span className="font-ui text-xs font-semibold text-gold">{season.winner.username}</span>
-                    ) : seasonTimeLeft > 0 ? (
-                      <span className="font-ui text-xs text-ink-mid">{formatSeasonTime(seasonTimeLeft)} restantes</span>
-                    ) : (
-                      <span className="font-ui text-xs text-ink-muted/40">—</span>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )
-          })()}
+                  {season.seasonState === 'ended' && season.winner && (
+                    <p className="font-ui text-[0.58rem] text-gold/70 font-semibold leading-none mt-1 truncate">
+                      {season.winner.username}
+                    </p>
+                  )}
+                </>
+              ) : (
+                <p className="font-ui text-xs text-ink-muted/40 leading-none">Sin temporada</p>
+              )}
+            </div>
+          </div>
 
         </div>
       </Card>
