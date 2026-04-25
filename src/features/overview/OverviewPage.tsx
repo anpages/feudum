@@ -1,9 +1,10 @@
-import { type ReactNode, useState, useEffect } from 'react'
+import { type ReactNode, useState, useEffect, useRef } from 'react'
 import { Clock, TrendingUp, Hammer, FlaskConical, Swords, Send, Shield, ChevronRight, Zap, TreePine, Mountain, Wheat, AlertTriangle, Timer, Trophy } from 'lucide-react'
 import {
   GiAnvil, GiSpellBook, GiCrossedSwords, GiDragonHead, GiLaurelCrown,
 } from 'react-icons/gi'
 import { useNavigate } from 'react-router-dom'
+import { useQueryClient } from '@tanstack/react-query'
 import { useKingdom } from '@/features/kingdom/useKingdom'
 import { useResourceTicker } from '@/features/kingdom/useResourceTicker'
 import { useResearch } from '@/features/research/useResearch'
@@ -44,6 +45,7 @@ const BUILDING_KEYS = [
 
 export function OverviewPage() {
   const navigate = useNavigate()
+  const qc = useQueryClient()
   const { data: kingdom, isLoading } = useKingdom()
   const resources = useResourceTicker(kingdom)
   const { data: researchData } = useResearch()
@@ -92,6 +94,28 @@ export function OverviewPage() {
     .sort((a, b) => a.inQueue!.finishesAt - b.inQueue!.finishesAt) ?? []
   const allUnits = [...(barracksData?.units ?? []), ...(barracksData?.support ?? []), ...(barracksData?.defenses ?? [])]
   const queuedUnits = allUnits.filter(u => !!u.inQueue)
+
+  // Refetch queue data the moment the next active item completes so the
+  // following item starts showing its timer without needing a page navigation.
+  const refetchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(() => {
+    const now = Math.floor(Date.now() / 1000)
+    const activeFinishTimes = [
+      ...queuedBuildings.filter(b => !b.inQueue!.startedAt || b.inQueue!.startedAt <= now).map(b => b.inQueue!.finishesAt),
+      ...queuedResearch.filter(r => !r.inQueue!.startedAt || r.inQueue!.startedAt <= now).map(r => r.inQueue!.finishesAt),
+      ...queuedUnits.map(u => u.inQueue!.finishesAt),
+    ]
+    const next = activeFinishTimes.filter(t => t > now).sort((a, b) => a - b)[0]
+    if (refetchTimerRef.current) clearTimeout(refetchTimerRef.current)
+    if (!next) return
+    const delay = (next - now) * 1000 + 800
+    refetchTimerRef.current = setTimeout(() => {
+      qc.invalidateQueries({ queryKey: ['buildings'] })
+      qc.invalidateQueries({ queryKey: ['research'] })
+      qc.invalidateQueries({ queryKey: ['barracks'] })
+    }, delay)
+    return () => { if (refetchTimerRef.current) clearTimeout(refetchTimerRef.current) }
+  }, [queuedBuildings, queuedResearch, queuedUnits, qc])
 
   const tempAvg = (kingdom as Record<string, unknown> | null)?.tempAvg as number | undefined
   const charClass = user?.characterClass ? CLASS_INFO[user.characterClass] : null
@@ -255,10 +279,10 @@ export function OverviewPage() {
         </div>
       </section>
 
-      {/* ── Installations queue ── */}
+      {/* ── Buildings queue ── */}
       <section className="anim-fade-up-3">
         <span className="section-heading">Instalaciones en progreso</span>
-        {(queuedBuildings.length > 0 || queuedResearch.length > 0) ? (
+        {queuedBuildings.length > 0 ? (
           <div className="space-y-2">
             {queuedBuildings.map(b => (
               <QueueRow
@@ -270,6 +294,22 @@ export function OverviewPage() {
                 color="gold"
               />
             ))}
+          </div>
+        ) : (
+          <Card className="p-4">
+            <div className="flex items-center gap-3 text-ink-muted/50">
+              <Clock size={14} />
+              <span className="font-body text-sm">Sin construcciones activas</span>
+            </div>
+          </Card>
+        )}
+      </section>
+
+      {/* ── Research queue ── */}
+      <section className="anim-fade-up-4">
+        <span className="section-heading">Investigaciones en progreso</span>
+        {queuedResearch.length > 0 ? (
+          <div className="space-y-2">
             {queuedResearch.map(r => (
               <QueueRow
                 key={r.id}
@@ -284,15 +324,15 @@ export function OverviewPage() {
         ) : (
           <Card className="p-4">
             <div className="flex items-center gap-3 text-ink-muted/50">
-              <Clock size={14} />
-              <span className="font-body text-sm">Sin construcciones ni investigaciones activas</span>
+              <FlaskConical size={14} />
+              <span className="font-body text-sm">Sin investigaciones activas</span>
             </div>
           </Card>
         )}
       </section>
 
       {/* ── Troops queue ── */}
-      <section className="anim-fade-up-4">
+      <section className="anim-fade-up-5">
         <span className="section-heading">Tropas en entrenamiento</span>
         {queuedUnits.length > 0 ? (
           <div className="space-y-2">

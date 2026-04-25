@@ -1,5 +1,5 @@
-import { eq, and, asc } from 'drizzle-orm'
-import { db, kingdoms, researchQueue, users } from '../_db.js'
+import { eq, and, asc, lte, gt } from 'drizzle-orm'
+import { db, kingdoms, researchQueue, buildingQueue, users } from '../_db.js'
 import { getSessionUserId } from '../lib/handler.js'
 import { RESEARCH, researchCost, researchTime, requirementsMet } from '../lib/research.js'
 import { getSettings } from '../lib/settings.js'
@@ -33,6 +33,21 @@ export default async function handler(req, res) {
   ])
   if (!kingdomRow) return res.status(404).json({ error: 'Reino no encontrado' })
   const kingdom = await enrichKingdom(kingdomRow)
+
+  // ── Academia en construcción → bloquea investigación (OGame mechanic) ────────
+  const now0 = Math.floor(Date.now() / 1000)
+  const academyActive = await db.select({ id: buildingQueue.id })
+    .from(buildingQueue)
+    .where(and(
+      eq(buildingQueue.kingdomId, kingdomRow?.id ?? ''),
+      eq(buildingQueue.buildingType, 'academy'),
+      lte(buildingQueue.startedAt, now0),
+      gt(buildingQueue.finishesAt, now0),
+    ))
+    .limit(1)
+  if (academyActive.length > 0) {
+    return res.status(400).json({ error: 'No puedes investigar mientras la Academia está siendo mejorada' })
+  }
 
   // ── Queue limit (max 5) ────────────────────────────────────────────────────
   const existing = await db.select().from(researchQueue)

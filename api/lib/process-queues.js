@@ -1,4 +1,4 @@
-import { eq, and, lte } from 'drizzle-orm'
+import { eq, and, lte, gt } from 'drizzle-orm'
 import {
   db, kingdoms, buildingQueue, researchQueue, unitQueue,
 } from '../_db.js'
@@ -91,17 +91,38 @@ export async function processKingdomQueues(kingdomId, userId) {
   }
 
   // ── Research: upsert level in research table ──────────────────────────────────
+  // OGame mechanic: if the academy (research lab) is still being upgraded in the
+  // linked kingdom, skip processing — research resumes once academy is done.
   if (rq.length > 0 && userId) {
-    const resMap = {}
-    for (const row of rq) {
-      if ((resMap[row.researchType] ?? -1) < row.level) resMap[row.researchType] = row.level
+    const kingdomIds = [...new Set(rq.map(r => r.kingdomId).filter(Boolean))]
+    const academyBuilding = kingdomIds.length
+      ? await db.select({ kingdomId: buildingQueue.kingdomId })
+          .from(buildingQueue)
+          .where(and(
+            eq(buildingQueue.buildingType, 'academy'),
+            lte(buildingQueue.startedAt, now),
+            gt(buildingQueue.finishesAt, now),
+          ))
+          .limit(1)
+      : []
+    const blockedKingdoms = new Set(academyBuilding.map(r => r.kingdomId))
+
+    const processable = rq.filter(r => !blockedKingdoms.has(r.kingdomId))
+    const processableIds = new Set(processable.map(r => r.id))
+
+    if (processable.length > 0) {
+      const resMap = {}
+      for (const row of processable) {
+        if ((resMap[row.researchType] ?? -1) < row.level) resMap[row.researchType] = row.level
+      }
+      for (const [type, level] of Object.entries(resMap)) {
+        await upsertResearch(userId, type, level)
+      }
+      // Only delete the items we actually processed (not blocked ones)
+      for (const row of processable) {
+        await db.delete(researchQueue).where(eq(researchQueue.id, row.id))
+      }
     }
-    for (const [type, level] of Object.entries(resMap)) {
-      await upsertResearch(userId, type, level)
-    }
-    await db.delete(researchQueue).where(
-      and(eq(researchQueue.userId, userId), lte(researchQueue.finishesAt, now))
-    )
   }
 
   return bq.length + rq.length + uq.length
