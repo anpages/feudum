@@ -112,8 +112,8 @@ function BuildingRow({ label, avg, max, weight }: { label: string; avg: number; 
     <div className="flex items-center gap-3">
       <span className="font-ui text-xs text-ink-muted w-28 shrink-0">{label}</span>
       <div className="flex-1 space-y-0.5"><FillBar value={avg} max={weight} color="bg-gold/70" /></div>
-      <span className="font-ui text-xs tabular-nums text-ink w-20 text-right shrink-0">
-        <span className="text-ink-muted text-[0.6rem]">prom.</span> {avg} <span className="text-ink-muted text-[0.6rem]">máx.</span> {max}
+      <span className="font-ui text-xs tabular-nums text-ink w-14 text-right shrink-0">
+        {avg} <span className="text-ink-muted/50">/</span> {max}
       </span>
     </div>
   )
