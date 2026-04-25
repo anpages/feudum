@@ -200,9 +200,9 @@ export function OverviewPage() {
               ? calcTempAvg(kk.tempMin as number, kk.tempMax as number) : null
             const terrain = kingdom?.slot != null ? slotTerrainInfo(kingdom.slot) : null
             return (
-              <div className="rounded-lg border border-gold/15 bg-parchment-warm/50 px-3.5 py-3 space-y-2">
-                <p className="font-ui text-[0.55rem] uppercase tracking-widest text-ink-muted/50 leading-none">Entorno</p>
-                <div className="flex items-center gap-2">
+              <div className="rounded-lg border border-gold/15 bg-parchment-warm/50 px-3.5 py-3">
+                <p className="font-ui text-[0.55rem] uppercase tracking-widest text-ink-muted/50 leading-none mb-3">Entorno</p>
+                <div className="space-y-2"><div className="flex items-center gap-2">
                   <Thermometer size={13} className="text-ink-muted/50 shrink-0" />
                   <span className="font-ui text-xs font-medium text-ink-mid">
                     {tempAvg !== null ? tempLabel(tempAvg) : '—'}
@@ -219,6 +219,7 @@ export function OverviewPage() {
                     )}
                   </div>
                 )}
+                </div>
               </div>
             )
           })()}
@@ -227,15 +228,15 @@ export function OverviewPage() {
           {(() => {
             const ended = season?.seasonState === 'ended'
             return (
-              <div className="rounded-lg border border-gold/15 bg-parchment-warm/50 px-3.5 py-3 space-y-2">
-                <p className="font-ui text-[0.55rem] uppercase tracking-widest text-ink-muted/50 leading-none">Temporada</p>
-                <div className="flex items-center gap-2">
+              <div className="rounded-lg border border-gold/15 bg-parchment-warm/50 px-3.5 py-3">
+                <p className="font-ui text-[0.55rem] uppercase tracking-widest text-ink-muted/50 leading-none mb-3">Temporada</p>
+                <div className="space-y-2"><div className="flex items-center gap-2">
                   {ended
                     ? <Trophy size={13} className="text-gold/70 shrink-0" />
-                    : <Flame  size={13} className="text-crimson/70 shrink-0" />
+                    : <Flame  size={13} className="text-ink-muted/50 shrink-0" />
                   }
                   {season?.seasonNumber ? (
-                    <span className={`font-ui text-xs font-semibold ${ended ? 'text-gold' : 'text-crimson-light'}`}>
+                    <span className={`font-ui text-xs font-semibold ${ended ? 'text-gold' : 'text-ink-mid'}`}>
                       T{season.seasonNumber} — {ended ? 'Finalizada' : 'En curso'}
                     </span>
                   ) : (
@@ -254,6 +255,7 @@ export function OverviewPage() {
                   ) : (
                     <span className="font-ui text-xs text-ink-muted/40">—</span>
                   )}
+                </div>
                 </div>
               </div>
             )
