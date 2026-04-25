@@ -53,30 +53,30 @@ export function LoginPage() {
   const { signInWithGoogle } = useAuth()
 
   return (
-    <div className="min-h-screen" style={{ background: '#faf6ef', color: '#1c1208' }}>
+    <div className="min-h-screen" style={{ background: 'var(--color-parchment)', color: 'var(--color-ink)' }}>
 
       {/* ── Hero ──────────────────────────────────────────────────────────── */}
       <section className="flex flex-col items-center justify-center text-center px-6 py-24 sm:py-32"
-        style={{ background: 'linear-gradient(180deg, #faf6ef 0%, #f4ead8 100%)' }}>
+        style={{ background: 'linear-gradient(180deg, var(--color-parchment) 0%, var(--color-parchment-warm) 100%)' }}>
 
         <div className="mb-6 anim-float">
           <FeuduLogo variant="icon" height={64} />
         </div>
 
-        <p className="font-ui text-[0.6rem] tracking-[0.3em] uppercase mb-3" style={{ color: '#8a6e1a' }}>
+        <p className="font-ui text-[0.6rem] tracking-[0.3em] uppercase mb-3" style={{ color: 'var(--color-gold-dim)' }}>
           Anno MMXXVI · Estrategia medieval multijugador
         </p>
 
         <h1 className="font-display text-5xl sm:text-6xl tracking-[0.14em] uppercase leading-none mb-5"
-          style={{ color: '#b8860b' }}>
+          style={{ color: 'var(--color-gold)' }}>
           Feudum
         </h1>
 
-        <p className="font-body text-sm sm:text-base max-w-xl leading-relaxed mb-2" style={{ color: '#1c1208' }}>
+        <p className="font-body text-sm sm:text-base max-w-xl leading-relaxed mb-2" style={{ color: 'var(--color-ink)' }}>
           Un reino te espera. Construye, investiga y conquista en un universo
           compartido con miles de jugadores — gratis, sin trampa.
         </p>
-        <p className="font-body text-sm max-w-lg leading-relaxed mb-10" style={{ color: '#4a3820' }}>
+        <p className="font-body text-sm max-w-lg leading-relaxed mb-10" style={{ color: 'var(--color-ink-mid)' }}>
           Inspirado en los grandes juegos de estrategia por navegador de los 2000,
           reinterpretado con mecánicas modernas para 2026.
         </p>
@@ -91,8 +91,8 @@ export function LoginPage() {
         <button
           onClick={signInWithGoogle}
           className="flex items-center gap-3 px-7 py-3.5 rounded font-ui font-bold tracking-wide text-sm transition-all duration-150 active:scale-[0.98] mb-3"
-          style={{ background: '#ffffff', color: '#4a3820', border: '1px solid rgba(184,134,11,0.4)', boxShadow: '0 1px 4px rgba(60,40,10,0.1)' }}
-          onMouseOver={e => (e.currentTarget.style.background = '#fef9e7')}
+          style={{ background: '#ffffff', color: 'var(--color-ink-mid)', border: '1px solid rgba(184,134,11,0.4)', boxShadow: '0 1px 4px rgba(60,40,10,0.1)' }}
+          onMouseOver={e => (e.currentTarget.style.background = 'var(--color-gold-soft)')}
           onMouseOut={e => (e.currentTarget.style.background = '#ffffff')}
         >
           <GoogleIcon size={18} />
@@ -105,10 +105,10 @@ export function LoginPage() {
       <section className="py-20 px-6" style={{ background: '#ffffff', borderTop: '1px solid rgba(184,134,11,0.15)' }}>
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-14">
-            <p className="font-ui text-[0.6rem] tracking-[0.28em] uppercase mb-3" style={{ color: '#8a6e1a' }}>
+            <p className="font-ui text-[0.6rem] tracking-[0.28em] uppercase mb-3" style={{ color: 'var(--color-gold-dim)' }}>
               Mecánicas de juego
             </p>
-            <h2 className="font-display text-3xl sm:text-4xl tracking-[0.1em] uppercase" style={{ color: '#1c1208' }}>
+            <h2 className="font-display text-3xl sm:text-4xl tracking-[0.1em] uppercase" style={{ color: 'var(--color-ink)' }}>
               Todo en un universo vivo
             </h2>
           </div>
@@ -116,13 +116,13 @@ export function LoginPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
             {FEATURES.map(({ Icon, title, desc }) => (
               <div key={title} className="rounded-lg p-6 flex flex-col gap-3"
-                style={{ background: '#faf6ef', border: '1px solid rgba(184,134,11,0.2)' }}>
+                style={{ background: 'var(--color-parchment)', border: '1px solid rgba(184,134,11,0.2)' }}>
                 <div className="w-9 h-9 rounded flex items-center justify-center"
-                  style={{ background: 'rgba(184,134,11,0.1)', border: '1px solid rgba(184,134,11,0.25)' }}>
-                  <Icon size={16} style={{ color: '#b8860b' }} />
+                  style={{ background: 'color-mix(in srgb, var(--color-gold) 10%, transparent)', border: '1px solid rgba(184,134,11,0.25)' }}>
+                  <Icon size={16} style={{ color: 'var(--color-gold)' }} />
                 </div>
-                <h3 className="font-ui text-sm font-semibold tracking-wide" style={{ color: '#1c1208' }}>{title}</h3>
-                <p className="font-body text-sm leading-relaxed" style={{ color: '#4a3820' }}>{desc}</p>
+                <h3 className="font-ui text-sm font-semibold tracking-wide" style={{ color: 'var(--color-ink)' }}>{title}</h3>
+                <p className="font-body text-sm leading-relaxed" style={{ color: 'var(--color-ink-mid)' }}>{desc}</p>
               </div>
             ))}
           </div>
@@ -130,13 +130,13 @@ export function LoginPage() {
       </section>
 
       {/* ── How it works ──────────────────────────────────────────────────── */}
-      <section className="py-20 px-6" style={{ background: '#f4ead8', borderTop: '1px solid rgba(184,134,11,0.15)' }}>
+      <section className="py-20 px-6" style={{ background: 'var(--color-parchment-warm)', borderTop: '1px solid rgba(184,134,11,0.15)' }}>
         <div className="max-w-4xl mx-auto">
           <div className="text-center mb-14">
-            <p className="font-ui text-[0.6rem] tracking-[0.28em] uppercase mb-3" style={{ color: '#8a6e1a' }}>
+            <p className="font-ui text-[0.6rem] tracking-[0.28em] uppercase mb-3" style={{ color: 'var(--color-gold-dim)' }}>
               Cómo funciona
             </p>
-            <h2 className="font-display text-3xl sm:text-4xl tracking-[0.1em] uppercase" style={{ color: '#1c1208' }}>
+            <h2 className="font-display text-3xl sm:text-4xl tracking-[0.1em] uppercase" style={{ color: 'var(--color-ink)' }}>
               Empieza en 3 pasos
             </h2>
           </div>
@@ -145,15 +145,15 @@ export function LoginPage() {
             {STEPS.map(({ Icon, num, title, desc }) => (
               <div key={title} className="flex flex-col gap-4">
                 <div className="flex items-center gap-3">
-                  <span className="font-display text-3xl leading-none" style={{ color: 'rgba(184,134,11,0.3)' }}>{num}</span>
+                  <span className="font-display text-3xl leading-none" style={{ color: 'color-mix(in srgb, var(--color-gold) 30%, transparent)' }}>{num}</span>
                   <div className="w-8 h-8 rounded-full flex items-center justify-center"
-                    style={{ border: '1px solid rgba(184,134,11,0.3)', background: 'rgba(184,134,11,0.08)' }}>
-                    <Icon size={14} style={{ color: '#b8860b' }} />
+                    style={{ border: '1px solid rgba(184,134,11,0.3)', background: 'color-mix(in srgb, var(--color-gold) 8%, transparent)' }}>
+                    <Icon size={14} style={{ color: 'var(--color-gold)' }} />
                   </div>
                 </div>
                 <div>
-                  <h3 className="font-ui text-sm font-semibold tracking-wide mb-2" style={{ color: '#1c1208' }}>{title}</h3>
-                  <p className="font-body text-sm leading-relaxed" style={{ color: '#4a3820' }}>{desc}</p>
+                  <h3 className="font-ui text-sm font-semibold tracking-wide mb-2" style={{ color: 'var(--color-ink)' }}>{title}</h3>
+                  <p className="font-body text-sm leading-relaxed" style={{ color: 'var(--color-ink-mid)' }}>{desc}</p>
                 </div>
               </div>
             ))}
@@ -164,18 +164,18 @@ export function LoginPage() {
       {/* ── Final CTA ─────────────────────────────────────────────────────── */}
       <section className="py-20 px-6 text-center" style={{ background: '#ffffff', borderTop: '1px solid rgba(184,134,11,0.15)' }}>
         <div className="max-w-lg mx-auto">
-          <h2 className="font-display text-3xl sm:text-4xl tracking-[0.12em] uppercase mb-4" style={{ color: '#b8860b' }}>
+          <h2 className="font-display text-3xl sm:text-4xl tracking-[0.12em] uppercase mb-4" style={{ color: 'var(--color-gold)' }}>
             ¿Listo para gobernar?
           </h2>
-          <p className="font-body text-base mb-8 leading-relaxed" style={{ color: '#4a3820' }}>
+          <p className="font-body text-base mb-8 leading-relaxed" style={{ color: 'var(--color-ink-mid)' }}>
             Miles de reinos ya luchan por el dominio del universo. El tuyo te espera.
           </p>
           <button
             onClick={signInWithGoogle}
             className="inline-flex items-center gap-3 px-7 py-3.5 rounded font-ui font-bold tracking-wide text-sm transition-all duration-150 active:scale-[0.98]"
-            style={{ background: '#b8860b', color: '#ffffff', border: 'none', boxShadow: '0 2px 8px rgba(184,134,11,0.35)' }}
+            style={{ background: 'var(--color-gold)', color: '#ffffff', border: 'none', boxShadow: '0 2px 8px rgba(184,134,11,0.35)' }}
             onMouseOver={e => (e.currentTarget.style.background = '#9a7010')}
-            onMouseOut={e => (e.currentTarget.style.background = '#b8860b')}
+            onMouseOut={e => (e.currentTarget.style.background = 'var(--color-gold)')}
           >
             <GoogleIcon size={18} />
             Jugar gratis con Google
@@ -184,18 +184,18 @@ export function LoginPage() {
       </section>
 
       {/* ── Footer ────────────────────────────────────────────────────────── */}
-      <footer className="py-6 px-6" style={{ background: '#faf6ef', borderTop: '1px solid rgba(184,134,11,0.15)' }}>
+      <footer className="py-6 px-6" style={{ background: 'var(--color-parchment)', borderTop: '1px solid rgba(184,134,11,0.15)' }}>
         <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <FeuduLogo variant="icon" height={20} />
-            <span className="font-ui text-xs tracking-[0.18em] uppercase" style={{ color: '#8a7456' }}>
+            <span className="font-ui text-xs tracking-[0.18em] uppercase" style={{ color: 'var(--color-ink-muted)' }}>
               Feudum · Anno MMXXVI
             </span>
           </div>
-          <p className="font-ui text-xs text-center" style={{ color: '#8a7456' }}>
+          <p className="font-ui text-xs text-center" style={{ color: 'var(--color-ink-muted)' }}>
             Inspirado en{' '}
             <a href="https://github.com/lanedirt/OGameX" target="_blank" rel="noopener noreferrer"
-              style={{ color: '#b8860b' }}>OGameX</a>
+              style={{ color: 'var(--color-gold)' }}>OGameX</a>
             {' '}(GPL) · Reimplementado con visión medieval y moderna para 2026
           </p>
         </div>

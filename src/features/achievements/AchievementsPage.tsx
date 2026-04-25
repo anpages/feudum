@@ -50,7 +50,7 @@ export function AchievementsPage() {
           {unlockedTotal} / {achievements.length} desbloqueados
           {pendingTotal > 0 && (
             <span className="ml-2 font-ui text-xs font-semibold px-2 py-0.5 rounded-full"
-              style={{ background: '#b8860b', color: '#faf6ef' }}>
+              style={{ background: 'var(--color-gold)', color: 'var(--color-parchment)' }}>
               {pendingTotal} recompensa{pendingTotal > 1 ? 's' : ''} disponible{pendingTotal > 1 ? 's' : ''}
             </span>
           )}
@@ -165,7 +165,7 @@ function AchievementCard({ achievement: a }: { achievement: Achievement }) {
             onClick={() => claim.mutate(a.id)}
             disabled={claim.isPending}
             className="mt-2 px-3 py-1 rounded border font-ui text-xs font-semibold transition-all disabled:opacity-50"
-            style={{ background: '#b8860b', color: '#faf6ef', border: '1px solid #9a7010' }}
+            style={{ background: 'var(--color-gold)', color: 'var(--color-parchment)', border: '1px solid #9a7010' }}
           >
             {claim.isPending ? 'Reclamando…' : 'Reclamar recompensa'}
           </button>

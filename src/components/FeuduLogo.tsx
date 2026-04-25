@@ -19,11 +19,11 @@ export function FeuduLogo({ variant = 'full', height = 36, className = '' }: Pro
         <defs>
           <linearGradient id="sw-a" x1="0%" y1="0%" x2="100%" y2="100%">
             <stop offset="0%" stopColor="#e8c547" />
-            <stop offset="100%" stopColor="#8a6e1a" />
+            <stop offset="100%" stopColor="var(--color-gold-dim)" />
           </linearGradient>
           <linearGradient id="sw-b" x1="100%" y1="0%" x2="0%" y2="100%">
             <stop offset="0%" stopColor="#e8c547" />
-            <stop offset="100%" stopColor="#8a6e1a" />
+            <stop offset="100%" stopColor="var(--color-gold-dim)" />
           </linearGradient>
         </defs>
         {/* Sword left-to-right */}
@@ -66,11 +66,11 @@ export function FeuduLogo({ variant = 'full', height = 36, className = '' }: Pro
       <defs>
         <linearGradient id="fl-a" x1="0%" y1="0%" x2="100%" y2="100%">
           <stop offset="0%" stopColor="#e8c547" />
-          <stop offset="100%" stopColor="#8a6e1a" />
+          <stop offset="100%" stopColor="var(--color-gold-dim)" />
         </linearGradient>
         <linearGradient id="fl-b" x1="100%" y1="0%" x2="0%" y2="100%">
           <stop offset="0%" stopColor="#e8c547" />
-          <stop offset="100%" stopColor="#8a6e1a" />
+          <stop offset="100%" stopColor="var(--color-gold-dim)" />
         </linearGradient>
         <linearGradient id="fl-t" x1="0%" y1="0%" x2="0%" y2="100%">
           <stop offset="0%" stopColor="#e8c547" />
