@@ -72,14 +72,11 @@ export function NavBar({ isOpen, onClose }: Props) {
             className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
           >
             <Icon size={16} className="nav-icon shrink-0" />
-            <span className="flex-1">{label}</span>
-            {to === '/armies' && (activeMissions > 0 || underAttack) && (
-              <span className={`ml-auto min-w-[1rem] h-4 rounded-full flex items-center justify-center font-ui text-[0.55rem] font-bold px-1 tabular-nums ${
-                underAttack ? 'bg-crimson/80 text-white animate-pulse' : 'bg-gold/80 text-white'
-              }`}>
-                {activeMissions > 0 ? activeMissions : '!'}
+            <span className="flex-1">{label}{to === '/armies' && activeMissions > 0 && (
+              <span className={`ml-1.5 font-ui tabular-nums text-[0.65rem] font-normal ${underAttack ? 'text-crimson animate-pulse' : 'text-ink-muted/60'}`}>
+                ({activeMissions})
               </span>
-            )}
+            )}</span>
           </NavLink>
         ))}
 
