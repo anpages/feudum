@@ -70,10 +70,10 @@ export function MessagesPage() {
                 setComposing(false)
                 if (!msg.viewed) markRead.mutate(msg.id)
               }}
-              className={`w-full text-left rounded-lg border px-3.5 py-3 transition-colors ${
+              className={`w-full text-left rounded-lg border px-3.5 py-3 transition-all ${
                 !composing && selected?.id === msg.id
-                  ? 'border-gold/60 bg-gold/5'
-                  : 'border-gold/10 bg-parchment hover:bg-gold/5'
+                  ? 'border-gold/60 bg-gold/5 shadow-sm'
+                  : 'border-gold/20 bg-white shadow-sm hover:bg-gold/5 dark:bg-parchment-deep dark:border-gold/10'
               }`}
             >
               <div className="flex items-start gap-2.5">

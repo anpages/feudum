@@ -18,21 +18,28 @@ interface Props {
 export function RequirementsList({ requires, kingdom, research }: Props) {
   if (!requires || requires.length === 0) return null
 
+  const withStatus = requires.map(req => {
+    const current = Number(
+      req.type === 'building' ? (kingdom?.[req.id] ?? 0) : (research?.[req.id] ?? 0)
+    )
+    return { ...req, current, met: current >= req.level }
+  })
+
+  const sorted = [
+    ...withStatus.filter(r => r.met),
+    ...withStatus.filter(r => !r.met).sort((a, b) => a.level - b.level),
+  ]
+
   return (
     <div className="space-y-1 py-1">
-      {requires.map(req => {
-        const current = Number(
-          req.type === 'building' ? (kingdom?.[req.id] ?? 0) : (research?.[req.id] ?? 0)
-        )
-        const met = current >= req.level
+      {sorted.map(req => {
         const label = getReqName(req.type, req.id)
-
         return (
           <div
             key={`${req.type}-${req.id}`}
-            className={`flex items-center gap-1.5 text-xs ${met ? 'text-forest' : 'text-crimson'}`}
+            className={`flex items-center gap-1.5 text-xs ${req.met ? 'text-forest' : 'text-crimson'}`}
           >
-            {met ? (
+            {req.met ? (
               <CheckCircle2 size={11} className="shrink-0" />
             ) : (
               <XCircle size={11} className="shrink-0" />
@@ -40,11 +47,11 @@ export function RequirementsList({ requires, kingdom, research }: Props) {
             <span className="font-ui">
               {label} <span className="font-semibold">Nv {req.level}</span>
             </span>
-            <span
-              className={`ml-auto tabular-nums font-ui text-[0.65rem] ${met ? 'text-forest/70' : 'text-crimson/70'}`}
-            >
-              {current}/{req.level}
-            </span>
+            {!req.met && (
+              <span className="ml-auto tabular-nums font-ui text-[0.65rem] text-crimson/70">
+                {req.current}/{req.level}
+              </span>
+            )}
           </div>
         )
       })}
