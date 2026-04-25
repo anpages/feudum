@@ -1,7 +1,8 @@
 import { eq, and } from 'drizzle-orm'
-import { db, kingdoms, armyMissions, messages } from '../../_db.js'
+import { db, kingdoms, armyMissions, messages, users } from '../../_db.js'
 import { UNIT_KEYS, DEFENSE_KEYS } from './keys.js'
-import { getResearchMap, enrichKingdom } from '../db-helpers.js'
+import { getResearchMap, enrichKingdom, getUnitMap, upsertUnit } from '../db-helpers.js'
+import { buildBattleUnits, runBattle } from '../battle.js'
 
 export async function processSpy(mission, myKingdom, now) {
   const missionUnits = mission.units ?? {}
@@ -86,7 +87,80 @@ export async function processSpy(mission, myKingdom, now) {
       detected, detectionChance: Math.round(detectionChance),
     }
 
-    if (detected && target.userId && !(target.isNpc ?? false)) {
+    if (detected && defenderShips > 0) {
+      // ── Counter-espionage battle (OGame mechanic) ─────────────────────────────
+      // Defender uses mobile units only (no static defenses), attacker = scouts.
+      const defUnitMap = await getUnitMap(target.id)
+      const defMobileMap = {}
+      for (const k of UNIT_KEYS) {
+        if ((defUnitMap[k] ?? 0) > 0) defMobileMap[k] = defUnitMap[k]
+      }
+
+      let defCharClass = null
+      if (target.userId && !(target.isNpc ?? false)) {
+        const [defUserRow] = await db.select({ characterClass: users.characterClass })
+          .from(users).where(eq(users.id, target.userId)).limit(1)
+        defCharClass = defUserRow?.characterClass ?? null
+      }
+
+      const atkUnits = buildBattleUnits({ scout: scouts }, atkResMap)
+      const defUnits = buildBattleUnits(defMobileMap, defResMap, {}, defCharClass)
+
+      const result = runBattle(atkUnits, defUnits)
+
+      const survivingScouts = result.survivingAtk.scout ?? 0
+
+      // Deduct defender's unit losses
+      for (const [type, lost] of Object.entries(result.lostDef)) {
+        if (lost > 0) {
+          const current = defUnitMap[type] ?? 0
+          await upsertUnit(target.id, type, Math.max(0, current - lost))
+        }
+      }
+
+      report.counterEspionage = {
+        outcome: result.outcome,
+        rounds: result.rounds,
+        scoutsSent: scouts,
+        scoutsSurvived: survivingScouts,
+        defenderLosses: result.lostDef,
+      }
+
+      // Notify defender (real players only — NPCs don't read messages)
+      if (target.userId && !(target.isNpc ?? false)) {
+        await db.insert(messages).values({
+          userId: target.userId, type: 'spy',
+          subject: 'Espías detectados y combatidos',
+          data: {
+            type: 'spy_detected',
+            spycraft: atkSpy,
+            scouts,
+            counterEspionage: report.counterEspionage,
+          },
+        })
+      }
+
+      if (survivingScouts === 0) {
+        // All scouts destroyed — no return mission, send loss report to attacker
+        report.scoutsLost = true
+        await db.insert(messages).values({
+          userId: myKingdom.userId, type: 'spy',
+          subject: `Informe de espionaje: ${report.targetName}`,
+          data: report,
+        })
+        await db.update(armyMissions)
+          .set({ state: 'completed', result: JSON.stringify(report), updatedAt: new Date() })
+          .where(eq(armyMissions.id, mission.id))
+        return
+      }
+
+      // Surviving scouts return (with reduced count)
+      missionUnits.scout = survivingScouts
+      await db.update(armyMissions)
+        .set({ units: missionUnits, updatedAt: new Date() })
+        .where(eq(armyMissions.id, mission.id))
+    } else if (detected && target.userId && !(target.isNpc ?? false)) {
+      // Detected but no defender units — just notify
       await db.insert(messages).values({
         userId: target.userId, type: 'spy',
         subject: 'Espía detectado en tu reino',
