@@ -414,6 +414,10 @@ async function attemptTrainTroops(kingdom, personality, cls, researchMap, cfg, n
     // Skip defenses/support while below combat threshold
     if ((UNIT_DEFENSE_SET.has(unitId) || UNIT_SUPPORT_SET.has(unitId)) && needMoreCombat && !skipCombatCheck) continue
 
+    // Skip if NPC already has enough of this unit type
+    const softCap = UNIT_SOFT_CAP[unitId]
+    if (softCap !== undefined && (kingdom[unitId] ?? 0) >= softCap) continue
+
     let blockedByBuilding = false
     let missingResearch   = null
 
@@ -533,6 +537,16 @@ async function attemptTrainTroops(kingdom, personality, cls, researchMap, cfg, n
     isSupport: UNIT_SUPPORT_SET.has(lastUnit),
     isDefense: UNIT_DEFENSE_SET.has(lastUnit),
   }
+}
+
+// Maximum count of support/utility units before the NPC stops training more.
+// Prevents scouts from accumulating unboundedly (cheap to produce, low value in bulk).
+// Colonist capped at 1 — only needed once per colonize mission.
+const UNIT_SOFT_CAP = {
+  scout:    15,
+  colonist:  1,
+  merchant: 10,
+  caravan:   5,
 }
 
 // Minimum count of a defense type before progressing to the next tier.
