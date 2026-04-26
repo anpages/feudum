@@ -908,7 +908,7 @@ export function NpcMonitorTab() {
             ['Silo',                agg.avgSilo,           agg.maxSilo,           10],
             ['Expansor',            agg.avgAlchemistTower, agg.maxAlchemistTower,  5],
             ['Salón',               agg.avgAmbassadorHall, agg.maxAmbassadorHall,  8],
-            ['Armería',             agg.avgArmoury,        agg.maxArmoury,         8],
+            ['Arsenal',             agg.avgArmoury,        agg.maxArmoury,         8],
           ] as [string, number, number, number][]).map(([lbl, avgVal, maxVal, weight]) => (
             <BuildingRow key={lbl} label={lbl} avg={avgVal} max={maxVal} weight={weight} />
           ))}

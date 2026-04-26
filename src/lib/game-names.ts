@@ -15,7 +15,7 @@ export const BUILDING_NAMES: Record<string, string> = {
   academy: 'Academia',
   alchemistTower: 'Expansor de Dominio',
   ambassadorHall: 'Sala de Embajadores',
-  armoury: 'Armería',
+  armoury: 'Arsenal',
 }
 
 export const RESEARCH_NAMES: Record<string, string> = {
@@ -25,7 +25,7 @@ export const RESEARCH_NAMES: Record<string, string> = {
   mysticism: 'Misticismo',
   dragonlore: 'Lore de Dragones',
   swordsmanship: 'Espadachín',
-  armoury: 'Armería',
+  armoury: 'Armadura',
   fortification: 'Fortificación',
   horsemanship: 'Equitación',
   cartography: 'Cartografía',

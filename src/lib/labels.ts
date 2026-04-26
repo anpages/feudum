@@ -13,7 +13,7 @@ export const BUILDING_LABELS: Record<string, string> = {
   academy: 'Academia',
   alchemistTower: 'Expansor de Dominio',
   ambassadorHall: 'Salón de Embajadores',
-  armoury: 'Armería',
+  armoury: 'Arsenal',
 }
 
 export const RESEARCH_LABELS: Record<string, string> = {
@@ -23,7 +23,7 @@ export const RESEARCH_LABELS: Record<string, string> = {
   mysticism: 'Misticismo',
   dragonlore: 'Conocimiento Dracónico',
   swordsmanship: 'Esgrima',
-  armoury: 'Armería',
+  armoury: 'Armadura',
   fortification: 'Fortificación',
   horsemanship: 'Equitación',
   cartography: 'Cartografía',

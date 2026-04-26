@@ -19,12 +19,12 @@ const BUILDING_OPTIONS = [
   { id: 'academy',        label: 'Academia' },
   { id: 'alchemistTower', label: 'Expansor de Dominio' },
   { id: 'ambassadorHall', label: 'Sala Embajador' },
-  { id: 'armoury',        label: 'Armería' },
+  { id: 'armoury',        label: 'Arsenal' },
 ]
 
 const RESEARCH_OPTIONS = [
   { id: 'swordsmanship',     label: 'Esgrima' },
-  { id: 'armoury',           label: 'Armamento' },
+  { id: 'armoury',           label: 'Armadura' },
   { id: 'fortification',     label: 'Fortificación' },
   { id: 'horsemanship',      label: 'Equitación' },
   { id: 'cartography',       label: 'Cartografía' },

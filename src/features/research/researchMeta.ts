@@ -7,7 +7,7 @@ export const RESEARCH_META: Record<string, { name: string; description: Desc; ca
   dragonlore:       { category: 'Ciencia',       name: 'Lore de Dragones',  description: 'Los secretos más oscuros de las criaturas antiguas.' },
   swordsmanship:    { category: 'Combate',       name: 'Espadachín',
     description: lv => `+10% ataque/nivel · Nv.${lv + 1} → ×${((lv + 1) * 0.1 + 1).toFixed(1)} ataque` },
-  armoury:          { category: 'Combate',       name: 'Armería',
+  armoury:          { category: 'Combate',       name: 'Armadura',
     description: lv => `+10% escudo/nivel · Nv.${lv + 1} → ×${((lv + 1) * 0.1 + 1).toFixed(1)} escudo` },
   fortification:    { category: 'Combate',       name: 'Fortificación',
     description: lv => `+10% vida/nivel · Nv.${lv + 1} → ×${((lv + 1) * 0.1 + 1).toFixed(1)} vida` },

@@ -132,12 +132,12 @@ export const BUILDING_META: Record<string, BuildingMeta> = {
     description: 'Depósito diplomático para alianzas. Reserva recursos para misiones conjuntas.',
   },
   armoury: {
-    name: 'Armería',
+    name: 'Arsenal',
     Icon: GiShieldReflect,
     produces: null,
     category: 'infrastructure',
     effect: 'Desbloquea defensas avanzadas (ballista, trebuchet, torre mágica…)',
-    description: 'Forja armaduras y armas para las defensas estáticas del reino.',
+    description: 'Almacén de armas y máquinas de asedio. Desbloquea defensas estáticas avanzadas.',
   },
 }
 
