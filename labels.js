@@ -1,0 +1,67 @@
+// Nombres de UI — espejo de src/lib/labels.ts para scripts de auditoría
+export const BUILDING_LABELS = {
+  sawmill:         'Aserradero',
+  quarry:          'Cantera',
+  grainFarm:       'Granja de Grano',
+  windmill:        'Molino de Viento',
+  cathedral:       'Catedral',
+  workshop:        'Taller',
+  engineersGuild:  'Gremio de Ingenieros',
+  barracks:        'Cuartel',
+  granary:         'Leñera',
+  stonehouse:      'Lapidario',
+  silo:            'Silo',
+  academy:         'Academia',
+  alchemistTower:  'Expansor de Dominio',
+  ambassadorHall:  'Salón de Embajadores',
+  armoury:         'Armería',
+}
+
+export const RESEARCH_LABELS = {
+  alchemy:            'Alquimia',
+  pyromancy:          'Piromancia',
+  runemastery:        'Maestría Rúnica',
+  mysticism:          'Misticismo',
+  dragonlore:         'Conocimiento Dracónico',
+  swordsmanship:      'Esgrima',
+  armoury:            'Armería (inv.)',
+  fortification:      'Fortificación',
+  horsemanship:       'Equitación',
+  cartography:        'Cartografía',
+  tradeRoutes:        'Rutas Comerciales',
+  spycraft:           'Arte del Espionaje',
+  logistics:          'Logística',
+  exploration:        'Exploración',
+  diplomaticNetwork:  'Red Diplomática',
+  divineBlessing:     'Bendición Divina',
+}
+
+export const UNIT_LABELS = {
+  squire:       'Escudero',
+  knight:       'Caballero',
+  paladin:      'Paladín',
+  warlord:      'Señor de la Guerra',
+  grandKnight:  'Gran Caballero',
+  siegeMaster:  'Maestro de Asedio',
+  warMachine:   'Máquina de Guerra',
+  dragonKnight: 'Caballero Dragón',
+  merchant:     'Mercader',
+  caravan:      'Caravana',
+  colonist:     'Colonista',
+  scavenger:    'Saqueador',
+  scout:        'Explorador',
+  archer:       'Arquero',
+  crossbowman:  'Ballestero',
+  ballista:     'Ballista',
+  trebuchet:    'Trebuchet',
+  mageTower:    'Torre Maga',
+  dragonCannon: 'Cañón Dragón',
+  palisade:     'Palizada',
+  castleWall:   'Muralla',
+  moat:         'Foso',
+  catapult:     'Catapulta',
+  ballistic:    'Bomba Alquímica',
+}
+
+export const label = id =>
+  BUILDING_LABELS[id] ?? RESEARCH_LABELS[id] ?? UNIT_LABELS[id] ?? id

@@ -42,12 +42,12 @@ export const NPC_UNIT_KEYS = [
 
 export const NPC_DEFENSE_KEYS = [
   'archer','crossbowman','ballista','trebuchet',
-  'mageTower','dragonCannon','palisade','castleWall','moat','catapult','beacon',
+  'mageTower','dragonCannon','palisade','castleWall','moat','catapult',
 ]
 
 export const UNIT_COMBAT_SET  = new Set(['squire','knight','paladin','warlord','grandKnight','siegeMaster','warMachine','dragonKnight'])
 export const UNIT_SUPPORT_SET = new Set(['merchant','caravan','scavenger','scout'])
-export const UNIT_DEFENSE_SET = new Set(['archer','crossbowman','palisade','ballista','mageTower','trebuchet','dragonCannon','castleWall','moat','catapult','beacon'])
+export const UNIT_DEFENSE_SET = new Set(['archer','crossbowman','palisade','ballista','mageTower','trebuchet','dragonCannon','castleWall','moat','catapult'])
 
 // ── Unit costs ────────────────────────────────────────────────────────────────
 
@@ -70,7 +70,6 @@ export const UNIT_COSTS = {
   scout:    { wood: 0,     stone: 1000,  grain: 0     },
   colonist: { wood: 10000, stone: 20000, grain: 10000 },
   // Defenses — required for UNIT_PRIORITY resolution
-  beacon:      { wood: 1000,  stone: 0,     grain: 0     },
   palisade:    { wood: 10000, stone: 10000, grain: 0     },
   moat:        { wood: 5000,  stone: 2000,  grain: 0     },
   catapult:    { wood: 12000, stone: 3000,  grain: 1000  },
@@ -115,7 +114,6 @@ export const UNIT_PRIORITY = {
     'squire',        // combat minimum — unlocks support/defense training
     'merchant',      // cargo early: trade routes + loot transport
     'scout',         // intel before any attack decision
-    'beacon',        // cheapest passive defense (1000w, barracks 1 only)
     'archer',        // cheap static defense
     'caravan',       // large cargo (horsemanship 6 gate)
     'crossbowman',   // better ranged defense
@@ -141,7 +139,6 @@ export const UNIT_PRIORITY = {
   military: [
     'squire',        // fast/cheap combat
     'knight',        // core heavy combat
-    'beacon',        // cheapest passive defense (barracks 1 only)
     'archer',        // basic defense while growing
     'scout',         // intel before attacks (barracks 3 + spycraft 2)
     'crossbowman',   // better ranged defense
@@ -170,7 +167,6 @@ export const UNIT_PRIORITY = {
     'squire',        // basic combat
     'merchant',      // trade capability (barracks 1 + horsemanship 2)
     'scout',         // intel early (barracks 3 + spycraft 2)
-    'beacon',        // cheapest passive defense (barracks 1 only)
     'archer',        // basic defense
     'knight',        // heavy combat
     'crossbowman',   // defense upgrade

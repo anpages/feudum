@@ -13,6 +13,7 @@ import { db, users, kingdoms, npcState, buildings, units, research, armyMissions
 import { npcPersonality, getTargetLevels, MILESTONE_ORDER, isSleepTime, calcEnergyBalance } from './api/lib/npc-engine.js'
 import { getSettings } from './api/lib/settings.js'
 import { NPC_AGGRESSION } from './api/lib/config.js'
+import { label } from './labels.js'
 
 const now = Math.floor(Date.now() / 1000)
 const cfg = await getSettings()
@@ -67,7 +68,7 @@ const BUILDINGS_LIST = ['sawmill','quarry','grainFarm','windmill','barracks','wo
   'engineersGuild','academy','granary','stonehouse','silo','cathedral','alchemistTower','ambassadorHall','armoury']
 const COMBAT  = ['squire','knight','paladin','warlord','grandKnight','siegeMaster','warMachine','dragonKnight']
 const SUPPORT = ['merchant','caravan','scavenger','colonist','scout']
-const DEFENSE = ['beacon','archer','crossbowman','moat','ballista','mageTower','palisade','catapult','trebuchet','castleWall','dragonCannon']
+const DEFENSE = ['archer','crossbowman','moat','ballista','mageTower','palisade','catapult','trebuchet','castleWall','dragonCannon']
 const RESEARCH_LIST = ['alchemy','pyromancy','runemastery','mysticism','dragonlore',
   'fortification','swordsmanship','armoury','horsemanship','cartography',
   'tradeRoutes','logistics','spycraft','exploration','diplomaticNetwork']
@@ -194,7 +195,7 @@ console.log('\n── Edificios (avg / max) ──')
 for (const b of BUILDINGS_LIST) {
   const a = avg(npcs, n=>n[b]??0)
   const m = npcs.reduce((mx,n)=>Math.max(mx,n[b]??0), 0)
-  if (a>0||m>0) console.log(`  ${b.padEnd(18)} avg ${fmt(a).padStart(5)}  max ${String(m).padStart(3)}`)
+  if (a>0||m>0) console.log(`  ${label(b).padEnd(22)} avg ${fmt(a).padStart(5)}  max ${String(m).padStart(3)}`)
 }
 
 // ── Recursos ──────────────────────────────────────────────────────────────────
@@ -230,12 +231,12 @@ console.log('\n── Ejército ──')
 console.log(`  avg: ${fmt(avg(npcs,army))}  max: ${npcs.reduce((m,n)=>Math.max(m,army(n)),0)}`)
 for (const u of COMBAT) {
   const total = npcs.reduce((s,n)=>s+(n[u]??0),0)
-  if (total>0) console.log(`  ${u.padEnd(14)} total ${String(total).padStart(6)}  NPCs ${npcs.filter(n=>(n[u]??0)>0).length}`)
+  if (total>0) console.log(`  ${label(u).padEnd(22)} total ${String(total).padStart(6)}  NPCs ${npcs.filter(n=>(n[u]??0)>0).length}`)
 }
 console.log('\n── Soporte ──')
 for (const u of SUPPORT) {
   const total = npcs.reduce((s,n)=>s+(n[u]??0),0)
-  if (total>0) console.log(`  ${u.padEnd(14)} total ${String(total).padStart(6)}  NPCs ${npcs.filter(n=>(n[u]??0)>0).length}`)
+  if (total>0) console.log(`  ${label(u).padEnd(22)} total ${String(total).padStart(6)}  NPCs ${npcs.filter(n=>(n[u]??0)>0).length}`)
 }
 console.log('\n── Defensa ──')
 const defTotal = DEFENSE.reduce((s,u) => s + npcs.reduce((t,n)=>t+(n[u]??0),0), 0)
@@ -244,7 +245,7 @@ if (defTotal === 0) {
 } else {
   for (const u of DEFENSE) {
     const total = npcs.reduce((s,n)=>s+(n[u]??0),0)
-    if (total>0) console.log(`  ${u.padEnd(14)} total ${String(total).padStart(6)}  NPCs ${npcs.filter(n=>(n[u]??0)>0).length}`)
+    if (total>0) console.log(`  ${label(u).padEnd(22)} total ${String(total).padStart(6)}  NPCs ${npcs.filter(n=>(n[u]??0)>0).length}`)
   }
 }
 
@@ -256,7 +257,7 @@ for (const r of RESEARCH_LIST) {
   if (withR>0) {
     const a = avg(npcs,n=>n._res[r]??0)
     const m = npcs.reduce((mx,n)=>Math.max(mx,n._res[r]??0),0)
-    console.log(`  ${r.padEnd(22)} NPCs ${String(withR).padStart(3)}  avg ${fmt(a).padStart(5)}  max ${m}`)
+    console.log(`  ${label(r).padEnd(26)} NPCs ${String(withR).padStart(3)}  avg ${fmt(a).padStart(5)}  max ${m}`)
   }
 }
 

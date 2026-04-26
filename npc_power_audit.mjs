@@ -8,6 +8,7 @@
 import './api/lib/env.js'
 import { eq, inArray } from 'drizzle-orm'
 import { db, users, kingdoms, buildings, units, research } from './api/_db.js'
+import { label } from './labels.js'
 
 const UNIT_STATS = {
   squire:       { hull: 400,    shield: 10,    attack: 50     },
@@ -33,11 +34,10 @@ const UNIT_STATS = {
   castleWall:   { hull: 5500,   shield: 10000, attack: 1      },
   moat:         { hull: 1500,   shield: 500,   attack: 50     },
   catapult:     { hull: 5000,   shield: 500,   attack: 750    },
-  beacon:       { hull: 50,     shield: 1,     attack: 10     },
 }
 
 const COMBAT_KEYS  = ['squire','knight','paladin','warlord','grandKnight','siegeMaster','warMachine','dragonKnight']
-const DEFENSE_KEYS = ['beacon','archer','crossbowman','moat','ballista','mageTower','palisade','catapult','trebuchet','castleWall','dragonCannon']
+const DEFENSE_KEYS = ['archer','crossbowman','moat','ballista','mageTower','palisade','catapult','trebuchet','castleWall','dragonCannon']
 const SUPPORT_KEYS = ['merchant','caravan','scavenger','colonist','scout']
 
 function applyBonus(base, level) { return Math.floor(base * (1 + level * 0.1)) }
@@ -160,24 +160,23 @@ console.log(`  Ratio    ${npcDefTotal > 0 ? (playerDefTotal / npcDefTotal * 100)
 console.log('\n── Desglose jugador ──')
 console.log(`  Combate   atk ${fmt(playerPower.combatAttack).padStart(7)}  def ${fmt(playerPower.combatHull + playerPower.combatShield).padStart(7)}`)
 console.log(`  Defensa   atk ${fmt(playerPower.defenseAttack).padStart(7)}  def ${fmt(playerPower.defenseHull + playerPower.defenseShield).padStart(7)}`)
-console.log(`  Investig. swordsmanship:${playerResMap.swordsmanship ?? 0}  armoury:${playerResMap.armoury ?? 0}  fortification:${playerResMap.fortification ?? 0}`)
+console.log(`  Investig. Esgrima:${playerResMap.swordsmanship ?? 0}  Armería:${playerResMap.armoury ?? 0}  Fortificación:${playerResMap.fortification ?? 0}`)
 
 console.log('\n── Desglose NPC (promedio por reino) ──')
 console.log(`  Combate   atk ${fmt(Math.round(npcPower.combatAttack / npcCount)).padStart(7)}  def ${fmt(Math.round((npcPower.combatHull + npcPower.combatShield) / npcCount)).padStart(7)}`)
 console.log(`  Defensa   atk ${fmt(Math.round(npcPower.defenseAttack / npcCount)).padStart(7)}  def ${fmt(Math.round((npcPower.defenseHull + npcPower.defenseShield) / npcCount)).padStart(7)}`)
-console.log(`  Investig. avg: swordsmanship:${(npcResMapAvg.swordsmanship ?? 0).toFixed(1)}  armoury:${(npcResMapAvg.armoury ?? 0).toFixed(1)}  fortification:${(npcResMapAvg.fortification ?? 0).toFixed(1)}`)
+console.log(`  Investig. avg: Esgrima:${(npcResMapAvg.swordsmanship ?? 0).toFixed(1)}  Armería:${(npcResMapAvg.armoury ?? 0).toFixed(1)}  Fortificación:${(npcResMapAvg.fortification ?? 0).toFixed(1)}`)
 
 console.log('\n── Tropas jugador ──')
-const allTypes = [...new Set([...Object.keys(playerUnitMap)])]
 for (const type of [...COMBAT_KEYS, ...DEFENSE_KEYS, ...SUPPORT_KEYS]) {
   const n = playerUnitMap[type] ?? 0
-  if (n > 0) console.log(`  ${type.padEnd(14)} ×${String(n).padStart(5)}`)
+  if (n > 0) console.log(`  ${label(type).padEnd(22)} ×${String(n).padStart(5)}`)
 }
 
 console.log('\n── Tropas NPC (top tipos, total acumulado) ──')
 const npcSorted = Object.entries(npcUnitMapTotal).sort((a, b) => b[1] - a[1])
 for (const [type, total] of npcSorted) {
-  if (total > 0) console.log(`  ${type.padEnd(14)} total ${String(total).padStart(6)}  avg/NPC ${(total / npcCount).toFixed(1)}`)
+  if (total > 0) console.log(`  ${label(type).padEnd(22)} total ${String(total).padStart(6)}  avg/NPC ${(total / npcCount).toFixed(1)}`)
 }
 
 console.log('\n══════════════════════════════════════════════════════════\n')

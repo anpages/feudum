@@ -6,7 +6,7 @@ export const UNIT_KEYS = [
 
 export const DEFENSE_KEYS = [
   'archer','crossbowman','ballista','trebuchet',
-  'mageTower','dragonCannon','palisade','castleWall','moat','catapult','beacon',
+  'mageTower','dragonCannon','palisade','castleWall','moat','catapult',
 ]
 
 export const ALL_UNIT_KEYS = [...UNIT_KEYS, ...DEFENSE_KEYS]

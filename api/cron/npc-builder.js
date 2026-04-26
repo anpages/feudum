@@ -538,7 +538,6 @@ async function attemptTrainTroops(kingdom, personality, cls, researchMap, cfg, n
 // Minimum count of a defense type before progressing to the next tier.
 // Mirrors how troops work: build enough cheap defense, then graduate upward.
 const DEFENSE_SOFT_CAP = {
-  beacon:      5,
   archer:      20,
   crossbowman: 10,
   moat:        5,
@@ -556,7 +555,7 @@ const DEFENSE_SOFT_CAP = {
 // Only runs when combatTotal >= ATTACK_THRESHOLD so economy-first NPCs build a
 // base army before investing in walls.
 // Progresses through tiers: once a type hits DEFENSE_SOFT_CAP, the next tick
-// skips it and trains the next affordable tier (beacon → archer → crossbowman → …)
+// skips it and trains the next affordable tier (archer → crossbowman → …)
 async function attemptTrainDefenses(kingdom, personality, researchMap) {
   const combatTotal = [...UNIT_COMBAT_SET].reduce((s, u) => s + (kingdom[u] ?? 0), 0)
   if (combatTotal < ATTACK_THRESHOLD[personality]) return { action: 'skipped_defense' }

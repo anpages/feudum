@@ -18,7 +18,7 @@ const ALL_BUILDINGS = [
 ]
 const COMBAT_KEYS  = ['squire','knight','paladin','warlord','grandKnight','siegeMaster','warMachine','dragonKnight']
 const SUPPORT_KEYS = ['merchant','caravan','scavenger','colonist','scout']
-const DEFENSE_KEYS = ['beacon','archer','crossbowman','moat','ballista','mageTower','palisade','catapult','trebuchet','castleWall','dragonCannon']
+const DEFENSE_KEYS = ['archer','crossbowman','moat','ballista','mageTower','palisade','catapult','trebuchet','castleWall','dragonCannon']
 const MAX_HISTORY  = 72  // 12 días a razón de 1 reporte cada 4h
 
 function avg(arr, fn) {
