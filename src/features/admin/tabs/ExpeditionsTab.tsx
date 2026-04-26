@@ -51,133 +51,124 @@ function formatDate(unix: number) {
   })
 }
 
-// ── Active expedition row ─────────────────────────────────────────────────────
+const TH = 'text-left py-2 px-2 font-ui text-[0.6rem] uppercase tracking-widest text-ink-muted whitespace-nowrap'
+const TD = 'py-2 px-2 font-ui text-xs whitespace-nowrap'
 
-function ActiveRow({ m, now }: { m: AdminExpedition; now: number }) {
-  const outcome = m.result ? (m.result as Record<string, unknown>).outcome as string : null
-  const loot    = (m.woodLoad ?? 0) + (m.stoneLoad ?? 0) + (m.grainLoad ?? 0)
+// ── Active expeditions table ──────────────────────────────────────────────────
 
-  let timeLeft: number | null = null
-  if (m.state === 'returning' && m.returnTime && m.returnTime > now) {
-    timeLeft = m.returnTime - now
-  } else if (m.state === 'active' && m.arrivalTime > now) {
-    timeLeft = m.arrivalTime - now
-  } else if (m.state === 'exploring') {
-    const holdUntil = m.arrivalTime + (m.holdingTime ?? 0)
-    if (holdUntil > now) timeLeft = holdUntil - now
-  }
-
+function ActiveTable({ missions, now }: { missions: AdminExpedition[]; now: number }) {
   return (
-    <div className="py-3 border-b border-gold/8 last:border-0 hover:bg-parchment-warm/30 transition-colors px-4 -mx-4 rounded">
-      {/* ── Mobile ── */}
-      <div className="sm:hidden space-y-1.5">
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2 min-w-0">
-            <p className="font-ui text-xs font-semibold text-ink truncate">{m.kingdomName}</p>
-            {m.isNpc && <span className="badge badge-stone text-[0.55rem] shrink-0">NPC</span>}
-          </div>
-          <p className={`font-ui text-xs font-semibold shrink-0 ${stateColor(m.state)}`}>{stateLabel(m.state)}</p>
-        </div>
-        <div className="flex items-center justify-between gap-2 text-[0.6rem] font-ui text-ink-muted">
-          <span>{m.startRealm}:{m.startRegion}:{m.startSlot} → {m.targetRealm}:{m.targetRegion}:16</span>
-          <span className="tabular-nums">{timeLeft !== null ? formatDuration(timeLeft) : '—'}</span>
-        </div>
-        {(outcome || loot > 0) && (
-          <div className="flex items-center justify-between gap-2">
-            {outcome
-              ? <p className={`font-ui text-[0.6rem] font-semibold ${OUTCOME_COLOR[outcome] ?? 'text-ink-mid'}`}>{OUTCOME_LABEL[outcome] ?? outcome}</p>
-              : <span />
-            }
-            {loot > 0 && <p className="font-ui text-[0.6rem] font-semibold tabular-nums text-gold">{formatResource(loot)}</p>}
-          </div>
-        )}
-      </div>
+    <div className="overflow-x-auto -mx-5 px-5">
+      <table className="w-full text-xs">
+        <thead>
+          <tr className="border-b border-gold/20">
+            <th className={TH}>Reino</th>
+            <th className={`${TH} text-center`}>Estado</th>
+            <th className={`${TH} text-right`}>Tiempo</th>
+            <th className={`${TH} text-center`}>Resultado</th>
+            <th className={`${TH} text-right`}>Botín</th>
+          </tr>
+        </thead>
+        <tbody>
+          {missions.map(m => {
+            const outcome = m.result ? (m.result as Record<string, unknown>).outcome as string : null
+            const loot    = (m.woodLoad ?? 0) + (m.stoneLoad ?? 0) + (m.grainLoad ?? 0)
 
-      {/* ── Desktop ── */}
-      <div className="hidden sm:grid grid-cols-[1fr_auto_auto_auto_auto] items-center gap-x-4">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <p className="font-ui text-xs font-semibold text-ink truncate">{m.kingdomName}</p>
-            {m.isNpc && <span className="badge badge-stone text-[0.55rem] shrink-0">NPC</span>}
-          </div>
-          <p className="font-ui text-[0.6rem] text-ink-muted">{m.startRealm}:{m.startRegion}:{m.startSlot} → {m.targetRealm}:{m.targetRegion}:16</p>
-        </div>
-        <div className="text-center min-w-[72px]">
-          <p className={`font-ui text-xs font-semibold ${stateColor(m.state)}`}>{stateLabel(m.state)}</p>
-        </div>
-        <div className="text-right min-w-[60px]">
-          <p className="font-ui text-xs tabular-nums text-ink-muted">{timeLeft !== null ? formatDuration(timeLeft) : '—'}</p>
-        </div>
-        <div className="text-center min-w-[100px]">
-          {outcome
-            ? <p className={`font-ui text-xs font-semibold ${OUTCOME_COLOR[outcome] ?? 'text-ink-mid'}`}>{OUTCOME_LABEL[outcome] ?? outcome}</p>
-            : <p className="font-ui text-xs text-ink-muted/40">—</p>
-          }
-        </div>
-        <div className="text-right min-w-[56px]">
-          <p className={`font-ui text-xs font-semibold tabular-nums ${loot > 0 ? 'text-gold' : 'text-ink-muted/40'}`}>
-            {loot > 0 ? formatResource(loot) : '—'}
-          </p>
-        </div>
-      </div>
+            let timeLeft: number | null = null
+            if (m.state === 'returning' && m.returnTime && m.returnTime > now) {
+              timeLeft = m.returnTime - now
+            } else if (m.state === 'active' && m.arrivalTime > now) {
+              timeLeft = m.arrivalTime - now
+            } else if (m.state === 'exploring') {
+              const holdUntil = m.arrivalTime + (m.holdingTime ?? 0)
+              if (holdUntil > now) timeLeft = holdUntil - now
+            }
+
+            return (
+              <tr key={m.id} className="border-b border-gold/8 last:border-0 hover:bg-parchment-warm/30 transition-colors">
+                <td className={TD}>
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-ink">{m.kingdomName}</span>
+                    {m.isNpc && <span className="badge badge-stone text-[0.55rem]">NPC</span>}
+                  </div>
+                  <p className="text-[0.6rem] text-ink-muted mt-0.5">{m.startRealm}:{m.startRegion}:{m.startSlot} → {m.targetRealm}:{m.targetRegion}:16</p>
+                </td>
+                <td className={`${TD} text-center`}>
+                  <span className={`font-semibold ${stateColor(m.state)}`}>{stateLabel(m.state)}</span>
+                </td>
+                <td className={`${TD} text-right tabular-nums text-ink-muted`}>
+                  {timeLeft !== null ? formatDuration(timeLeft) : '—'}
+                </td>
+                <td className={`${TD} text-center`}>
+                  {outcome
+                    ? <span className={`font-semibold ${OUTCOME_COLOR[outcome] ?? 'text-ink-mid'}`}>{OUTCOME_LABEL[outcome] ?? outcome}</span>
+                    : <span className="text-ink-muted/40">—</span>
+                  }
+                </td>
+                <td className={`${TD} text-right tabular-nums font-semibold ${loot > 0 ? 'text-gold' : 'text-ink-muted/40'}`}>
+                  {loot > 0 ? formatResource(loot) : '—'}
+                </td>
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
     </div>
   )
 }
 
-// ── Completed expedition row ──────────────────────────────────────────────────
+// ── Completed expeditions table ───────────────────────────────────────────────
 
-function CompletedRow({ m }: { m: AdminExpedition }) {
-  const outcome     = m.result ? (m.result as Record<string, unknown>).outcome as string : null
-  const result      = m.result as Record<string, unknown> | null
-  const loot        = (m.woodLoad ?? 0) + (m.stoneLoad ?? 0) + (m.grainLoad ?? 0)
-  const etherGained = result?.etherGained as number | undefined
-
-  const lootNode = loot > 0
-    ? <p className="font-ui text-xs font-semibold tabular-nums text-gold" title={`Madera: ${m.woodLoad ?? 0}  Piedra: ${m.stoneLoad ?? 0}  Grano: ${m.grainLoad ?? 0}`}>{formatResource(loot)}</p>
-    : etherGained
-    ? <p className="font-ui text-xs font-semibold text-gold-light">✨{etherGained}</p>
-    : <p className="font-ui text-xs text-ink-muted/40">—</p>
-
+function CompletedTable({ missions }: { missions: AdminExpedition[] }) {
   return (
-    <div className="py-3 border-b border-gold/8 last:border-0 hover:bg-parchment-warm/30 transition-colors px-4 -mx-4 rounded">
-      {/* ── Mobile ── */}
-      <div className="sm:hidden space-y-1">
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2 min-w-0">
-            <p className="font-ui text-xs font-semibold text-ink truncate">{m.kingdomName}</p>
-            {m.isNpc && <span className="badge badge-stone text-[0.55rem] shrink-0">NPC</span>}
-          </div>
-          {outcome
-            ? <p className={`font-ui text-[0.6rem] font-semibold shrink-0 ${OUTCOME_COLOR[outcome] ?? 'text-ink-mid'}`}>{OUTCOME_LABEL[outcome] ?? outcome}</p>
-            : null
-          }
-        </div>
-        <div className="flex items-center justify-between gap-2">
-          <p className="font-ui text-[0.6rem] text-ink-muted">{m.startRealm}:{m.startRegion}:{m.startSlot} · {formatDate(m.departureTime)}</p>
-          {lootNode}
-        </div>
-      </div>
+    <div className="overflow-x-auto -mx-5 px-5">
+      <table className="w-full text-xs">
+        <thead>
+          <tr className="border-b border-gold/20">
+            <th className={TH}>Reino · Fecha</th>
+            <th className={`${TH} text-center`}>Destino</th>
+            <th className={`${TH} text-center`}>Resultado</th>
+            <th className={`${TH} text-right`}>Botín</th>
+          </tr>
+        </thead>
+        <tbody>
+          {missions.map(m => {
+            const outcome     = m.result ? (m.result as Record<string, unknown>).outcome as string : null
+            const result      = m.result as Record<string, unknown> | null
+            const loot        = (m.woodLoad ?? 0) + (m.stoneLoad ?? 0) + (m.grainLoad ?? 0)
+            const etherGained = result?.etherGained as number | undefined
 
-      {/* ── Desktop ── */}
-      <div className="hidden sm:grid grid-cols-[1fr_auto_auto_auto] items-center gap-x-4">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <p className="font-ui text-xs font-semibold text-ink truncate">{m.kingdomName}</p>
-            {m.isNpc && <span className="badge badge-stone text-[0.55rem] shrink-0">NPC</span>}
-          </div>
-          <p className="font-ui text-[0.6rem] text-ink-muted">{m.startRealm}:{m.startRegion}:{m.startSlot} · {formatDate(m.departureTime)}</p>
-        </div>
-        <div className="text-center min-w-[60px]">
-          <p className="font-ui text-[0.6rem] text-ink-muted">{m.targetRealm}:{m.targetRegion}:16</p>
-        </div>
-        <div className="text-center min-w-[110px]">
-          {outcome
-            ? <p className={`font-ui text-xs font-semibold ${OUTCOME_COLOR[outcome] ?? 'text-ink-mid'}`}>{OUTCOME_LABEL[outcome] ?? outcome}</p>
-            : <p className="font-ui text-xs text-ink-muted/40">—</p>
-          }
-        </div>
-        <div className="text-right min-w-[64px]">{lootNode}</div>
-      </div>
+            return (
+              <tr key={m.id} className="border-b border-gold/8 last:border-0 hover:bg-parchment-warm/30 transition-colors">
+                <td className={TD}>
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-ink">{m.kingdomName}</span>
+                    {m.isNpc && <span className="badge badge-stone text-[0.55rem]">NPC</span>}
+                  </div>
+                  <p className="text-[0.6rem] text-ink-muted mt-0.5">{formatDate(m.departureTime)}</p>
+                </td>
+                <td className={`${TD} text-center text-ink-muted text-[0.6rem]`}>
+                  {m.targetRealm}:{m.targetRegion}:16
+                </td>
+                <td className={`${TD} text-center`}>
+                  {outcome
+                    ? <span className={`font-semibold ${OUTCOME_COLOR[outcome] ?? 'text-ink-mid'}`}>{OUTCOME_LABEL[outcome] ?? outcome}</span>
+                    : <span className="text-ink-muted/40">—</span>
+                  }
+                </td>
+                <td className={`${TD} text-right`}>
+                  {loot > 0
+                    ? <span className="font-semibold tabular-nums text-gold" title={`Madera: ${m.woodLoad ?? 0}  Piedra: ${m.stoneLoad ?? 0}  Grano: ${m.grainLoad ?? 0}`}>{formatResource(loot)}</span>
+                    : etherGained
+                    ? <span className="font-semibold text-gold-light">✨{etherGained}</span>
+                    : <span className="text-ink-muted/40">—</span>
+                  }
+                </td>
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
     </div>
   )
 }
@@ -246,17 +237,7 @@ export function ExpeditionsTab() {
         ) : !active?.length ? (
           <p className="font-ui text-sm text-ink-muted text-center py-8">Sin expediciones activas.</p>
         ) : (
-          <div>
-            {/* Column headers — desktop only */}
-            <div className="hidden sm:grid grid-cols-[1fr_auto_auto_auto_auto] gap-x-4 pb-2 border-b border-gold/10 px-4 -mx-4">
-              <span className="font-ui text-[0.6rem] uppercase tracking-widest text-ink-muted">Reino</span>
-              <span className="font-ui text-[0.6rem] uppercase tracking-widest text-ink-muted text-center min-w-[72px]">Estado</span>
-              <span className="font-ui text-[0.6rem] uppercase tracking-widest text-ink-muted text-right min-w-[60px]">Tiempo</span>
-              <span className="font-ui text-[0.6rem] uppercase tracking-widest text-ink-muted text-center min-w-[100px]">Resultado</span>
-              <span className="font-ui text-[0.6rem] uppercase tracking-widest text-ink-muted text-right min-w-[56px]">Botín</span>
-            </div>
-            {active.map(m => <ActiveRow key={m.id} m={m} now={now} />)}
-          </div>
+          <ActiveTable missions={active} now={now} />
         )}
       </div>
 
@@ -299,16 +280,7 @@ export function ExpeditionsTab() {
             Sin expediciones completadas en los últimos 7 días.
           </p>
         ) : (
-          <div>
-            {/* Column headers — desktop only */}
-            <div className="hidden sm:grid grid-cols-[1fr_auto_auto_auto] gap-x-4 pb-2 border-b border-gold/10 px-4 -mx-4">
-              <span className="font-ui text-[0.6rem] uppercase tracking-widest text-ink-muted">Reino</span>
-              <span className="font-ui text-[0.6rem] uppercase tracking-widest text-ink-muted text-center min-w-[60px]">Destino</span>
-              <span className="font-ui text-[0.6rem] uppercase tracking-widest text-ink-muted text-center min-w-[110px]">Resultado</span>
-              <span className="font-ui text-[0.6rem] uppercase tracking-widest text-ink-muted text-right min-w-[64px]">Botín</span>
-            </div>
-            {recent.map(m => <CompletedRow key={m.id} m={m} />)}
-          </div>
+          <CompletedTable missions={recent} />
         )}
       </div>
 

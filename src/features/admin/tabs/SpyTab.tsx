@@ -24,117 +24,83 @@ function StatCard({ label, value, accent }: { label: string; value: string | num
   )
 }
 
-function stateLabel(state: string) {
+function stateBadge(state: string) {
   if (state === 'active')    return <span className="badge badge-gold text-[0.55rem]">En vuelo</span>
   if (state === 'returning') return <span className="badge badge-forest text-[0.55rem]">Retornando</span>
   return <span className="badge badge-stone text-[0.55rem]">Completado</span>
 }
 
-function SpyRow({ m, now }: { m: AdminSpyMission; now: number }) {
-  const isActive = m.state === 'active' || m.state === 'returning'
-  const timeMark = m.state === 'returning' ? m.returnTime : m.arrivalTime
-  const label    = m.state === 'returning' ? 'Retorna en' : m.state === 'active' ? 'Llega en' : 'Salida'
-  const resourceTotal = (m.resources?.wood ?? 0) + (m.resources?.stone ?? 0) + (m.resources?.grain ?? 0)
+const TH = 'text-left py-2 px-2 font-ui text-[0.6rem] uppercase tracking-widest text-ink-muted whitespace-nowrap'
+const TD = 'py-2 px-2 font-ui text-xs whitespace-nowrap align-top'
 
+function SpyTable({ missions, now }: { missions: AdminSpyMission[]; now: number }) {
   return (
-    <div className="py-3 border-b border-gold/8 last:border-0 px-4 -mx-4">
-      {/* ── Mobile layout ── */}
-      <div className="sm:hidden space-y-1.5">
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2 min-w-0">
-            <p className="font-ui text-[0.6rem] text-ink-muted tabular-nums shrink-0">{formatTs(m.departureTime)}</p>
-            {stateLabel(m.state)}
-          </div>
-          {isActive && timeMark ? (
-            <p className="font-ui text-xs tabular-nums text-gold shrink-0">{eta(timeMark, now)}</p>
-          ) : !isActive && (
-            <p className={`font-ui text-[0.6rem] font-semibold shrink-0 ${m.detected ? 'text-crimson-light' : 'text-forest-light'}`}>
-              {m.detected ? 'Detectado' : 'No detectado'}
-            </p>
-          )}
-        </div>
+    <div className="overflow-x-auto -mx-5 px-5">
+      <table className="w-full text-xs">
+        <thead>
+          <tr className="border-b border-gold/20">
+            <th className={TH}>Fecha / Estado</th>
+            <th className={TH}>Espía</th>
+            <th className={TH}>Objetivo</th>
+            <th className={`${TH} text-right`}>Tiempo</th>
+            <th className={`${TH} text-right`}>Resultado</th>
+          </tr>
+        </thead>
+        <tbody>
+          {missions.map(m => {
+            const isActive = m.state === 'active' || m.state === 'returning'
+            const timeMark = m.state === 'returning' ? m.returnTime : m.arrivalTime
+            const timeLabel = m.state === 'returning' ? 'Retorna en' : m.state === 'active' ? 'Llega en' : 'Salida'
+            const resourceTotal = (m.resources?.wood ?? 0) + (m.resources?.stone ?? 0) + (m.resources?.grain ?? 0)
 
-        <div className="grid grid-cols-2 gap-x-3 gap-y-0.5">
-          <div className="min-w-0">
-            <p className="font-ui text-[0.55rem] text-ink-muted">Espía</p>
-            <p className="font-ui text-xs font-semibold text-ink truncate">{m.attackerName}</p>
-            <p className="font-ui text-[0.6rem] text-ink-muted">{m.startRealm}:{m.startRegion}:{m.startSlot}</p>
-            {m.scouts > 0 && <p className="font-ui text-[0.55rem] text-gold/80">{m.scouts} explorador{m.scouts > 1 ? 'es' : ''}</p>}
-          </div>
-          <div className="min-w-0">
-            <p className="font-ui text-[0.55rem] text-ink-muted">Objetivo</p>
-            <p className="font-ui text-xs font-semibold text-ink truncate">{m.targetName}</p>
-            <p className="font-ui text-[0.6rem] text-ink-muted">{m.targetRealm}:{m.targetRegion}:{m.targetSlot}</p>
-            {m.targetIsNpc
-              ? <span className="font-ui text-[0.55rem] text-ink-muted/60">NPC</span>
-              : <span className="font-ui text-[0.55rem] text-forest-light">Jugador</span>
-            }
-          </div>
-        </div>
-
-        {!isActive && (resourceTotal > 0 || m.hasUnits || m.hasDefense) && (
-          <div className="flex items-center gap-2 flex-wrap">
-            {resourceTotal > 0 && (
-              <p className="font-ui text-[0.6rem] text-gold tabular-nums">{formatResource(resourceTotal)} recursos</p>
-            )}
-            {m.hasUnits   && <span className="badge badge-crimson text-[0.5rem]">Tropas</span>}
-            {m.hasDefense && <span className="badge badge-stone text-[0.5rem]">Defensas</span>}
-          </div>
-        )}
-      </div>
-
-      {/* ── Desktop layout ── */}
-      <div className="hidden sm:grid grid-cols-[auto_1fr_1fr_auto_auto] items-start gap-x-4">
-        <div className="min-w-[72px] space-y-1">
-          <p className="font-ui text-[0.6rem] text-ink-muted tabular-nums">{formatTs(m.departureTime)}</p>
-          {stateLabel(m.state)}
-        </div>
-
-        <div className="min-w-0">
-          <p className="font-ui text-[0.6rem] text-ink-muted">Espía</p>
-          <p className="font-ui text-xs font-semibold text-ink truncate">{m.attackerName}</p>
-          <p className="font-ui text-[0.6rem] text-ink-muted">{m.startRealm}:{m.startRegion}:{m.startSlot}</p>
-          {m.scouts > 0 && <p className="font-ui text-[0.55rem] text-gold/80">{m.scouts} explorador{m.scouts > 1 ? 'es' : ''}</p>}
-        </div>
-
-        <div className="min-w-0">
-          <p className="font-ui text-[0.6rem] text-ink-muted">Objetivo</p>
-          <p className="font-ui text-xs font-semibold text-ink truncate">{m.targetName}</p>
-          <p className="font-ui text-[0.6rem] text-ink-muted">{m.targetRealm}:{m.targetRegion}:{m.targetSlot}</p>
-          {m.targetIsNpc
-            ? <span className="font-ui text-[0.55rem] text-ink-muted/60">NPC</span>
-            : <span className="font-ui text-[0.55rem] text-forest-light">Jugador</span>
-          }
-        </div>
-
-        <div className="text-right min-w-[60px]">
-          <p className="font-ui text-[0.6rem] text-ink-muted">{label}</p>
-          {isActive && timeMark
-            ? <p className="font-ui text-xs tabular-nums text-gold">{eta(timeMark, now)}</p>
-            : <p className="font-ui text-[0.6rem] text-ink-muted">{formatTs(m.departureTime)}</p>
-          }
-        </div>
-
-        <div className="text-right min-w-[80px] space-y-0.5">
-          {!isActive && (
-            <>
-              {m.detected
-                ? <p className="font-ui text-[0.6rem] text-crimson-light font-semibold">Detectado</p>
-                : <p className="font-ui text-[0.6rem] text-forest-light font-semibold">No detectado</p>
-              }
-              {m.resources && (
-                <p className="font-ui text-[0.6rem] text-gold tabular-nums">
-                  {formatResource(resourceTotal)} recursos
-                </p>
-              )}
-              <div className="flex gap-1 justify-end flex-wrap">
-                {m.hasUnits   && <span className="badge badge-crimson text-[0.5rem]">Tropas</span>}
-                {m.hasDefense && <span className="badge badge-stone text-[0.5rem]">Defensas</span>}
-              </div>
-            </>
-          )}
-        </div>
-      </div>
+            return (
+              <tr key={m.id} className="border-b border-gold/8 last:border-0 hover:bg-parchment-warm/30 transition-colors">
+                <td className={TD}>
+                  <p className="text-[0.6rem] text-ink-muted tabular-nums">{formatTs(m.departureTime)}</p>
+                  {stateBadge(m.state)}
+                </td>
+                <td className={TD}>
+                  <p className="font-semibold text-ink">{m.attackerName}</p>
+                  <p className="text-[0.6rem] text-ink-muted">{m.startRealm}:{m.startRegion}:{m.startSlot}</p>
+                  {m.scouts > 0 && <p className="text-[0.55rem] text-gold/80">{m.scouts} explorador{m.scouts > 1 ? 'es' : ''}</p>}
+                </td>
+                <td className={TD}>
+                  <p className="font-semibold text-ink">{m.targetName}</p>
+                  <p className="text-[0.6rem] text-ink-muted">{m.targetRealm}:{m.targetRegion}:{m.targetSlot}</p>
+                  {m.targetIsNpc
+                    ? <span className="text-[0.55rem] text-ink-muted/60">NPC</span>
+                    : <span className="text-[0.55rem] text-forest-light">Jugador</span>
+                  }
+                </td>
+                <td className={`${TD} text-right`}>
+                  <p className="text-[0.6rem] text-ink-muted">{timeLabel}</p>
+                  {isActive && timeMark
+                    ? <p className="tabular-nums text-gold">{eta(timeMark, now)}</p>
+                    : <p className="text-[0.6rem] text-ink-muted tabular-nums">{formatTs(m.departureTime)}</p>
+                  }
+                </td>
+                <td className={`${TD} text-right`}>
+                  {!isActive && (
+                    <>
+                      {m.detected
+                        ? <p className="text-[0.6rem] text-crimson-light font-semibold">Detectado</p>
+                        : <p className="text-[0.6rem] text-forest-light font-semibold">No detectado</p>
+                      }
+                      {m.resources && resourceTotal > 0 && (
+                        <p className="text-[0.6rem] text-gold tabular-nums">{formatResource(resourceTotal)}</p>
+                      )}
+                      <div className="flex gap-1 justify-end flex-wrap mt-0.5">
+                        {m.hasUnits   && <span className="badge badge-crimson text-[0.5rem]">Tropas</span>}
+                        {m.hasDefense && <span className="badge badge-stone text-[0.5rem]">Defensas</span>}
+                      </div>
+                    </>
+                  )}
+                </td>
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
     </div>
   )
 }
@@ -175,7 +141,7 @@ export function SpyTab() {
         ) : !data?.active.length ? (
           <p className="font-ui text-sm text-ink-muted text-center py-6">Sin misiones de espionaje activas.</p>
         ) : (
-          data.active.map(m => <SpyRow key={m.id} m={m} now={now} />)
+          <SpyTable missions={data.active} now={now} />
         )}
       </div>
 
@@ -187,7 +153,7 @@ export function SpyTab() {
         ) : !data?.recent.length ? (
           <p className="font-ui text-sm text-ink-muted text-center py-6">Sin espionajes recientes.</p>
         ) : (
-          data.recent.slice(0, 50).map(m => <SpyRow key={m.id} m={m} now={now} />)
+          <SpyTable missions={data.recent.slice(0, 50)} now={now} />
         )}
       </div>
 

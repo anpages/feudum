@@ -59,48 +59,6 @@ function UnitList({ units, accent }: { units: Record<string, number>; accent?: s
   )
 }
 
-function BattleDetail({ row }: { row: AdminBattleLog }) {
-  const lootTotal = (row.lootWood ?? 0) + (row.lootStone ?? 0) + (row.lootGrain ?? 0)
-  return (
-    <div className="mt-2 pt-2 border-t border-gold/10 grid grid-cols-2 gap-x-4 gap-y-2">
-      <div className="space-y-1.5">
-        <p className="font-ui text-[0.55rem] uppercase tracking-widest text-ink-muted">Atacante — {row.attackerName}</p>
-        <div>
-          <p className="font-ui text-[0.55rem] text-ink-muted mb-0.5">Envió</p>
-          <UnitList units={row.attackerForce ?? {}} />
-        </div>
-        <div>
-          <p className="font-ui text-[0.55rem] text-ink-muted mb-0.5">Perdió</p>
-          <UnitList units={row.attackerLost ?? {}} accent="text-crimson-light" />
-        </div>
-      </div>
-
-      <div className="space-y-1.5">
-        <p className="font-ui text-[0.55rem] uppercase tracking-widest text-ink-muted">Defensor — {row.defenderName}</p>
-        <div>
-          <p className="font-ui text-[0.55rem] text-ink-muted mb-0.5">Tenía</p>
-          <UnitList units={row.defenderForce ?? {}} />
-        </div>
-        <div>
-          <p className="font-ui text-[0.55rem] text-ink-muted mb-0.5">Perdió</p>
-          <UnitList units={row.defenderLost ?? {}} accent="text-crimson-light" />
-        </div>
-      </div>
-
-      {lootTotal > 0 && (
-        <div className="col-span-2 pt-1 border-t border-gold/8">
-          <p className="font-ui text-[0.55rem] text-ink-muted mb-0.5">Botín</p>
-          <div className="flex gap-4 font-ui text-[0.6rem] text-gold tabular-nums">
-            {row.lootWood  > 0 && <span>Madera: {formatResource(row.lootWood)}</span>}
-            {row.lootStone > 0 && <span>Piedra: {formatResource(row.lootStone)}</span>}
-            {row.lootGrain > 0 && <span>Grano: {formatResource(row.lootGrain)}</span>}
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
-
 function MetricCard({ label, value, sub, accent }: {
   label: string; value: string | number; sub?: string; accent?: string
 }) {
@@ -125,97 +83,91 @@ function MetricsRow({ metrics }: { metrics: AdminBattlesResponse['metrics'] }) {
   )
 }
 
+const TH = 'text-left py-2 px-2 font-ui text-[0.6rem] uppercase tracking-widest text-ink-muted whitespace-nowrap'
+const TD = 'py-2 px-2 font-ui text-xs whitespace-nowrap align-top'
+
 function BattleRow({ row }: { row: AdminBattleLog }) {
   const [open, setOpen] = useState(false)
   const lootTotal = (row.lootWood ?? 0) + (row.lootStone ?? 0) + (row.lootGrain ?? 0)
   const hasDetail = Object.keys(row.attackerForce ?? {}).length > 0 || Object.keys(row.defenderForce ?? {}).length > 0
 
   return (
-    <div
-      className={`py-3 border-b border-gold/8 last:border-0 px-4 -mx-4 rounded transition-colors ${hasDetail ? 'cursor-pointer hover:bg-parchment-warm/30' : ''}`}
-      onClick={() => hasDetail && setOpen(o => !o)}
-    >
-      {/* ── Mobile layout ── */}
-      <div className="sm:hidden space-y-1.5">
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2 min-w-0">
-            <p className="font-ui text-[0.6rem] text-ink-muted tabular-nums shrink-0">{formatTs(row.createdAt)}</p>
-            {typeTag(row)}
-          </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <p className={`font-ui text-xs font-bold ${outcomeColor(row.outcome)}`}>{outcomeLabel(row.outcome)}</p>
-            {hasDetail && <p className="font-ui text-[0.5rem] text-ink-muted/50">{open ? '▲' : '▼'}</p>}
-          </div>
-        </div>
-
-        <div className="flex items-center gap-1.5 text-xs font-ui font-semibold text-ink min-w-0">
-          <span className="truncate flex-1">{row.attackerName}</span>
-          <span className="text-ink-muted/50 shrink-0 text-[0.6rem]">→</span>
-          <span className="truncate flex-1 text-right">{row.defenderName}</span>
-        </div>
-
-        <div className="flex items-center justify-between gap-2 text-[0.6rem] text-ink-muted">
-          <span>{row.attackerCoord} → {row.defenderCoord}</span>
-          <span>{roundsLabel(row.rounds, row.outcome)}</span>
-        </div>
-
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex gap-2 font-ui text-[0.6rem] text-crimson-light">
-            {row.attackerLosses > 0 && <span>Atk −{row.attackerLosses}</span>}
-            {row.defenderLosses > 0 && <span>Def −{row.defenderLosses}</span>}
-            {row.attackerLosses === 0 && row.defenderLosses === 0 && <span className="text-ink-muted/40">Sin bajas</span>}
-          </div>
-          {lootTotal > 0 && (
-            <p className="font-ui text-[0.6rem] font-semibold text-gold tabular-nums">Botín: {formatResource(lootTotal)}</p>
-          )}
-        </div>
-      </div>
-
-      {/* ── Desktop layout ── */}
-      <div className="hidden sm:grid grid-cols-[auto_1fr_1fr_auto_auto_auto] items-center gap-x-4">
-        <div className="space-y-1 min-w-[80px]">
-          <p className="font-ui text-[0.6rem] text-ink-muted tabular-nums whitespace-nowrap">{formatTs(row.createdAt)}</p>
+    <>
+      <tr
+        className={`border-b border-gold/8 last:border-0 transition-colors ${hasDetail ? 'cursor-pointer hover:bg-parchment-warm/30' : ''}`}
+        onClick={() => hasDetail && setOpen(o => !o)}
+      >
+        <td className={TD}>
+          <p className="text-[0.6rem] text-ink-muted tabular-nums">{formatTs(row.createdAt)}</p>
           {typeTag(row)}
-        </div>
-
-        <div className="min-w-0">
-          <p className="font-ui text-xs font-semibold text-ink truncate">{row.attackerName}</p>
-          <p className="font-ui text-[0.6rem] text-ink-muted">{row.attackerCoord}</p>
-        </div>
-
-        <div className="min-w-0">
-          <p className="font-ui text-xs font-semibold text-ink truncate">{row.defenderName}</p>
-          <p className="font-ui text-[0.6rem] text-ink-muted">{row.defenderCoord}</p>
-        </div>
-
-        <div className="text-center">
-          <p className={`font-ui text-xs font-bold ${outcomeColor(row.outcome)}`}>{outcomeLabel(row.outcome)}</p>
-          <p className="font-ui text-[0.6rem] text-ink-muted">{roundsLabel(row.rounds, row.outcome)}</p>
-        </div>
-
-        <div className="text-right space-y-0.5">
-          <p className="font-ui text-[0.6rem] text-ink-muted">Bajas</p>
-          <p className="font-ui text-xs tabular-nums text-crimson-light">
-            {row.attackerLosses > 0 ? `Atk −${row.attackerLosses}` : '—'}
-          </p>
-          <p className="font-ui text-xs tabular-nums text-crimson-light/70">
-            {row.defenderLosses > 0 ? `Def −${row.defenderLosses}` : '—'}
-          </p>
-        </div>
-
-        <div className="text-right min-w-[56px]">
-          <p className="font-ui text-[0.6rem] text-ink-muted">Botín</p>
-          <p className={`font-ui text-xs font-semibold tabular-nums ${lootTotal > 0 ? 'text-gold' : 'text-ink-muted/40'}`}>
+        </td>
+        <td className={TD}>
+          <p className="font-semibold text-ink">{row.attackerName}</p>
+          <p className="text-[0.6rem] text-ink-muted">{row.attackerCoord}</p>
+        </td>
+        <td className={TD}>
+          <p className="font-semibold text-ink">{row.defenderName}</p>
+          <p className="text-[0.6rem] text-ink-muted">{row.defenderCoord}</p>
+        </td>
+        <td className={`${TD} text-center`}>
+          <p className={`font-bold ${outcomeColor(row.outcome)}`}>{outcomeLabel(row.outcome)}</p>
+          <p className="text-[0.6rem] text-ink-muted">{roundsLabel(row.rounds, row.outcome)}</p>
+        </td>
+        <td className={`${TD} text-right`}>
+          <p className="text-[0.6rem] text-ink-muted">Bajas</p>
+          <p className="tabular-nums text-crimson-light">{row.attackerLosses > 0 ? `Atk −${row.attackerLosses}` : '—'}</p>
+          <p className="tabular-nums text-crimson-light/70">{row.defenderLosses > 0 ? `Def −${row.defenderLosses}` : '—'}</p>
+        </td>
+        <td className={`${TD} text-right`}>
+          <p className="text-[0.6rem] text-ink-muted">Botín</p>
+          <p className={`font-semibold tabular-nums ${lootTotal > 0 ? 'text-gold' : 'text-ink-muted/40'}`}>
             {lootTotal > 0 ? formatResource(lootTotal) : '—'}
           </p>
-          {hasDetail && (
-            <p className="font-ui text-[0.5rem] text-ink-muted/50 mt-0.5">{open ? '▲ ocultar' : '▼ detalle'}</p>
-          )}
-        </div>
-      </div>
+          {hasDetail && <p className="text-[0.5rem] text-ink-muted/50 mt-0.5">{open ? '▲' : '▼'}</p>}
+        </td>
+      </tr>
 
-      {open && hasDetail && <BattleDetail row={row} />}
-    </div>
+      {open && hasDetail && (
+        <tr className="bg-parchment-warm/20 border-b border-gold/8">
+          <td colSpan={6} className="px-4 py-3">
+            <div className="grid grid-cols-2 gap-x-6 gap-y-2">
+              <div className="space-y-1.5">
+                <p className="font-ui text-[0.55rem] uppercase tracking-widest text-ink-muted">Atacante — {row.attackerName}</p>
+                <div>
+                  <p className="font-ui text-[0.55rem] text-ink-muted mb-0.5">Envió</p>
+                  <UnitList units={row.attackerForce ?? {}} />
+                </div>
+                <div>
+                  <p className="font-ui text-[0.55rem] text-ink-muted mb-0.5">Perdió</p>
+                  <UnitList units={row.attackerLost ?? {}} accent="text-crimson-light" />
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <p className="font-ui text-[0.55rem] uppercase tracking-widest text-ink-muted">Defensor — {row.defenderName}</p>
+                <div>
+                  <p className="font-ui text-[0.55rem] text-ink-muted mb-0.5">Tenía</p>
+                  <UnitList units={row.defenderForce ?? {}} />
+                </div>
+                <div>
+                  <p className="font-ui text-[0.55rem] text-ink-muted mb-0.5">Perdió</p>
+                  <UnitList units={row.defenderLost ?? {}} accent="text-crimson-light" />
+                </div>
+              </div>
+              {lootTotal > 0 && (
+                <div className="col-span-2 pt-1 border-t border-gold/8">
+                  <p className="font-ui text-[0.55rem] text-ink-muted mb-0.5">Botín</p>
+                  <div className="flex gap-4 font-ui text-[0.6rem] text-gold tabular-nums">
+                    {row.lootWood  > 0 && <span>Madera: {formatResource(row.lootWood)}</span>}
+                    {row.lootStone > 0 && <span>Piedra: {formatResource(row.lootStone)}</span>}
+                    {row.lootGrain > 0 && <span>Grano: {formatResource(row.lootGrain)}</span>}
+                  </div>
+                </div>
+              )}
+            </div>
+          </td>
+        </tr>
+      )}
+    </>
   )
 }
 
@@ -262,8 +214,22 @@ export function BattlesTab() {
         ) : !data?.battles.length ? (
           <p className="font-ui text-sm text-ink-muted text-center py-10">Sin combates registrados con este filtro.</p>
         ) : (
-          <div>
-            {data.battles.map(row => <BattleRow key={row.id} row={row} />)}
+          <div className="overflow-x-auto -mx-5 px-5">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="border-b border-gold/20">
+                  <th className={TH}>Fecha / Tipo</th>
+                  <th className={TH}>Atacante</th>
+                  <th className={TH}>Defensor</th>
+                  <th className={`${TH} text-center`}>Resultado</th>
+                  <th className={`${TH} text-right`}>Bajas</th>
+                  <th className={`${TH} text-right`}>Botín</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.battles.map(row => <BattleRow key={row.id} row={row} />)}
+              </tbody>
+            </table>
           </div>
         )}
 
