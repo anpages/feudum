@@ -646,8 +646,12 @@ function GrowthDeltaCell({ delta }: { delta: NpcHealthGrowthDelta | null | undef
   )
 }
 
+const HEALTH_PAGE = 5
+
 function HealthHistorySection({ reports }: { reports: NpcHealthReport[] }) {
   const [expanded, setExpanded] = useState<number | null>(null)
+  const [visible, setVisible]   = useState(HEALTH_PAGE)
+
   if (reports.length === 0) {
     return (
       <div className="card-medieval p-5">
@@ -658,9 +662,11 @@ function HealthHistorySection({ reports }: { reports: NpcHealthReport[] }) {
     )
   }
 
-  const sorted  = [...reports].reverse()
-  const latest  = sorted[0]
-  const hasAnomalies = sorted.some(r => r.anomalies.length > 0)
+  const sorted   = [...reports].reverse()
+  const rows     = sorted.slice(0, visible)
+  const hasMore  = visible < sorted.length
+  const latest   = sorted[0]
+  const hasAnomalies = rows.some(r => r.anomalies.length > 0)
 
   return (
     <div className="card-medieval p-5 space-y-4">
@@ -698,7 +704,7 @@ function HealthHistorySection({ reports }: { reports: NpcHealthReport[] }) {
             </tr>
           </thead>
           <tbody>
-            {sorted.map((r, i) => {
+            {rows.map((r, i) => {
               const m = r.metrics
               const isExpanded = expanded === i
               const savingColor = r.stagnant
@@ -768,6 +774,14 @@ function HealthHistorySection({ reports }: { reports: NpcHealthReport[] }) {
           </tbody>
         </table>
       </div>
+      {hasMore && (
+        <div className="text-center pt-1">
+          <button onClick={() => setVisible(v => v + HEALTH_PAGE)} className="btn btn-ghost text-xs px-4 py-1.5">
+            Cargar {Math.min(HEALTH_PAGE, sorted.length - visible)} más
+            <span className="ml-1.5 font-ui text-[0.6rem] text-ink-muted">({visible}/{sorted.length})</span>
+          </button>
+        </div>
+      )}
     </div>
   )
 }
