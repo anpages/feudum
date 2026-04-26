@@ -73,7 +73,8 @@ function ResearchCardImpl({
   animClass,
 }: ResearchCardProps) {
   const now = Math.floor(Date.now() / 1000)
-  const isPending = !!item.inQueue && item.inQueue.startedAt > now
+  // +10s tolerance: absorbs server/client clock skew without hiding genuinely queued items
+  const isPending = !!item.inQueue && item.inQueue.startedAt > now + 10
   const countdown = useCountdown(isPending ? null : (item.inQueue?.finishesAt ?? null), onCountdownEnd)
   const inQueue = !!item.inQueue && (countdown > 0 || isPending)
 

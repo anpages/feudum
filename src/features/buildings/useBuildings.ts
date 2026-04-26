@@ -73,8 +73,13 @@ export function useUpgradeBuilding() {
           })
 
           const now = Math.floor(Date.now() / 1000)
-          const finishesAt = now + building.timeSeconds
-          const startedAt = prev.totalQueueCount > 0 ? finishesAt + 1 : now
+          // Use the actual latest active finishesAt — not totalQueueCount, which can be stale
+          // if items finished between the last fetch and this click.
+          const lastActiveFinishesAt = prev.buildings
+            .filter(b => b.inQueue && b.inQueue.finishesAt > now)
+            .reduce((max, b) => Math.max(max, b.inQueue!.finishesAt), 0)
+          const startedAt  = lastActiveFinishesAt > 0 ? lastActiveFinishesAt : now
+          const finishesAt = startedAt + building.timeSeconds
           qc.setQueryData<BuildingsResponse>(key, {
             ...prev,
             totalQueueCount: prev.totalQueueCount + 1,

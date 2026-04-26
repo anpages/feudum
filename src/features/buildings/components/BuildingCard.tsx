@@ -101,7 +101,8 @@ function BuildingCardImpl({
   queueFull = false,
 }: Props) {
   const now = Math.floor(Date.now() / 1000)
-  const isPending = !!building.inQueue && building.inQueue.startedAt > now
+  // +10s tolerance: absorbs server/client clock skew without hiding genuinely queued items
+  const isPending = !!building.inQueue && building.inQueue.startedAt > now + 10
   const countdown = useCountdown(isPending ? null : (building.inQueue?.finishesAt ?? null), onCountdownEnd)
   const inQueue = !!building.inQueue && (countdown > 0 || isPending)
   const { Icon } = meta
