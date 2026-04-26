@@ -49,7 +49,6 @@ export const UNIT_LABELS: Record<string, string> = {
   colonist: 'Colonista',
   scavenger: 'Saqueador',
   scout: 'Explorador',
-  beacon: 'Faro',
   archer: 'Arquero',
   crossbowman: 'Ballestero',
   ballista: 'Ballista',

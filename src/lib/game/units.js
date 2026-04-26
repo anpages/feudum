@@ -149,14 +149,6 @@ export const SUPPORT_UNITS = [
 
 export const DEFENSES = [
   {
-    id: 'beacon',       // solar satellite — watchtower, cheap passive defense
-    woodBase: 1000, stoneBase: 0, grainBase: 0,
-    hull: 500, shield: 1, attack: 10,
-    requires: [
-      { type: 'building', id: 'barracks', level: 1 },
-    ],
-  },
-  {
     id: 'archer',       // rocket_launcher
     woodBase: 2000, stoneBase: 0, grainBase: 0,
     hull: 2000,   shield: 20,   attack: 80,

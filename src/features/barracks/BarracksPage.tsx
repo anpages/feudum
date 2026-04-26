@@ -25,7 +25,6 @@ import {
   GiWoodBeam,
   GiBrickWall,
   GiMoai,
-  GiWatchtower,
   GiMissileLauncher,
 } from 'react-icons/gi'
 import { Card } from '@/components/ui/Card'
@@ -65,7 +64,6 @@ const UNIT_META: Record<string, { name: string; Icon: IconType; description: str
   castleWall:  { Icon: GiBrickWall,     name: 'Muralla',             description: 'Escudo máximo. Protección total del reino.' },
   moat:        { Icon: GiMoai,          name: 'Foso',                description: 'Barrera defensiva. Ralentiza a los atacantes.' },
   catapult:    { Icon: GiCatapult,      name: 'Catapulta',           description: 'Arma de asedio. Destruye posiciones enemigas.' },
-  beacon:      { Icon: GiWatchtower,    name: 'Faro',                description: 'Torre de vigilancia. Detecta ejércitos enemigos.' },
   // Missiles
   ballistic:   { Icon: GiMissileLauncher, name: 'Bomba Alquímica',   description: 'Arma de un solo uso. Daña defensas enemigas a distancia. Los trebuchets la interceptan.' },
 }
