@@ -979,23 +979,43 @@ export function NpcMonitorTab() {
         </div>
       </div>
 
-      {/* ── Combat units + Support units ───────────────────────────────────────── */}
+      {/* ── Combat units + Defenses ─────────────────────────────────────────────── */}
       <div className="grid lg:grid-cols-2 gap-4">
         <div className="card-medieval p-5 space-y-4">
           <div className="card-corner-tr" /><div className="card-corner-bl" />
           <h3 className="section-heading">Ejército de combate (total · NPCs con unidad)</h3>
           <div className="space-y-3">
-            <UnitAdoptionRow label="Escudero"        withUnit={agg.withArmy}        total={agg.total} totalUnits={agg.totalSquire}      color="bg-gold/60" />
-            <UnitAdoptionRow label="Caballero"       withUnit={agg.withKnight}      total={agg.total} totalUnits={agg.totalKnight}      color="bg-gold/70" />
-            <UnitAdoptionRow label="Paladín"         withUnit={agg.withPaladin}     total={agg.total} totalUnits={agg.totalPaladin}     color="bg-gold" />
-            <UnitAdoptionRow label="Señor de guerra" withUnit={agg.withWarlord}     total={agg.total} totalUnits={agg.totalWarlord}     color="bg-gold" />
-            <UnitAdoptionRow label="Gran Caballero"   withUnit={agg.withGrandKnight}  total={agg.total} totalUnits={agg.totalGrandKnight}  color="bg-forest-light" />
+            <UnitAdoptionRow label="Escudero"          withUnit={agg.withArmy}         total={agg.total} totalUnits={agg.totalSquire}       color="bg-gold/60" />
+            <UnitAdoptionRow label="Caballero"         withUnit={agg.withKnight}       total={agg.total} totalUnits={agg.totalKnight}       color="bg-gold/70" />
+            <UnitAdoptionRow label="Paladín"           withUnit={agg.withPaladin}      total={agg.total} totalUnits={agg.totalPaladin}      color="bg-gold" />
+            <UnitAdoptionRow label="Señor de guerra"   withUnit={agg.withWarlord}      total={agg.total} totalUnits={agg.totalWarlord}      color="bg-gold" />
+            <UnitAdoptionRow label="Gran Caballero"    withUnit={agg.withGrandKnight}  total={agg.total} totalUnits={agg.totalGrandKnight}  color="bg-forest-light" />
             <UnitAdoptionRow label="Maestro de Asedio" withUnit={agg.withSiegeMaster}  total={agg.total} totalUnits={agg.totalSiegeMaster}  color="bg-crimson/60" />
             <UnitAdoptionRow label="Máquina de Guerra" withUnit={agg.withWarMachine}   total={agg.total} totalUnits={agg.totalWarMachine}   color="bg-crimson-light/60" />
             <UnitAdoptionRow label="Caballero Dragón"  withUnit={agg.withDragonKnight} total={agg.total} totalUnits={agg.totalDragonKnight} color="bg-crimson-light" />
           </div>
         </div>
 
+        <div className="card-medieval p-5 space-y-4">
+          <div className="card-corner-tr" /><div className="card-corner-bl" />
+          <h3 className="section-heading">Defensas (total · NPCs con defensa)</h3>
+          <div className="space-y-3">
+            <UnitAdoptionRow label="Arquero"      withUnit={agg.withArcher}       total={agg.total} totalUnits={agg.totalArcher}       color="bg-gold/60" />
+            <UnitAdoptionRow label="Ballestero"   withUnit={agg.withCrossbowman}  total={agg.total} totalUnits={agg.totalCrossbowman}  color="bg-gold/70" />
+            <UnitAdoptionRow label="Ballista"     withUnit={agg.withBallista}     total={agg.total} totalUnits={agg.totalBallista}     color="bg-gold" />
+            <UnitAdoptionRow label="Trebuchet"    withUnit={agg.withTrebuchet}    total={agg.total} totalUnits={agg.totalTrebuchet}    color="bg-gold" />
+            <UnitAdoptionRow label="Torre Maga"   withUnit={agg.withMageTower}    total={agg.total} totalUnits={agg.totalMageTower}    color="bg-forest-light" />
+            <UnitAdoptionRow label="Cañón Dragón" withUnit={agg.withDragonCannon} total={agg.total} totalUnits={agg.totalDragonCannon} color="bg-crimson-light/60" />
+            <UnitAdoptionRow label="Palizada"     withUnit={agg.withPalisade}     total={agg.total} totalUnits={agg.totalPalisade}     color="bg-ink-mid" />
+            <UnitAdoptionRow label="Muralla"      withUnit={agg.withCastleWall}   total={agg.total} totalUnits={agg.totalCastleWall}   color="bg-ink-mid" />
+            <UnitAdoptionRow label="Foso"         withUnit={agg.withMoat}         total={agg.total} totalUnits={agg.totalMoat}         color="bg-ink-mid" />
+            <UnitAdoptionRow label="Catapulta"    withUnit={agg.withCatapult}     total={agg.total} totalUnits={agg.totalCatapult}     color="bg-ink-mid" />
+          </div>
+        </div>
+      </div>
+
+      {/* ── Support units + Resources ────────────────────────────────────────────── */}
+      <div className="grid lg:grid-cols-2 gap-4">
         <div className="card-medieval p-5 space-y-4">
           <div className="card-corner-tr" /><div className="card-corner-bl" />
           <h3 className="section-heading">Unidades de apoyo (total · NPCs con unidad)</h3>
@@ -1011,26 +1031,6 @@ export function NpcMonitorTab() {
               Los NPCs economía/equilibrado empezarán a entrenar Mercader en cuanto alcancen Cuartel lv2.
             </p>
           )}
-        </div>
-      </div>
-
-      {/* ── Defenses + Resources ────────────────────────────────────────────────── */}
-      <div className="grid lg:grid-cols-2 gap-4">
-        <div className="card-medieval p-5 space-y-4">
-          <div className="card-corner-tr" /><div className="card-corner-bl" />
-          <h3 className="section-heading">Defensas (total · NPCs con defensa)</h3>
-          <div className="space-y-3">
-            <UnitAdoptionRow label="Arquero"    withUnit={agg.withArcher}      total={agg.total} totalUnits={agg.totalArcher}      color="bg-gold/60" />
-            <UnitAdoptionRow label="Ballestero" withUnit={agg.withCrossbowman} total={agg.total} totalUnits={agg.totalCrossbowman} color="bg-gold/70" />
-            <UnitAdoptionRow label="Ballista"   withUnit={agg.withBallista}    total={agg.total} totalUnits={agg.totalBallista}    color="bg-gold" />
-            <UnitAdoptionRow label="Trebuchet"  withUnit={agg.withTrebuchet}   total={agg.total} totalUnits={agg.totalTrebuchet}   color="bg-gold" />
-            <UnitAdoptionRow label="Torre Maga"   withUnit={agg.withMageTower}    total={agg.total} totalUnits={agg.totalMageTower}    color="bg-forest-light" />
-            <UnitAdoptionRow label="Cañón Dragón" withUnit={agg.withDragonCannon} total={agg.total} totalUnits={agg.totalDragonCannon} color="bg-crimson-light/60" />
-            <UnitAdoptionRow label="Palizada"      withUnit={agg.withPalisade}     total={agg.total} totalUnits={agg.totalPalisade}     color="bg-ink-mid" />
-            <UnitAdoptionRow label="Muralla"       withUnit={agg.withCastleWall}   total={agg.total} totalUnits={agg.totalCastleWall}   color="bg-ink-mid" />
-            <UnitAdoptionRow label="Foso"          withUnit={agg.withMoat}         total={agg.total} totalUnits={agg.totalMoat}         color="bg-ink-mid" />
-            <UnitAdoptionRow label="Catapulta"     withUnit={agg.withCatapult}     total={agg.total} totalUnits={agg.totalCatapult}     color="bg-ink-mid" />
-          </div>
         </div>
 
         <div className="card-medieval p-5 space-y-4">
