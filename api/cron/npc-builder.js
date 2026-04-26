@@ -556,12 +556,12 @@ const DEFENSE_SOFT_CAP = {
   crossbowman: 10,
   moat:        5,
   ballista:    5,
-  mageTower:   5,
+  mageTower:   8,
   palisade:    2,
   catapult:    3,
   trebuchet:   3,
   castleWall:  2,
-  dragonCannon: 2,
+  dragonCannon: 3,
 }
 
 // Trains a batch of defense structures using leftover resources.
