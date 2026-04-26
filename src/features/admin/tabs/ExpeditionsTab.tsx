@@ -68,41 +68,57 @@ function ActiveRow({ m, now }: { m: AdminExpedition; now: number }) {
   }
 
   return (
-    <div className="grid grid-cols-[1fr_auto_auto_auto_auto] items-center gap-x-4 py-3 border-b border-gold/8 last:border-0 hover:bg-parchment-warm/30 transition-colors px-4 -mx-4 rounded">
-      {/* Reino */}
-      <div className="min-w-0">
-        <div className="flex items-center gap-2">
-          <p className="font-ui text-xs font-semibold text-ink truncate">{m.kingdomName}</p>
-          {m.isNpc && <span className="badge badge-stone text-[0.55rem] shrink-0">NPC</span>}
+    <div className="py-3 border-b border-gold/8 last:border-0 hover:bg-parchment-warm/30 transition-colors px-4 -mx-4 rounded">
+      {/* ── Mobile ── */}
+      <div className="sm:hidden space-y-1.5">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <p className="font-ui text-xs font-semibold text-ink truncate">{m.kingdomName}</p>
+            {m.isNpc && <span className="badge badge-stone text-[0.55rem] shrink-0">NPC</span>}
+          </div>
+          <p className={`font-ui text-xs font-semibold shrink-0 ${stateColor(m.state)}`}>{stateLabel(m.state)}</p>
         </div>
-        <p className="font-ui text-[0.6rem] text-ink-muted">{m.startRealm}:{m.startRegion}:{m.startSlot} → {m.targetRealm}:{m.targetRegion}:16</p>
+        <div className="flex items-center justify-between gap-2 text-[0.6rem] font-ui text-ink-muted">
+          <span>{m.startRealm}:{m.startRegion}:{m.startSlot} → {m.targetRealm}:{m.targetRegion}:16</span>
+          <span className="tabular-nums">{timeLeft !== null ? formatDuration(timeLeft) : '—'}</span>
+        </div>
+        {(outcome || loot > 0) && (
+          <div className="flex items-center justify-between gap-2">
+            {outcome
+              ? <p className={`font-ui text-[0.6rem] font-semibold ${OUTCOME_COLOR[outcome] ?? 'text-ink-mid'}`}>{OUTCOME_LABEL[outcome] ?? outcome}</p>
+              : <span />
+            }
+            {loot > 0 && <p className="font-ui text-[0.6rem] font-semibold tabular-nums text-gold">{formatResource(loot)}</p>}
+          </div>
+        )}
       </div>
 
-      {/* Estado */}
-      <div className="text-center min-w-[72px]">
-        <p className={`font-ui text-xs font-semibold ${stateColor(m.state)}`}>{stateLabel(m.state)}</p>
-      </div>
-
-      {/* Tiempo */}
-      <div className="text-right min-w-[60px]">
-        <p className="font-ui text-xs tabular-nums text-ink-muted">
-          {timeLeft !== null ? formatDuration(timeLeft) : '—'}
-        </p>
-      </div>
-
-      {/* Resultado */}
-      <div className="text-center min-w-[100px]">
-        {outcome
-          ? <p className={`font-ui text-xs font-semibold ${OUTCOME_COLOR[outcome] ?? 'text-ink-mid'}`}>{OUTCOME_LABEL[outcome] ?? outcome}</p>
-          : <p className="font-ui text-xs text-ink-muted/40">—</p>
-        }
-      </div>
-
-      {/* Botín */}
-      <div className="text-right min-w-[56px]">
-        <p className={`font-ui text-xs font-semibold tabular-nums ${loot > 0 ? 'text-gold' : 'text-ink-muted/40'}`}>
-          {loot > 0 ? formatResource(loot) : '—'}
-        </p>
+      {/* ── Desktop ── */}
+      <div className="hidden sm:grid grid-cols-[1fr_auto_auto_auto_auto] items-center gap-x-4">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <p className="font-ui text-xs font-semibold text-ink truncate">{m.kingdomName}</p>
+            {m.isNpc && <span className="badge badge-stone text-[0.55rem] shrink-0">NPC</span>}
+          </div>
+          <p className="font-ui text-[0.6rem] text-ink-muted">{m.startRealm}:{m.startRegion}:{m.startSlot} → {m.targetRealm}:{m.targetRegion}:16</p>
+        </div>
+        <div className="text-center min-w-[72px]">
+          <p className={`font-ui text-xs font-semibold ${stateColor(m.state)}`}>{stateLabel(m.state)}</p>
+        </div>
+        <div className="text-right min-w-[60px]">
+          <p className="font-ui text-xs tabular-nums text-ink-muted">{timeLeft !== null ? formatDuration(timeLeft) : '—'}</p>
+        </div>
+        <div className="text-center min-w-[100px]">
+          {outcome
+            ? <p className={`font-ui text-xs font-semibold ${OUTCOME_COLOR[outcome] ?? 'text-ink-mid'}`}>{OUTCOME_LABEL[outcome] ?? outcome}</p>
+            : <p className="font-ui text-xs text-ink-muted/40">—</p>
+          }
+        </div>
+        <div className="text-right min-w-[56px]">
+          <p className={`font-ui text-xs font-semibold tabular-nums ${loot > 0 ? 'text-gold' : 'text-ink-muted/40'}`}>
+            {loot > 0 ? formatResource(loot) : '—'}
+          </p>
+        </div>
       </div>
     </div>
   )
@@ -111,47 +127,56 @@ function ActiveRow({ m, now }: { m: AdminExpedition; now: number }) {
 // ── Completed expedition row ──────────────────────────────────────────────────
 
 function CompletedRow({ m }: { m: AdminExpedition }) {
-  const outcome    = m.result ? (m.result as Record<string, unknown>).outcome as string : null
-  const result     = m.result as Record<string, unknown> | null
-  const loot       = (m.woodLoad ?? 0) + (m.stoneLoad ?? 0) + (m.grainLoad ?? 0)
+  const outcome     = m.result ? (m.result as Record<string, unknown>).outcome as string : null
+  const result      = m.result as Record<string, unknown> | null
+  const loot        = (m.woodLoad ?? 0) + (m.stoneLoad ?? 0) + (m.grainLoad ?? 0)
   const etherGained = result?.etherGained as number | undefined
 
+  const lootNode = loot > 0
+    ? <p className="font-ui text-xs font-semibold tabular-nums text-gold" title={`Madera: ${m.woodLoad ?? 0}  Piedra: ${m.stoneLoad ?? 0}  Grano: ${m.grainLoad ?? 0}`}>{formatResource(loot)}</p>
+    : etherGained
+    ? <p className="font-ui text-xs font-semibold text-gold-light">✨{etherGained}</p>
+    : <p className="font-ui text-xs text-ink-muted/40">—</p>
+
   return (
-    <div className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-x-4 py-3 border-b border-gold/8 last:border-0 hover:bg-parchment-warm/30 transition-colors px-4 -mx-4 rounded">
-      {/* Reino + fecha */}
-      <div className="min-w-0">
-        <div className="flex items-center gap-2">
-          <p className="font-ui text-xs font-semibold text-ink truncate">{m.kingdomName}</p>
-          {m.isNpc && <span className="badge badge-stone text-[0.55rem] shrink-0">NPC</span>}
+    <div className="py-3 border-b border-gold/8 last:border-0 hover:bg-parchment-warm/30 transition-colors px-4 -mx-4 rounded">
+      {/* ── Mobile ── */}
+      <div className="sm:hidden space-y-1">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <p className="font-ui text-xs font-semibold text-ink truncate">{m.kingdomName}</p>
+            {m.isNpc && <span className="badge badge-stone text-[0.55rem] shrink-0">NPC</span>}
+          </div>
+          {outcome
+            ? <p className={`font-ui text-[0.6rem] font-semibold shrink-0 ${OUTCOME_COLOR[outcome] ?? 'text-ink-mid'}`}>{OUTCOME_LABEL[outcome] ?? outcome}</p>
+            : null
+          }
         </div>
-        <p className="font-ui text-[0.6rem] text-ink-muted">{m.startRealm}:{m.startRegion}:{m.startSlot} · {formatDate(m.departureTime)}</p>
+        <div className="flex items-center justify-between gap-2">
+          <p className="font-ui text-[0.6rem] text-ink-muted">{m.startRealm}:{m.startRegion}:{m.startSlot} · {formatDate(m.departureTime)}</p>
+          {lootNode}
+        </div>
       </div>
 
-      {/* Destino */}
-      <div className="text-center min-w-[60px]">
-        <p className="font-ui text-[0.6rem] text-ink-muted">{m.targetRealm}:{m.targetRegion}:16</p>
-      </div>
-
-      {/* Resultado */}
-      <div className="text-center min-w-[110px]">
-        {outcome
-          ? <p className={`font-ui text-xs font-semibold ${OUTCOME_COLOR[outcome] ?? 'text-ink-mid'}`}>{OUTCOME_LABEL[outcome] ?? outcome}</p>
-          : <p className="font-ui text-xs text-ink-muted/40">—</p>
-        }
-      </div>
-
-      {/* Botín */}
-      <div className="text-right min-w-[64px]">
-        {loot > 0 ? (
-          <p className="font-ui text-xs font-semibold tabular-nums text-gold"
-            title={`Madera: ${m.woodLoad ?? 0}  Piedra: ${m.stoneLoad ?? 0}  Grano: ${m.grainLoad ?? 0}`}>
-            {formatResource(loot)}
-          </p>
-        ) : etherGained ? (
-          <p className="font-ui text-xs font-semibold text-gold-light">✨{etherGained}</p>
-        ) : (
-          <p className="font-ui text-xs text-ink-muted/40">—</p>
-        )}
+      {/* ── Desktop ── */}
+      <div className="hidden sm:grid grid-cols-[1fr_auto_auto_auto] items-center gap-x-4">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <p className="font-ui text-xs font-semibold text-ink truncate">{m.kingdomName}</p>
+            {m.isNpc && <span className="badge badge-stone text-[0.55rem] shrink-0">NPC</span>}
+          </div>
+          <p className="font-ui text-[0.6rem] text-ink-muted">{m.startRealm}:{m.startRegion}:{m.startSlot} · {formatDate(m.departureTime)}</p>
+        </div>
+        <div className="text-center min-w-[60px]">
+          <p className="font-ui text-[0.6rem] text-ink-muted">{m.targetRealm}:{m.targetRegion}:16</p>
+        </div>
+        <div className="text-center min-w-[110px]">
+          {outcome
+            ? <p className={`font-ui text-xs font-semibold ${OUTCOME_COLOR[outcome] ?? 'text-ink-mid'}`}>{OUTCOME_LABEL[outcome] ?? outcome}</p>
+            : <p className="font-ui text-xs text-ink-muted/40">—</p>
+          }
+        </div>
+        <div className="text-right min-w-[64px]">{lootNode}</div>
       </div>
     </div>
   )
@@ -187,19 +212,21 @@ export function ExpeditionsTab() {
 
       {/* Depletion map */}
       {depletion && Object.keys(depletion).length > 0 && (
-        <div className="card-medieval p-5">
+        <div className="card-medieval p-4">
           <div className="card-corner-tr" /><div className="card-corner-bl" />
-          <h3 className="section-heading mb-3">Depleción por región (24h)</h3>
-          <div className="flex flex-wrap gap-2">
+          <h3 className="section-heading mb-2.5">Depleción por región (24h)</h3>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-1.5">
             {Object.entries(depletion)
               .sort(([, a], [, b]) => b.count - a.count)
               .map(([key, d]) => (
-                <div key={key} className="glass rounded-lg px-3 py-2 flex items-center gap-2.5">
-                  <span className="font-ui text-xs font-semibold text-ink">{key}</span>
-                  <span className="font-ui text-xs text-ink-muted">{d.count}×</span>
-                  <span className={`font-ui text-sm font-bold ${d.factor < 0.7 ? 'text-crimson-light' : d.factor < 1 ? 'text-gold' : 'text-forest-light'}`}>
-                    ×{d.factor.toFixed(2)}
-                  </span>
+                <div key={key} className="glass rounded-lg px-2.5 py-1.5 flex items-center justify-between gap-1.5">
+                  <span className="font-ui text-[0.65rem] font-semibold text-ink truncate">{key}</span>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <span className="font-ui text-[0.55rem] text-ink-muted">{d.count}×</span>
+                    <span className={`font-ui text-[0.65rem] font-bold tabular-nums ${d.factor < 0.7 ? 'text-crimson-light' : d.factor < 1 ? 'text-gold' : 'text-forest-light'}`}>
+                      ×{d.factor.toFixed(2)}
+                    </span>
+                  </div>
                 </div>
               ))}
           </div>
@@ -220,8 +247,8 @@ export function ExpeditionsTab() {
           <p className="font-ui text-sm text-ink-muted text-center py-8">Sin expediciones activas.</p>
         ) : (
           <div>
-            {/* Column headers */}
-            <div className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-x-4 pb-2 border-b border-gold/10 px-4 -mx-4">
+            {/* Column headers — desktop only */}
+            <div className="hidden sm:grid grid-cols-[1fr_auto_auto_auto_auto] gap-x-4 pb-2 border-b border-gold/10 px-4 -mx-4">
               <span className="font-ui text-[0.6rem] uppercase tracking-widest text-ink-muted">Reino</span>
               <span className="font-ui text-[0.6rem] uppercase tracking-widest text-ink-muted text-center min-w-[72px]">Estado</span>
               <span className="font-ui text-[0.6rem] uppercase tracking-widest text-ink-muted text-right min-w-[60px]">Tiempo</span>
@@ -273,8 +300,8 @@ export function ExpeditionsTab() {
           </p>
         ) : (
           <div>
-            {/* Column headers */}
-            <div className="grid grid-cols-[1fr_auto_auto_auto] gap-x-4 pb-2 border-b border-gold/10 px-4 -mx-4">
+            {/* Column headers — desktop only */}
+            <div className="hidden sm:grid grid-cols-[1fr_auto_auto_auto] gap-x-4 pb-2 border-b border-gold/10 px-4 -mx-4">
               <span className="font-ui text-[0.6rem] uppercase tracking-widest text-ink-muted">Reino</span>
               <span className="font-ui text-[0.6rem] uppercase tracking-widest text-ink-muted text-center min-w-[60px]">Destino</span>
               <span className="font-ui text-[0.6rem] uppercase tracking-widest text-ink-muted text-center min-w-[110px]">Resultado</span>
