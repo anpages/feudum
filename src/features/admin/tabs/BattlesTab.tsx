@@ -233,7 +233,7 @@ export function BattlesTab() {
           </div>
         )}
 
-        {data && data.battles.length === data.limit && (
+        {data && (page > 1 || data.battles.length === data.limit) && (
           <div className="flex items-center justify-between pt-2 border-t border-gold/10">
             <button
               onClick={() => setPage(p => Math.max(1, p - 1))}
@@ -245,7 +245,8 @@ export function BattlesTab() {
             <span className="font-ui text-xs text-ink-muted">Página {page}</span>
             <button
               onClick={() => setPage(p => p + 1)}
-              className="btn btn-ghost text-xs px-3 py-1.5"
+              disabled={data.battles.length < data.limit}
+              className="btn btn-ghost text-xs px-3 py-1.5 disabled:opacity-30"
             >
               Siguiente →
             </button>

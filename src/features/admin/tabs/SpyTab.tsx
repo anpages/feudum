@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { adminService } from '../services/adminService'
 import { formatResource } from '@/lib/format'
@@ -105,6 +106,21 @@ function SpyTable({ missions, now }: { missions: AdminSpyMission[]; now: number 
   )
 }
 
+const PAGE_SIZE = 10
+
+function Pager({ page, total, onChange }: { page: number; total: number; onChange: (p: number) => void }) {
+  if (total <= 1) return null
+  return (
+    <div className="flex items-center justify-between pt-2 border-t border-gold/10">
+      <button onClick={() => onChange(Math.max(1, page - 1))} disabled={page === 1}
+        className="btn btn-ghost text-xs px-3 py-1.5 disabled:opacity-30">← Anterior</button>
+      <span className="font-ui text-xs text-ink-muted">Página {page} / {total}</span>
+      <button onClick={() => onChange(Math.min(total, page + 1))} disabled={page === total}
+        className="btn btn-ghost text-xs px-3 py-1.5 disabled:opacity-30">Siguiente →</button>
+    </div>
+  )
+}
+
 export function SpyTab() {
   const { data, isLoading } = useQuery({
     queryKey: ['admin', 'spy-missions'],
@@ -112,7 +128,10 @@ export function SpyTab() {
     refetchInterval: 10_000,
   })
 
+  const [recentPage, setRecentPage] = useState(1)
   const now = data?.now ?? Math.floor(Date.now() / 1000)
+  const totalRecentPages = Math.ceil((data?.recent.length ?? 0) / PAGE_SIZE)
+  const pagedRecent = (data?.recent ?? []).slice((recentPage - 1) * PAGE_SIZE, recentPage * PAGE_SIZE)
 
   return (
     <div className="space-y-5">
@@ -153,7 +172,10 @@ export function SpyTab() {
         ) : !data?.recent.length ? (
           <p className="font-ui text-sm text-ink-muted text-center py-6">Sin espionajes recientes.</p>
         ) : (
-          <SpyTable missions={data.recent.slice(0, 50)} now={now} />
+          <>
+            <SpyTable missions={pagedRecent} now={now} />
+            <Pager page={recentPage} total={totalRecentPages} onChange={setRecentPage} />
+          </>
         )}
       </div>
 

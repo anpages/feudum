@@ -173,6 +173,21 @@ function CompletedTable({ missions }: { missions: AdminExpedition[] }) {
   )
 }
 
+const PAGE_SIZE = 10
+
+function Pager({ page, total, onChange }: { page: number; total: number; onChange: (p: number) => void }) {
+  if (total <= 1) return null
+  return (
+    <div className="flex items-center justify-between pt-2 border-t border-gold/10">
+      <button onClick={() => onChange(Math.max(1, page - 1))} disabled={page === 1}
+        className="btn btn-ghost text-xs px-3 py-1.5 disabled:opacity-30">← Anterior</button>
+      <span className="font-ui text-xs text-ink-muted">Página {page} / {total}</span>
+      <button onClick={() => onChange(Math.min(total, page + 1))} disabled={page === total}
+        className="btn btn-ghost text-xs px-3 py-1.5 disabled:opacity-30">Siguiente →</button>
+    </div>
+  )
+}
+
 // ── Tab ───────────────────────────────────────────────────────────────────────
 
 export function ExpeditionsTab() {
@@ -183,12 +198,15 @@ export function ExpeditionsTab() {
   })
 
   const [now, setNow] = useState(() => Math.floor(Date.now() / 1000))
+  const [completedPage, setCompletedPage] = useState(1)
   useEffect(() => {
     const t = setInterval(() => setNow(Math.floor(Date.now() / 1000)), 1000)
     return () => clearInterval(t)
   }, [])
 
   const { depletion, active, recent } = data ?? {}
+  const totalCompletedPages = Math.ceil((recent?.length ?? 0) / PAGE_SIZE)
+  const pagedRecent = (recent ?? []).slice((completedPage - 1) * PAGE_SIZE, completedPage * PAGE_SIZE)
 
   const recentStats = recent?.reduce((acc, m) => {
     const outcome = m.result ? (m.result as Record<string, unknown>).outcome as string : 'nothing'
@@ -280,7 +298,10 @@ export function ExpeditionsTab() {
             Sin expediciones completadas en los últimos 7 días.
           </p>
         ) : (
-          <CompletedTable missions={recent} />
+          <>
+            <CompletedTable missions={pagedRecent} />
+            <Pager page={completedPage} total={totalCompletedPages} onChange={setCompletedPage} />
+          </>
         )}
       </div>
 
