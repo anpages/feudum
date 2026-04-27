@@ -73,10 +73,14 @@ export function useUpgradeResearch() {
           })
 
           const now = Math.floor(Date.now() / 1000)
-          const finishesAt = now + item.timeSeconds
+          const lastQueued = prev.research
+            .filter(r => r.inQueue)
+            .reduce((max, r) => Math.max(max, r.inQueue!.finishesAt), 0)
+          const startedAt  = Math.max(now, lastQueued)
+          const finishesAt = startedAt + item.timeSeconds
           qc.setQueryData<ResearchResponse>(key, {
             research: prev.research.map(r =>
-              r.id === researchId ? { ...r, inQueue: { id: '', level: r.level + 1, startedAt: now, finishesAt } } : r
+              r.id === researchId ? { ...r, inQueue: { id: '', level: r.level + 1, startedAt, finishesAt } } : r
             ),
           })
         }
