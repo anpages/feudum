@@ -415,7 +415,8 @@ async function attemptTrainTroops(kingdom, personality, cls, researchMap, cfg, n
     if ((UNIT_DEFENSE_SET.has(unitId) || UNIT_SUPPORT_SET.has(unitId)) && needMoreCombat && !skipCombatCheck) continue
 
     // Skip if NPC already has enough of this unit type
-    const softCap = UNIT_SOFT_CAP[unitId]
+    const unitCaps = getUnitSoftCap(kingdom.npcLevel)
+    const softCap = unitCaps[unitId]
     if (softCap !== undefined && (kingdom[unitId] ?? 0) >= softCap) continue
 
     let blockedByBuilding = false
@@ -539,29 +540,33 @@ async function attemptTrainTroops(kingdom, personality, cls, researchMap, cfg, n
   }
 }
 
-// Maximum count of support/utility units before the NPC stops training more.
-// Prevents scouts from accumulating unboundedly (cheap to produce, low value in bulk).
-// Colonist capped at 1 — only needed once per colonize mission.
-const UNIT_SOFT_CAP = {
-  scout:    15,
-  colonist:  1,
-  merchant: 10,
-  caravan:   5,
+// Support unit caps scale with npc_level so higher-level NPCs can field more scouts/merchants.
+// Colonist stays fixed at 1 — only one colonize mission at a time.
+function getUnitSoftCap(npcLevel) {
+  const m = 1 + (npcLevel ?? 0)
+  return {
+    scout:    15 * m,
+    colonist:  1,
+    merchant: 10 * m,
+    caravan:   5 * m,
+  }
 }
 
-// Minimum count of a defense type before progressing to the next tier.
-// Mirrors how troops work: build enough cheap defense, then graduate upward.
-const DEFENSE_SOFT_CAP = {
-  archer:      20,
-  crossbowman: 10,
-  moat:        5,
-  ballista:    5,
-  mageTower:   8,
-  palisade:    2,
-  catapult:    3,
-  trebuchet:   3,
-  castleWall:  2,
-  dragonCannon: 3,
+// Defense caps scale with npc_level so veteran NPCs build progressively stronger walls.
+function getDefenseSoftCap(npcLevel) {
+  const m = 1 + (npcLevel ?? 0)
+  return {
+    archer:       20 * m,
+    crossbowman:  10 * m,
+    moat:          5 * m,
+    ballista:      5 * m,
+    mageTower:     8 * m,
+    palisade:      2 * m,
+    catapult:      3 * m,
+    trebuchet:     3 * m,
+    castleWall:    2 * m,
+    dragonCannon:  3 * m,
+  }
 }
 
 // Trains a batch of defense structures using leftover resources.
@@ -570,10 +575,11 @@ const DEFENSE_SOFT_CAP = {
 // base army before investing in walls.
 // Progresses through tiers: once a type hits DEFENSE_SOFT_CAP, the next tick
 // skips it and trains the next affordable tier (archer → crossbowman → …)
-async function attemptTrainDefenses(kingdom, personality, researchMap) {
+async function attemptTrainDefenses(kingdom, personality, researchMap, npcLevel) {
   const combatTotal = [...UNIT_COMBAT_SET].reduce((s, u) => s + (kingdom[u] ?? 0), 0)
   if (combatTotal < ATTACK_THRESHOLD[personality]) return { action: 'skipped_defense' }
 
+  const defCaps     = getDefenseSoftCap(npcLevel)
   const defBatchCap = 5
   const defPriority = (UNIT_PRIORITY[personality] ?? []).filter(u => UNIT_DEFENSE_SET.has(u))
 
@@ -584,7 +590,7 @@ async function attemptTrainDefenses(kingdom, personality, researchMap) {
 
   for (const unitId of defPriority) {
     // Skip this tier if NPC already has enough — graduate to next
-    const cap = DEFENSE_SOFT_CAP[unitId] ?? 3
+    const cap = defCaps[unitId] ?? (3 * (1 + (npcLevel ?? 0)))
     if ((kingdom[unitId] ?? 0) >= cap) continue
 
     const unitDef = ALL_UNITS.find(u => u.id === unitId)
@@ -757,13 +763,15 @@ async function growNpc(kingdom, cfg, now, researchMap, debrisRegions, colonizeAc
   const ageHours = (now - createdAtSec) / 3600 * speedFactor
 
   // Nivel -2: purgar unidades sobre el soft cap (pueden superar el límite por misiones que regresan)
-  for (const [type, cap] of Object.entries(UNIT_SOFT_CAP)) {
+  const unitCapsNow    = getUnitSoftCap(kingdom.npcLevel)
+  const defenseCapsNow = getDefenseSoftCap(kingdom.npcLevel)
+  for (const [type, cap] of Object.entries(unitCapsNow)) {
     if ((kingdom[type] ?? 0) > cap) {
       await upsertUnit(kingdom.id, type, cap)
       kingdom[type] = cap
     }
   }
-  for (const [type, cap] of Object.entries(DEFENSE_SOFT_CAP)) {
+  for (const [type, cap] of Object.entries(defenseCapsNow)) {
     if ((kingdom[type] ?? 0) > cap) {
       await upsertUnit(kingdom.id, type, cap)
       kingdom[type] = cap
@@ -879,7 +887,7 @@ async function growNpc(kingdom, cfg, now, researchMap, debrisRegions, colonizeAc
     // recursos disponibles en lugar de bloquear el tick completamente.
     if ((kingdom.barracks ?? 0) >= 1) {
       await attemptTrainTroops(kingdom, personality, cls, researchMap, cfg, now)
-      await attemptTrainDefenses(kingdom, personality, researchMap)
+      await attemptTrainDefenses(kingdom, personality, researchMap, kingdom.npcLevel)
     }
     return savingResult
   }
@@ -911,11 +919,11 @@ async function growNpc(kingdom, cfg, now, researchMap, debrisRegions, colonizeAc
     if (!kingdom.currentTask) {
       secondaryResult = await attemptBuildWeighted(kingdom, personality, cfg, now, researchMap)
     }
-    if (hasTroops) defenseResult = await attemptTrainDefenses(kingdom, personality, researchMap)
+    if (hasTroops) defenseResult = await attemptTrainDefenses(kingdom, personality, researchMap, kingdom.npcLevel)
   } else if (flavor === 'troops') {
     if (hasTroops) {
       primaryResult = await attemptTrainTroops(kingdom, personality, cls, researchMap, cfg, now)
-      defenseResult = await attemptTrainDefenses(kingdom, personality, researchMap)
+      defenseResult = await attemptTrainDefenses(kingdom, personality, researchMap, kingdom.npcLevel)
       // Push combat research alongside troop training — only when no research is running
       // and the NPC has an active army worth boosting.
       if (!kingdom.currentResearch && totalArmy(kingdom) > 0) {
@@ -937,7 +945,7 @@ async function growNpc(kingdom, cfg, now, researchMap, debrisRegions, colonizeAc
     if (hasTroops && !kingdom.currentTask) {
       secondaryResult = await attemptTrainTroops(kingdom, personality, cls, researchMap, cfg, now)
     }
-    if (hasTroops) defenseResult = await attemptTrainDefenses(kingdom, personality, researchMap)
+    if (hasTroops) defenseResult = await attemptTrainDefenses(kingdom, personality, researchMap, kingdom.npcLevel)
   }
 
   const isActive = (r) => r && !['saving', 'blocked', 'waiting', 'error', 'research_busy', 'no_research',
