@@ -479,7 +479,7 @@ async function attemptTrainTroops(kingdom, personality, cls, researchMap, cfg, n
   // Calculate training time for this batch (use the last/main unit trained)
   const speed       = parseFloat(cfg.economy_speed ?? ECONOMY_SPEED)
   const mainUnitDef = ALL_UNITS.find(u => u.id === lastUnit)
-  const totalBatch  = patch[lastUnit] ?? totalTrained
+  const totalBatch  = totalTrained
   const rawUnitTime = mainUnitDef
     ? unitBuildTime(mainUnitDef.hull, kingdom.barracks ?? 0, kingdom.engineersGuild ?? 0, totalBatch, speed)
     : 0
