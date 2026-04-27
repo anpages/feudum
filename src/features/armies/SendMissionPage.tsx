@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback, useEffect } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Clock, Loader2, Rocket, Minus, Plus } from 'lucide-react'
+import { ArrowLeft, Clock, Loader2, Rocket, Minus, Plus, TreePine, Mountain, Wheat } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
@@ -386,24 +386,24 @@ export function SendMissionPage() {
         <Card className="anim-fade-up-2 p-5 space-y-3">
           <p className="font-ui text-xs text-ink-muted uppercase tracking-wider">Recursos a transportar</p>
           <div className="space-y-3">
-            {(['wood', 'stone', 'grain'] as const).map(key => {
-              const labels: Record<string, [string, string]> = {
-                wood: ['🪵', 'Madera'], stone: ['🪨', 'Piedra'], grain: ['🌾', 'Grano'],
-              }
-              const [emoji, label] = labels[key]
-              return (
-                <div key={key} className="flex items-center gap-3">
-                  <span className="text-lg w-7 text-center">{emoji}</span>
-                  <span className="font-ui text-sm text-ink flex-1">{label}</span>
-                  <input
-                    type="number" min={0} value={resLoad[key] || ''}
-                    placeholder="0"
-                    onChange={e => setResLoad(r => ({ ...r, [key]: Math.max(0, parseInt(e.target.value) || 0) }))}
-                    className="game-input w-28 py-1.5 text-sm text-center tabular-nums"
-                  />
+            {([
+              { key: 'wood',  Icon: TreePine, label: 'Madera' },
+              { key: 'stone', Icon: Mountain, label: 'Piedra' },
+              { key: 'grain', Icon: Wheat,    label: 'Grano'  },
+            ] as const).map(({ key, Icon, label }) => (
+              <div key={key} className="flex items-center gap-3">
+                <div className="w-7 h-7 rounded-lg bg-gold-soft border border-gold/15 flex items-center justify-center shrink-0">
+                  <Icon size={14} className="text-gold-dim" />
                 </div>
-              )
-            })}
+                <span className="font-ui text-sm text-ink flex-1">{label}</span>
+                <input
+                  type="number" min={0} value={resLoad[key] || ''}
+                  placeholder="0"
+                  onChange={e => setResLoad(r => ({ ...r, [key]: Math.max(0, parseInt(e.target.value) || 0) }))}
+                  className="game-input w-28 py-1.5 text-sm text-center tabular-nums"
+                />
+              </div>
+            ))}
           </div>
         </Card>
       )}
