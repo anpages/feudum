@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useMemo, useCallback, useEffect } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Clock, Loader2, Rocket, Minus, Plus } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
@@ -133,17 +133,28 @@ export function SendMissionPage() {
 
   const kingdomRaw = kingdom as unknown as Record<string, number> | null | undefined
 
-  const cartographyLevel  = researchData?.research.find(r => r.id === 'cartography')?.level ?? 0
-  const maxExpeditions    = Math.max(1, Math.floor(Math.sqrt(cartographyLevel)))
-  const activeExpeditions = armies?.missions.filter(
-    m => m.missionType === 'expedition' && m.state !== 'completed'
-  ).length ?? 0
-  const expeditionSlotsFull = activeExpeditions >= maxExpeditions
-
   // Expedition context
   const top1Points     = armies?.top1Points ?? 0
   const characterClass = armies?.characterClass ?? null
   const isDiscoverer   = characterClass === 'discoverer'
+
+  const cartographyLevel  = researchData?.research.find(r => r.id === 'cartography')?.level ?? 0
+  const maxHoldingHours   = Math.max(1, cartographyLevel)
+
+  // Clamp holdingHours if cartography level drops below current selection
+  useEffect(() => {
+    if (holdingHours > maxHoldingHours) {
+      const STEPS = [0.5, 1, 1.5, 2, 3] as const
+      const clamped = [...STEPS].reverse().find(h => h <= maxHoldingHours) ?? 0.5
+      setHoldingHours(clamped)
+    }
+  }, [maxHoldingHours, holdingHours])
+
+  const maxExpeditions    = Math.max(1, Math.floor(Math.sqrt(cartographyLevel))) + (isDiscoverer ? 2 : 0)
+  const activeExpeditions = armies?.missions.filter(
+    m => m.missionType === 'expedition' && m.state !== 'completed'
+  ).length ?? 0
+  const expeditionSlotsFull = activeExpeditions >= maxExpeditions
   const cargo          = useMemo(() => calcCargoCapacity(units, characterClass), [units, characterClass])
   const hasCargo       = Object.keys(UNIT_CAPACITY).some(k => (units[k] ?? 0) > 0)
   const maxResources   = maxResourcesByPoints(top1Points)
@@ -454,15 +465,19 @@ export function SendMissionPage() {
                   {([0.5, 1, 1.5, 2, 3] as const).map(h => {
                     const label = h === 0.5 ? '30m' : h === 1 ? '1h' : h === 1.5 ? '1h 30m' : h === 2 ? '2h' : '3h'
                     const active = holdingHours === h
+                    const locked = h > maxHoldingHours
                     return (
                       <button
                         key={h}
                         type="button"
-                        onClick={() => setHoldingHours(h)}
+                        disabled={locked}
+                        onClick={() => !locked && setHoldingHours(h)}
                         className={`py-1.5 rounded border font-ui text-xs font-semibold transition-colors ${
-                          active
-                            ? 'bg-gold/15 border-gold text-gold-dim'
-                            : 'bg-parchment border-gold/20 text-ink-muted hover:border-gold/50 hover:text-ink-mid'
+                          locked
+                            ? 'bg-parchment-deep border-gold/10 text-ink-muted/40 cursor-not-allowed'
+                            : active
+                              ? 'bg-gold/15 border-gold text-gold-dim'
+                              : 'bg-parchment border-gold/20 text-ink-muted hover:border-gold/50 hover:text-ink-mid'
                         }`}
                       >
                         {label}
