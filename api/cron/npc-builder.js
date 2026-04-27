@@ -763,6 +763,12 @@ async function growNpc(kingdom, cfg, now, researchMap, debrisRegions, colonizeAc
       kingdom[type] = cap
     }
   }
+  for (const [type, cap] of Object.entries(DEFENSE_SOFT_CAP)) {
+    if ((kingdom[type] ?? 0) > cap) {
+      await upsertUnit(kingdom.id, type, cap)
+      kingdom[type] = cap
+    }
+  }
 
   // Nivel -1: fleetsave defensivo
   const incomingAttack = await getIncomingAttack(kingdom, now)
