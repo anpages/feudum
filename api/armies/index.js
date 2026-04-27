@@ -72,6 +72,7 @@ async function processReturn(mission, kingdom, now) {
   if (mission.missionType === 'expedition') {
     await db.update(armyMissions).set({ state: 'completed', updatedAt: new Date() })
       .where(eq(armyMissions.id, mission.id))
+    // result was already saved when transitioning to 'returning' — do not overwrite it here
   } else {
     await db.delete(armyMissions).where(eq(armyMissions.id, mission.id))
   }

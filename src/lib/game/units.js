@@ -102,7 +102,7 @@ export const SUPPORT_UNITS = [
     woodBase: 2000, stoneBase: 2000, grainBase: 0,
     hull: 4000,  shield: 10,  attack: 5,
     requires: [
-      { type: 'building',  id: 'barracks',     level: 1 },
+      { type: 'building',  id: 'barracks',     level: 2 },
       { type: 'research',  id: 'horsemanship', level: 2 },
     ],
   },
@@ -111,8 +111,9 @@ export const SUPPORT_UNITS = [
     woodBase: 0, stoneBase: 1000, grainBase: 0,
     hull: 1000, shield: 0, attack: 0,
     requires: [
-      { type: 'building',  id: 'barracks', level: 3 },
-      { type: 'research',  id: 'spycraft', level: 2 },
+      { type: 'building',  id: 'barracks',     level: 3 },
+      { type: 'research',  id: 'horsemanship', level: 3 },
+      { type: 'research',  id: 'spycraft',     level: 2 },
     ],
   },
   {
@@ -140,7 +141,6 @@ export const SUPPORT_UNITS = [
     requires: [
       { type: 'building',  id: 'barracks',     level: 4 },
       { type: 'research',  id: 'horsemanship', level: 6 },
-      { type: 'research',  id: 'runemastery',  level: 2 },
     ],
   },
 ]

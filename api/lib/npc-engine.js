@@ -119,7 +119,7 @@ export const UNIT_PRIORITY = {
     'crossbowman',   // better ranged defense
     'knight',        // first real combat unit
     'moat',          // passive fortification (armoury building 1)
-    'scavenger',     // debris collection (horsemanship 6 + runemastery 2)
+    'scavenger',     // debris collection (horsemanship 6)
     'paladin',       // mid-tier combat
     'mageTower',     // high-shield defense
     'palisade',      // large shield dome (armoury research 2)
