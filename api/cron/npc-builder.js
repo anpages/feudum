@@ -847,19 +847,24 @@ async function growNpc(kingdom, cfg, now, researchMap, debrisRegions, colonizeAc
   }
 
   // Nivel 1: hitos de personalidad
+  // Si un hito no es asequible (saving), continuamos al siguiente en lugar de bloquearnos.
   const targets = getTargetLevels(personality, ageHours)
+  let savingResult = null
 
   for (const buildId of MILESTONE_ORDER) {
     const targetLv  = targets[buildId] ?? 0
     const currentLv = kingdom[buildId] ?? 0
     if (currentLv < targetLv) {
-      return await attemptBuild(
+      const r = await attemptBuild(
         kingdom, buildId, cfg, now,
         `Hito: ${buildId} → lv${targetLv} (actual: ${currentLv})`,
         researchMap,
       )
+      if (r.action !== 'saving') return r
+      if (!savingResult) savingResult = r
     }
   }
+  if (savingResult) return savingResult
 
   // Nivel 1.5: colonización — si tiene capacidad y ningún colonizador activo
   if (
