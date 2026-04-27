@@ -128,7 +128,7 @@ export function SendMissionPage() {
   const [tSlot,   setTSlot]   = useState(initSlot)
   const [units,   setUnitsMap] = useState<Record<string, number>>({})
   const [resLoad, setResLoad]  = useState({ wood: 0, stone: 0, grain: 0 })
-  const [holdingHours, setHoldingHours] = useState(1 as 0.5 | 1 | 1.5 | 2 | 3)
+  const [holdingHours, setHoldingHours] = useState(1)
   const [speedPct, setSpeedPct] = useState(100)
 
   const kingdomRaw = kingdom as unknown as Record<string, number> | null | undefined
@@ -143,11 +143,8 @@ export function SendMissionPage() {
 
   // Clamp holdingHours if cartography level drops below current selection
   useEffect(() => {
-    if (holdingHours > maxHoldingHours) {
-      const STEPS = [0.5, 1, 1.5, 2, 3] as const
-      const clamped = [...STEPS].reverse().find(h => h <= maxHoldingHours) ?? 0.5
-      setHoldingHours(clamped)
-    }
+    if (holdingHours > maxHoldingHours) setHoldingHours(maxHoldingHours)
+    if (holdingHours < 1) setHoldingHours(1)
   }, [maxHoldingHours, holdingHours])
 
   const maxExpeditions    = Math.max(1, Math.floor(Math.sqrt(cartographyLevel))) + (isDiscoverer ? 2 : 0)
@@ -461,29 +458,21 @@ export function SendMissionPage() {
               {/* Exploration time (primary control) */}
               <div className="space-y-2">
                 <p className="font-ui text-xs text-ink-muted">Tiempo de exploración</p>
-                <div className="grid grid-cols-5 gap-1.5">
-                  {([0.5, 1, 1.5, 2, 3] as const).map(h => {
-                    const label = h === 0.5 ? '30m' : h === 1 ? '1h' : h === 1.5 ? '1h 30m' : h === 2 ? '2h' : '3h'
-                    const active = holdingHours === h
-                    const locked = h > maxHoldingHours
-                    return (
-                      <button
-                        key={h}
-                        type="button"
-                        disabled={locked}
-                        onClick={() => !locked && setHoldingHours(h)}
-                        className={`py-1.5 rounded border font-ui text-xs font-semibold transition-colors ${
-                          locked
-                            ? 'bg-parchment-deep border-gold/10 text-ink-muted/40 cursor-not-allowed'
-                            : active
-                              ? 'bg-gold/15 border-gold text-gold-dim'
-                              : 'bg-parchment border-gold/20 text-ink-muted hover:border-gold/50 hover:text-ink-mid'
-                        }`}
-                      >
-                        {label}
-                      </button>
-                    )
-                  })}
+                <div className="flex flex-wrap gap-1.5">
+                  {Array.from({ length: maxHoldingHours }, (_, i) => i + 1).map(h => (
+                    <button
+                      key={h}
+                      type="button"
+                      onClick={() => setHoldingHours(h)}
+                      className={`py-1.5 rounded border font-ui text-xs font-semibold transition-colors ${
+                        holdingHours === h
+                          ? 'bg-gold/15 border-gold text-gold-dim'
+                          : 'bg-parchment border-gold/20 text-ink-muted hover:border-gold/50 hover:text-ink-mid'
+                      }`}
+                    >
+                      {h}h
+                    </button>
+                  ))}
                 </div>
               </div>
 
@@ -501,7 +490,7 @@ export function SendMissionPage() {
                 />
                 {travelPreview !== null && (
                   <p className="font-body text-[0.65rem] text-ink-muted/60">
-                    Viaje {formatDuration(travelPreview)} · Exploración {holdingHours === 0.5 ? '30m' : holdingHours === 1.5 ? '1h 30m' : `${holdingHours}h`} · Vuelta {formatDuration(travelPreview)}
+                    Viaje {formatDuration(travelPreview)} · Exploración {holdingHours}h · Vuelta {formatDuration(travelPreview)}
                   </p>
                 )}
                 {grainPreview > 0 && (

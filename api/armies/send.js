@@ -249,12 +249,12 @@ export default async function handler(req, res) {
       })
     }
 
-    // Validate holdingHours: 0.5 to cartographyLevel (min 0.5)
-    holdingHours = parseFloat(rawHoldingHours ?? 1)
+    // Validate holdingHours: 1 to cartographyLevel (integer hours, like OGame)
+    holdingHours = parseInt(rawHoldingHours ?? 1, 10)
     const maxHolding = Math.max(1, cartographyLevel)
-    if (isNaN(holdingHours) || holdingHours < 0.5 || holdingHours > maxHolding) {
+    if (isNaN(holdingHours) || holdingHours < 1 || holdingHours > maxHolding) {
       return res.status(400).json({
-        error: `La duración de la expedición debe ser entre 30 minutos y ${maxHolding} hora(s).`,
+        error: `La duración de la expedición debe ser entre 1 y ${maxHolding} hora(s).`,
         maxHoldingHours: maxHolding,
       })
     }
