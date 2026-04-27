@@ -97,7 +97,7 @@ minimum: 1 second
 |-------|------|
 | Frontend | Vite + React 19 + TypeScript |
 | Styling | Tailwind CSS v4 (CSS-first config in `src/index.css`) |
-| Data fetching | React Query — global polling every 10s (`staleTime: 5s`) |
+| Data fetching | React Query (caché) + Supabase Realtime (WebSocket) para invalidación |
 | State | Zustand (available for global UI state) |
 | Backend | Hono — all routes under `/api`, deployed as Vercel serverless functions |
 | Database | Supabase (PostgreSQL) via `postgres` + Drizzle ORM |
@@ -107,7 +107,17 @@ minimum: 1 second
 
 ### Real-time approach
 
-Vercel serverless doesn't support persistent WebSockets. Game state is fetched via React Query polling (10s interval). Resource counts are interpolated locally every second in `useResourceTicker` using server-provided production rates — this keeps the UI feeling live without extra requests.
+El juego usa **Supabase Realtime** (WebSocket) para detectar cambios en la BD e invalidar el caché de React Query. No hay polling periódico.
+
+Flujo:
+1. `useRealtime` (`src/features/realtime/useRealtime.ts`) abre un canal WebSocket a Supabase al montar el layout
+2. Supabase emite un evento `postgres_changes` cuando cambia una fila en `kingdoms`, `building_queue`, `research_queue`, `unit_queue`, `army_missions`, `messages` o `user_achievements`
+3. El handler llama a `queryClient.invalidateQueries(key)` — React Query hace el fetch al API de Hono
+4. La UI se actualiza con los datos frescos
+
+**`useResourceTicker`** interpola los recursos localmente cada segundo usando las tasas de producción ya conocidas — esto mantiene los contadores vivos visualmente sin ninguna petición adicional.
+
+> **Nota para la migración a DO:** Supabase Realtime requiere que la BD esté en Supabase. Al mover la BD a PostgreSQL propio en DO, hay que reemplazar `useRealtime` con SSE (`/api/events`) o WebSockets nativos en el servidor Hono.
 
 ### Frontend architecture — feature-based with service layer
 
@@ -552,7 +562,6 @@ Import from `@/components/ui` (barrel export).
     - [x] +100% combat unit speed (`speed.js` calcDuration, ×2.0)
     - [x] +100% scavenger speed (`speed.js` calcDuration, ×2.0 — OGame recycler equiv.)
     - [x] -50% grain consumption (`speed.js` calcGrainConsumption)
-    - [x] +2 fleet slots (`armies/index.js` maxSlots)
     - [x] +2 effective combat research levels — sword/armoury/fort (`battle.js` buildBattleUnits)
     - [x] +20% scavenger cargo (`speed.js`/`battle.js` calcCargoCapacity)
     - [ ] +5 moon fields — no moon system in Feudum, N/A
@@ -560,7 +569,7 @@ Import from `@/components/ui` (barrel export).
     - [x] -25% research time (`research/upgrade.js` classMult ×0.75)
     - [x] -50% expedition enemy chance (`expedition.js` combatMultiplier)
     - [x] +50% expedition resources/units found (`expedition.js`)
-    - [ ] +2 expedition slots — not implemented
+    - [x] +2 expedition slots (`armies/send.js` maxExpeditions discovererBonus)
     - [ ] +20% phalanx range — no phalanx in Feudum, N/A
     - [ ] 75% loot from inactive players — not implemented
   - Ref: `app/Enums/CharacterClass.php`, `app/Services/CharacterClassService.php`

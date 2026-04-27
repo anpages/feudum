@@ -232,7 +232,8 @@ export default async function handler(req, res) {
   let holdingHours = 0
   if (isExpedition) {
     const cartographyLevel = resMap.cartography ?? 0
-    const maxExpeditions = Math.max(1, Math.floor(Math.sqrt(cartographyLevel)))
+    const discovererBonus = (userRow?.characterClass ?? null) === 'discoverer' ? 2 : 0
+    const maxExpeditions = Math.max(1, Math.floor(Math.sqrt(cartographyLevel))) + discovererBonus
     const activeExpeditions = await db.select({ id: armyMissions.id, state: armyMissions.state }).from(armyMissions)
       .where(and(
         eq(armyMissions.userId, userId),
@@ -242,7 +243,7 @@ export default async function handler(req, res) {
     const ongoingCount = activeExpeditions.filter(m => m.state !== 'completed').length
     if (ongoingCount >= maxExpeditions) {
       return res.status(400).json({
-        error: `Límite de expediciones alcanzado (${ongoingCount}/${maxExpeditions}). Mejora Cartografía para enviar más.`,
+        error: `Límite de expediciones alcanzado (${ongoingCount}/${maxExpeditions}). Mejora Cartografía o usa la clase Descubridor para enviar más.`,
         maxExpeditions,
         cartographyLevel,
       })
