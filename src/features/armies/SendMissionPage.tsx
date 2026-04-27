@@ -458,7 +458,7 @@ export function SendMissionPage() {
               {/* Exploration time (primary control) */}
               <div className="space-y-2">
                 <p className="font-ui text-xs text-ink-muted">Tiempo de exploración</p>
-                <div className="flex flex-wrap gap-1.5">
+                <div className="grid gap-1.5" style={{ gridTemplateColumns: `repeat(${maxHoldingHours}, 1fr)` }}>
                   {Array.from({ length: maxHoldingHours }, (_, i) => i + 1).map(h => (
                     <button
                       key={h}
