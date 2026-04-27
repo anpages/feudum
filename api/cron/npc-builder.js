@@ -756,6 +756,14 @@ async function growNpc(kingdom, cfg, now, researchMap, debrisRegions, colonizeAc
   const speedFactor = parseFloat(cfg.economy_speed ?? ECONOMY_SPEED)
   const ageHours = (now - createdAtSec) / 3600 * speedFactor
 
+  // Nivel -2: purgar unidades sobre el soft cap (pueden superar el límite por misiones que regresan)
+  for (const [type, cap] of Object.entries(UNIT_SOFT_CAP)) {
+    if ((kingdom[type] ?? 0) > cap) {
+      await upsertUnit(kingdom.id, type, cap)
+      kingdom[type] = cap
+    }
+  }
+
   // Nivel -1: fleetsave defensivo
   const incomingAttack = await getIncomingAttack(kingdom, now)
   if (incomingAttack) {
