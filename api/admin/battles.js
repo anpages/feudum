@@ -8,7 +8,7 @@ export default async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).end()
 
   const page  = Math.max(1, parseInt(req.query.page  ?? '1',  10))
-  const limit = Math.min(100, Math.max(1, parseInt(req.query.limit ?? '50', 10)))
+  const limit = Math.min(100, Math.max(1, parseInt(req.query.limit ?? '25', 10)))
   const type  = req.query.type ?? 'all'  // all | npc_vs_npc | npc_vs_player | player_vs_npc | player_vs_player
   const offset = (page - 1) * limit
 

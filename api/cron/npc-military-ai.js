@@ -472,7 +472,7 @@ export default async function handler(req, res) {
   const npcKingdomIds = npcRows.map(r => r.k.id)
   const npcUserIds    = npcRows.map(r => r.k.userId)
 
-  // Spy missions from last 4h — intel window for NPC targeting decisions
+  // Spy missions from last 48h — intel window for NPC targeting decisions
   const recentSpyMissions = npcUserIds.length
     ? await db.select({
         userId:       armyMissions.userId,
@@ -485,7 +485,7 @@ export default async function handler(req, res) {
         .where(and(
           inArray(armyMissions.userId, npcUserIds),
           eq(armyMissions.missionType, 'spy'),
-          gte(armyMissions.departureTime, now - 14400),
+          gte(armyMissions.departureTime, now - 172800),
         ))
     : []
 
@@ -495,7 +495,7 @@ export default async function handler(req, res) {
     if (!spyMap[s.userId]) spyMap[s.userId] = { inFlight: false, results: [] }
     if (s.state === 'active') {
       spyMap[s.userId].inFlight = true
-    } else if (s.state === 'returning' && s.result) {
+    } else if ((s.state === 'returning' || s.state === 'completed') && s.result) {
       try {
         const parsed    = JSON.parse(s.result)
         const targetKey = `${s.targetRealm}:${s.targetRegion}:${s.targetSlot}`

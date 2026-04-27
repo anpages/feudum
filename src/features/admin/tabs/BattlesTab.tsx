@@ -233,7 +233,7 @@ export function BattlesTab() {
           </div>
         )}
 
-        {data && (page > 1 || data.battles.length === data.limit) && (
+        {data && data.battles.length > 0 && (
           <div className="flex items-center justify-between pt-2 border-t border-gold/10">
             <button
               onClick={() => setPage(p => Math.max(1, p - 1))}
