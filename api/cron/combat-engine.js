@@ -6,9 +6,9 @@
  * so npc-builder reacts on the next run.
  */
 import { eq, and, lte, gte, lt, inArray } from 'drizzle-orm'
-import { db, users, kingdoms, npcState, units, research, armyMissions } from '../_db.js'
+import { db, users, kingdoms, npcState, units, research, armyMissions, debrisFields } from '../_db.js'
 import {
-  buildBattleUnits, runBattle, calculateLoot,
+  buildBattleUnits, runBattle, calculateLoot, calculateDebris,
   repairDefenses, calcCargoCapacity,
 } from '../lib/battle.js'
 import { insertBattleLog, sumLosses } from '../lib/battle_log.js'
@@ -163,6 +163,26 @@ async function resolveNpcVsNpcAttacks(npcKingdomsById, researchByUser, now) {
         const newQty = Math.max(0, (defKingdom[k] ?? 0) - (lostDef[k] ?? 0) + (repaired[k] ?? 0))
         await upsertUnit(defKingdom.id, k, newQty)
         defKingdom[k] = newQty
+      }
+
+      // Debris from unit losses
+      const debris = calculateDebris(lostAtk, lostDef)
+      if (debris.wood > 0 || debris.stone > 0) {
+        const [existing] = await db.select().from(debrisFields).where(and(
+          eq(debrisFields.realm,  m.targetRealm),
+          eq(debrisFields.region, m.targetRegion),
+          eq(debrisFields.slot,   m.targetSlot),
+        )).limit(1)
+        if (existing) {
+          await db.update(debrisFields).set({
+            wood: existing.wood + debris.wood, stone: existing.stone + debris.stone, updatedAt: new Date(),
+          }).where(eq(debrisFields.id, existing.id))
+        } else {
+          await db.insert(debrisFields).values({
+            realm: m.targetRealm, region: m.targetRegion, slot: m.targetSlot,
+            wood: debris.wood, stone: debris.stone,
+          })
+        }
       }
 
       if (outcome === 'victory') {
