@@ -44,6 +44,38 @@ const BUILDING_KEYS = [
   'alchemistTower','ambassadorHall','armoury',
 ] as const
 
+// Mapa de iconos + labels para POI permanente reclamado en esta colonia
+const POI_ICON_MAP: Record<string, string> = {
+  yacimiento_madera: '🌲',
+  yacimiento_piedra: '⛰️',
+  yacimiento_grano:  '🌾',
+  reliquia_arcana:   '✨',
+  ruinas_antiguas:   '🏛️',
+  templo_perdido:    '🕍',
+}
+
+function poiShortLabel(type: string): string {
+  return ({
+    yacimiento_madera: 'Madera +15%',
+    yacimiento_piedra: 'Piedra +15%',
+    yacimiento_grano:  'Grano +15%',
+    reliquia_arcana:   'Reliquia',
+    ruinas_antiguas:   'Ruinas',
+    templo_perdido:    'Templo',
+  } as Record<string, string>)[type] ?? 'POI'
+}
+
+function poiBonusLabel(type: string): string {
+  return ({
+    yacimiento_madera: 'Yacimiento de Madera — +15% producción de madera',
+    yacimiento_piedra: 'Yacimiento de Piedra — +15% producción de piedra',
+    yacimiento_grano:  'Yacimiento de Grano — +15% producción de grano',
+    reliquia_arcana:   'Reliquia Arcana — +1 éter cada 24h ingame',
+    ruinas_antiguas:   'Ruinas Antiguas — −10% tiempo de investigación',
+    templo_perdido:    'Templo Perdido — +5% atk/shield al defender',
+  } as Record<string, string>)[type] ?? 'Punto de Interés permanente'
+}
+
 
 export function OverviewPage() {
   const navigate = useNavigate()
@@ -178,7 +210,7 @@ export function OverviewPage() {
           {/* Label row */}
           <div className="flex items-center justify-between gap-2 mb-4">
             <span className="section-heading !mb-0">Panel de mando</span>
-            <div className="flex items-center gap-1.5 shrink-0">
+            <div className="flex items-center gap-1.5 shrink-0 flex-wrap justify-end">
               {(kingdom as { isPrimary?: boolean })?.isPrimary != null && (
                 <span className={`inline-flex items-center gap-1 font-ui text-[0.65rem] uppercase tracking-wide px-2 py-0.5 rounded border ${
                   (kingdom as { isPrimary?: boolean }).isPrimary
@@ -190,6 +222,15 @@ export function OverviewPage() {
                   ) : (
                     'Colonia'
                   )}
+                </span>
+              )}
+              {(kingdom as unknown as { claimedPoi?: string | null })?.claimedPoi && (
+                <span
+                  className="inline-flex items-center gap-1 font-ui text-[0.65rem] uppercase tracking-wide px-2 py-0.5 rounded border border-forest/30 bg-forest/8 text-forest-light"
+                  title={poiBonusLabel((kingdom as unknown as { claimedPoi: string }).claimedPoi)}
+                >
+                  <span className="text-[0.7rem] leading-none">{POI_ICON_MAP[(kingdom as unknown as { claimedPoi: string }).claimedPoi] ?? '✨'}</span>
+                  {poiShortLabel((kingdom as unknown as { claimedPoi: string }).claimedPoi)}
                 </span>
               )}
               {kingdom?.realm != null && (

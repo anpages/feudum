@@ -113,12 +113,24 @@ interface SendMissionPageProps {
   initTarget?: { realm: number; region: number; slot: number }
   /** Tipo de misión inicial. Si se pasa, prevalece sobre URL params. */
   initType?: MissionType
+  /** POI descubierto en el slot destino (si lo hay). Mostrado como contexto
+   *  en expediciones a slots locales. */
+  initPoi?: { type: string; label?: string; magnitude: number; claimed: boolean } | null
   /** Callback al cerrar / éxito de envío — si se pasa, modo modal: oculta
    *  header con back button y al success llama onClose en vez de navegar. */
   onClose?: () => void
 }
 
-export function SendMissionPage({ initTarget, initType: initTypeProp, onClose }: SendMissionPageProps = {}) {
+const POI_ICON: Record<string, string> = {
+  yacimiento_madera: '🌲',
+  yacimiento_piedra: '⛰️',
+  yacimiento_grano:  '🌾',
+  reliquia_arcana:   '✨',
+  ruinas_antiguas:   '🏛️',
+  templo_perdido:    '🕍',
+}
+
+export function SendMissionPage({ initTarget, initType: initTypeProp, initPoi, onClose }: SendMissionPageProps = {}) {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const isDialog = !!onClose
@@ -303,17 +315,44 @@ export function SendMissionPage({ initTarget, initType: initTypeProp, onClose }:
 
       {/* Cabecera compacta en modo dialog: muestra tipo + destino fijados */}
       {isDialog && (
-        <div className="flex items-center gap-3 px-1">
-          <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${MISSION_META[missionType].color.replace('text-', 'bg-').replace('-light', '/15').replace('crimson', 'crimson/10')}`}>
-            <MissionIcon size={16} className={MISSION_META[missionType].color} />
+        <>
+          <div className="flex items-center gap-3 px-1">
+            <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${MISSION_META[missionType].color.replace('text-', 'bg-').replace('-light', '/15').replace('crimson', 'crimson/10')}`}>
+              <MissionIcon size={16} className={MISSION_META[missionType].color} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-ui text-sm font-semibold text-ink">{MISSION_META[missionType].label}</p>
+              <p className="font-body text-xs text-ink-muted">
+                Destino: <span className="font-ui tabular-nums text-ink">{tRealm}:{tRegion}:{tSlot}</span>
+              </p>
+            </div>
           </div>
-          <div className="flex-1 min-w-0">
-            <p className="font-ui text-sm font-semibold text-ink">{MISSION_META[missionType].label}</p>
-            <p className="font-body text-xs text-ink-muted">
-              Destino: <span className="font-ui tabular-nums text-ink">{tRealm}:{tRegion}:{tSlot}</span>
-            </p>
-          </div>
-        </div>
+
+          {/* Panel del POI descubierto — solo en expediciones cuando el jugador
+              ya descubrió el slot. Aporta contexto sobre qué encontrará. */}
+          {missionType === 'expedition' && initPoi && (
+            <div className={`flex items-start gap-3 p-3 rounded-lg border ${
+              initPoi.magnitude > 0
+                ? 'border-forest/25 bg-forest/5'
+                : 'border-ink-muted/20 bg-parchment-warm'
+            }`}>
+              <span className="text-2xl leading-none shrink-0">{POI_ICON[initPoi.type] ?? '✨'}</span>
+              <div className="flex-1 min-w-0">
+                <p className="font-ui text-sm font-semibold text-ink">{initPoi.label ?? 'Punto de interés'}</p>
+                {initPoi.magnitude > 0 ? (
+                  <p className="font-body text-xs text-ink-muted">
+                    Magnitud restante: <span className="font-ui tabular-nums">{initPoi.magnitude}/100</span>
+                    {' '}· cada expedición consume 15
+                  </p>
+                ) : (
+                  <p className="font-body text-xs text-ink-muted/70 italic">
+                    Agotado — el outcome será modesto.
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+        </>
       )}
 
       {/* Units */}

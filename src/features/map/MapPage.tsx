@@ -19,6 +19,7 @@ export function MapPage() {
   // Dialog state — modal de envío de misión que reemplaza la navegación a /armies/send
   const [dialogTarget,    setDialogTarget]    = useState<{ realm: number; region: number; slot: number } | null>(null)
   const [dialogType,      setDialogType]      = useState<MissionType>('attack')
+  const [dialogPoi,       setDialogPoi]       = useState<MapSlot['poi']>(null)
 
   // Buscador rápido de coordenada estilo "3:5:7" — útil cuando otro jugador
   // te pasa unas coords (chat futuro) o quieres ir a un sitio específico.
@@ -59,6 +60,7 @@ export function MapPage() {
     if (!selected) return
     setDialogTarget({ realm, region, slot: selected.slot })
     setDialogType(type as MissionType)
+    setDialogPoi(selected.poi)  // pasa info del POI descubierto al modal
     setSelected(null)  // cerrar SlotDetail al abrir modal
   }
 
@@ -196,6 +198,7 @@ export function MapPage() {
         onClose={() => setDialogTarget(null)}
         target={dialogTarget}
         missionType={dialogType}
+        poi={dialogPoi}
       />
     </div>
   )
