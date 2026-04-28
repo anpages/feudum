@@ -65,6 +65,26 @@ const MAGNITUDE_DECAY   = 15  // por expedición — agota en ~7 visitas
 
 export { MAGNITUDE_INITIAL, MAGNITUDE_DECAY }
 
+// Tiempo que la flota pasa "explorando" en el slot según tipo de POI.
+// El tipo decide la duración — narrativamente coherente: un yacimiento se
+// extrae rápido, un templo requiere ritual sagrado.
+// Estos son segundos reales con economy_speed=1 — escalan inversamente con
+// la velocidad del servidor (más speed = menos tiempo real, mismo tiempo ingame).
+export const POI_HOLDING_SECS_BASE = {
+  default:           3600,   // sin POI o POI agotado: 1h base
+  yacimiento_madera: 7200,   // 2h: extracción de recursos
+  yacimiento_piedra: 7200,
+  yacimiento_grano:  7200,
+  reliquia_arcana:   7200,   // 2h: recoger reliquias dispersas
+  ruinas_antiguas:   10800,  // 3h: descifrar artefactos antiguos
+  templo_perdido:    14400,  // 4h: ritual sagrado completo
+}
+
+export function getHoldingSecs(poiType, economySpeed = 1) {
+  const base = POI_HOLDING_SECS_BASE[poiType] ?? POI_HOLDING_SECS_BASE.default
+  return Math.max(60, Math.round(base / Math.max(0.1, economySpeed)))
+}
+
 // ── Hash determinista por coord (Wang hash variante) ─────────────────────────
 // Idéntica seed → idéntico POI. Reproducible entre sesiones de seeding.
 function poiHash(realm, region, slot, salt = 0) {

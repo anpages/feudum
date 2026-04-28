@@ -1,11 +1,12 @@
 import { eq, and } from 'drizzle-orm'
 import { db, armyMissions, messages, users, etherTransactions, kingdoms, debrisFields, pointsOfInterest, poiDiscoveries } from '../../_db.js'
 import { resolveExpedition } from '../expedition.js'
-import { calculateDebris } from '../battle.js'
+import { calculateDebris, calcCargoCapacity } from '../battle.js'
 import { extractMissionUnits, UNIT_KEYS } from './keys.js'
 import { calcPoints } from '../points.js'
 import { getResearchMap, getBuildingMaps, getUnitMaps } from '../db-helpers.js'
-import { POI_TYPES, MAGNITUDE_DECAY } from '../poi.js'
+import { POI_TYPES, MAGNITUDE_DECAY, getHoldingSecs } from '../poi.js'
+import { getSettings } from '../settings.js'
 
 const OUTCOME_LABELS = {
   nothing:   '🌑 Tierras Ignotas — expedición vacía',
@@ -29,7 +30,8 @@ export async function processExpedition(mission, myKingdom, now) {
   // el flujo clásico de lottery (resolveExpedition más abajo).
   const isLocalExpedition = mission.targetSlot <= 15
   if (isLocalExpedition) {
-    return await processLocalExpedition(mission, myKingdom, now, missionUnits, returnTime)
+    const cfg = await getSettings()
+    return await processLocalExpedition(mission, myKingdom, now, missionUnits, travelSecs, cfg)
   }
 
   const [resMap, [userRow], allKingdoms] = await Promise.all([
@@ -144,17 +146,34 @@ export async function processExpedition(mission, myKingdom, now) {
 //   B) POI existe pero magnitud 0 → ya agotado: outcome muy modesto
 //   C) No existe POI              → outcome modesto (slot vacío sin nada)
 //   D) Slot ocupado en el ínterin → mensaje de descarte (no debería pasar pero defensivo)
-async function processLocalExpedition(mission, myKingdom, now, missionUnits, returnTime) {
+//
+// Duración total = travel_ida + holding_segun_POI + travel_vuelta. El holding
+// lo determina el tipo del POI (yacimiento 2h, templo 4h, etc — escalado por
+// economy_speed). El cargo de la flota cap el botín de recursos físicos.
+async function processLocalExpedition(mission, myKingdom, now, missionUnits, travelSecs, cfg) {
   const coord = { realm: mission.targetRealm, region: mission.targetRegion, slot: mission.targetSlot }
+  const speed = parseFloat(cfg.economy_speed ?? 1)
 
-  // Slot ocupado a posteriori: regreso sin botín
+  // Cargo capacity de la flota — limita botín físico (wood/stone/grain).
+  // Éter, drops de unidad y research bonus NO se ven afectados (no son carga).
+  const [userRow] = await db.select({ characterClass: users.characterClass })
+    .from(users).where(eq(users.id, myKingdom.userId)).limit(1)
+  const cargoCap = calcCargoCapacity(missionUnits, userRow?.characterClass ?? null)
+
+  // Helper para calcular returnTime con holding del tipo de POI
+  const buildReturnTime = (poiType) => {
+    const holdingSecs = getHoldingSecs(poiType, speed)
+    return mission.arrivalTime + holdingSecs + travelSecs
+  }
+
+  // Slot ocupado a posteriori: regreso sin botín (sin holding extra, vuelve directo)
   const [occupant] = await db.select({ id: kingdoms.id }).from(kingdoms).where(and(
     eq(kingdoms.realm,  coord.realm),
     eq(kingdoms.region, coord.region),
     eq(kingdoms.slot,   coord.slot),
   )).limit(1)
   if (occupant) {
-    return await closeLocalExpedition(mission, myKingdom, now, missionUnits, returnTime, {
+    return await closeLocalExpedition(mission, myKingdom, now, missionUnits, mission.arrivalTime + travelSecs, {
       outcome: 'occupied',
       subject: '🏰 Slot ocupado — expedición sin botín',
       result: { type: 'expedition', outcome: 'occupied', message: 'El slot fue colonizado durante el viaje.' },
@@ -176,26 +195,26 @@ async function processLocalExpedition(mission, myKingdom, now, missionUnits, ret
       found   = { wood: 0, stone: 0, grain: 0 }
     } else {
       outcome = 'low_resources_local'
-      // Recursos bajos: 200-1000 de algo random
+      // Recursos bajos: 200-1000 de algo random, capeado por cargo
       const res = ['wood', 'stone', 'grain'][Math.floor(Math.random() * 3)]
       found = { wood: 0, stone: 0, grain: 0 }
-      found[res] = 200 + Math.floor(Math.random() * 800)
+      found[res] = Math.min(cargoCap, 200 + Math.floor(Math.random() * 800))
     }
-    return await closeLocalExpedition(mission, myKingdom, now, missionUnits, returnTime, {
+    return await closeLocalExpedition(mission, myKingdom, now, missionUnits, buildReturnTime(null), {
       outcome,
       subject: outcome === 'nothing_local'
         ? '🌑 Exploración local — nada de interés'
         : '🪙 Exploración local — recursos abandonados',
-      result: { type: 'expedition', outcome, found },
+      result: { type: 'expedition', outcome, found, cargoCap },
       woodLoad:  found.wood,
       stoneLoad: found.stone,
       grainLoad: found.grain,
     })
   }
 
-  // Caso B: POI agotado
+  // Caso B: POI agotado (holding mínimo, vuelve sin botín)
   if (poi.magnitude <= 0) {
-    return await closeLocalExpedition(mission, myKingdom, now, missionUnits, returnTime, {
+    return await closeLocalExpedition(mission, myKingdom, now, missionUnits, buildReturnTime(null), {
       outcome: 'poi_depleted',
       subject: `🏚️ ${POI_TYPES[poi.type]?.label ?? 'Punto de interés'} — agotado`,
       result: {
@@ -231,11 +250,16 @@ async function processLocalExpedition(mission, myKingdom, now, missionUnits, ret
   let unitDrop = null
   let researchBonus = null
 
+  let cargoOverflow = 0  // recursos encontrados que no caben en cargo
+
   if (exp.resource && exp.multiplier) {
-    // Yacimientos: outcome ×2-3 del recurso
+    // Yacimientos: outcome ×2-3 del recurso, capeado por cargo de flota
     const [min, max] = exp.multiplier
     const mult = min + Math.random() * (max - min)
-    found[exp.resource] = Math.floor(2000 * mult)
+    const totalFound = Math.floor(2000 * mult)
+    const carried = Math.min(totalFound, cargoCap)
+    found[exp.resource] = carried
+    cargoOverflow = totalFound - carried
   } else if (exp.ether) {
     const [min, max] = exp.ether
     etherGained = min + Math.floor(Math.random() * (max - min + 1))
@@ -259,13 +283,13 @@ async function processLocalExpedition(mission, myKingdom, now, missionUnits, ret
   }
 
   const outcome = newMagnitude === 0 ? 'poi_drained' : 'poi_explored'
-  return await closeLocalExpedition(mission, myKingdom, now, missionUnits, returnTime, {
+  return await closeLocalExpedition(mission, myKingdom, now, missionUnits, buildReturnTime(poi.type), {
     outcome,
     subject: `${poiTypeIcon(poi.type)} ${def?.label ?? 'POI'} — ${newMagnitude === 0 ? 'agotado tras esta visita' : 'explotado'}`,
     result: {
       type: 'expedition', outcome,
       poi: { type: poi.type, magnitude: newMagnitude, magnitudeBefore: poi.magnitude },
-      found, etherGained, unitDrop, researchBonus,
+      found, etherGained, unitDrop, researchBonus, cargoOverflow, cargoCap,
     },
     woodLoad:    found.wood,
     stoneLoad:   found.stone,

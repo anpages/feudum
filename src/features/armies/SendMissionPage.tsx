@@ -130,6 +130,23 @@ const POI_ICON: Record<string, string> = {
   templo_perdido:    '🕍',
 }
 
+// Tiempo de holding por tipo de POI (segundos, escalado por economy_speed).
+// Mirror de POI_HOLDING_SECS_BASE en api/lib/poi.js — mantener sincronizados.
+const POI_HOLDING_BASE: Record<string, number> = {
+  default:           3600,   // sin POI o POI agotado: 1h
+  yacimiento_madera: 7200,
+  yacimiento_piedra: 7200,
+  yacimiento_grano:  7200,
+  reliquia_arcana:   7200,
+  ruinas_antiguas:   10800,
+  templo_perdido:    14400,
+}
+
+function computeLocalHoldingSecs(poiType: string | null | undefined, economySpeed: number): number {
+  const base = POI_HOLDING_BASE[poiType ?? 'default'] ?? POI_HOLDING_BASE.default
+  return Math.max(60, Math.round(base / Math.max(0.1, economySpeed)))
+}
+
 export function SendMissionPage({ initTarget, initType: initTypeProp, initPoi, onClose }: SendMissionPageProps = {}) {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
@@ -496,61 +513,90 @@ export function SendMissionPage({ initTarget, initType: initTypeProp, initPoi, o
                 </div>
               </div>
 
-              {/* Expedition: show total mission time prominently */}
-              <div className="flex items-center justify-between">
-                <p className="font-ui text-xs text-ink-muted uppercase tracking-wider">Duración de la misión</p>
-                {travelPreview !== null && (
-                  <span className="flex items-center gap-1.5 font-ui text-xs font-semibold text-gold-dim">
-                    <Clock size={11} />
-                    Total: {formatDuration(travelPreview * 2 + holdingHours * 3600)}
-                  </span>
-                )}
-              </div>
+              {(() => {
+                // Slot 16 (Tierras Ignotas): selector de horas como antes.
+                // Slots 1-15: holding fijado por tipo de POI (sin selector).
+                const isUnchartedLands = tSlot === 16
+                const economySpeed = (serverSettings as { economySpeed?: number } | undefined)?.economySpeed ?? 1
+                const localHoldingSecs = computeLocalHoldingSecs(initPoi?.type, economySpeed)
+                const effectiveHoldingSecs = isUnchartedLands ? holdingHours * 3600 : localHoldingSecs
+                const totalSecs = travelPreview !== null ? travelPreview * 2 + effectiveHoldingSecs : null
 
-              {/* Exploration time (primary control) */}
-              <div className="space-y-2">
-                <p className="font-ui text-xs text-ink-muted">Tiempo de exploración</p>
-                <div className="grid gap-1.5" style={{ gridTemplateColumns: `repeat(${maxHoldingHours}, 1fr)` }}>
-                  {Array.from({ length: maxHoldingHours }, (_, i) => i + 1).map(h => (
-                    <button
-                      key={h}
-                      type="button"
-                      onClick={() => setHoldingHours(h)}
-                      className={`py-1.5 rounded border font-ui text-xs font-semibold transition-colors ${
-                        holdingHours === h
-                          ? 'bg-gold/15 border-gold text-gold-dim'
-                          : 'bg-parchment border-gold/20 text-ink-muted hover:border-gold/50 hover:text-ink-mid'
-                      }`}
-                    >
-                      {h}h
-                    </button>
-                  ))}
-                </div>
-              </div>
+                return (
+                  <>
+                    {/* Total time prominently */}
+                    <div className="flex items-center justify-between">
+                      <p className="font-ui text-xs text-ink-muted uppercase tracking-wider">Duración de la misión</p>
+                      {totalSecs !== null && (
+                        <span className="flex items-center gap-1.5 font-ui text-xs font-semibold text-gold-dim">
+                          <Clock size={11} />
+                          Total: {formatDuration(totalSecs)}
+                        </span>
+                      )}
+                    </div>
 
-              {/* Speed */}
-              <div className="space-y-2 border-t border-gold/10 pt-3">
-                <div className="flex items-center justify-between">
-                  <p className="font-ui text-xs text-ink-muted">Velocidad de marcha</p>
-                  <span className="font-ui text-sm font-bold text-ink-mid tabular-nums">{speedPct}%</span>
-                </div>
-                <input
-                  type="range" min={10} max={100} step={5}
-                  value={speedPct}
-                  onChange={e => setSpeedPct(parseInt(e.target.value, 10))}
-                  className="w-full accent-gold-dim"
-                />
-                {travelPreview !== null && (
-                  <p className="font-body text-[0.65rem] text-ink-muted/60">
-                    Viaje {formatDuration(travelPreview)} · Exploración {holdingHours}h · Vuelta {formatDuration(travelPreview)}
-                  </p>
-                )}
-                {grainPreview > 0 && (
-                  <p className="font-ui text-[0.65rem] text-gold-dim">
-                    Combustible: <span className="font-semibold tabular-nums">{formatResource(grainPreview)}</span> grano
-                  </p>
-                )}
-              </div>
+                    {isUnchartedLands ? (
+                      // Selector de horas (solo Tierras Ignotas)
+                      <div className="space-y-2">
+                        <p className="font-ui text-xs text-ink-muted">Tiempo de exploración</p>
+                        <div className="grid gap-1.5" style={{ gridTemplateColumns: `repeat(${maxHoldingHours}, 1fr)` }}>
+                          {Array.from({ length: maxHoldingHours }, (_, i) => i + 1).map(h => (
+                            <button
+                              key={h}
+                              type="button"
+                              onClick={() => setHoldingHours(h)}
+                              className={`py-1.5 rounded border font-ui text-xs font-semibold transition-colors ${
+                                holdingHours === h
+                                  ? 'bg-gold/15 border-gold text-gold-dim'
+                                  : 'bg-parchment border-gold/20 text-ink-muted hover:border-gold/50 hover:text-ink-mid'
+                              }`}
+                            >
+                              {h}h
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      // Slot 1-15: holding determinado por tipo de POI
+                      <div className="rounded-lg border border-forest/20 bg-forest/5 p-3 space-y-1">
+                        <p className="font-ui text-[0.65rem] uppercase tracking-wider text-forest font-semibold">
+                          Tiempo de exploración
+                        </p>
+                        <p className="font-body text-xs text-ink">
+                          {initPoi
+                            ? <>El tipo de POI determina la duración: <span className="font-semibold">{formatDuration(localHoldingSecs)}</span> en el sitio</>
+                            : <>Sin descubrir aún · duración base de exploración: <span className="font-semibold">{formatDuration(localHoldingSecs)}</span></>
+                          }
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Speed */}
+                    <div className="space-y-2 border-t border-gold/10 pt-3">
+                      <div className="flex items-center justify-between">
+                        <p className="font-ui text-xs text-ink-muted">Velocidad de marcha</p>
+                        <span className="font-ui text-sm font-bold text-ink-mid tabular-nums">{speedPct}%</span>
+                      </div>
+                      <input
+                        type="range" min={10} max={100} step={5}
+                        value={speedPct}
+                        onChange={e => setSpeedPct(parseInt(e.target.value, 10))}
+                        className="w-full accent-gold-dim"
+                      />
+                      {travelPreview !== null && (
+                        <p className="font-body text-[0.65rem] text-ink-muted/60">
+                          Viaje {formatDuration(travelPreview)} · Exploración {formatDuration(effectiveHoldingSecs)} · Vuelta {formatDuration(travelPreview)}
+                        </p>
+                      )}
+                      {grainPreview > 0 && (
+                        <p className="font-ui text-[0.65rem] text-gold-dim">
+                          Combustible: <span className="font-semibold tabular-nums">{formatResource(grainPreview)}</span> grano
+                        </p>
+                      )}
+                    </div>
+                  </>
+                )
+              })()}
             </>
           ) : (
             <>

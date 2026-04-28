@@ -292,11 +292,13 @@ export default async function handler(req, res) {
   }
 
   // Expediciones: ya no hay cap específico — solo el cap general de slots de
-  // misión (logistics) aplicado más arriba. El antiguo `floor(√carto)` quedaba
-  // demasiado restrictivo con el sistema POI nuevo (necesitas muchas expediciones
-  // para descubrir la región). holdingHours sigue limitado por cartografía.
+  // misión (logistics) aplicado más arriba.
+  //
+  // holdingHours se ignora para slot 1-15 (el tiempo lo determina el tipo de POI
+  // descubierto en processLocalExpedition). Solo aplica a slot 16 (Tierras Ignotas)
+  // donde mantiene su efecto OGame en outcomes delay/speedup.
   let holdingHours = 0
-  if (isExpedition) {
+  if (isExpedition && tSlot === expeditionSlot) {
     const cartographyLevel = resMap.cartography ?? 0
     holdingHours = parseInt(rawHoldingHours ?? 1, 10)
     const maxHolding = Math.max(1, cartographyLevel)
