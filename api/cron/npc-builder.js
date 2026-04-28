@@ -390,9 +390,13 @@ async function attemptBuild(kingdom, buildingId, cfg, now, reason, researchMap =
 // Trains the highest-priority unit whose requirements are met.
 // If the first eligible unit needs research it doesn't have, queues that research.
 async function attemptTrainTroops(kingdom, personality, cls, researchMap, cfg, now, customPriority = null, skipCombatCheck = false) {
-  const costMult     = cls === 'general' ? 0.9 : 1.0
-  const maxUnitTypes = cls === 'general' ? 2 : 1
-  const batchCap     = 50
+  const costMult    = cls === 'general' ? 0.9 : 1.0
+  // Combat y support tienen caps independientes: un squire en cap no debe impedir
+  // entrenar merchant/scout/caravan/scavenger. Antes maxUnitTypes=1 (non-general) hacía
+  // que los NPCs SOLO entrenaran squires y nunca pasaran a soporte.
+  const maxCombat   = cls === 'general' ? 2 : 1
+  const maxSupport  = 1
+  const batchCap    = 50
 
   const combatTotal    = [...UNIT_COMBAT_SET].reduce((s, u) => s + (kingdom[u] ?? 0), 0)
   const needMoreCombat = combatTotal < ATTACK_THRESHOLD[personality]
@@ -401,7 +405,8 @@ async function attemptTrainTroops(kingdom, personality, cls, researchMap, cfg, n
   const patch = {}
   let totalTrained     = 0
   let lastUnit         = ''
-  let unitTypesTrained = 0
+  let combatTrained    = 0
+  let supportTrained   = 0
   let firstAffordable  = null
   // Research blockers: combat unit blockers tienen prioridad sobre support/defense
   // (si knight bloqueado por carto, esa research debe correr antes que la de un caravan).
@@ -410,13 +415,24 @@ async function attemptTrainTroops(kingdom, personality, cls, researchMap, cfg, n
 
   const priorityList = customPriority ?? UNIT_PRIORITY[personality]
   for (const unitId of priorityList) {
-    if (unitTypesTrained >= maxUnitTypes) break
+    const inCombat  = UNIT_COMBAT_SET.has(unitId)
+    const inSupport = UNIT_SUPPORT_SET.has(unitId)
+    const inDefense = UNIT_DEFENSE_SET.has(unitId)
+
+    // Defensas se manejan en attemptTrainDefenses — saltarlas aquí evita doble entrenamiento.
+    if (inDefense) continue
+    // Salir si ambas categorías ya están al máximo de tipos por tick
+    if (combatTrained >= maxCombat && supportTrained >= maxSupport) break
+    // Skip por categoría llena
+    if (inCombat  && combatTrained  >= maxCombat)  continue
+    if (inSupport && supportTrained >= maxSupport) continue
 
     const unitDef = ALL_UNITS.find(u => u.id === unitId)
     if (!unitDef) continue
 
-    // Skip defenses/support while below combat threshold
-    if ((UNIT_DEFENSE_SET.has(unitId) || UNIT_SUPPORT_SET.has(unitId)) && needMoreCombat && !skipCombatCheck) continue
+    // Skip support/scouts mientras el ejército de combate está por debajo del umbral mínimo
+    // (excepto cuando se pasa skipCombatCheck explícitamente: scavenger, colonist).
+    if (inSupport && needMoreCombat && !skipCombatCheck) continue
 
     // Skip if NPC already has enough of this unit type
     const unitCaps = getUnitSoftCap(kingdom.npcLevel)
@@ -480,7 +496,8 @@ async function attemptTrainTroops(kingdom, personality, cls, researchMap, cfg, n
     patch[unitId] = (kingdom[unitId] ?? 0) + batch
     totalTrained  += batch
     lastUnit       = unitId
-    unitTypesTrained++
+    if (inCombat)  combatTrained++
+    if (inSupport) supportTrained++
   }
 
   // Combat blockers tienen prioridad sobre support — siempre desbloquear knight antes que caravan.
@@ -750,22 +767,29 @@ async function attemptBuildWeighted(kingdom, personality, cfg, now, researchMap 
   return { action: 'blocked' }
 }
 
-// Proactively advances the highest-priority research that is below its target level.
-// Chains prerequisites automatically via attemptResearch.
+// Round-robin por tiers: avanza la primera research que esté debajo del tier actual,
+// no la primera debajo del target final. Así el árbol se desbloquea en anchura:
+// todas las techs a lv2 antes que cualquiera a lv4, todas a lv4 antes que cualquiera a lv6.
+// Sin esto, los NPCs gastaban todo el progreso subiendo alchemy de 4 a target=8 (lv7→8 = 102k stone)
+// sin nunca empezar armoury/mysticism/tradeRoutes/exploration.
 async function attemptResearchProactive(kingdom, personality, researchMap, cfg, now) {
   const priority = RESEARCH_PRIORITY[personality] ?? RESEARCH_PRIORITY.balanced
   const targets  = RESEARCH_TARGETS[personality]  ?? RESEARCH_TARGETS.balanced
+  const TIERS = [2, 4, 6]
 
-  for (const researchId of priority) {
-    const target  = targets[researchId] ?? 0
-    if (target === 0) continue
-    if ((researchMap[researchId] ?? 0) >= target) continue
+  for (const tierMax of TIERS) {
+    for (const researchId of priority) {
+      const finalTarget = targets[researchId] ?? 0
+      if (finalTarget === 0) continue
+      const tierTarget = Math.min(tierMax, finalTarget)
+      if ((researchMap[researchId] ?? 0) >= tierTarget) continue
 
-    const r = await attemptResearch(kingdom, researchId, researchMap, cfg, now)
-    // 'error' → tech not found, skip
-    // 'saving' → can't afford yet, continue to next affordable tech
-    // anything else (researching, research_busy) → actionable, return
-    if (r.action !== 'error' && r.action !== 'saving') return r
+      const r = await attemptResearch(kingdom, researchId, researchMap, cfg, now)
+      // 'error' → tech not found, skip
+      // 'saving' → can't afford yet, continue to next affordable tech (allow lateral progress)
+      // anything else (researching, research_busy) → actionable, return
+      if (r.action !== 'error' && r.action !== 'saving') return r
+    }
   }
 
   await setDecision(kingdom, 'Sin investigación proactiva pendiente')

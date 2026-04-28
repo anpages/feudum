@@ -261,29 +261,30 @@ export const RESEARCH_PRIORITY = {
   balanced: ['alchemy', 'cartography', 'horsemanship', 'spycraft', 'fortification', 'swordsmanship', 'pyromancy', 'runemastery', 'exploration', 'logistics', 'armoury', 'mysticism', 'tradeRoutes', 'dragonlore', 'divineBlessing', 'diplomaticNetwork'],
 }
 
-// Maximum levels the proactive system pushes toward per tech per personality.
-// Targets cover the full unit unlock chain including endgame:
-//   alchemy≥8 (dragonlore + warMachine), pyromancy≥12 (grandKnight direct req),
-//   runemastery≥5 (dragonlore prereq), dragonlore≥7 (dragonCannon),
-//   cartography≥6 (siegeMaster), armoury≥5 (mysticism prereq),
-//   mysticism≥6 (dragonKnight), tradeRoutes≥7 (dragonKnight).
-// divineBlessing (academy 12 prereq) is reached via weighted building past milestones.
-// Season length determines which NPCs actually hit the endgame — targets don't cap that.
+// Targets realistas para una temporada finita. Antes los targets eran agresivos
+// (pyromancy 12, alchemy 8) y nunca se alcanzaban: el NPC pasaba ticks subiendo
+// alchemy 7→8 (cuesta 102k stone) en lugar de empezar mysticism/tradeRoutes/exploration.
+// Niveles actuales desbloquean toda la pirámide de unidades sin endgame imposible:
+//   alchemy 6 (prereq runemastery+dragonlore), cartography 4 (paladin), pyromancy 6 (ballista),
+//   runemastery 4 (mageTower), armoury 4 (castleWall→6 vía cadena natural),
+//   mysticism 5 + tradeRoutes 5 (warMachine + grandKnight), dragonlore 5 (siegeMaster).
+// El round-robin por tiers (attemptResearchProactive) distribuye estos targets en pasadas:
+// todas a lv2 antes que cualquiera a lv4, todas a lv4 antes que cualquiera a lv6.
 export const RESEARCH_TARGETS = {
   economy: {
-    alchemy: 8, horsemanship: 6, cartography: 6, runemastery: 5, spycraft: 4,
-    pyromancy: 12, fortification: 3, swordsmanship: 4, exploration: 6, mysticism: 6,
-    armoury: 5, tradeRoutes: 7, logistics: 4, dragonlore: 7, divineBlessing: 2, diplomaticNetwork: 3,
+    alchemy: 6, horsemanship: 6, cartography: 4, runemastery: 4, spycraft: 3,
+    pyromancy: 6, fortification: 3, swordsmanship: 3, exploration: 3, mysticism: 5,
+    armoury: 4, tradeRoutes: 5, logistics: 4, dragonlore: 5, divineBlessing: 1, diplomaticNetwork: 2,
   },
   military: {
-    alchemy: 8, horsemanship: 6, fortification: 6, swordsmanship: 6, cartography: 6,
-    spycraft: 4, pyromancy: 12, runemastery: 5, armoury: 7, logistics: 6,
-    exploration: 4, mysticism: 6, tradeRoutes: 7, dragonlore: 7, divineBlessing: 2, diplomaticNetwork: 2,
+    alchemy: 6, horsemanship: 6, fortification: 5, swordsmanship: 5, cartography: 4,
+    spycraft: 3, pyromancy: 6, runemastery: 4, armoury: 5, logistics: 4,
+    exploration: 3, mysticism: 5, tradeRoutes: 5, dragonlore: 5, divineBlessing: 1, diplomaticNetwork: 1,
   },
   balanced: {
-    alchemy: 8, horsemanship: 6, cartography: 6, spycraft: 4, fortification: 5,
-    swordsmanship: 5, pyromancy: 12, runemastery: 5, exploration: 5, logistics: 4,
-    armoury: 5, mysticism: 6, tradeRoutes: 7, dragonlore: 7, divineBlessing: 2, diplomaticNetwork: 2,
+    alchemy: 6, horsemanship: 6, cartography: 4, spycraft: 3, fortification: 4,
+    swordsmanship: 4, pyromancy: 6, runemastery: 4, exploration: 3, logistics: 4,
+    armoury: 4, mysticism: 5, tradeRoutes: 5, dragonlore: 5, divineBlessing: 1, diplomaticNetwork: 1,
   },
 }
 
