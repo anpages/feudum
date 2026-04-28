@@ -403,8 +403,10 @@ async function attemptTrainTroops(kingdom, personality, cls, researchMap, cfg, n
   let lastUnit         = ''
   let unitTypesTrained = 0
   let firstAffordable  = null
-  // First research blocker encountered — triggered after training is committed
-  let pendingResearchId = null
+  // Research blockers: combat unit blockers tienen prioridad sobre support/defense
+  // (si knight bloqueado por carto, esa research debe correr antes que la de un caravan).
+  let pendingCombatResearch  = null
+  let pendingSupportResearch = null
 
   const priorityList = customPriority ?? UNIT_PRIORITY[personality]
   for (const unitId of priorityList) {
@@ -435,12 +437,17 @@ async function attemptTrainTroops(kingdom, personality, cls, researchMap, cfg, n
 
     if (blockedByBuilding) continue
 
-    // Research missing — record it and stop scanning. We must NOT skip to paladin/warlord
-    // while knight is research-blocked; that is exactly what produced out-of-order armies.
-    // Units accumulated in patch before this point are still committed.
+    // Combat unit bloqueada por research → parar el loop (no saltarse a paladin/warlord
+    // sin tener knight). Las unidades ya entrenadas en patch se commitean igual.
+    // Support/defense bloqueadas por research → seguir buscando otras unidades a entrenar;
+    // un caravan que necesita horsemanship no debe impedir entrenar squires/knights/scouts.
     if (missingResearch) {
-      if (!pendingResearchId) pendingResearchId = missingResearch
-      break
+      if (UNIT_COMBAT_SET.has(unitId)) {
+        if (!pendingCombatResearch) pendingCombatResearch = missingResearch
+        break
+      }
+      if (!pendingSupportResearch) pendingSupportResearch = missingResearch
+      continue
     }
 
     const cost = UNIT_COSTS[unitId]
@@ -461,7 +468,12 @@ async function attemptTrainTroops(kingdom, personality, cls, researchMap, cfg, n
     )
     if (canAfford <= 0) continue
 
-    const batch = Math.min(canAfford, batchCap)
+    // Limitar el batch al cap restante para no sobre-entrenar.
+    // El check de softCap arriba garantiza current < softCap, por lo que remainingCap >= 1.
+    const remainingCap = softCap !== undefined ? softCap - (kingdom[unitId] ?? 0) : Infinity
+    const batch = Math.min(canAfford, batchCap, remainingCap)
+    if (batch <= 0) continue
+
     wood  -= effWood  * batch
     stone -= effStone * batch
     grain -= effGrain * batch
@@ -470,6 +482,9 @@ async function attemptTrainTroops(kingdom, personality, cls, researchMap, cfg, n
     lastUnit       = unitId
     unitTypesTrained++
   }
+
+  // Combat blockers tienen prioridad sobre support — siempre desbloquear knight antes que caravan.
+  const pendingResearchId = pendingCombatResearch ?? pendingSupportResearch
 
   if (totalTrained === 0) {
     // Nothing trained — if there's a pending research blocker, queue it now
@@ -560,16 +575,17 @@ async function attemptTrainTroops(kingdom, personality, cls, researchMap, cfg, n
 }
 
 // Combat and support unit soft caps scaled by npc_level.
-// Combat caps form a descending pyramid to force natural tier progression:
-// squire → knight → paladin → warlord → …
-// Without caps squires accumulate indefinitely because they always pass
-// requirements first in the priority list.
+// Knight es la unidad core de combate: cap MAYOR que squire para que la mayoría
+// del ejército sea de knights, no de squires. Squire (tier 1) actúa como bridge
+// hasta que cartografía/fortification permitan knight.
+// Tiers superiores (paladin, warlord, ...) descienden en cap para mantener
+// progresión natural sin saltarse niveles.
 function getUnitSoftCap(npcLevel) {
   const m = 1 + (npcLevel ?? 0)
   return {
-    squire:       60 * m,
-    knight:       30 * m,
-    paladin:      15 * m,
+    squire:       30 * m,
+    knight:       50 * m,
+    paladin:      20 * m,
     warlord:       8 * m,
     grandKnight:   4 * m,
     siegeMaster:   2 * m,
@@ -792,21 +808,6 @@ async function growNpc(kingdom, cfg, now, researchMap, debrisRegions, colonizeAc
   const speedFactor = parseFloat(cfg.economy_speed ?? ECONOMY_SPEED)
   const ageHours = (now - createdAtSec) / 3600 * speedFactor
 
-  // Nivel -2: purgar unidades sobre el soft cap (pueden superar el límite por misiones que regresan)
-  const unitCapsNow    = getUnitSoftCap(kingdom.npcLevel)
-  const defenseCapsNow = getDefenseSoftCap(kingdom.npcLevel)
-  for (const [type, cap] of Object.entries(unitCapsNow)) {
-    if ((kingdom[type] ?? 0) > cap) {
-      await upsertUnit(kingdom.id, type, cap)
-      kingdom[type] = cap
-    }
-  }
-  for (const [type, cap] of Object.entries(defenseCapsNow)) {
-    if ((kingdom[type] ?? 0) > cap) {
-      await upsertUnit(kingdom.id, type, cap)
-      kingdom[type] = cap
-    }
-  }
   // Nivel -1: fleetsave defensivo
   const incomingAttack = await getIncomingAttack(kingdom, now)
   if (incomingAttack) {
@@ -876,6 +877,26 @@ async function growNpc(kingdom, cfg, now, researchMap, debrisRegions, colonizeAc
   for (const { res, store, cap } of storageChecks) {
     if ((kingdom[res] ?? 0) >= (kingdom[cap] ?? 10000) * 0.9) {
       return await attemptBuild(kingdom, store, cfg, now, `Almacén ${res} al 90%: subir ${store}`, researchMap)
+    }
+  }
+
+  // Nivel 0-T: desbloqueo crítico de tier de combate.
+  // Si squire ya cubre el grueso de su cap y knight (tier 2) está bloqueado por carto/fort,
+  // reservar recursos para esa research — no gastarlos en otras construcciones esta vuelta.
+  // Sin esto, el flavor 'buildings' o 'research' consume madera/piedra cada tick antes de
+  // poder pagar carto y los NPCs se quedan eternos en "Ahorrando para carto".
+  if (!kingdom.currentResearch) {
+    const squireCap   = getUnitSoftCap(kingdom.npcLevel).squire
+    const squireCount = kingdom.squire ?? 0
+    const cartoLv     = researchMap.cartography  ?? 0
+    const fortLv      = researchMap.fortification ?? 0
+    const needsTier2  = squireCount >= squireCap * 0.7 && (kingdom.barracks ?? 0) >= 3
+    if (needsTier2 && cartoLv < 2) {
+      const r = await attemptResearch(kingdom, 'cartography', researchMap, cfg, now)
+      if (r.action !== 'error') return r
+    } else if (needsTier2 && fortLv < 2) {
+      const r = await attemptResearch(kingdom, 'fortification', researchMap, cfg, now)
+      if (r.action !== 'error') return r
     }
   }
 

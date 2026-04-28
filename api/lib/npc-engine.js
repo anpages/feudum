@@ -83,7 +83,7 @@ export const UNIT_COSTS = {
 export const BUILD_WEIGHTS = {
   economy: {
     sawmill: 1.0, windmill: 1.5, quarry: 0.90, grainFarm: 0.82,
-    cathedral: 0.50, granary: 0.55, stonehouse: 0.50, silo: 0.45,
+    cathedral: 0.30, granary: 0.55, stonehouse: 0.50, silo: 0.45,
     workshop: 0.65, barracks: 0.60, academy: 0.25,
     alchemistTower: 0.40, ambassadorHall: 0.20, armoury: 0.35, engineersGuild: 0.35,
   },
@@ -252,15 +252,13 @@ export const MILESTONE_ORDER = ['windmill', 'sawmill', 'quarry', 'grainFarm', 'w
 // means "advance it as soon as the prerequisite tree allows," not "research at minute 0."
 
 export const RESEARCH_PRIORITY = {
-  // Economy (collector): production boosters + trade chain + exploration; combat last.
-  // cartography lv2 gates knight (first real combat unit) so it must come early.
-  economy:  ['alchemy', 'horsemanship', 'cartography', 'runemastery', 'spycraft', 'pyromancy', 'fortification', 'swordsmanship', 'exploration', 'mysticism', 'armoury', 'tradeRoutes', 'logistics', 'dragonlore', 'divineBlessing', 'diplomaticNetwork'],
-  // Military (general): cartography moved to position 3 — it gates knight which is the
-  // primary combat unit. fortification/swordsmanship boost existing squires but don't
-  // unlock new tiers; knight unlocks a whole new class of combat power.
-  military: ['alchemy', 'horsemanship', 'cartography', 'fortification', 'swordsmanship', 'spycraft', 'pyromancy', 'runemastery', 'armoury', 'logistics', 'exploration', 'mysticism', 'tradeRoutes', 'dragonlore', 'divineBlessing', 'diplomaticNetwork'],
-  // Balanced (discoverer): spread evenly; cartography early for knight + exploration.
-  balanced: ['alchemy', 'horsemanship', 'cartography', 'spycraft', 'fortification', 'swordsmanship', 'pyromancy', 'runemastery', 'exploration', 'logistics', 'armoury', 'mysticism', 'tradeRoutes', 'dragonlore', 'divineBlessing', 'diplomaticNetwork'],
+  // cartography sube a posición 2 (justo tras alchemy, su prereq) en todas las personalidades.
+  // Es la tecnología que desbloquea knight (combat tier 2), colonist y exploration: sin ella
+  // los NPCs nunca pasan de squire ni colonizan ni exploran. horsemanship lv1 ya basta para squire/merchant
+  // y se asegura por la cadena de prerrequisitos cuando hace falta más nivel.
+  economy:  ['alchemy', 'cartography', 'horsemanship', 'runemastery', 'spycraft', 'pyromancy', 'fortification', 'swordsmanship', 'exploration', 'mysticism', 'armoury', 'tradeRoutes', 'logistics', 'dragonlore', 'divineBlessing', 'diplomaticNetwork'],
+  military: ['alchemy', 'cartography', 'horsemanship', 'fortification', 'swordsmanship', 'spycraft', 'pyromancy', 'runemastery', 'armoury', 'logistics', 'exploration', 'mysticism', 'tradeRoutes', 'dragonlore', 'divineBlessing', 'diplomaticNetwork'],
+  balanced: ['alchemy', 'cartography', 'horsemanship', 'spycraft', 'fortification', 'swordsmanship', 'pyromancy', 'runemastery', 'exploration', 'logistics', 'armoury', 'mysticism', 'tradeRoutes', 'dragonlore', 'divineBlessing', 'diplomaticNetwork'],
 }
 
 // Maximum levels the proactive system pushes toward per tech per personality.
