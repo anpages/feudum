@@ -8,8 +8,8 @@
  *   "activo"           — construyendo / entrenando / investigando
  */
 import './api/lib/env.js'
-import { eq, inArray } from 'drizzle-orm'
-import { db, users, kingdoms, npcState, buildings, units, research, armyMissions } from './api/_db.js'
+import { eq, inArray, gt } from 'drizzle-orm'
+import { db, users, kingdoms, npcState, buildings, units, research, armyMissions, pointsOfInterest, poiDiscoveries } from './api/_db.js'
 import { npcPersonality, getTargetLevels, MILESTONE_ORDER, isSleepTime, calcEnergyBalance } from './api/lib/npc-engine.js'
 import { getSettings } from './api/lib/settings.js'
 import { NPC_AGGRESSION } from './api/lib/config.js'
@@ -144,6 +144,32 @@ console.log(`  Distribución colonias por NPC: ${Object.entries(colonyDist).filt
 const npcsWithDefense   = npcs.filter(n => (n.archer ?? 0) >= 5 && (n.crossbowman ?? 0) >= 3).length
 const npcsBareDefense   = npcs.filter(n => (n.archer ?? 0) < 5).length
 console.log(`  Defensa básica (≥5 archers + ≥3 crossbowmen): ${npcsWithDefense} / ${npcs.length}  |  Sin base (<5 archers): ${npcsBareDefense}`)
+
+// ── Puntos de Interés ────────────────────────────────────────────────────────
+const totalPoi   = await db.$count(pointsOfInterest)
+const activePoi  = await db.$count(pointsOfInterest, gt(pointsOfInterest.magnitude, 0))
+const claimedPoi = (await db.select({ id: pointsOfInterest.realm }).from(pointsOfInterest)
+  .where(gt(pointsOfInterest.magnitude, 0))).length  // placeholder
+const claimedRows = await db.select().from(pointsOfInterest)
+const claimedCount = claimedRows.filter(p => p.claimedByKingdomId).length
+const npcDiscoveries = await db.select({ userId: poiDiscoveries.userId }).from(poiDiscoveries)
+  .innerJoin(users, eq(poiDiscoveries.userId, users.id))
+  .where(eq(users.role, 'npc'))
+const uniqueNpcDiscoverers = new Set(npcDiscoveries.map(d => d.userId)).size
+
+// Distribución por tipo
+const poiByType = {}
+for (const p of claimedRows) poiByType[p.type] = (poiByType[p.type] ?? 0) + 1
+
+console.log('\n── Puntos de Interés ──')
+console.log(`  Total POIs en mapa: ${totalPoi}  |  Activos (mag>0): ${activePoi}  |  Reclamados: ${claimedCount}`)
+console.log(`  Descubrimientos NPCs: ${npcDiscoveries.length} discoveries en ${uniqueNpcDiscoverers} NPCs únicos`)
+const typesSorted = Object.entries(poiByType).sort((a,b)=>b[1]-a[1])
+for (const [type, count] of typesSorted) {
+  const claimed  = claimedRows.filter(p => p.type === type && p.claimedByKingdomId).length
+  const depleted = claimedRows.filter(p => p.type === type && p.magnitude === 0).length
+  console.log(`  ${type.padEnd(22)} ${String(count).padStart(3)}  reclamados:${claimed}  agotados:${depleted}`)
+}
 
 // ── Clasificación hitos ───────────────────────────────────────────────────────
 

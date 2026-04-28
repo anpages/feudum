@@ -1,8 +1,9 @@
-import { eq, and, inArray } from 'drizzle-orm'
-import { db, kingdoms, users, debrisFields, npcState } from '../_db.js'
+import { eq, and, inArray, gt } from 'drizzle-orm'
+import { db, kingdoms, users, debrisFields, npcState, pointsOfInterest, poiDiscoveries } from '../_db.js'
 import { getSessionUserId } from '../lib/handler.js'
 import { calcPoints } from '../lib/points.js'
 import { getBuildingMap, getResearchMap } from '../lib/db-helpers.js'
+import { POI_TYPES } from '../lib/poi.js'
 import { UNIVERSE } from '../lib/config.js'
 
 const MAX_REALM  = UNIVERSE.maxRealm
@@ -29,6 +30,29 @@ export default async function handler(req, res) {
       .where(and(eq(debrisFields.realm, realm), eq(debrisFields.region, region))),
   ])
   const debrisBySlot = Object.fromEntries(debrisRows.map(d => [d.slot, { wood: d.wood, stone: d.stone }]))
+
+  // POIs descubiertos por el usuario en esta región (visibilidad estrictamente privada
+  // por decisión de diseño 2: cada jugador construye su propio mapa de POI). Si lo
+  // descubrió, lo ve; si no, no.
+  const myDiscoveredPoiRows = await db
+    .select({
+      slot:               pointsOfInterest.slot,
+      type:               pointsOfInterest.type,
+      magnitude:          pointsOfInterest.magnitude,
+      claimedByKingdomId: pointsOfInterest.claimedByKingdomId,
+    })
+    .from(pointsOfInterest)
+    .innerJoin(poiDiscoveries, and(
+      eq(poiDiscoveries.poiRealm,  pointsOfInterest.realm),
+      eq(poiDiscoveries.poiRegion, pointsOfInterest.region),
+      eq(poiDiscoveries.poiSlot,   pointsOfInterest.slot),
+    ))
+    .where(and(
+      eq(pointsOfInterest.realm,  realm),
+      eq(pointsOfInterest.region, region),
+      eq(poiDiscoveries.userId, userId),
+    ))
+  const poiBySlot = Object.fromEntries(myDiscoveredPoiRows.map(p => [p.slot, p]))
 
   // Get all kingdoms in this realm+region with user and npc_state data
   const realKingdoms = await db
@@ -58,6 +82,10 @@ export default async function handler(req, res) {
       const { k, u, ns } = realBySlot[slot]
       const isNpc = u.role === 'npc'
       const points = calcPoints(k, researchMaps[k.userId] ?? {})
+      // POI claimed: visible solo si el user lo descubrió previamente (mantiene
+      // privacidad). Cuando una colonia se reclama, se inserta discovery row para
+      // el dueño en processColonize, así él sí lo ve.
+      const myPoi = poiBySlot[slot] ?? null
       return {
         slot,
         kingdomId: k.id,
@@ -70,10 +98,17 @@ export default async function handler(req, res) {
         points,
         isEmpty:   false,
         debris,
+        poi:       myPoi ? { type: myPoi.type, label: POI_TYPES[myPoi.type]?.label, magnitude: myPoi.magnitude, claimed: !!myPoi.claimedByKingdomId } : null,
       }
     }
 
-    return { slot, kingdomId: null, name: null, username: null, isPlayer: false, isNpc: false, points: 0, isEmpty: true, debris }
+    // Slot vacío — si el user descubrió un POI aquí, mostrarlo
+    const myPoi = poiBySlot[slot] ?? null
+    return {
+      slot, kingdomId: null, name: null, username: null,
+      isPlayer: false, isNpc: false, points: 0, isEmpty: true, debris,
+      poi: myPoi ? { type: myPoi.type, label: POI_TYPES[myPoi.type]?.label, magnitude: myPoi.magnitude, claimed: false } : null,
+    }
   })
 
   return res.json({

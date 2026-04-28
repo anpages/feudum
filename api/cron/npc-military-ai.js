@@ -338,6 +338,26 @@ async function expeditionAI(npcKingdom, allNpcKingdoms, researchRow, depletionMa
     }
   }
 
+  // 40% probabilidad: explorar slot vacío local en lugar de Tierras Ignotas (slot 16).
+  // Si encuentran slot vacío en alguna región propia, expedicionan allí — pueden
+  // descubrir POIs (yacimientos, reliquias, etc.) y farmearlos.
+  let targetSlot = UNIVERSE.maxSlot + 1
+  let targetRegion = bestRegion
+  if (Math.random() < 0.40) {
+    const occupiedKey = new Set(allNpcKingdoms.map(k => `${k.realm}:${k.region}:${k.slot}`))
+    const candidateSlots = []
+    for (const r of ownedRegions) {
+      for (let s = 1; s <= UNIVERSE.maxSlot; s++) {
+        if (!occupiedKey.has(`${REALM}:${r}:${s}`)) candidateSlots.push({ region: r, slot: s })
+      }
+    }
+    if (candidateSlots.length > 0) {
+      const pick = candidateSlots[Math.floor(Math.random() * candidateSlots.length)]
+      targetSlot = pick.slot
+      targetRegion = pick.region
+    }
+  }
+
   const sendRatio = 0.15 + Math.random() * 0.10
   const force = {}
   let totalSent = 0
@@ -357,10 +377,16 @@ async function expeditionAI(npcKingdom, allNpcKingdoms, researchRow, depletionMa
   const holdingTime   = 1800 + Math.floor(Math.random() * 1800)
   const universeSpeed = parseFloat(cfg.fleet_speed_peaceful ?? cfg.fleet_speed_war ?? 1)
   const origin = { realm: npcKingdom.realm, region: npcKingdom.region, slot: npcKingdom.slot }
-  const target = { realm: REALM, region: bestRegion, slot: UNIVERSE.maxSlot + 1 }
+  const target = { realm: REALM, region: targetRegion, slot: targetSlot }
   const dist        = calcDistance(origin, target)
   const travelSecs  = calcDuration(dist, force, 100, universeSpeed, researchRow, null)
   const arrivalTime = now + travelSecs
+
+  // Update depletion map (solo afecta a slot 16 que es donde se contaba originalmente)
+  if (targetSlot === UNIVERSE.maxSlot + 1) {
+    const key = `${REALM}:${targetRegion}`
+    depletionMap[key] = (depletionMap[key] ?? 0) + 1
+  }
 
   await db.insert(armyMissions).values({
     userId:       npcKingdom.userId,
@@ -370,8 +396,8 @@ async function expeditionAI(npcKingdom, allNpcKingdoms, researchRow, depletionMa
     startRegion:  npcKingdom.region,
     startSlot:    npcKingdom.slot,
     targetRealm:  REALM,
-    targetRegion: bestRegion,
-    targetSlot:   UNIVERSE.maxSlot + 1,
+    targetRegion: targetRegion,
+    targetSlot:   targetSlot,
     departureTime: now,
     arrivalTime,
     holdingTime,
@@ -383,9 +409,6 @@ async function expeditionAI(npcKingdom, allNpcKingdoms, researchRow, depletionMa
     await upsertUnit(npcKingdom.id, u, (npcKingdom[u] ?? 0) - n)
     npcKingdom[u] = (npcKingdom[u] ?? 0) - n
   }
-
-  const key = `${REALM}:${bestRegion}`
-  depletionMap[key] = (depletionMap[key] ?? 0) + 1
 
   return true
 }

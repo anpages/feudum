@@ -12,7 +12,7 @@ import {
  * @param {string|null} characterClass — collector gets +25% production
  * @param {Object|null} res — research row (for alchemy + dragonlore)
  */
-export function applyResourceTick(kingdom, cfg, characterClass = null, res = null) {
+export function applyResourceTick(kingdom, cfg, characterClass = null, res = null, poiBonus = null) {
   const now     = Math.floor(Date.now() / 1000)
   const elapsed = Math.max(0, now - kingdom.lastResourceUpdate) / 3600
   const speed      = cfg?.economy_speed ?? 1
@@ -28,6 +28,10 @@ export function applyResourceTick(kingdom, cfg, characterClass = null, res = nul
   const classBonus      = characterClass === 'collector' ? 1.25 : 1.0
   // Collector: +10% energy production (OGame: getEnergyProductionBonus)
   const energyClassBonus = characterClass === 'collector' ? 1.10 : 1.0
+  // POI permanente: yacimientos +15% prod típico al recurso correspondiente
+  const poiWood  = 1 + (poiBonus?.wood  ?? 0)
+  const poiStone = 1 + (poiBonus?.stone ?? 0)
+  const poiGrain = 1 + (poiBonus?.grain ?? 0)
 
   // Support both flat keys (from kingdomService) and nested productionSettings (from DB row)
   const ps = kingdom.productionSettings ?? {}
@@ -44,9 +48,9 @@ export function applyResourceTick(kingdom, cfg, characterClass = null, res = nul
                    + grainFarmEnergy(kingdom.grainFarm ?? 0) * grainPct
   const energyFactor = energyCons > 0 ? Math.min(1, energyProd / energyCons) : 1.0
 
-  const woodRate  = basicWood  + (kingdom.woodProduction  ?? 0) * sawPct   * energyFactor * (1 + dl * 0.0100) * speed * classBonus
-  const stoneRate = basicStone + (kingdom.stoneProduction ?? 0) * quarPct  * energyFactor * (1 + dl * 0.0066) * speed * classBonus
-  const grainRate =              (kingdom.grainProduction ?? 0) * grainPct * energyFactor * (1 + dl * 0.0033) * speed * classBonus
+  const woodRate  = basicWood  + (kingdom.woodProduction  ?? 0) * sawPct   * energyFactor * (1 + dl * 0.0100) * speed * classBonus * poiWood
+  const stoneRate = basicStone + (kingdom.stoneProduction ?? 0) * quarPct  * energyFactor * (1 + dl * 0.0066) * speed * classBonus * poiStone
+  const grainRate =              (kingdom.grainProduction ?? 0) * grainPct * energyFactor * (1 + dl * 0.0033) * speed * classBonus * poiGrain
 
   return {
     wood:  Math.min(kingdom.wood  + woodRate  * elapsed, kingdom.woodCapacity),

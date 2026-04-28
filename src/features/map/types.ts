@@ -1,3 +1,10 @@
+export interface MapPoi {
+  type: string
+  label?: string
+  magnitude: number
+  claimed: boolean
+}
+
 export interface MapSlot {
   slot: number
   kingdomId: string | null
@@ -9,6 +16,7 @@ export interface MapSlot {
   points: number
   isEmpty: boolean
   debris: { wood: number; stone: number } | null
+  poi: MapPoi | null
 }
 
 export interface MapResponse {

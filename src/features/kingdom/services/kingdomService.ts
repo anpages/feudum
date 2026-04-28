@@ -5,6 +5,20 @@ import { effectiveProduction } from '@/lib/game/production'
 import type { KingdomSummary } from '@/shared/types'
 import type { Kingdom } from '@/../db/schema'
 
+// POI permanente bonus shape (mirror de api/lib/poi-bonus.js)
+type PoiBonus = { wood: number; stone: number; grain: number; researchSpeed: number; combatDef: number }
+
+function buildPoiBonus(poiType: string): PoiBonus {
+  const map: Record<string, Partial<PoiBonus>> = {
+    yacimiento_madera: { wood:  0.15 },
+    yacimiento_piedra: { stone: 0.15 },
+    yacimiento_grano:  { grain: 0.15 },
+    ruinas_antiguas:   { researchSpeed: 0.10 },
+    templo_perdido:    { combatDef: 0.05 },
+  }
+  return { wood: 0, stone: 0, grain: 0, researchSpeed: 0, combatDef: 0, ...(map[poiType] ?? {}) }
+}
+
 async function fetchSettings() {
   const cfg = await http.get<{
     economySpeed: number; researchSpeed: number
@@ -82,12 +96,22 @@ export const kingdomService = {
       cathedralPercent: pct.cathedralPercent ?? 10,
     }
 
+    // POI claimed por esta kingdom — aplica bonus permanente en producción
+    const { data: poiRow } = await supabase.from('points_of_interest')
+      .select('type, magnitude').eq('claimed_by_kingdom_id', kingdomRow.id).limit(1).maybeSingle()
+    const poiBonus = poiRow ? buildPoiBonus(poiRow.type) : null
+
     const enriched = { ...kingdom, ...buildingMap, ...unitMap, ...percents }
-    const eff = effectiveProduction(enriched, ctx.research, settings, ctx.characterClass)
+    // Cast: effectiveProduction es JS sin .d.ts; TS infiere 4 args max pero el 5º
+    // (poiBonus) sí existe en la implementación.
+    const eff = (effectiveProduction as (...args: unknown[]) => { wood: number; stone: number; grain: number; energyProd: number; energyCons: number })(
+      enriched, ctx.research, settings, ctx.characterClass, poiBonus,
+    )
 
     return {
       ...enriched,
       characterClass:      ctx.characterClass,
+      claimedPoi:          poiRow?.type ?? null,
       woodProduction:      eff.wood,
       stoneProduction:     eff.stone,
       grainProduction:     eff.grain,

@@ -1,8 +1,17 @@
-import { Swords, Eye, Tent, Pickaxe, Package, Flag, Rocket } from 'lucide-react'
+import { Swords, Eye, Tent, Pickaxe, Package, Flag, Rocket, Compass } from 'lucide-react'
 import { GiWoodPile, GiStoneBlock } from 'react-icons/gi'
 import { Button } from '@/components/ui/Button'
 import { formatResource } from '@/lib/format'
 import type { MapSlot } from '@/features/map/useMap'
+
+const POI_ICON: Record<string, string> = {
+  yacimiento_madera: '🌲',
+  yacimiento_piedra: '⛰️',
+  yacimiento_grano:  '🌾',
+  reliquia_arcana:   '✨',
+  ruinas_antiguas:   '🏛️',
+  templo_perdido:    '🕍',
+}
 
 export function SlotDetail({
   slot,
@@ -48,13 +57,41 @@ export function SlotDetail({
         </div>
       )}
 
+      {slot.poi && (
+        <div className={`rounded border p-3 space-y-1.5 ${
+          slot.poi.claimed
+            ? 'border-gold/30 bg-gold/5'
+            : slot.poi.magnitude > 0
+              ? 'border-forest/25 bg-forest/5'
+              : 'border-ink-muted/20 bg-parchment-warm'
+        }`}>
+          <p className="font-ui text-[0.6rem] text-ink-muted/70 uppercase tracking-widest flex items-center gap-1">
+            <span className="text-sm leading-none">{POI_ICON[slot.poi.type] ?? '✨'}</span>
+            {slot.poi.label ?? 'Punto de interés'}
+            {slot.poi.claimed && <span className="ml-auto text-gold">reclamado</span>}
+          </p>
+          {!slot.poi.claimed && (
+            <p className="font-body text-xs text-ink-muted">
+              {slot.poi.magnitude > 0
+                ? `Magnitud restante: ${slot.poi.magnitude}/100 — colonízalo para fijar el bonus permanente.`
+                : 'Agotado. Solo el slot vacío sin bonus.'}
+            </p>
+          )}
+        </div>
+      )}
+
       <div className="divider">◆</div>
 
       <div className="space-y-2">
         {slot.isEmpty ? (
-          <Button variant="primary" className="w-full" onClick={() => onMission('colonize')}>
-            <Tent size={12} /> Colonizar
-          </Button>
+          <>
+            <Button variant="primary" className="w-full" onClick={() => onMission('colonize')}>
+              <Tent size={12} /> Colonizar
+            </Button>
+            <Button variant="ghost" className="w-full" onClick={() => onMission('expedition')}>
+              <Compass size={12} /> Expedicionar
+            </Button>
+          </>
         ) : (
           <>
             <Button variant="primary" className="w-full" onClick={() => onMission('attack')}>

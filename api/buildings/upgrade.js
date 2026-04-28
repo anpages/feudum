@@ -4,6 +4,7 @@ import { getSessionUserId } from '../lib/handler.js'
 import { BUILDINGS, buildCost, buildTime, buildingRequirementsMet, calcFieldMax, calcFieldsUsed } from '../lib/buildings.js'
 import { getSettings } from '../lib/settings.js'
 import { applyResourceTick } from '../lib/tick.js'
+import { getPoiBonusForKingdom } from '../lib/poi-bonus.js'
 import { processUserQueues } from '../lib/process-queues.js'
 import { enrichKingdom, getResearchMap } from '../lib/db-helpers.js'
 
@@ -69,7 +70,8 @@ export default async function handler(req, res) {
   const timeSecs      = buildTime(cost.wood, cost.stone, nextLevel, workshopLevel, egLevel, cfg.economy_speed)
 
   // ── Lazy resource tick ────────────────────────────────────────────────────
-  const { wood, stone, grain, now } = applyResourceTick(kingdom, cfg, userRow?.characterClass ?? null, resMap)
+  const poiBonus = await getPoiBonusForKingdom(kingdom.id)
+  const { wood, stone, grain, now } = applyResourceTick(kingdom, cfg, userRow?.characterClass ?? null, resMap, poiBonus)
 
   // ── Check sufficient resources ────────────────────────────────────────────
   if (wood  < cost.wood)  return res.status(400).json({ error: 'Madera insuficiente',  need: cost.wood,  have: Math.floor(wood)  })

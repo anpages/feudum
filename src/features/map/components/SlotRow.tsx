@@ -3,6 +3,15 @@ import { Castle, User, Bot, Pickaxe, Crown } from 'lucide-react'
 import { Badge } from '@/components/ui/Badge'
 import type { MapSlot } from '@/features/map/useMap'
 
+const POI_ICON: Record<string, string> = {
+  yacimiento_madera: '🌲',
+  yacimiento_piedra: '⛰️',
+  yacimiento_grano:  '🌾',
+  reliquia_arcana:   '✨',
+  ruinas_antiguas:   '🏛️',
+  templo_perdido:    '🕍',
+}
+
 export const SlotRow = memo(function SlotRow({
   slot,
   isSelected,
@@ -78,6 +87,20 @@ export const SlotRow = memo(function SlotRow({
       {hasDebris && (
         <div className="shrink-0 flex items-center gap-1 text-ink-muted/50 text-xs" title="Escombros de batalla">
           <Pickaxe size={11} />
+        </div>
+      )}
+
+      {slot.poi && (
+        <div
+          className={`shrink-0 flex items-center gap-1 text-xs ${
+            slot.poi.claimed ? 'text-gold' : slot.poi.magnitude > 0 ? 'text-forest-light' : 'text-ink-muted/40'
+          }`}
+          title={`${slot.poi.label ?? 'POI'} · magnitud ${slot.poi.magnitude}${slot.poi.claimed ? ' · reclamado' : ''}`}
+        >
+          <span className="text-sm leading-none">{POI_ICON[slot.poi.type] ?? '✨'}</span>
+          {!slot.poi.claimed && slot.poi.magnitude > 0 && (
+            <span className="font-ui text-[0.6rem] tabular-nums">{slot.poi.magnitude}</span>
+          )}
         </div>
       )}
 

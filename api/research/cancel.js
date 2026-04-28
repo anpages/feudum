@@ -3,6 +3,7 @@ import { db, kingdoms, researchQueue, users } from '../_db.js'
 import { getSessionUserId } from '../lib/handler.js'
 import { RESEARCH, researchCost } from '../lib/research.js'
 import { applyResourceTick } from '../lib/tick.js'
+import { getPoiBonusForKingdom } from '../lib/poi-bonus.js'
 import { getSettings } from '../lib/settings.js'
 import { processUserQueues } from '../lib/process-queues.js'
 import { enrichKingdom, getResearchMap } from '../lib/db-helpers.js'
@@ -38,7 +39,8 @@ export default async function handler(req, res) {
   const currentLevel = item.level - 1
   const refund = researchCost(def, currentLevel)
 
-  const { wood, stone, grain, now } = applyResourceTick(kingdom, cfg, userRow?.characterClass ?? null, resMap)
+  const poiBonus = await getPoiBonusForKingdom(kingdom.id)
+  const { wood, stone, grain, now } = applyResourceTick(kingdom, cfg, userRow?.characterClass ?? null, resMap, poiBonus)
 
   await db.delete(researchQueue).where(eq(researchQueue.id, queueId))
 

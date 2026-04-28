@@ -4,6 +4,7 @@ import { getSessionUserId } from '../lib/handler.js'
 import { ALL_UNITS, unitBuildTime, unitRequirementsMet } from '../lib/units.js'
 import { getSettings } from '../lib/settings.js'
 import { applyResourceTick } from '../lib/tick.js'
+import { getPoiBonusForKingdom } from '../lib/poi-bonus.js'
 import { processUserQueues } from '../lib/process-queues.js'
 import { enrichKingdom, getResearchMap } from '../lib/db-helpers.js'
 
@@ -48,7 +49,8 @@ export default async function handler(req, res) {
     .where(eq(unitQueue.kingdomId, kingdom.id))
 
   // ── Lazy resource tick ────────────────────────────────────────────────────
-  const { wood, stone, grain, now } = applyResourceTick(kingdom, cfg, userRow?.characterClass ?? null, resMap)
+  const poiBonus = await getPoiBonusForKingdom(kingdom.id)
+  const { wood, stone, grain, now } = applyResourceTick(kingdom, cfg, userRow?.characterClass ?? null, resMap, poiBonus)
 
   const totalWood  = def.woodBase  * amount
   const totalStone = def.stoneBase * amount

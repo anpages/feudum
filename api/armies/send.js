@@ -4,6 +4,7 @@ import { getSessionUserId } from '../lib/handler.js'
 import { calcDistance, calcDuration, calcCargoCapacity, calcGrainConsumption } from '../lib/speed.js'
 import { getSettings } from '../lib/settings.js'
 import { applyResourceTick } from '../lib/tick.js'
+import { getPoiBonusForKingdom } from '../lib/poi-bonus.js'
 import { processUserQueues } from '../lib/process-queues.js'
 import { enrichKingdom, getResearchMap, getUnitMap, upsertUnit } from '../lib/db-helpers.js'
 import { sendPush } from '../lib/push.js'
@@ -173,7 +174,8 @@ export default async function handler(req, res) {
     const travelSecs = 60 + Math.floor(Math.random() * 60)  // 60–120 s near-instant
     const arrivalTime = now + travelSecs
 
-    const { wood, stone, grain } = applyResourceTick(kingdom, cfg, userRow?.characterClass ?? null, resMap)
+    const poiBonus = await getPoiBonusForKingdom(kingdom.id)
+    const { wood, stone, grain } = applyResourceTick(kingdom, cfg, userRow?.characterClass ?? null, resMap, poiBonus)
 
     // Deduct ballistic from units table
     await upsertUnit(kingdom.id, 'ballistic', Math.max(0, (kingdom.ballistic ?? 0) - ballisticCount))
@@ -373,7 +375,8 @@ export default async function handler(req, res) {
   const returnTime  = arrivalTime + holdingTimeSecs + travelSecs
 
   // ── Deduct units and resources atomically ────────────────────────────────
-  const { wood, stone, grain } = applyResourceTick(kingdom, cfg, userRow?.characterClass ?? null, resMap)
+  const poiBonusOrigin = await getPoiBonusForKingdom(kingdom.id)
+  const { wood, stone, grain } = applyResourceTick(kingdom, cfg, userRow?.characterClass ?? null, resMap, poiBonusOrigin)
 
   // Validate: player needs enough grain for cargo + fuel
   const totalGrainNeeded = grainLoad + grainConsumption
