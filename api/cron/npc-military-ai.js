@@ -387,24 +387,32 @@ async function colonizeAI(npcKingdom, allKingdoms, colonizeActiveSet, colonizePe
   if ((npcKingdom.colonist ?? 0) === 0) return false
   if (colonizeActiveSet.has(npcKingdom.userId)) return false
 
-  // Limit: max 2 kingdoms per NPC user
-  const ownedCount = allKingdoms.filter(k => k.userId === npcKingdom.userId).length
-  if (ownedCount >= 2) return false
+  // Cap por cartography — mismas reglas que jugadores: 1 + floor(carto/2).
+  // carto 3 → 2 kingdoms, carto 6 → 4, carto 10 → 6.
+  const cartography = researchRow.cartography ?? 0
+  const maxKingdoms = Math.floor(cartography / 2) + 1
+  const userKingdoms = allKingdoms.filter(k => k.userId === npcKingdom.userId)
+  if (userKingdoms.length >= maxKingdoms) return false
 
-  // Find nearest empty slot — same region first, then adjacent
-  const { realm, region } = npcKingdom
+  // Adyacencia territorial: candidatos = región propia y vecinas (±1) de cualquier
+  // colonia del NPC, mismo realm. Inter-realm vendrá en sprint posterior cuando
+  // los NPCs construyan colonias en slots de puerto (1-2 / 14-15).
   const takenSlots = new Set(allKingdoms.map(k => `${k.realm}:${k.region}:${k.slot}`))
+  const candidateRegions = new Set()
+  for (const k of userKingdoms) {
+    candidateRegions.add(`${k.realm}:${k.region}`)
+    if (k.region - 1 >= 1)                  candidateRegions.add(`${k.realm}:${k.region - 1}`)
+    if (k.region + 1 <= UNIVERSE.maxRegion) candidateRegions.add(`${k.realm}:${k.region + 1}`)
+  }
 
   let targetCoord = null
-  outer: for (let offset = 0; offset <= 3 && !targetCoord; offset++) {
-    for (const r of [...new Set([region, region + offset, region - offset])]) {
-      if (r < 1 || r > UNIVERSE.maxRegion) continue
-      for (let slot = 1; slot <= UNIVERSE.maxSlot; slot++) {
-        const key = `${realm}:${r}:${slot}`
-        if (!takenSlots.has(key) && !colonizePendingSlots.has(key)) {
-          targetCoord = { realm, region: r, slot }
-          break outer
-        }
+  outer: for (const regionKey of candidateRegions) {
+    const [tRealm, tRegion] = regionKey.split(':').map(Number)
+    for (let slot = 1; slot <= UNIVERSE.maxSlot; slot++) {
+      const key = `${tRealm}:${tRegion}:${slot}`
+      if (!takenSlots.has(key) && !colonizePendingSlots.has(key)) {
+        targetCoord = { realm: tRealm, region: tRegion, slot }
+        break outer
       }
     }
   }

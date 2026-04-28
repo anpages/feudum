@@ -941,14 +941,19 @@ async function growNpc(kingdom, cfg, now, researchMap, debrisRegions, colonizeAc
     return savingResult
   }
 
-  // Nivel 1.5: colonización — si tiene capacidad y ningún colonizador activo
+  // Nivel 1.5: colonización — entrenar colonist si hay capacidad para más colonias.
+  // Cap por cartography (mismo que jugadores): 1 + floor(carto / 2).
+  // carto 3 → 2 kingdoms, carto 6 → 4, carto 10 → 6.
+  const cartographyLv      = researchMap.cartography ?? 0
+  const maxKingdomsByCarto = Math.floor(cartographyLv / 2) + 1
+  const ownedKingdomCount  = kingdomCountByUser[kingdom.userId] ?? 1
   if (
     ageHours >= 168 &&
-    (kingdom.barracks      ?? 0) >= 4 &&
-    (researchMap.cartography ?? 0) >= 3 &&
-    (kingdom.colonist      ?? 0) === 0 &&
+    (kingdom.barracks ?? 0) >= 4 &&
+    cartographyLv >= 3 &&
+    (kingdom.colonist ?? 0) === 0 &&
     !colonizeActiveUsers.has(kingdom.userId) &&
-    (kingdomCountByUser[kingdom.userId] ?? 1) < 2
+    ownedKingdomCount < maxKingdomsByCarto
   ) {
     const r = await attemptTrainTroops(kingdom, personality, cls, researchMap, cfg, now, ['colonist'], true)
     if (r.action === 'trained') return r
