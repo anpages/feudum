@@ -95,7 +95,6 @@ function SeasonSummaryPage({ isAdmin }: { isAdmin: boolean }) {
   const conditionLabel: Record<string, string> = {
     admin_forced: 'fin administrativo',
     points:       'puntos',
-    boss_killed:  'jefe derrotado',
   }
 
   return (
