@@ -435,11 +435,12 @@ async function attemptTrainTroops(kingdom, personality, cls, researchMap, cfg, n
 
     if (blockedByBuilding) continue
 
-    // Research missing — record it and continue loop so lower-tier units still train.
-    // Research is triggered after the training batch is committed.
+    // Research missing — record it and stop scanning. We must NOT skip to paladin/warlord
+    // while knight is research-blocked; that is exactly what produced out-of-order armies.
+    // Units accumulated in patch before this point are still committed.
     if (missingResearch) {
       if (!pendingResearchId) pendingResearchId = missingResearch
-      continue
+      break
     }
 
     const cost = UNIT_COSTS[unitId]
@@ -804,6 +805,17 @@ async function growNpc(kingdom, cfg, now, researchMap, debrisRegions, colonizeAc
     if ((kingdom[type] ?? 0) > cap) {
       await upsertUnit(kingdom.id, type, cap)
       kingdom[type] = cap
+    }
+  }
+  // Purgar unidades entrenadas sin cumplir requisitos de edificio (artefactos del bug continue→break)
+  for (const unitDef of ALL_UNITS) {
+    if ((kingdom[unitDef.id] ?? 0) === 0) continue
+    const buildingReqMissing = (unitDef.requires ?? []).some(
+      req => req.type === 'building' && (kingdom[req.id] ?? 0) < req.level
+    )
+    if (buildingReqMissing) {
+      await upsertUnit(kingdom.id, unitDef.id, 0)
+      kingdom[unitDef.id] = 0
     }
   }
 
