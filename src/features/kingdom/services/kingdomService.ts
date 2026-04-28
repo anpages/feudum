@@ -87,12 +87,15 @@ export const kingdomService = {
 
     return {
       ...enriched,
-      characterClass:  ctx.characterClass,
-      woodProduction:  eff.wood,
-      stoneProduction: eff.stone,
-      grainProduction: eff.grain,
-      energyProduced:  eff.energyProd,
-      energyConsumed:  eff.energyCons,
+      characterClass:      ctx.characterClass,
+      woodProduction:      eff.wood,
+      stoneProduction:     eff.stone,
+      grainProduction:     eff.grain,
+      rawWoodProduction:   enriched.woodProduction,
+      rawStoneProduction:  enriched.stoneProduction,
+      rawGrainProduction:  enriched.grainProduction,
+      energyProduced:      eff.energyProd,
+      energyConsumed:      eff.energyCons,
     } as unknown as Kingdom
   },
 

@@ -56,18 +56,18 @@ export function ResourceSettingsPage() {
   )
 
   // Live preview using draft percents.
-  // kingdom.woodProduction is EFFECTIVE (speed+energy+class already applied) so we rebuild
-  // raw rates from building levels before passing them to effectiveProduction.
-  // characterClass must be passed so the class bonus (e.g. ×1.25 for Collector) is applied
-  // consistently in both preview and current — otherwise the diff is wrong.
+  // kingdom.woodProduction is EFFECTIVE (all factors applied), so we restore the raw rates
+  // that the server stored (rawWood/Stone/GrainProduction) before calling effectiveProduction.
+  // This avoids re-deriving tempAvg or slot bonuses on the client, which would diverge from
+  // the values actually used when the building was leveled.
   const preview = useMemo(() => {
     if (!kingdom) return null
     const k = kingdom as Record<string, unknown>
     const rawKingdom = {
       ...kingdom,
-      woodProduction:  rawWoodProd ((k.sawmill   as number) ?? 0),
-      stoneProduction: rawStoneProd((k.quarry    as number) ?? 0),
-      grainProduction: rawGrainProd((k.grainFarm as number) ?? 0, (k.tempAvg as number) ?? 0),
+      woodProduction:  (k.rawWoodProduction  as number) ?? rawWoodProd ((k.sawmill   as number) ?? 0),
+      stoneProduction: (k.rawStoneProduction as number) ?? rawStoneProd((k.quarry    as number) ?? 0),
+      grainProduction: (k.rawGrainProduction as number) ?? rawGrainProd((k.grainFarm as number) ?? 0, 0),
     }
     const characterClass = (k.characterClass as string | null) ?? null
     return effectiveProduction({ ...rawKingdom, ...draft }, resMap, cfg, characterClass)

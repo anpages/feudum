@@ -807,18 +807,6 @@ async function growNpc(kingdom, cfg, now, researchMap, debrisRegions, colonizeAc
       kingdom[type] = cap
     }
   }
-  // Purgar unidades entrenadas sin cumplir requisitos de edificio (artefactos del bug continue→break)
-  for (const unitDef of ALL_UNITS) {
-    if ((kingdom[unitDef.id] ?? 0) === 0) continue
-    const buildingReqMissing = (unitDef.requires ?? []).some(
-      req => req.type === 'building' && (kingdom[req.id] ?? 0) < req.level
-    )
-    if (buildingReqMissing) {
-      await upsertUnit(kingdom.id, unitDef.id, 0)
-      kingdom[unitDef.id] = 0
-    }
-  }
-
   // Nivel -1: fleetsave defensivo
   const incomingAttack = await getIncomingAttack(kingdom, now)
   if (incomingAttack) {
