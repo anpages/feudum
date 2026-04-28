@@ -71,6 +71,26 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: `Las expediciones deben dirigirse al slot ${expeditionSlot} (Tierras Ignotas)` })
   }
 
+  // Las expediciones requieren presencia previa en la región target — coherente con
+  // la lógica territorial: solo exploras lo que linda con tus dominios. Sin colonia
+  // en la región, las "Tierras Ignotas" están demasiado lejos.
+  if (isExpedition) {
+    const colonyInRegion = await db
+      .select({ id: kingdoms.id })
+      .from(kingdoms)
+      .where(and(
+        eq(kingdoms.userId, userId),
+        eq(kingdoms.realm,  tRealm),
+        eq(kingdoms.region, tRegion),
+      ))
+      .limit(1)
+    if (colonyInRegion.length === 0) {
+      return res.status(400).json({
+        error: `Necesitas una colonia en R${tRealm}:${tRegion} para expedicionar allí`,
+      })
+    }
+  }
+
   const kingdom = await enrichKingdom(kingdomRow, { withUnits: true })
 
   // ── Fleet slot limit (Logistics research) — missiles don't use slots ──────

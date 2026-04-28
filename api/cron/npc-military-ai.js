@@ -296,7 +296,7 @@ async function scavengeAI(npcKingdom, allDebris, now, cfg, probability = 0.40) {
 
 // ── Expedition AI ─────────────────────────────────────────────────────────────
 
-async function expeditionAI(npcKingdom, researchRow, depletionMap, now, cfg) {
+async function expeditionAI(npcKingdom, allNpcKingdoms, researchRow, depletionMap, now, cfg) {
   const cls         = npcClass(npcKingdom)
   const personality = npcPersonality(npcKingdom)
   const probability = cls === 'discoverer' ? 0.35 : personality === 'balanced' ? 0.12 : 0.05
@@ -314,10 +314,19 @@ async function expeditionAI(npcKingdom, researchRow, depletionMap, now, cfg) {
   )).limit(1)
   if (existing.length > 0) return false
 
+  // Solo expedicionar a regiones donde el NPC tenga colonia (misma regla que jugadores).
+  // Sin presencia en la región, las "Tierras Ignotas" están demasiado lejos.
   const REALM = npcKingdom.realm
+  const ownedRegions = new Set(
+    allNpcKingdoms
+      .filter(k => k.userId === npcKingdom.userId && k.realm === REALM)
+      .map(k => k.region)
+  )
+  if (ownedRegions.size === 0) return false  // defensivo — al menos su propia región debería estar
+
   let bestRegion = npcKingdom.region
   let bestFactor = -1
-  for (let r = 1; r <= UNIVERSE.maxRegion; r++) {
+  for (const r of ownedRegions) {
     const count  = depletionMap[`${REALM}:${r}`] ?? 0
     const factor = depletionFactor(count)
     if (
@@ -781,8 +790,8 @@ export default async function handler(req, res) {
       const didColonize = await colonizeAI(kingdom, allKingdoms, colonizeActiveSet, colonizePendingSlots, researchRow, now, cfg)
       if (didColonize) colonized++
 
-      // 5. Expedición
-      const didExpedition = await expeditionAI(kingdom, researchRow, depletionMap, now, cfg)
+      // 5. Expedición — solo a regiones donde el NPC tenga colonia
+      const didExpedition = await expeditionAI(kingdom, allNpcKingdoms, researchRow, depletionMap, now, cfg)
       if (didExpedition) expeditioned++
 
       // 6. Transporte intra-imperio — equilibrar recursos entre colonias propias
