@@ -448,7 +448,6 @@ export default async function handler(req, res) {
   const allNpcKingdoms = npcRows.map(({ k, ns }) => ({
     ...k,
     ...(unitsByKingdom[k.id] ?? {}),
-    isBoss:    ns?.isBoss    ?? false,
     npcLevel:  ns?.npcLevel  ?? 1,
     nextCheck: ns?.nextCheck ?? null,
   }))

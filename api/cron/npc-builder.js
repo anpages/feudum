@@ -334,10 +334,9 @@ async function attemptBuild(kingdom, buildingId, cfg, now, reason, researchMap =
   const effect   = applyBuildingEffect(buildingId, nextLv, kingdom)
 
   const cls         = npcClass(kingdom)
-  const isBoss      = kingdom.isBoss ?? false
   const speed       = parseFloat(cfg.economy_speed ?? ECONOMY_SPEED)
   const rawTime     = buildTime(cost.wood, cost.stone, nextLv, kingdom.workshop ?? 0, kingdom.engineersGuild ?? 0, speed)
-  const classBonus  = isBoss ? 0.5 : (cls === 'discoverer' ? 0.75 : 1.0)
+  const classBonus  = cls === 'discoverer' ? 0.75 : 1.0
   const npcTime     = Math.max(1, Math.floor(rawTime * NPC_TIME_FACTOR * classBonus))
 
   // Deduct resources in kingdoms table (always — cost is paid upfront)
@@ -796,33 +795,9 @@ async function attemptResearchProactive(kingdom, personality, researchMap, cfg, 
   return { action: 'no_research' }
 }
 
-// ── Boss growth ───────────────────────────────────────────────────────────────
-
-async function growNpcBoss(kingdom, cfg, now, researchMap) {
-  if (kingdom.currentTask) {
-    if (now >= kingdom.currentTask.finishAt) {
-      await completeDeferredTask(kingdom, now)
-    } else {
-      const minsLeft = Math.ceil((kingdom.currentTask.finishAt - now) / 60)
-      const desc = kingdom.currentTask.type === 'building'
-        ? `Ocupado: construyendo ${kingdom.currentTask.targetId} lv${kingdom.currentTask.targetLevel} (${minsLeft} min)`
-        : `Ocupado: entrenando ${kingdom.currentTask.targetId} ×${kingdom.currentTask.quantity} (${minsLeft} min)`
-      await setDecision(kingdom, desc)
-      return { action: 'waiting' }
-    }
-  } else if (now < (kingdom.buildAvailableAt ?? 0)) {
-    return { action: 'waiting' }
-  }
-  const result = await attemptTrainTroops(kingdom, 'military', 'general', researchMap, cfg, now)
-  if (result.action === 'trained') return result
-  return await attemptBuildWeighted(kingdom, 'military', cfg, now, researchMap)
-}
-
 // ── Cascade state machine ─────────────────────────────────────────────────────
 
 async function growNpc(kingdom, cfg, now, researchMap, debrisRegions, colonizeActiveUsers, kingdomCountByUser) {
-  if (kingdom.isBoss) return await growNpcBoss(kingdom, cfg, now, researchMap)
-
   const personality = npcPersonality(kingdom)
   const cls         = npcClass(kingdom)
 
@@ -1091,7 +1066,6 @@ export default async function handler(req, res) {
     ...(buildingsByKingdom[k.id] ?? {}),
     ...(unitsByKingdom[k.id]    ?? {}),
     // NPC AI state fields (from npc_state, using new column names):
-    isBoss:              ns?.isBoss              ?? false,
     npcLevel:            ns?.npcLevel            ?? 1,
     buildAvailableAt:    ns?.buildAvailableAt    ?? null,
     nextCheck:           ns?.nextCheck           ?? null,

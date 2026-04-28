@@ -99,7 +99,7 @@ export interface NpcProfileKingdom {
   id: string
   name: string
   realm: number; region: number; slot: number
-  isNpc: boolean; isBoss: boolean; npcLevel: number
+  isNpc: boolean; npcLevel: number
   wood: number; woodProduction: number; woodCapacity: number
   stone: number; stoneProduction: number; stoneCapacity: number
   grain: number; grainProduction: number; grainCapacity: number

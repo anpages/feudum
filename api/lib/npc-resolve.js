@@ -50,7 +50,6 @@ export async function resolveIncomingNpcAttacks(playerKingdoms, now) {
       const npcKingdom = {
         ...npcRow.k,
         isNpc:    true,
-        isBoss:   npcRow.ns?.isBoss   ?? false,
         npcLevel: npcRow.ns?.npcLevel ?? 1,
       }
 

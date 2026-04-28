@@ -11,7 +11,6 @@ export async function checkAndUnlock(userId) {
     allResearchRows,
     battleMsgs,
     spyMsgs,
-    seasonMsgs,
     missionCounts,
     alreadyUnlocked,
   ] = await Promise.all([
@@ -21,8 +20,6 @@ export async function checkAndUnlock(userId) {
       .where(and(eq(messages.userId, userId), eq(messages.type, 'battle'))),
     db.select({ id: messages.id }).from(messages)
       .where(and(eq(messages.userId, userId), eq(messages.type, 'spy'))),
-    db.select({ data: messages.data }).from(messages)
-      .where(and(eq(messages.userId, userId), eq(messages.type, 'season'))),
     db.select({ missionType: armyMissions.missionType })
       .from(armyMissions)
       .where(eq(armyMissions.userId, userId)),
@@ -58,11 +55,6 @@ export async function checkAndUnlock(userId) {
     }
   }
 
-  // Season stats
-  const bossKilled   = seasonMsgs.some(m => !!(m.data?.seasonVictory))
-  const bossSpy      = seasonMsgs.some(m => !!(m.data?.bossSpied))
-  const bossAttacked = seasonMsgs.some(m => !!(m.data?.bossAttacked))
-
   // Mission counts by type
   const missionsByType = {}
   for (const { missionType } of missionCounts) {
@@ -77,9 +69,6 @@ export async function checkAndUnlock(userId) {
     bigLoot,
     spyCount:        spyMsgs.length,
     colonyCount:     Math.max(0, allKingdoms.length - 1),
-    bossKilled,
-    bossSpy,
-    bossAttacked,
     attackCount:     missionsByType['attack']     ?? 0,
     transportCount:  missionsByType['transport']  ?? 0,
     expeditionCount: missionsByType['expedition'] ?? 0,

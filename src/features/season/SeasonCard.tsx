@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { GiDragonHead, GiLaurelCrown, GiSwordman } from 'react-icons/gi'
+import { GiLaurelCrown, GiCastle } from 'react-icons/gi'
 import { Timer, Trophy } from 'lucide-react'
 import { useSeason } from './useSeason'
 
@@ -23,34 +23,22 @@ function formatTimeLeft(seconds: number): string {
   return `${minutes}m`
 }
 
-function difficultyStars(d: number): string {
-  const n = Math.min(5, Math.max(1, Math.round(d)))
-  return '★'.repeat(n) + '☆'.repeat(5 - n)
-}
-
-function formatArmy(n: number): string {
-  if (n >= 1000) return `${(n / 1000).toFixed(1)}k`
-  return String(n)
-}
-
 export function SeasonCard() {
   const { data: season } = useSeason()
   const timeLeft = useCountdown(season?.seasonEnd ?? 0)
 
   if (!season?.seasonNumber) return null
 
-  const isEnded  = season.seasonState === 'ended'
-  const boss     = season.boss
+  const isEnded = season.seasonState === 'ended'
 
   return (
     <div className={`rounded-lg border anim-fade-up ${
-      isEnded ? 'bg-gold/5 border-gold/15' : 'bg-crimson/5 border-crimson/15'
+      isEnded ? 'bg-gold/5 border-gold/15' : 'bg-gold/3 border-gold/10'
     }`}>
-      {/* Row 1 — headline */}
       <div className="flex items-center gap-2.5 px-4 py-2">
         {isEnded
           ? <GiLaurelCrown size={14} className="text-gold shrink-0" />
-          : <GiDragonHead  size={14} className="text-crimson-light shrink-0" />
+          : <GiCastle      size={14} className="text-gold/70 shrink-0" />
         }
         <span className="font-ui text-xs font-semibold text-parchment-dim">
           Temporada {season.seasonNumber} — {isEnded ? 'Finalizada' : 'En curso'}
@@ -69,24 +57,6 @@ export function SeasonCard() {
           </div>
         )}
       </div>
-
-      {/* Row 2 — boss info (only while active) */}
-      {!isEnded && boss && (
-        <div className="flex items-center gap-3 px-4 pb-2.5 flex-wrap">
-          <span className="font-ui text-xs font-semibold text-crimson-light/80 truncate max-w-[220px]">
-            {boss.name}
-          </span>
-          <span className="font-ui text-xs text-gold/70 tracking-wider" title={`Dificultad ${boss.difficulty}`}>
-            {difficultyStars(boss.difficulty)}
-          </span>
-          {boss.armySize > 0 && (
-            <span className="flex items-center gap-1 font-ui text-xs text-parchment-dim/60">
-              <GiSwordman size={11} />
-              {formatArmy(boss.armySize)} tropas
-            </span>
-          )}
-        </div>
-      )}
     </div>
   )
 }

@@ -66,7 +66,6 @@ export default async function handler(req, res) {
         isPlayer:  k.userId === userId,
         isNpc,
         npcLevel:  isNpc ? (ns?.npcLevel ?? 1) : undefined,
-        isBoss:    isNpc ? (ns?.isBoss ?? false) : undefined,
         points,
         isEmpty:   false,
         debris,

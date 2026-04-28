@@ -106,17 +106,13 @@ export default async function handler(req, res) {
   }
 
   // Enrich kingdoms — merge buildings, units, research, and npcState
-  const allRows = npcRows.map(({ k, ns }) => ({
+  const npcs = npcRows.map(({ k, ns }) => ({
     ...k,
     ...(buildingsByKingdom[k.id] ?? {}),
     ...(unitsByKingdom[k.id] ?? {}),
     _research: researchByUser[k.userId] ?? {},
-    isBoss:   ns?.isBoss   ?? false,
     npcLevel: ns?.npcLevel ?? 1,
   }))
-
-  const npcs = allRows.filter(r => !r.isBoss)
-  const boss = allRows.filter(r => r.isBoss)
 
   // Load missions for all NPC users
   const missions = npcUserIds.length
@@ -163,7 +159,6 @@ export default async function handler(req, res) {
 
   const aggregate = {
     total:   npcs.length,
-    bosses:  boss.length,
     withArmy,
     withMerchant,
     withCaravan,

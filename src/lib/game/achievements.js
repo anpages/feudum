@@ -104,21 +104,12 @@ export const ACHIEVEMENTS = [
   { id: 'first_colony',    cat: 'expansion',       order:  5, name: 'Colonizador',                 icon: '🌍', reward: { wood: 4000,    stone: 2500,    grain: 1500   }, desc: 'Establece tu primera colonia. Los límites de tu reino se han expandido.' },
   { id: 'colonies_2',      cat: 'expansion',       order:  6, name: 'Señor de Tierras',            icon: '⛵', reward: { wood: 6000,    stone: 4000,    grain: 3000   }, desc: 'Controla 2 colonias (3 reinos en total). Tu dominio se extiende por el mapa.' },
   { id: 'first_deploy',    cat: 'expansion',       order:  7, name: 'Refuerzos',                   icon: '🚩', reward: { wood: 800,     stone: 600,     grain: 300    }, desc: 'Despliega tropas a una colonia. El despliegue es una orden sin retorno.' },
-
-  // ═══════════════════════════════════════════════════════════════
-  // Capítulo 8 — Temporada
-  // Guía: el camino final hacia la victoria de temporada
-  // ═══════════════════════════════════════════════════════════════
-  { id: 'boss_spy',        cat: 'temporada',       order:  1, name: 'Reconocimiento del Jefe',     icon: '🔭', reward: { wood: 5000,    stone: 4000,    grain: 2000   }, desc: 'Espía al Jefe de Temporada. Necesitas conocer su ejército antes de atacar.' },
-  { id: 'boss_attacked',   cat: 'temporada',       order:  2, name: 'El Gran Desafío',             icon: '⚡', reward: { wood: 15000,   stone: 12000,   grain: 5000   }, desc: 'Ataca al Jefe de Temporada. La batalla definitiva ha comenzado.' },
-  { id: 'season_champion', cat: 'temporada',       order:  3, name: 'Campeón de la Temporada',     icon: '🏅', reward: { wood: 80000,   stone: 60000,   grain: 25000  }, desc: 'Derrota al Jefe Caballero Dragón. El universo entero canta tu nombre.' },
 ]
 
 export const ACH_BY_ID = Object.fromEntries(ACHIEVEMENTS.map(a => [a.id, a]))
 
 // ── Pure condition checker ────────────────────────────────────────────────────
 // data = { k, res, winCount, loot10k, bigLoot, spyCount, colonyCount,
-//          bossKilled, bossSpy, bossAttacked,
 //          attackCount, transportCount, expeditionCount, scavengeCount,
 //          missileCount, deployCount }
 export function checkConditions(data) {
@@ -126,7 +117,6 @@ export function checkConditions(data) {
     k, res,
     winCount, loot10k, bigLoot,
     spyCount, colonyCount,
-    bossKilled, bossSpy, bossAttacked,
     attackCount, transportCount, expeditionCount, scavengeCount,
     missileCount, deployCount,
   } = data
@@ -223,11 +213,6 @@ export function checkConditions(data) {
   check('first_colony',    colonyCount     >= 1)
   check('colonies_2',      colonyCount     >= 2)
   check('first_deploy',    deployCount     >= 1)
-
-  // ── Cap 8: Temporada ───────────────────────────────────────────────────────
-  check('boss_spy',        bossSpy)
-  check('boss_attacked',   bossAttacked)
-  check('season_champion', bossKilled)
 
   return unlocked
 }

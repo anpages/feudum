@@ -5,7 +5,6 @@ import {
   calculateDebris, repairDefenses, calcCargoCapacity,
 } from '../battle.js'
 import { UNIT_KEYS, DEFENSE_KEYS, extractUnits, extractMissionUnits } from './keys.js'
-import { setSetting, getStringSetting } from '../settings.js'
 import { sendPush } from '../push.js'
 import { insertBattleLog, sumLosses } from '../battle_log.js'
 import { getResearchMap, enrichKingdom, batchUpsertUnits } from '../db-helpers.js'
@@ -97,29 +96,6 @@ export async function processAttack(mission, myKingdom, now, targetKingdom) {
       woodLoad: loot.wood, stoneLoad: loot.stone, grainLoad: loot.grain,
       result: JSON.stringify(battleResult), updatedAt: new Date(),
     }).where(eq(armyMissions.id, mission.id))
-
-    // ── Season victory: player defeated the boss ───────────────────────────
-    if (outcome === 'victory' && targetKingdom?.isBoss) {
-      const seasonState = await getStringSetting('season_state')
-      if (seasonState === 'active') {
-        await Promise.all([
-          setSetting('season_state',              'ended'),
-          setSetting('season_end',                Math.floor(Date.now() / 1000)),
-          setSetting('season_winner_user_id',     String(myKingdom.userId)),
-          setSetting('season_winner_condition',   'boss_defeated'),
-        ])
-        await db.insert(messages).values({
-          userId: myKingdom.userId, type: 'season',
-          subject: '🏆 ¡Victoria de Temporada! — El Jefe Final ha caído',
-          data: { seasonVictory: true, condition: 'boss_defeated', bossName: targetName },
-        })
-        sendPush(myKingdom.userId, {
-          title: '🏆 ¡Campeón de Temporada!',
-          body: `Has derrotado a ${targetName}. ¡La temporada ha terminado!`,
-          url: '/messages',
-        }).catch(() => {})
-      }
-    }
 
     insertBattleLog({
       attackerKingdomId: myKingdom.id,      attackerName: myKingdom.name, attackerIsNpc: false,

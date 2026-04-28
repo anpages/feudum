@@ -43,7 +43,6 @@ export default async function handler(req, res) {
       region:    k.region,
       slot:      k.slot,
       isNpc:     u.role === 'npc',
-      isBoss:    ns?.isBoss   ?? false,
       npcLevel:  ns?.npcLevel ?? 1,
       points:    breakdown[category],
       breakdown,

@@ -77,16 +77,14 @@ export default async function handler(req, res) {
     unitsByKingdom[u.kingdomId][u.type] = u.quantity
   }
 
-  const allNpcs = npcRows
-    .filter(({ ns }) => !(ns?.isBoss))
-    .map(({ k, ns }) => ({
-      ...k,
-      ...(buildingsByKingdom[k.id] ?? {}),
-      ...(unitsByKingdom[k.id]    ?? {}),
-      lastDecision: ns?.lastDecision ?? null,
-    }))
+  const allNpcs = npcRows.map(({ k, ns }) => ({
+    ...k,
+    ...(buildingsByKingdom[k.id] ?? {}),
+    ...(unitsByKingdom[k.id]    ?? {}),
+    lastDecision: ns?.lastDecision ?? null,
+  }))
 
-  if (allNpcs.length === 0) return res.json({ ok: true, skipped: 'no_regular_npcs' })
+  if (allNpcs.length === 0) return res.json({ ok: true, skipped: 'no_npcs' })
 
   // ── Métricas ───────────────────────────────────────────────────────────────
   const savingCount        = allNpcs.filter(n => (n.lastDecision ?? '').toLowerCase().startsWith('ahorrando')).length

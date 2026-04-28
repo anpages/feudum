@@ -74,7 +74,6 @@ async function sendSpyMission(npcKingdom, target, spyMap, universeSpeed, researc
 // ── Attack AI ─────────────────────────────────────────────────────────────────
 
 async function attackAI(npcKingdom, researchRow, allKingdoms, bashMap, spyMap, now, cfg) {
-  if (npcKingdom.isBoss) return false
   if (NPC_AGGRESSION === 0) return false
 
   const personality = npcPersonality(npcKingdom)
@@ -105,7 +104,6 @@ async function attackAI(npcKingdom, researchRow, allKingdoms, bashMap, spyMap, n
   const radius   = 1 + (cls === 'discoverer' ? 1 : 0)
   const sameRegion = allKingdoms.filter(
     p => p.id !== npcKingdom.id &&
-         !p.isBoss &&
          p.realm === npcKingdom.realm &&
          p.region === npcKingdom.region
   )
@@ -113,7 +111,6 @@ async function attackAI(npcKingdom, researchRow, allKingdoms, bashMap, spyMap, n
     ? sameRegion
     : allKingdoms.filter(
         p => p.id !== npcKingdom.id &&
-             !p.isBoss &&
              p.realm === npcKingdom.realm &&
              Math.abs(p.region - npcKingdom.region) <= radius
       )
@@ -300,7 +297,6 @@ async function scavengeAI(npcKingdom, allDebris, now, cfg, probability = 0.40) {
 // ── Expedition AI ─────────────────────────────────────────────────────────────
 
 async function expeditionAI(npcKingdom, researchRow, depletionMap, now, cfg) {
-  if (npcKingdom.isBoss) return false
   const cls         = npcClass(npcKingdom)
   const personality = npcPersonality(npcKingdom)
   const probability = cls === 'discoverer' ? 0.35 : personality === 'balanced' ? 0.12 : 0.05
@@ -551,7 +547,6 @@ export default async function handler(req, res) {
     ...k,
     ...(buildingsByKingdom[k.id] ?? {}),
     ...(unitsByKingdom[k.id] ?? {}),
-    isBoss:              ns?.isBoss              ?? false,
     npcLevel:            ns?.npcLevel            ?? 1,
     buildAvailableAt:    ns?.buildAvailableAt     ?? null,
     nextCheck:           ns?.nextCheck            ?? null,
@@ -570,12 +565,12 @@ export default async function handler(req, res) {
   const allKingdoms = [
     ...playerRows.map(({ k }) => ({
       id: k.id, userId: k.userId, name: k.name,
-      isNpc: false, isBoss: false,
+      isNpc: false,
       realm: k.realm, region: k.region, slot: k.slot,
     })),
     ...allNpcKingdoms.map(k => ({
       id: k.id, userId: k.userId, name: k.name,
-      isNpc: true, isBoss: k.isBoss,
+      isNpc: true,
       realm: k.realm, region: k.region, slot: k.slot,
     })),
   ]

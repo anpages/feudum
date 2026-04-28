@@ -26,7 +26,7 @@ export async function enrichKingdom(kingdom, opts = {}) {
   return { ...kingdom, ...bMap, ...uMap }
 }
 
-// Fetch kingdom at given coords enriched with isNpc/isBoss/npcLevel from joins.
+// Fetch kingdom at given coords enriched with isNpc/npcLevel from joins.
 // Returns null if no kingdom at those coords.
 export async function getKingdomAt(realm, region, slot) {
   const rows = await db
@@ -49,7 +49,6 @@ export async function getKingdomAt(realm, region, slot) {
   return {
     ...k,
     isNpc:    userRole === 'npc',
-    isBoss:   ns?.isBoss   ?? false,
     npcLevel: ns?.npcLevel ?? 1,
   }
 }
@@ -146,7 +145,7 @@ export async function getNpcState(userId) {
   const [row] = await db.select().from(npcState)
     .where(eq(npcState.userId, userId)).limit(1)
   return row ?? {
-    isBoss: false, npcLevel: 1, buildAvailableAt: null,
+    npcLevel: 1, buildAvailableAt: null,
     lastBuildAt: 0, lastAttackAt: 0, nextCheck: null,
     lastDecision: null, currentResearch: null, researchAvailableAt: null,
   }

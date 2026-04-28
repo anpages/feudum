@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Loader2, Save, Crown, Skull, Swords } from 'lucide-react'
+import { Loader2, Save, Crown, Skull } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
@@ -70,35 +70,11 @@ function SeasonSection() {
           )}
         </div>
 
-        {season?.active && season.boss && (
-          <div className="bg-obsidian/60 rounded-lg p-3 space-y-1.5 border border-crimson/20">
-            <div className="flex items-center gap-2">
-              <Swords size={13} className="text-crimson-light" />
-              <span className="font-ui text-xs font-semibold text-crimson-light">Jefe Final</span>
-            </div>
-            <p className="font-body text-sm text-parchment">{season.boss.name}</p>
-            <p className="font-body text-xs text-ink-muted/70 italic">{season.boss.lore}</p>
-            <div className="flex flex-wrap gap-4 mt-2">
-              <div>
-                <span className="font-ui text-[0.6rem] text-ink-muted/50 uppercase tracking-wide">Dificultad</span>
-                <p className="font-ui text-xs tabular-nums text-gold">{season.boss.difficulty.toFixed(2)}×</p>
-              </div>
-              {season.boss.kingdom && (
-                <div>
-                  <span className="font-ui text-[0.6rem] text-ink-muted/50 uppercase tracking-wide">Posición</span>
-                  <p className="font-ui text-xs tabular-nums text-ink-mid">
-                    R{season.boss.kingdom.realm}·{season.boss.kingdom.region}·{season.boss.kingdom.slot}
-                  </p>
-                </div>
-              )}
-              <div>
-                <span className="font-ui text-[0.6rem] text-ink-muted/50 uppercase tracking-wide">Caballeros Dragón</span>
-                <p className="font-ui text-xs tabular-nums text-crimson-light">{season.boss.kingdom?.dragonKnight ?? 0}</p>
-              </div>
-              <div>
-                <span className="font-ui text-[0.6rem] text-ink-muted/50 uppercase tracking-wide">Tiempo restante</span>
-                <p className="font-ui text-xs tabular-nums text-ink-mid">{formatDuration(timeLeft)}</p>
-              </div>
+        {season?.active && (
+          <div className="bg-obsidian/60 rounded-lg p-3 space-y-1.5 border border-gold/15">
+            <div>
+              <span className="font-ui text-[0.6rem] text-ink-muted/50 uppercase tracking-wide">Tiempo restante</span>
+              <p className="font-ui text-xs tabular-nums text-ink-mid">{formatDuration(timeLeft)}</p>
             </div>
           </div>
         )}

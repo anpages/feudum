@@ -361,7 +361,6 @@ export function KingdomProfile({
             <div>
               <div className="flex items-center gap-2 flex-wrap">
                 <h2 className="font-display text-xl text-gold-light">{kingdom.name}</h2>
-                {kingdom.isBoss && <span className="badge badge-crimson">🐉 Jefe</span>}
                 {kingdom.isNpc
                   ? <span className="badge badge-stone">NPC</span>
                   : <span className="badge badge-gold">Jugador</span>

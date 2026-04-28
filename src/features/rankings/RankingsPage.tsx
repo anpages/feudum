@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Trophy, Medal } from 'lucide-react'
-import { GiLaurelCrown, GiScrollQuill, GiAnvil, GiSpellBook, GiCrossedSwords, GiWheat, GiCastle, GiRobotGolem, GiDragonHead } from 'react-icons/gi'
+import { GiLaurelCrown, GiScrollQuill, GiAnvil, GiSpellBook, GiCrossedSwords, GiWheat, GiCastle, GiRobotGolem } from 'react-icons/gi'
 import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { useRankings, type RankingCategory, type RankingEntry } from '@/features/rankings/useRankings'
@@ -119,7 +119,7 @@ function PodiumCard({ entry, unit }: { entry: RankingEntry; unit: string }) {
           {entry.name}
         </p>
         <p className="font-body text-xs text-ink-muted/70">
-          {entry.isBoss ? '⚔ Jefe' : entry.isNpc ? `NPC Nv.${npcTier(entry)}` : `@${entry.username}`}
+          {entry.isNpc ? `NPC Nv.${npcTier(entry)}` : `@${entry.username}`}
         </p>
       </div>
       <div className="mt-1">
@@ -144,23 +144,20 @@ function RankRow({ entry, unit }: { entry: RankingEntry; unit: string }) {
       <span className="font-ui text-xs tabular-nums text-ink-muted/60 w-6 text-right shrink-0">
         {entry.rank}
       </span>
-      <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 ${entry.isBoss ? 'bg-crimson/15 border border-crimson/30' : entry.isNpc ? 'bg-parchment-warm border border-gold/15' : 'bg-gold/8 border border-gold/20'}`}>
-        {entry.isBoss
-          ? <GiDragonHead size={13} className="text-crimson-light" />
-          : entry.isNpc
-            ? <GiRobotGolem size={13} className="text-ink-muted/50" />
-            : <GiCastle size={13} className="text-gold-dim" />}
+      <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 ${entry.isNpc ? 'bg-parchment-warm border border-gold/15' : 'bg-gold/8 border border-gold/20'}`}>
+        {entry.isNpc
+          ? <GiRobotGolem size={13} className="text-ink-muted/50" />
+          : <GiCastle size={13} className="text-gold-dim" />}
       </div>
       <div className="flex-1 min-w-0">
         <p className="font-ui text-sm font-medium text-ink truncate">{entry.name}</p>
         <p className="font-body text-xs text-ink-muted/60 truncate">
-          {entry.isBoss ? '⚔ Jefe de temporada' : entry.isNpc ? `NPC Nv.${npcTier(entry)}` : `@${entry.username}`}
+          {entry.isNpc ? `NPC Nv.${npcTier(entry)}` : `@${entry.username}`}
           {' '}· R{entry.realm} · {entry.region} · {entry.slot}
         </p>
       </div>
       {entry.isMe && <Badge variant="gold" className="text-[0.6rem] shrink-0">Tú</Badge>}
-      {entry.isBoss && <Badge variant="crimson" className="text-[0.6rem] shrink-0">Jefe</Badge>}
-      {entry.isNpc && !entry.isBoss && <Badge variant="stone" className="text-[0.6rem] shrink-0">NPC</Badge>}
+      {entry.isNpc && <Badge variant="stone" className="text-[0.6rem] shrink-0">NPC</Badge>}
       <span className="font-ui text-sm font-semibold tabular-nums text-ink-mid shrink-0">
         {formatResource(entry.points)} <span className="text-ink-muted/50 text-xs">{unit}</span>
       </span>

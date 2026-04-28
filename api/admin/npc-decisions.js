@@ -30,7 +30,6 @@ export default async function handler(req, res) {
     lastDecision:        npcState.lastDecision,
     nextCheck:           npcState.nextCheck,
     npcLevel:            npcState.npcLevel,
-    isBoss:              npcState.isBoss,
     currentTask:         npcState.currentTask,
     currentResearch:     npcState.currentResearch,
     researchAvailableAt: npcState.researchAvailableAt,
@@ -43,7 +42,6 @@ export default async function handler(req, res) {
   const filterFn = FILTERS[filter]
 
   const decisions = rows
-    .filter(r => !r.isBoss)
     .map(r => ({
       id:                  r.id,
       name:                r.name,
@@ -65,12 +63,12 @@ export default async function handler(req, res) {
     .slice(0, limit)
 
   const totalByFilter = {
-    all:               rows.filter(r => !r.isBoss).length,
-    saving:            rows.filter(r => !r.isBoss && FILTERS.saving((r.lastDecision ?? '').toLowerCase())).length,
-    building:          rows.filter(r => !r.isBoss && FILTERS.building((r.lastDecision ?? '').toLowerCase())).length,
-    training:          rows.filter(r => !r.isBoss && FILTERS.training((r.lastDecision ?? '').toLowerCase())).length,
-    researching:       rows.filter(r => !r.isBoss && FILTERS.researching((r.lastDecision ?? '').toLowerCase())).length,
-    research_activity: rows.filter(r => !r.isBoss && FILTERS.research_activity((r.lastDecision ?? '').toLowerCase())).length,
+    all:               rows.length,
+    saving:            rows.filter(r => FILTERS.saving((r.lastDecision ?? '').toLowerCase())).length,
+    building:          rows.filter(r => FILTERS.building((r.lastDecision ?? '').toLowerCase())).length,
+    training:          rows.filter(r => FILTERS.training((r.lastDecision ?? '').toLowerCase())).length,
+    researching:       rows.filter(r => FILTERS.researching((r.lastDecision ?? '').toLowerCase())).length,
+    research_activity: rows.filter(r => FILTERS.research_activity((r.lastDecision ?? '').toLowerCase())).length,
   }
 
   return res.json({ decisions, totalByFilter, now })

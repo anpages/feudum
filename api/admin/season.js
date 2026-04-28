@@ -4,8 +4,8 @@
  * POST { action: "start_season" } → emergency manual start (cron handles normal flow)
  * POST { action: "end_season" }   → force-end current season
  */
-import { eq, ne } from 'drizzle-orm'
-import { db, kingdoms, npcState, users, battleLog, etherTransactions } from '../_db.js'
+import { ne } from 'drizzle-orm'
+import { db, users, battleLog, etherTransactions } from '../_db.js'
 import { getAdminUserId } from '../lib/admin.js'
 import { getSettings, setSetting } from '../lib/settings.js'
 import { startNewSeason } from '../lib/season.js'
@@ -17,23 +17,13 @@ export default async function handler(req, res) {
   // ── GET — season status ───────────────────────────────────────────────────
   if (req.method === 'GET') {
     const cfg = await getSettings()
-    const [bossKingdom] = await db.select({
-      id: kingdoms.id, name: kingdoms.name,
-      realm: kingdoms.realm, region: kingdoms.region, slot: kingdoms.slot,
-    }).from(kingdoms)
-      .innerJoin(npcState, eq(kingdoms.userId, npcState.userId))
-      .where(eq(npcState.isBoss, true))
-      .limit(1)
-
     return res.json({
       seasonNumber:          cfg.season_number           ?? null,
       seasonState:           cfg.season_state            ?? null,
       seasonStart:           cfg.season_start            ?? null,
       seasonEnd:             cfg.season_end              ?? null,
-      seasonBossSlug:        cfg.season_boss_slug        ?? null,
       seasonWinnerUserId:    cfg.season_winner_user_id   ?? null,
       seasonWinnerCondition: cfg.season_winner_condition ?? null,
-      boss: bossKingdom ?? null,
     })
   }
 

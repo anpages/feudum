@@ -17,7 +17,6 @@ export interface RankingEntry {
   region: number
   slot: number
   isNpc: boolean
-  isBoss: boolean
   npcLevel: number | null
   points: number
   breakdown: RankingBreakdown
