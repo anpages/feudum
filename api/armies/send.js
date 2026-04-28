@@ -65,16 +65,29 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Coordenadas de destino inválidas' })
   }
 
-  // Expedition slot = universe_slots + 1 (the "Uncharted Lands" beyond the map)
+  // Expediciones permitidas a:
+  //   - slot 16 (Tierras Ignotas, outcome lottery clásico)
+  //   - slots 1-15 vacíos (descubrir/farmear Puntos de Interés)
+  // Y siempre con presencia previa en la región target.
   const expeditionSlot = Math.round(cfg.universe_slots ?? 15) + 1
-  if (isExpedition && tSlot !== expeditionSlot) {
-    return res.status(400).json({ error: `Las expediciones deben dirigirse al slot ${expeditionSlot} (Tierras Ignotas)` })
-  }
-
-  // Las expediciones requieren presencia previa en la región target — coherente con
-  // la lógica territorial: solo exploras lo que linda con tus dominios. Sin colonia
-  // en la región, las "Tierras Ignotas" están demasiado lejos.
   if (isExpedition) {
+    // Si va a slot 1-15, debe estar vacío (no se expediciona kingdoms ocupadas)
+    if (tSlot !== expeditionSlot) {
+      const occupied = await db
+        .select({ id: kingdoms.id })
+        .from(kingdoms)
+        .where(and(
+          eq(kingdoms.realm,  tRealm),
+          eq(kingdoms.region, tRegion),
+          eq(kingdoms.slot,   tSlot),
+        ))
+        .limit(1)
+      if (occupied.length > 0) {
+        return res.status(400).json({ error: 'No puedes expedicionar a un slot ocupado' })
+      }
+    }
+
+    // Presencia regional obligatoria: sin colonia en la región, no exploras allí.
     const colonyInRegion = await db
       .select({ id: kingdoms.id })
       .from(kingdoms)
@@ -87,6 +100,26 @@ export default async function handler(req, res) {
     if (colonyInRegion.length === 0) {
       return res.status(400).json({
         error: `Necesitas una colonia en R${tRealm}:${tRegion} para expedicionar allí`,
+      })
+    }
+
+    // Una expedición simultánea por destino — protege la magnitud de los POI
+    // y evita que se "drene" un slot con múltiples envíos en paralelo.
+    const existingToTarget = await db
+      .select({ id: armyMissions.id })
+      .from(armyMissions)
+      .where(and(
+        eq(armyMissions.userId,        userId),
+        eq(armyMissions.missionType,   'expedition'),
+        eq(armyMissions.targetRealm,   tRealm),
+        eq(armyMissions.targetRegion,  tRegion),
+        eq(armyMissions.targetSlot,    tSlot),
+        ne(armyMissions.state,         'completed'),
+      ))
+      .limit(1)
+    if (existingToTarget.length > 0) {
+      return res.status(400).json({
+        error: `Ya tienes una expedición activa hacia R${tRealm}:${tRegion}:${tSlot}`,
       })
     }
   }
@@ -255,28 +288,13 @@ export default async function handler(req, res) {
     }
   }
 
-  // Expedition missions: limited by floor(√cartography), minimum 1; holdingHours required
+  // Expediciones: ya no hay cap específico — solo el cap general de slots de
+  // misión (logistics) aplicado más arriba. El antiguo `floor(√carto)` quedaba
+  // demasiado restrictivo con el sistema POI nuevo (necesitas muchas expediciones
+  // para descubrir la región). holdingHours sigue limitado por cartografía.
   let holdingHours = 0
   if (isExpedition) {
     const cartographyLevel = resMap.cartography ?? 0
-    const discovererBonus = (userRow?.characterClass ?? null) === 'discoverer' ? 2 : 0
-    const maxExpeditions = Math.max(1, Math.floor(Math.sqrt(cartographyLevel))) + discovererBonus
-    const activeExpeditions = await db.select({ id: armyMissions.id, state: armyMissions.state }).from(armyMissions)
-      .where(and(
-        eq(armyMissions.userId, userId),
-        eq(armyMissions.missionType, 'expedition'),
-      ))
-    // Count only active/returning/merchant (not completed)
-    const ongoingCount = activeExpeditions.filter(m => m.state !== 'completed').length
-    if (ongoingCount >= maxExpeditions) {
-      return res.status(400).json({
-        error: `Límite de expediciones alcanzado (${ongoingCount}/${maxExpeditions}). Mejora Cartografía o usa la clase Descubridor para enviar más.`,
-        maxExpeditions,
-        cartographyLevel,
-      })
-    }
-
-    // Validate holdingHours: 1 to cartographyLevel (integer hours, like OGame)
     holdingHours = parseInt(rawHoldingHours ?? 1, 10)
     const maxHolding = Math.max(1, cartographyLevel)
     if (isNaN(holdingHours) || holdingHours < 1 || holdingHours > maxHolding) {

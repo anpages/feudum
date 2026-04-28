@@ -147,11 +147,12 @@ export function SendMissionPage() {
     if (holdingHours < 1) setHoldingHours(1)
   }, [maxHoldingHours, holdingHours])
 
-  const maxExpeditions    = Math.max(1, Math.floor(Math.sqrt(cartographyLevel))) + (isDiscoverer ? 2 : 0)
+  // Las expediciones solo cuentan contra el cap general de slots (logistics).
+  // Restricción adicional: 1 expedición simultánea por destino — el frontend la
+  // valida solo de forma defensiva contra coords del usuario seleccionado.
   const activeExpeditions = armies?.missions.filter(
     m => m.missionType === 'expedition' && m.state !== 'completed'
   ).length ?? 0
-  const expeditionSlotsFull = activeExpeditions >= maxExpeditions
   const cargo          = useMemo(() => calcCargoCapacity(units, characterClass), [units, characterClass])
   const hasCargo       = Object.keys(UNIT_CAPACITY).some(k => (units[k] ?? 0) > 0)
   const maxResources   = maxResourcesByPoints(top1Points)
@@ -208,11 +209,12 @@ export function SendMissionPage() {
   }, [kingdom, isMissile, ballisticCount, units, totalUnits, missionType, tSlot, tRealm, tRegion, speedPct, researchData, universeSpeed, characterClass, holdingHours, serverSettings])
 
   const canSend = !send.isPending &&
-    !(missionType === 'expedition' && expeditionSlotsFull) &&
     (isMissile ? ballisticCount > 0 : totalUnits > 0)
 
   const handleSend = () => {
-    const destSlot = missionType === 'expedition' ? 16 : tSlot
+    // Para expedición a Tierras Ignotas el slot es 16. Para slots 1-15 vacíos
+    // (POI o exploración local) el destino lo elige el jugador en el formulario.
+    const destSlot = (missionType === 'expedition' && tSlot === 0) ? 16 : tSlot
     send.mutate(
       {
         missionType,
@@ -538,21 +540,17 @@ export function SendMissionPage() {
       {/* Slot indicators */}
       {armies?.fleetSlots && !isMissile && (
         <div className="anim-fade-up-3 space-y-2">
-          {/* Expedition slots — only when expedition is selected */}
-          {missionType === 'expedition' && (
-            <div className={`flex items-center justify-between px-4 py-2.5 rounded-lg border ${
-              expeditionSlotsFull ? 'border-crimson/25 bg-crimson/5' : 'border-gold/20 bg-gold-soft'
-            }`}>
+          {/* Expediciones activas (informativo) — el cap es ahora el general de logistics */}
+          {missionType === 'expedition' && activeExpeditions > 0 && (
+            <div className="flex items-center justify-between px-4 py-2.5 rounded-lg border border-gold/20 bg-gold-soft">
               <div>
-                <span className="font-ui text-xs text-ink-muted">Slots de expedición</span>
+                <span className="font-ui text-xs text-ink-muted">Expediciones en curso</span>
                 <p className="font-body text-[0.6rem] text-ink-muted/50 mt-0.5">
-                  Independiente de los slots de flota · mejora Cartografía para más
+                  Mejora Logística para más misiones simultáneas
                 </p>
               </div>
-              <span className={`font-ui text-sm font-bold tabular-nums shrink-0 ${
-                expeditionSlotsFull ? 'text-crimson' : 'text-gold-dim'
-              }`}>
-                {activeExpeditions} / {maxExpeditions}
+              <span className="font-ui text-sm font-bold tabular-nums shrink-0 text-gold-dim">
+                {activeExpeditions}
               </span>
             </div>
           )}
