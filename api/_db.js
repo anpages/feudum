@@ -2,7 +2,7 @@ import './lib/env.js'
 import postgres from 'postgres'
 import { drizzle } from 'drizzle-orm/postgres-js'
 import {
-  pgTable, pgEnum, integer, varchar, real, timestamp, text, boolean, uuid, jsonb, serial,
+  pgTable, pgEnum, integer, varchar, real, timestamp, text, boolean, uuid, jsonb, serial, primaryKey,
 } from 'drizzle-orm/pg-core'
 
 export const userRoleEnum = pgEnum('user_role', ['human', 'npc', 'admin'])
@@ -232,6 +232,31 @@ export const battleLog = pgTable('battle_log', {
   createdAt:         timestamp('created_at').defaultNow().notNull(),
 })
 
+// Puntos de Interés generados al inicio de temporada en slots vacíos.
+// PK compuesta (realm, region, slot). Visibilidad privada vía poi_discoveries.
+export const pointsOfInterest = pgTable('points_of_interest', {
+  realm:     integer('realm').notNull(),
+  region:    integer('region').notNull(),
+  slot:      integer('slot').notNull(),
+  type:      varchar('type', { length: 40 }).notNull(),
+  magnitude: integer('magnitude').notNull().default(100),
+  claimedByKingdomId: uuid('claimed_by_kingdom_id'),
+  claimedAt:          timestamp('claimed_at'),
+  createdAt:          timestamp('created_at').defaultNow().notNull(),
+}, (t) => ({
+  pk: primaryKey({ columns: [t.realm, t.region, t.slot] }),
+}))
+
+export const poiDiscoveries = pgTable('poi_discoveries', {
+  poiRealm:     integer('poi_realm').notNull(),
+  poiRegion:    integer('poi_region').notNull(),
+  poiSlot:      integer('poi_slot').notNull(),
+  userId:       uuid('user_id').notNull(),
+  discoveredAt: timestamp('discovered_at').defaultNow().notNull(),
+}, (t) => ({
+  pk: primaryKey({ columns: [t.poiRealm, t.poiRegion, t.poiSlot, t.userId] }),
+}))
+
 export const seasonSnapshots = pgTable('season_snapshots', {
   id:               uuid('id').primaryKey().defaultRandom(),
   userId:           uuid('user_id'),  // no FK — historical data, user may be deleted
@@ -254,4 +279,5 @@ export const db = drizzle(client, { schema: {
   buildingQueue, researchQueue, unitQueue, armyMissions,
   debrisFields, messages, settings, userAchievements, pushSubscriptions,
   etherTransactions, battleLog, seasonSnapshots,
+  pointsOfInterest, poiDiscoveries,
 }})

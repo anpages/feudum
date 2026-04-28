@@ -11,6 +11,7 @@ import {
   db, users, kingdoms, npcState, buildings, units, research,
   armyMissions, debrisFields, buildingQueue, researchQueue, unitQueue,
   userAchievements, battleLog, etherTransactions, seasonSnapshots,
+  pointsOfInterest, poiDiscoveries,
 } from '../_db.js'
 import { ECONOMY_SPEED, NPC_DENSITY, UNIVERSE } from './config.js'
 import { npcClass } from './npc-engine.js'
@@ -18,6 +19,7 @@ import { randomTempForSlot } from './buildings.js'
 import { setSetting } from './settings.js'
 import { calcPointsBreakdown } from './points.js'
 import { getBuildingMaps, getResearchMaps, getUnitMaps } from './db-helpers.js'
+import { generatePoisForUniverse } from './poi.js'
 
 // ── NPC name generation ───────────────────────────────────────────────────────
 
@@ -139,6 +141,8 @@ export async function resetSeason() {
     db.delete(userAchievements),
     db.delete(battleLog),
     db.delete(etherTransactions),
+    db.delete(poiDiscoveries),
+    db.delete(pointsOfInterest),
   ])
 
   // NPC users first — cascades their kingdoms, buildings, units, npcState
@@ -249,6 +253,14 @@ export async function startNewSeason(seasonNumber, economySpeed) {
   // Seed 50 NPCs at random available slots
   const npcCount = await seedNpcs(new Set(), now, 50)
 
+  // Generar Puntos de Interés en slots vacíos (decisión 7: reset cada temporada)
+  const takenAfterSeed = new Set(
+    (await db.select({ realm: kingdoms.realm, region: kingdoms.region, slot: kingdoms.slot })
+      .from(kingdoms))
+      .map(k => `${k.realm}:${k.region}:${k.slot}`)
+  )
+  const poiCount = await generatePoisForUniverse(takenAfterSeed)
+
   // Season settings
   const durationSecs = Math.round((360 / speed) * 86400)
   const seasonEnd    = now + durationSecs
@@ -263,7 +275,7 @@ export async function startNewSeason(seasonNumber, economySpeed) {
     setSetting('season_winner_condition', ''),
   ])
 
-  return { npcCount, durationSecs }
+  return { npcCount, poiCount, durationSecs }
 }
 
 // ── Self-heal: repair an "active" season that has no NPCs ────────────────────
