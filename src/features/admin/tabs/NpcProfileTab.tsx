@@ -13,7 +13,7 @@ const CLASS_LABEL: Record<string, string> = {
 const MISSION_LABEL: Record<string, string> = {
   attack: 'Ataque', transport: 'Transporte', spy: 'Espionaje',
   colonize: 'Colonizar', scavenge: 'Recogida', deploy: 'Despliegue',
-  expedition: 'Expedición', missile: 'Misil', pillage: 'Saqueo',
+  expedition: 'Expedición', missile: 'Misil',
 }
 const STATE_LABEL: Record<string, string> = {
   active: 'En camino', exploring: 'Explorando', returning: 'Regresando',
