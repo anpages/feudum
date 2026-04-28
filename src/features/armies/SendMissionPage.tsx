@@ -205,11 +205,9 @@ export function SendMissionPage({ initTarget, initType: initTypeProp, onClose }:
     if (isMissile && ballisticCount === 0) return { travelPreview: null, grainPreview: 0 }
     const k = kingdom as unknown as Record<string, number>
     const origin = { realm: k.realm, region: k.region, slot: k.slot }
-    const expeditionSlot = (serverSettings as unknown as { universe_slots?: number })?.universe_slots
-      ? Math.round((serverSettings as unknown as { universe_slots: number }).universe_slots) + 1
-      : 16
-    const destSlot = missionType === 'expedition' ? expeditionSlot : tSlot
-    const dest = { realm: tRealm, region: tRegion, slot: destSlot }
+    // Las expediciones pueden ir a slot 1-15 (POI / exploración local) o slot 16
+    // (Tierras Ignotas). El slot ya viene fijado por tSlot — no se fuerza a 16.
+    const dest = { realm: tRealm, region: tRegion, slot: tSlot }
     const research = Object.fromEntries(researchData?.research.map(r => [r.id, r.level]) ?? [])
     const dist = calcDistance(origin, dest)
     const secs = calcDuration(dist, effectiveUnits, speedPct, universeSpeed, research, characterClass)
@@ -224,13 +222,11 @@ export function SendMissionPage({ initTarget, initType: initTypeProp, onClose }:
     (isMissile ? ballisticCount > 0 : totalUnits > 0)
 
   const handleSend = () => {
-    // Para expedición a Tierras Ignotas el slot es 16. Para slots 1-15 vacíos
-    // (POI o exploración local) el destino lo elige el jugador en el formulario.
-    const destSlot = (missionType === 'expedition' && tSlot === 0) ? 16 : tSlot
+    // Slot ya viene fijado del mapa (modo dialog) o del CoordPicker (modo página).
     send.mutate(
       {
         missionType,
-        target: { realm: tRealm, region: tRegion, slot: destSlot },
+        target: { realm: tRealm, region: tRegion, slot: tSlot },
         units,
         resources: (missionType === 'transport' || missionType === 'deploy') ? resLoad : undefined,
         holdingHours: missionType === 'expedition' ? holdingHours : undefined,
@@ -243,7 +239,7 @@ export function SendMissionPage({ initTarget, initType: initTypeProp, onClose }:
   const MissionIcon = MISSION_META[missionType].Icon
 
   return (
-    <div className={isDialog ? 'space-y-5' : 'max-w-2xl mx-auto space-y-5'}>
+    <div className={isDialog ? 'p-4 sm:p-5 space-y-4' : 'max-w-2xl mx-auto space-y-5'}>
 
       {/* Header — solo en modo página, no en dialog (Sheet ya tiene su cierre) */}
       {!isDialog && (
@@ -261,63 +257,64 @@ export function SendMissionPage({ initTarget, initType: initTypeProp, onClose }:
         </div>
       )}
 
-      {/* Mission type selector */}
-      <Card className="anim-fade-up-1 p-5 space-y-4">
-        <p className="font-ui text-xs text-ink-muted uppercase tracking-wider">Tipo de misión</p>
-        <div className="grid grid-cols-4 gap-2 sm:grid-cols-8">
-          {(Object.entries(MISSION_META) as [MissionType, typeof MISSION_META[MissionType]][]).map(([type, meta]) => {
-            const { Icon } = meta
-            const active = missionType === type
-            return (
-              <button
-                key={type}
-                onClick={() => handleTypeChange(type)}
-                title={meta.desc}
-                className={`flex flex-col items-center gap-1.5 p-3 rounded-lg border transition-all text-[0.62rem] font-ui font-semibold text-center leading-tight ${
-                  active
-                    ? 'bg-gold-soft border-gold/40 text-gold-dim shadow-sm'
-                    : 'border-gold/15 text-ink-muted hover:border-gold/25 hover:bg-parchment-warm'
-                }`}
-              >
-                <Icon size={18} className={active ? meta.color : 'text-ink-muted/50'} />
-                {meta.label}
-              </button>
-            )
-          })}
-        </div>
-        <p className="font-body text-xs text-ink-muted/70 italic leading-relaxed">
-          {MISSION_META[missionType].desc}
-        </p>
-      </Card>
-
-      {/* Destination */}
-      <Card className="anim-fade-up-1 p-5 space-y-4">
-        <p className="font-ui text-xs text-ink-muted uppercase tracking-wider">Destino</p>
-        {missionType === 'expedition' ? (
-          <div className="space-y-3">
-            <div className="grid grid-cols-3 gap-4">
-              <CoordPicker label="Reino"   value={tRealm}  min={1} max={3}  onChange={setTRealm} />
-              <CoordPicker label="Región"  value={tRegion} min={1} max={10} onChange={setTRegion} />
-              <div className="flex flex-col gap-1">
-                <p className="font-ui text-xs text-ink-muted/60 uppercase tracking-wider">Slot</p>
-                <div className="h-9 flex items-center px-3 rounded-lg bg-parchment-deep border border-gold/15">
-                  <span className="font-ui text-sm font-bold text-gold-dim">16</span>
-                  <span className="font-ui text-[0.6rem] text-ink-muted/50 ml-1.5">fijo</span>
-                </div>
-              </div>
-            </div>
-            <p className="font-ui text-xs text-ink-muted/60">
-              Puedes explorar el slot 16 de cualquier región · el slot es siempre fijo en 16
-            </p>
+      {/* Mission type selector — solo en modo página. En modo dialog el tipo
+          ya viene fijado por el CTA del SlotDetail. */}
+      {!isDialog && (
+        <Card className="anim-fade-up-1 p-5 space-y-4">
+          <p className="font-ui text-xs text-ink-muted uppercase tracking-wider">Tipo de misión</p>
+          <div className="grid grid-cols-4 gap-2 sm:grid-cols-8">
+            {(Object.entries(MISSION_META) as [MissionType, typeof MISSION_META[MissionType]][]).map(([type, meta]) => {
+              const { Icon } = meta
+              const active = missionType === type
+              return (
+                <button
+                  key={type}
+                  onClick={() => handleTypeChange(type)}
+                  title={meta.desc}
+                  className={`flex flex-col items-center gap-1.5 p-3 rounded-lg border transition-all text-[0.62rem] font-ui font-semibold text-center leading-tight ${
+                    active
+                      ? 'bg-gold-soft border-gold/40 text-gold-dim shadow-sm'
+                      : 'border-gold/15 text-ink-muted hover:border-gold/25 hover:bg-parchment-warm'
+                  }`}
+                >
+                  <Icon size={18} className={active ? meta.color : 'text-ink-muted/50'} />
+                  {meta.label}
+                </button>
+              )
+            })}
           </div>
-        ) : (
+          <p className="font-body text-xs text-ink-muted/70 italic leading-relaxed">
+            {MISSION_META[missionType].desc}
+          </p>
+        </Card>
+      )}
+
+      {/* Destination — solo en modo página. En modo dialog el destino viene fijado del slot clickeado. */}
+      {!isDialog && (
+        <Card className="anim-fade-up-1 p-5 space-y-4">
+          <p className="font-ui text-xs text-ink-muted uppercase tracking-wider">Destino</p>
           <div className="grid grid-cols-3 gap-4">
             <CoordPicker label="Reino"    value={tRealm}  min={1} max={3}  onChange={setTRealm} />
             <CoordPicker label="Región"   value={tRegion} min={1} max={10} onChange={setTRegion} />
-            <CoordPicker label="Posición" value={tSlot}   min={1} max={15} onChange={setTSlot} />
+            <CoordPicker label="Posición" value={tSlot}   min={1} max={16} onChange={setTSlot} />
           </div>
-        )}
-      </Card>
+        </Card>
+      )}
+
+      {/* Cabecera compacta en modo dialog: muestra tipo + destino fijados */}
+      {isDialog && (
+        <div className="flex items-center gap-3 px-1">
+          <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${MISSION_META[missionType].color.replace('text-', 'bg-').replace('-light', '/15').replace('crimson', 'crimson/10')}`}>
+            <MissionIcon size={16} className={MISSION_META[missionType].color} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="font-ui text-sm font-semibold text-ink">{MISSION_META[missionType].label}</p>
+            <p className="font-body text-xs text-ink-muted">
+              Destino: <span className="font-ui tabular-nums text-ink">{tRealm}:{tRegion}:{tSlot}</span>
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Units */}
       <Card className="anim-fade-up-2 p-5 space-y-3">
