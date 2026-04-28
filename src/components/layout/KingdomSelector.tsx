@@ -23,14 +23,29 @@ export function KingdomSelector({ kingdomName }: { kingdomName?: string }) {
 
   if (!kingdomName) return null
 
-  if (!hasMultiple) return null
+  // Encontrar la kingdom activa para saber si es capital. activeId puede ser null
+  // (en ese caso, la primera del listado es la activa por convención).
+  const activeKingdom = kingdoms.find(k => k.id === activeId) ?? kingdoms[0]
+  const activeIsPrimary = activeKingdom?.isPrimary ?? false
+
+  // Versión read-only cuando solo hay una kingdom: mostrar nombre + corona si es capital.
+  if (!hasMultiple) {
+    return (
+      <div className="flex items-center gap-1 font-ui text-[0.65rem] text-ink-muted leading-tight mt-px">
+        {activeIsPrimary && <Crown size={10} className="shrink-0 text-gold" />}
+        <span className="truncate max-w-[120px]">{kingdomName}</span>
+        {activeIsPrimary && <span className="text-[0.55rem] text-gold/60 uppercase tracking-wide">capital</span>}
+      </div>
+    )
+  }
 
   return (
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen(v => !v)}
-        className="flex items-center gap-0.5 font-ui text-[0.65rem] text-ink-muted hover:text-ink leading-tight mt-px transition-colors"
+        className="flex items-center gap-1 font-ui text-[0.65rem] text-ink-muted hover:text-ink leading-tight mt-px transition-colors"
       >
+        {activeIsPrimary && <Crown size={10} className="shrink-0 text-gold" />}
         <span className="truncate max-w-[90px]">{kingdomName}</span>
         <ChevronDown size={10} className={`shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
