@@ -1,5 +1,5 @@
 import { memo } from 'react'
-import { Castle, User, Bot, Pickaxe, Crown } from 'lucide-react'
+import { Castle, User, Bot, Pickaxe, Crown, Plane } from 'lucide-react'
 import { Badge } from '@/components/ui/Badge'
 import type { MapSlot } from '@/features/map/useMap'
 
@@ -10,6 +10,12 @@ const POI_ICON: Record<string, string> = {
   reliquia_arcana:   '✨',
   ruinas_antiguas:   '🏛️',
   templo_perdido:    '🕍',
+}
+
+const MISSION_LABEL: Record<string, string> = {
+  attack: 'Ataque', spy: 'Espía', transport: 'Transporte', deploy: 'Despliegue',
+  expedition: 'Expedición', colonize: 'Colonización', scavenge: 'Escombros',
+  missile: 'Misil',
 }
 
 export const SlotRow = memo(function SlotRow({
@@ -101,6 +107,15 @@ export const SlotRow = memo(function SlotRow({
           {!slot.poi.claimed && slot.poi.magnitude > 0 && (
             <span className="font-ui text-[0.6rem] tabular-nums">{slot.poi.magnitude}</span>
           )}
+        </div>
+      )}
+
+      {slot.myMission && (
+        <div
+          className="shrink-0 flex items-center gap-1 text-xs text-gold-dim"
+          title={`Tienes ${MISSION_LABEL[slot.myMission.type] ?? slot.myMission.type} en curso (${slot.myMission.state})`}
+        >
+          <Plane size={11} className="text-gold" />
         </div>
       )}
 

@@ -1,5 +1,5 @@
-import { eq, and, inArray, gt } from 'drizzle-orm'
-import { db, kingdoms, users, debrisFields, npcState, pointsOfInterest, poiDiscoveries } from '../_db.js'
+import { eq, and, inArray, gt, ne } from 'drizzle-orm'
+import { db, kingdoms, users, debrisFields, npcState, pointsOfInterest, poiDiscoveries, armyMissions } from '../_db.js'
 import { getSessionUserId } from '../lib/handler.js'
 import { calcPoints } from '../lib/points.js'
 import { getBuildingMap, getResearchMap } from '../lib/db-helpers.js'
@@ -30,6 +30,28 @@ export default async function handler(req, res) {
       .where(and(eq(debrisFields.realm, realm), eq(debrisFields.region, region))),
   ])
   const debrisBySlot = Object.fromEntries(debrisRows.map(d => [d.slot, { wood: d.wood, stone: d.stone }]))
+
+  // Misiones activas del usuario hacia slots de esta región — para indicador
+  // visual "ya tienes misión en curso aquí" y evitar envíos redundantes.
+  const myActiveMissions = await db.select({
+    slot: armyMissions.targetSlot,
+    type: armyMissions.missionType,
+    arrivalTime: armyMissions.arrivalTime,
+    returnTime:  armyMissions.returnTime,
+    state:       armyMissions.state,
+  })
+    .from(armyMissions)
+    .where(and(
+      eq(armyMissions.userId, userId),
+      eq(armyMissions.targetRealm,  realm),
+      eq(armyMissions.targetRegion, region),
+      ne(armyMissions.state, 'completed'),
+    ))
+  const myMissionBySlot = {}
+  for (const m of myActiveMissions) {
+    // Si hay varias al mismo slot (improbable salvo edge cases), guardar la primera.
+    if (!myMissionBySlot[m.slot]) myMissionBySlot[m.slot] = m
+  }
 
   // POIs descubiertos por el usuario en esta región (visibilidad estrictamente privada
   // por decisión de diseño 2: cada jugador construye su propio mapa de POI). Si lo
@@ -78,6 +100,14 @@ export default async function handler(req, res) {
     const slot = i + 1
     const debris = debrisBySlot[slot] ?? null
 
+    const myMission = myMissionBySlot[slot] ?? null
+    const myMissionInfo = myMission ? {
+      type:        myMission.type,
+      arrivalTime: myMission.arrivalTime,
+      returnTime:  myMission.returnTime,
+      state:       myMission.state,
+    } : null
+
     if (realBySlot[slot]) {
       const { k, u, ns } = realBySlot[slot]
       const isNpc = u.role === 'npc'
@@ -99,6 +129,7 @@ export default async function handler(req, res) {
         isEmpty:   false,
         debris,
         poi:       myPoi ? { type: myPoi.type, label: POI_TYPES[myPoi.type]?.label, magnitude: myPoi.magnitude, claimed: !!myPoi.claimedByKingdomId } : null,
+        myMission: myMissionInfo,
       }
     }
 
@@ -108,6 +139,7 @@ export default async function handler(req, res) {
       slot, kingdomId: null, name: null, username: null,
       isPlayer: false, isNpc: false, points: 0, isEmpty: true, debris,
       poi: myPoi ? { type: myPoi.type, label: POI_TYPES[myPoi.type]?.label, magnitude: myPoi.magnitude, claimed: false } : null,
+      myMission: myMissionInfo,
     }
   })
 

@@ -100,9 +100,16 @@ function UnitCardImpl({
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-2">
             <h3 className="font-ui text-sm font-semibold text-ink">{meta.name}</h3>
-            <Badge variant={unit.count > 0 ? 'gold' : 'stone'} className="shrink-0">
-              {unit.count.toLocaleString()}
-            </Badge>
+            <div className="flex flex-col items-end gap-0.5 shrink-0">
+              <Badge variant={unit.count > 0 ? 'gold' : 'stone'}>
+                {unit.count.toLocaleString()}{unit.inMission > 0 && <span className="text-ink-muted/70 font-normal"> / {unit.total.toLocaleString()}</span>}
+              </Badge>
+              {unit.inMission > 0 && (
+                <span className="font-ui text-[0.55rem] text-ink-muted/60 tabular-nums" title={`${unit.inMission} en misiones activas`}>
+                  +{unit.inMission} fuera
+                </span>
+              )}
+            </div>
           </div>
           <p className="font-body text-xs text-ink-muted mt-1 leading-relaxed">{meta.description}</p>
         </div>

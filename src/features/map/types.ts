@@ -5,6 +5,13 @@ export interface MapPoi {
   claimed: boolean
 }
 
+export interface MapMyMission {
+  type: string                 // 'attack' | 'spy' | 'expedition' | 'transport' | ...
+  arrivalTime: number
+  returnTime: number | null
+  state: string                // 'active' | 'returning' | 'exploring' | 'merchant'
+}
+
 export interface MapSlot {
   slot: number
   kingdomId: string | null
@@ -17,6 +24,7 @@ export interface MapSlot {
   isEmpty: boolean
   debris: { wood: number; stone: number } | null
   poi: MapPoi | null
+  myMission: MapMyMission | null
 }
 
 export interface MapResponse {

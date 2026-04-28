@@ -1,8 +1,9 @@
-import { Swords, Eye, Tent, Pickaxe, Package, Flag, Rocket, Compass } from 'lucide-react'
+import { Swords, Eye, Tent, Pickaxe, Package, Flag, Rocket, Compass, Plane } from 'lucide-react'
 import { GiWoodPile, GiStoneBlock } from 'react-icons/gi'
 import { Button } from '@/components/ui/Button'
-import { formatResource } from '@/lib/format'
+import { formatResource, formatDuration } from '@/lib/format'
 import type { MapSlot } from '@/features/map/useMap'
+import { useNow } from '@/lib/useNow'
 
 const POI_ICON: Record<string, string> = {
   yacimiento_madera: '🌲',
@@ -13,6 +14,17 @@ const POI_ICON: Record<string, string> = {
   templo_perdido:    '🕍',
 }
 
+const MISSION_LABEL: Record<string, string> = {
+  attack: 'Ataque', spy: 'Espionaje', transport: 'Transporte', deploy: 'Despliegue',
+  expedition: 'Expedición', colonize: 'Colonización', scavenge: 'Recolectar escombros',
+  missile: 'Misil',
+}
+
+const MISSION_STATE_LABEL: Record<string, string> = {
+  active: 'En camino', returning: 'Regresando', exploring: 'Explorando',
+  merchant: 'Mercader esperando',
+}
+
 export function SlotDetail({
   slot,
   onMission,
@@ -21,6 +33,13 @@ export function SlotDetail({
   onMission: (type: string) => void
 }) {
   const hasDebris = slot.debris && (slot.debris.wood > 0 || slot.debris.stone > 0)
+  const now = useNow()
+  const myMission = slot.myMission
+  const missionEta = myMission && myMission.state === 'active'
+    ? myMission.arrivalTime - now
+    : myMission?.returnTime
+      ? Math.max(0, myMission.returnTime - now)
+      : null
 
   return (
     <div className="p-5 space-y-4">
@@ -81,6 +100,23 @@ export function SlotDetail({
       )}
 
       <div className="divider">◆</div>
+
+      {myMission && (
+        <div className="rounded border border-gold/25 bg-gold-soft p-3 space-y-1">
+          <p className="font-ui text-[0.6rem] text-gold-dim/80 uppercase tracking-widest flex items-center gap-1">
+            <Plane size={10} className="text-gold-dim" />
+            Misión en curso
+          </p>
+          <p className="font-body text-xs text-ink">
+            <span className="font-semibold">{MISSION_LABEL[myMission.type] ?? myMission.type}</span>
+            {' · '}
+            <span className="text-ink-muted">{MISSION_STATE_LABEL[myMission.state] ?? myMission.state}</span>
+            {missionEta != null && missionEta > 0 && (
+              <> · {formatDuration(missionEta)}</>
+            )}
+          </p>
+        </div>
+      )}
 
       <div className="space-y-2">
         {slot.isEmpty ? (

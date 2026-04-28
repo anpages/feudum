@@ -1,6 +1,8 @@
 export interface UnitInfo {
   id: string
-  count: number
+  count: number          // unidades disponibles en almacén (sin contar misiones)
+  inMission: number      // unidades en misiones activas (no en almacén)
+  total: number          // count + inMission — flota real total
   woodBase: number
   stoneBase: number
   grainBase: number

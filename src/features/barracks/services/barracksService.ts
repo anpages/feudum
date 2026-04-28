@@ -43,20 +43,31 @@ export const barracksService = {
 
     const economySpeed = (cfgRaw as { economySpeed: number }).economySpeed ?? 1
 
-    // Phase 2: buildings, units, research (all normalized tables), queues
+    // Phase 2: buildings, units, research (all normalized tables), queues, misiones activas
     const [
       { data: buildingRows },
       { data: unitRows },
       { data: researchRows },
       { data: unitQueueRows },
       { data: buildingQueueRows },
+      { data: activeMissionRows },
     ] = await Promise.all([
       supabase.from('buildings').select('type, level').eq('kingdom_id', kingdomRow.id),
       supabase.from('units').select('type, quantity').eq('kingdom_id', kingdomRow.id),
       supabase.from('research').select('type, level').eq('user_id', user.id),
       supabase.from('unit_queue').select('id, unit_type, amount, finishes_at').eq('kingdom_id', kingdomRow.id),
       supabase.from('building_queue').select('building_type, level, finishes_at').eq('kingdom_id', kingdomRow.id),
+      supabase.from('army_missions').select('units').eq('user_id', user.id).neq('state', 'completed'),
     ])
+
+    // Sumar unidades en misiones activas por tipo (JSONB units = { squire: 5, scout: 2, ... })
+    const inMissionByType: Record<string, number> = {}
+    for (const m of activeMissionRows ?? []) {
+      const u = (m as { units: Record<string, number> | null }).units ?? {}
+      for (const [unitId, count] of Object.entries(u)) {
+        if (count > 0) inMissionByType[unitId] = (inMissionByType[unitId] ?? 0) + count
+      }
+    }
 
     // Build projected state from normalized tables
     const projected: Record<string, number> = {}
@@ -88,9 +99,13 @@ export const barracksService = {
 
     const mapUnit = (def: UnitDef): UnitInfo => {
       const queueItem = activeQueue.find(q => q.unitType === def.id)
+      const available = projected[def.id] ?? 0
+      const inMission = inMissionByType[def.id] ?? 0
       return {
         id:          def.id,
-        count:       projected[def.id] ?? 0,
+        count:       available,                 // disponibles en almacén
+        inMission:   inMission,                 // unidades fuera en misión
+        total:       available + inMission,     // total real (disponibles + en misión)
         woodBase:    def.woodBase,
         stoneBase:   def.stoneBase,
         grainBase:   def.grainBase,
