@@ -1,5 +1,5 @@
 import { type ReactNode, useState, useEffect, useRef, useCallback } from 'react'
-import { Clock, TrendingUp, Hammer, FlaskConical, Swords, Shield, Zap, TreePine, Mountain, Wheat, AlertTriangle, MapPin, Thermometer, Flame, Trophy, Compass, Pickaxe, type LucideIcon } from 'lucide-react'
+import { Clock, TrendingUp, Hammer, FlaskConical, Swords, Shield, Zap, TreePine, Mountain, Wheat, AlertTriangle, MapPin, Thermometer, Flame, Trophy, Compass, Pickaxe, Crown, type LucideIcon } from 'lucide-react'
 import { GiAnvil, GiSpellBook, GiCrossedSwords } from 'react-icons/gi'
 import { useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
@@ -176,14 +176,29 @@ export function OverviewPage() {
         <div className="bg-gradient-to-br from-parchment-warm/60 to-parchment-deep/30 px-5 pt-4 pb-5">
 
           {/* Label row */}
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between gap-2 mb-4">
             <span className="section-heading !mb-0">Panel de mando</span>
-            {kingdom?.realm != null && (
-              <span className="inline-flex items-center gap-1 font-ui text-[0.65rem] tabular-nums text-ink-muted/60 border border-gold/20 bg-gold/5 px-2 py-0.5 rounded">
-                <MapPin size={9} className="text-gold/50 shrink-0" />
-                {kingdom.realm}:{kingdom.region}:{kingdom.slot}
-              </span>
-            )}
+            <div className="flex items-center gap-1.5 shrink-0">
+              {(kingdom as { isPrimary?: boolean })?.isPrimary != null && (
+                <span className={`inline-flex items-center gap-1 font-ui text-[0.65rem] uppercase tracking-wide px-2 py-0.5 rounded border ${
+                  (kingdom as { isPrimary?: boolean }).isPrimary
+                    ? 'border-gold/35 bg-gold/8 text-gold-dim'
+                    : 'border-ink-muted/20 bg-parchment-warm text-ink-muted'
+                }`}>
+                  {(kingdom as { isPrimary?: boolean }).isPrimary ? (
+                    <><Crown size={9} className="text-gold shrink-0" />Capital</>
+                  ) : (
+                    'Colonia'
+                  )}
+                </span>
+              )}
+              {kingdom?.realm != null && (
+                <span className="inline-flex items-center gap-1 font-ui text-[0.65rem] tabular-nums text-ink-muted/60 border border-gold/20 bg-gold/5 px-2 py-0.5 rounded">
+                  <MapPin size={9} className="text-gold/50 shrink-0" />
+                  {kingdom.realm}:{kingdom.region}:{kingdom.slot}
+                </span>
+              )}
+            </div>
           </div>
 
           {/* Kingdom name + class */}
