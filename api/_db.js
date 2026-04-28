@@ -26,6 +26,7 @@ export const kingdoms = pgTable('kingdoms', {
   realm:  integer('realm').notNull(),
   region: integer('region').notNull(),
   slot:   integer('slot').notNull(),
+  isPrimary: boolean('is_primary').default(false).notNull(),
   tempMin: integer('temp_min'),
   tempMax: integer('temp_max'),
 

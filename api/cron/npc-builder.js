@@ -633,13 +633,25 @@ function getDefenseSoftCap(npcLevel) {
 
 // Trains a batch of defense structures using leftover resources.
 // Called as a second pass after attemptTrainTroops — defenses are instant (no queue).
-// Only runs when combatTotal >= ATTACK_THRESHOLD so economy-first NPCs build a
-// base army before investing in walls.
+//
+// Filosofía: defensa primero. Cada colonia (incluida nueva) construye una defensa
+// básica (archers, crossbowmen) ANTES de tener un ejército ofensivo grande.
+// Solo escala a defensas avanzadas (mageTower, ballista, trebuchet, ...) cuando
+// ya tiene ejército suficiente — esas son inversiones pesadas que requieren
+// economía sólida y solo tienen sentido cuando el reino es objetivo de ataque.
+//
 // Progresses through tiers: once a type hits DEFENSE_SOFT_CAP, the next tick
 // skips it and trains the next affordable tier (archer → crossbowman → …)
+const BASIC_DEFENSE_MIN = { archer: 5, crossbowman: 3 }
+
 async function attemptTrainDefenses(kingdom, personality, researchMap, npcLevel) {
   const combatTotal = [...UNIT_COMBAT_SET].reduce((s, u) => s + (kingdom[u] ?? 0), 0)
-  if (combatTotal < ATTACK_THRESHOLD[personality]) return { action: 'skipped_defense' }
+  // Si la defensa básica está cubierta Y no hay ejército ofensivo, esperar.
+  // Si falta defensa básica, entrenarla siempre — independiente del ejército.
+  const hasBasicDefense = (kingdom.archer      ?? 0) >= BASIC_DEFENSE_MIN.archer
+                       && (kingdom.crossbowman ?? 0) >= BASIC_DEFENSE_MIN.crossbowman
+  const canScaleDefense = combatTotal >= ATTACK_THRESHOLD[personality]
+  if (hasBasicDefense && !canScaleDefense) return { action: 'skipped_defense' }
 
   const defCaps     = getDefenseSoftCap(npcLevel)
   const defBatchCap = 5

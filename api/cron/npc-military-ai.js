@@ -383,6 +383,135 @@ async function expeditionAI(npcKingdom, researchRow, depletionMap, now, cfg) {
 
 // ── Colonize AI ───────────────────────────────────────────────────────────────
 
+// ── Transporte intra-imperio ──────────────────────────────────────────────────
+// Cuando un NPC tiene 2+ colonias, equilibra recursos enviando caravanas/mercaderes
+// desde la colonia con más almacenamiento ocupado a la que menos. Mantiene el
+// imperio funcionando sin que las colonias secundarias mueran de hambre.
+
+const TRANSPORT_TRIGGER_RATIO = 0.70  // origen debe estar al 70%+ del cap
+const TRANSPORT_NEED_RATIO    = 0.40  // destino debe estar al 40% o menos
+const MIN_TRANSFER            = 1000  // no enviar caravanas por <1k recursos
+const CARAVAN_CAPACITY        = 25000
+const MERCHANT_CAPACITY       = 5000
+
+async function intraEmpireTransportAI(npcKingdom, allNpcKingdoms, now, cfg) {
+  // Otras kingdoms del mismo NPC
+  const sisterKingdoms = allNpcKingdoms.filter(k =>
+    k.userId === npcKingdom.userId && k.id !== npcKingdom.id
+  )
+  if (sisterKingdoms.length === 0) return false
+
+  const caravans  = npcKingdom.caravan  ?? 0
+  const merchants = npcKingdom.merchant ?? 0
+  if (caravans === 0 && merchants === 0) return false
+
+  // Una mision transport activa por origen — evitar saturar
+  const existing = await db.select({ id: armyMissions.id })
+    .from(armyMissions)
+    .where(and(
+      eq(armyMissions.missionType, 'transport'),
+      eq(armyMissions.state,       'active'),
+      eq(armyMissions.startRealm,  npcKingdom.realm),
+      eq(armyMissions.startRegion, npcKingdom.region),
+      eq(armyMissions.startSlot,   npcKingdom.slot),
+    )).limit(1)
+  if (existing.length > 0) return false
+
+  // Identificar recurso con mayor exceso aquí (>70% del cap)
+  const resKeys = ['wood', 'stone', 'grain']
+  let sourceRes = null
+  for (const key of resKeys) {
+    const amount   = npcKingdom[key] ?? 0
+    const capacity = npcKingdom[`${key}Capacity`] ?? 10000
+    if (capacity > 0 && amount / capacity >= TRANSPORT_TRIGGER_RATIO) {
+      if (!sourceRes || amount > sourceRes.amount) {
+        sourceRes = { key, amount, capacity }
+      }
+    }
+  }
+  if (!sourceRes) return false
+
+  // Identificar kingdom hermana con menor ratio del mismo recurso (<40% cap)
+  let target = null
+  for (const k of sisterKingdoms) {
+    const tAmount = k[sourceRes.key] ?? 0
+    const tCap    = k[`${sourceRes.key}Capacity`] ?? 10000
+    if (tCap === 0) continue
+    const tRatio = tAmount / tCap
+    if (tRatio <= TRANSPORT_NEED_RATIO) {
+      if (!target || tRatio < target.ratio) {
+        target = { kingdom: k, amount: tAmount, cap: tCap, ratio: tRatio }
+      }
+    }
+  }
+  if (!target) return false
+
+  // Cantidad a transferir: min(30% del origen, espacio libre en destino, capacidad de transporte)
+  const transportCapacity = caravans * CARAVAN_CAPACITY + merchants * MERCHANT_CAPACITY
+  const fromSource        = Math.floor(sourceRes.amount * 0.30)
+  const toTarget          = target.cap - target.amount
+  const transferAmount    = Math.min(fromSource, toTarget, transportCapacity)
+  if (transferAmount < MIN_TRANSFER) return false
+
+  // Decidir flota: preferir caravanas (más eficientes)
+  const force = {}
+  let remaining = transferAmount
+  if (caravans > 0) {
+    const useCaravans = Math.min(caravans, Math.ceil(remaining / CARAVAN_CAPACITY))
+    if (useCaravans > 0) {
+      force.caravan = useCaravans
+      remaining = Math.max(0, remaining - useCaravans * CARAVAN_CAPACITY)
+    }
+  }
+  if (remaining > 0 && merchants > 0) {
+    const useMerchants = Math.min(merchants, Math.ceil(remaining / MERCHANT_CAPACITY))
+    if (useMerchants > 0) force.merchant = useMerchants
+  }
+  if (Object.keys(force).length === 0) return false
+
+  const universeSpeed = parseFloat(cfg.fleet_speed_peaceful ?? cfg.fleet_speed_war ?? 1)
+  const dist          = calcDistance(npcKingdom, target.kingdom)
+  const cls           = npcClass(npcKingdom)
+  const travelSecs    = calcDuration(dist, force, 100, universeSpeed, EMPTY_RESEARCH, cls === 'collector' ? 'collector' : null)
+
+  // Crear mision (una sola — toda la carga va en este envío)
+  await db.insert(armyMissions).values({
+    userId:        npcKingdom.userId,
+    missionType:   'transport',
+    state:         'active',
+    startRealm:    npcKingdom.realm,
+    startRegion:   npcKingdom.region,
+    startSlot:     npcKingdom.slot,
+    targetRealm:   target.kingdom.realm,
+    targetRegion:  target.kingdom.region,
+    targetSlot:    target.kingdom.slot,
+    departureTime: now,
+    arrivalTime:   now + travelSecs,
+    woodLoad:      sourceRes.key === 'wood'  ? transferAmount : 0,
+    stoneLoad:     sourceRes.key === 'stone' ? transferAmount : 0,
+    grainLoad:     sourceRes.key === 'grain' ? transferAmount : 0,
+    units: force,
+  })
+
+  // Deducir recursos del origen y unidades de transporte
+  await db.update(kingdoms).set({
+    [sourceRes.key]: sourceRes.amount - transferAmount,
+    updatedAt: new Date(),
+  }).where(eq(kingdoms.id, npcKingdom.id))
+  npcKingdom[sourceRes.key] = sourceRes.amount - transferAmount
+
+  if (force.caravan) {
+    await upsertUnit(npcKingdom.id, 'caravan', caravans - force.caravan)
+    npcKingdom.caravan = caravans - force.caravan
+  }
+  if (force.merchant) {
+    await upsertUnit(npcKingdom.id, 'merchant', merchants - force.merchant)
+    npcKingdom.merchant = merchants - force.merchant
+  }
+
+  return true
+}
+
 async function colonizeAI(npcKingdom, allKingdoms, colonizeActiveSet, colonizePendingSlots, researchRow, now, cfg) {
   if ((npcKingdom.colonist ?? 0) === 0) return false
   if (colonizeActiveSet.has(npcKingdom.userId)) return false
@@ -612,7 +741,7 @@ export default async function handler(req, res) {
 
   // ── Per-NPC AI loop ──────────────────────────────────────────────────────
   let attacked = 0, scavenged = 0, expeditioned = 0
-  let colonized = 0
+  let colonized = 0, transported = 0
 
   for (const kingdom of allNpcKingdoms) {
     try {
@@ -656,13 +785,17 @@ export default async function handler(req, res) {
       const didExpedition = await expeditionAI(kingdom, researchRow, depletionMap, now, cfg)
       if (didExpedition) expeditioned++
 
+      // 6. Transporte intra-imperio — equilibrar recursos entre colonias propias
+      const didTransport = await intraEmpireTransportAI(kingdom, allNpcKingdoms, now, cfg)
+      if (didTransport) transported++
+
     } catch (err) {
       console.error(`[npc-military-ai] kingdom ${kingdom.id} error:`, err?.message ?? err)
     }
   }
 
   // Persist tick for admin monitor
-  const militaryTick = { at: now, npcCount: allNpcKingdoms.length, attacked, scavenged, expeditioned, colonized }
+  const militaryTick = { at: now, npcCount: allNpcKingdoms.length, attacked, scavenged, expeditioned, colonized, transported }
   const MAX_HISTORY = 48
   let militaryHistory = []
   try { const raw = cfg.military_ai_tick_history; if (raw) militaryHistory = JSON.parse(raw) } catch { militaryHistory = [] }
@@ -676,6 +809,6 @@ export default async function handler(req, res) {
   return res.json({
     ok: true, at: now,
     npcCount: allNpcKingdoms.length,
-    attacked, scavenged, expeditioned, colonized,
+    attacked, scavenged, expeditioned, colonized, transported,
   })
 }

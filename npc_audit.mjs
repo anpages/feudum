@@ -117,13 +117,33 @@ console.log(`  basic_wood: ${basicWood}/h  basic_stone: ${basicStone}/h  |  agre
 if (!seasonActive) console.log('  ⚠ TEMPORADA NO ACTIVA — los crons están parados')
 if (sleeping)      console.log('  💤 HORA DE SUEÑO (1h–8h UTC) — npc-builder reduce actividad')
 console.log('══════════════════════════════════════════════════')
-console.log(`\nTotal NPCs: ${npcs.length}  |  Bosses: ${bosses.length}`)
+console.log(`\nTotal NPCs: ${npcs.length} kingdoms  |  Bosses: ${bosses.length}`)
 const defFn = n => DEFENSE.some(u => (n[u]??0) > 0)
 console.log(`Con ejército:  ${npcs.filter(n=>army(n)>0).length} (${pct(npcs.filter(n=>army(n)>0).length, npcs.length)})`)
 console.log(`Con defensa:   ${npcs.filter(defFn).length} (${pct(npcs.filter(defFn).length, npcs.length)})`)
 console.log(`Con merchant:  ${npcs.filter(n=>(n.merchant??0)>0).length}`)
 console.log(`Con scavenger: ${npcs.filter(n=>(n.scavenger??0)>0).length}`)
 console.log(`Con colonist:  ${npcs.filter(n=>(n.colonist??0)>0).length}`)
+
+// ── Colonización (capital vs colonias secundarias) ───────────────────────────
+const primaryNpcs   = npcs.filter(n => n.isPrimary === true)
+const secondaryNpcs = npcs.filter(n => n.isPrimary === false)
+const npcsByUser    = {}
+for (const n of npcs) (npcsByUser[n.userId] ??= []).push(n)
+const userIds       = Object.keys(npcsByUser)
+const colonyDist    = { 1: 0, 2: 0, 3: 0, 4: 0, '5+': 0 }
+for (const ks of Object.values(npcsByUser)) {
+  const c = ks.length
+  if (c >= 5) colonyDist['5+']++
+  else colonyDist[c] = (colonyDist[c] ?? 0) + 1
+}
+console.log('\n── Colonización ──')
+console.log(`  NPCs únicos (users): ${userIds.length}`)
+console.log(`  Capitales: ${primaryNpcs.length}  |  Colonias secundarias: ${secondaryNpcs.length}`)
+console.log(`  Distribución colonias por NPC: ${Object.entries(colonyDist).filter(([,v])=>v>0).map(([k,v])=>`${k}=${v}`).join('  ')}`)
+const npcsWithDefense   = npcs.filter(n => (n.archer ?? 0) >= 5 && (n.crossbowman ?? 0) >= 3).length
+const npcsBareDefense   = npcs.filter(n => (n.archer ?? 0) < 5).length
+console.log(`  Defensa básica (≥5 archers + ≥3 crossbowmen): ${npcsWithDefense} / ${npcs.length}  |  Sin base (<5 archers): ${npcsBareDefense}`)
 
 // ── Clasificación hitos ───────────────────────────────────────────────────────
 
