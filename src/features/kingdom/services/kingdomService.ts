@@ -87,6 +87,7 @@ export const kingdomService = {
 
     return {
       ...enriched,
+      characterClass:  ctx.characterClass,
       woodProduction:  eff.wood,
       stoneProduction: eff.stone,
       grainProduction: eff.grain,
