@@ -403,6 +403,8 @@ async function attemptTrainTroops(kingdom, personality, cls, researchMap, cfg, n
   let lastUnit         = ''
   let unitTypesTrained = 0
   let firstAffordable  = null
+  // First research blocker encountered — triggered after training is committed
+  let pendingResearchId = null
 
   const priorityList = customPriority ?? UNIT_PRIORITY[personality]
   for (const unitId of priorityList) {
@@ -424,7 +426,7 @@ async function attemptTrainTroops(kingdom, personality, cls, researchMap, cfg, n
 
     for (const req of unitDef.requires ?? []) {
       if (req.type === 'building' && (kingdom[req.id] ?? 0) < req.level) {
-        blockedByBuilding = true; break  // building absent → skip unit; RESEARCH_PRIORITY handles research
+        blockedByBuilding = true; break
       }
       if (req.type === 'research' && (researchMap[req.id] ?? 0) < req.level) {
         missingResearch = req.id; break
@@ -433,9 +435,11 @@ async function attemptTrainTroops(kingdom, personality, cls, researchMap, cfg, n
 
     if (blockedByBuilding) continue
 
-    // Research missing but building satisfied → queue the research
+    // Research missing — record it and continue loop so lower-tier units still train.
+    // Research is triggered after the training batch is committed.
     if (missingResearch) {
-      return await attemptResearch(kingdom, missingResearch, researchMap, cfg, now)
+      if (!pendingResearchId) pendingResearchId = missingResearch
+      continue
     }
 
     const cost = UNIT_COSTS[unitId]
@@ -467,6 +471,10 @@ async function attemptTrainTroops(kingdom, personality, cls, researchMap, cfg, n
   }
 
   if (totalTrained === 0) {
+    // Nothing trained — if there's a pending research blocker, queue it now
+    if (pendingResearchId) {
+      return await attemptResearch(kingdom, pendingResearchId, researchMap, cfg, now)
+    }
     const target = firstAffordable
       ? `${firstAffordable.unitId} ` +
         `(faltan: ${Math.max(0, firstAffordable.effWood - kingdom.wood).toFixed(0)}m ` +
@@ -508,6 +516,11 @@ async function attemptTrainTroops(kingdom, personality, cls, researchMap, cfg, n
     kingdom.currentTask      = { type: 'unit', targetId: lastUnit, quantity: totalBatch, finishAt: now + npcUnitTime }
     kingdom.buildAvailableAt = now + npcUnitTime
 
+    // Also queue the pending research if one was found while iterating past blocked units
+    if (pendingResearchId && !kingdom.currentResearch) {
+      await attemptResearch(kingdom, pendingResearchId, researchMap, cfg, now)
+    }
+
     return {
       action:    'training',
       unit:      lastUnit,
@@ -530,6 +543,11 @@ async function attemptTrainTroops(kingdom, personality, cls, researchMap, cfg, n
     updatedAt: new Date(),
   }).where(eq(npcState.userId, kingdom.userId))
 
+  // Also queue the pending research if one was found while iterating past blocked units
+  if (pendingResearchId && !kingdom.currentResearch) {
+    await attemptResearch(kingdom, pendingResearchId, researchMap, cfg, now)
+  }
+
   return {
     action:    'trained',
     unit:      lastUnit,
@@ -540,15 +558,26 @@ async function attemptTrainTroops(kingdom, personality, cls, researchMap, cfg, n
   }
 }
 
-// Support unit caps scale with npc_level so higher-level NPCs can field more scouts/merchants.
-// Colonist stays fixed at 1 — only one colonize mission at a time.
+// Combat and support unit soft caps scaled by npc_level.
+// Combat caps form a descending pyramid to force natural tier progression:
+// squire → knight → paladin → warlord → …
+// Without caps squires accumulate indefinitely because they always pass
+// requirements first in the priority list.
 function getUnitSoftCap(npcLevel) {
   const m = 1 + (npcLevel ?? 0)
   return {
-    scout:    15 * m,
-    colonist:  1,
-    merchant: 10 * m,
-    caravan:   5 * m,
+    squire:       60 * m,
+    knight:       30 * m,
+    paladin:      15 * m,
+    warlord:       8 * m,
+    grandKnight:   4 * m,
+    siegeMaster:   2 * m,
+    warMachine:    2 * m,
+    dragonKnight:  1,
+    scout:        15 * m,
+    colonist:      1,
+    merchant:     10 * m,
+    caravan:       5 * m,
   }
 }
 

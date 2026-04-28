@@ -253,10 +253,13 @@ export const MILESTONE_ORDER = ['windmill', 'sawmill', 'quarry', 'grainFarm', 'w
 
 export const RESEARCH_PRIORITY = {
   // Economy (collector): production boosters + trade chain + exploration; combat last.
+  // cartography lv2 gates knight (first real combat unit) so it must come early.
   economy:  ['alchemy', 'horsemanship', 'cartography', 'runemastery', 'spycraft', 'pyromancy', 'fortification', 'swordsmanship', 'exploration', 'mysticism', 'armoury', 'tradeRoutes', 'logistics', 'dragonlore', 'divineBlessing', 'diplomaticNetwork'],
-  // Military (general): combat bonuses first, then colonization/intel, then support.
-  military: ['alchemy', 'horsemanship', 'fortification', 'swordsmanship', 'cartography', 'spycraft', 'pyromancy', 'runemastery', 'armoury', 'logistics', 'exploration', 'mysticism', 'tradeRoutes', 'dragonlore', 'divineBlessing', 'diplomaticNetwork'],
-  // Balanced (discoverer): spread evenly; intel and colonization early.
+  // Military (general): cartography moved to position 3 — it gates knight which is the
+  // primary combat unit. fortification/swordsmanship boost existing squires but don't
+  // unlock new tiers; knight unlocks a whole new class of combat power.
+  military: ['alchemy', 'horsemanship', 'cartography', 'fortification', 'swordsmanship', 'spycraft', 'pyromancy', 'runemastery', 'armoury', 'logistics', 'exploration', 'mysticism', 'tradeRoutes', 'dragonlore', 'divineBlessing', 'diplomaticNetwork'],
+  // Balanced (discoverer): spread evenly; cartography early for knight + exploration.
   balanced: ['alchemy', 'horsemanship', 'cartography', 'spycraft', 'fortification', 'swordsmanship', 'pyromancy', 'runemastery', 'exploration', 'logistics', 'armoury', 'mysticism', 'tradeRoutes', 'dragonlore', 'divineBlessing', 'diplomaticNetwork'],
 }
 
