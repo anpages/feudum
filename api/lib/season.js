@@ -199,13 +199,14 @@ export async function seedNpcs(takenSlots, now, count = null) {
         .values({ id: randomUUID(), role: 'npc', username: npcUsername(realm, region, slot) })
         .returning({ id: users.id })
 
-      // 2. Insert kingdom
+      // 2. Insert kingdom (la primera kingdom de un NPC es su capital)
       const { tempMin, tempMax } = randomTempForSlot(slot)
       const [kingdom] = await db.insert(kingdoms)
         .values({
           userId: npcUser.id,
           name:   npcKingdomName(realm, region, slot),
           realm, region, slot,
+          isPrimary: true,
           tempMin, tempMax,
           wood: 500, stone: 500, grain: 500,
           woodCapacity: 10000, stoneCapacity: 10000, grainCapacity: 10000,

@@ -4,6 +4,7 @@ export interface KingdomSummary {
   realm: number
   region: number
   slot: number
+  isPrimary: boolean
 }
 
 export interface Resources {

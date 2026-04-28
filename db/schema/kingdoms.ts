@@ -1,4 +1,4 @@
-import { pgTable, uuid, integer, varchar, real, timestamp } from 'drizzle-orm/pg-core'
+import { pgTable, uuid, integer, varchar, real, timestamp, boolean } from 'drizzle-orm/pg-core'
 import { users } from './users'
 
 export const kingdoms = pgTable('kingdoms', {
@@ -9,6 +9,11 @@ export const kingdoms = pgTable('kingdoms', {
   realm:  integer('realm').notNull(),
   region: integer('region').notNull(),
   slot:   integer('slot').notNull(),
+
+  // Capital del jugador/NPC: la primera colonia, marcada como principal.
+  // Nuevas colonias son siempre is_primary = false (ver processColonize).
+  // Las capitales son inviolables (decisión de diseño): no pueden ser conquistadas.
+  isPrimary: boolean('is_primary').default(false).notNull(),
 
   tempMin: integer('temp_min'),
   tempMax: integer('temp_max'),

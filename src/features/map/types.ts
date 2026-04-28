@@ -5,6 +5,7 @@ export interface MapSlot {
   username: string | null
   isPlayer: boolean
   isNpc: boolean
+  isPrimary: boolean
   points: number
   isEmpty: boolean
   debris: { wood: number; stone: number } | null

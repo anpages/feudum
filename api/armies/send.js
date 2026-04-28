@@ -7,6 +7,7 @@ import { applyResourceTick } from '../lib/tick.js'
 import { processUserQueues } from '../lib/process-queues.js'
 import { enrichKingdom, getResearchMap, getUnitMap, upsertUnit } from '../lib/db-helpers.js'
 import { sendPush } from '../lib/push.js'
+import { canColonize } from '../lib/colonize-rules.js'
 
 const UNIT_KEYS = [
   'squire','knight','paladin','warlord','grandKnight',
@@ -216,7 +217,7 @@ export default async function handler(req, res) {
     const cartography = resMap.cartography ?? 0
     const maxKingdoms = Math.floor(cartography / 2) + 1
     const ownedKingdoms = await db
-      .select({ id: kingdoms.id })
+      .select({ id: kingdoms.id, realm: kingdoms.realm, region: kingdoms.region, slot: kingdoms.slot })
       .from(kingdoms)
       .where(eq(kingdoms.userId, userId))
     if (ownedKingdoms.length >= maxKingdoms) {
@@ -225,6 +226,12 @@ export default async function handler(req, res) {
         maxKingdoms,
         cartography,
       })
+    }
+    // Adyacencia territorial: la expansión es contigua, no por saltos.
+    // Reglas detalladas en api/lib/colonize-rules.js.
+    const adjacency = canColonize(ownedKingdoms, { realm: tRealm, region: tRegion, slot: tSlot })
+    if (!adjacency.ok) {
+      return res.status(400).json({ error: adjacency.reason })
     }
   }
 

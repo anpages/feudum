@@ -66,13 +66,15 @@ export default async function handler(req, res) {
 
   const { tempMin, tempMax } = randomTempForSlot(pos.slot)
 
+  // Capital del jugador — primera kingdom al unirse a la temporada
   const [kingdom] = await db.insert(kingdoms)
     .values({
-      userId:  userId,
-      name:    kingdomName,
-      realm:   pos.realm,
-      region:  pos.region,
-      slot:    pos.slot,
+      userId:    userId,
+      name:      kingdomName,
+      realm:     pos.realm,
+      region:    pos.region,
+      slot:      pos.slot,
+      isPrimary: true,
       tempMin, tempMax,
       wood:  500, stone: 500, grain: 500,
       woodCapacity: 10000, stoneCapacity: 10000, grainCapacity: 10000,

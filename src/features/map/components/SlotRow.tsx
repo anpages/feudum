@@ -1,5 +1,5 @@
 import { memo } from 'react'
-import { Castle, User, Bot, Pickaxe } from 'lucide-react'
+import { Castle, User, Bot, Pickaxe, Crown } from 'lucide-react'
 import { Badge } from '@/components/ui/Badge'
 import type { MapSlot } from '@/features/map/useMap'
 
@@ -49,6 +49,8 @@ export const SlotRow = memo(function SlotRow({
       >
         {slot.isEmpty ? (
           <span className="text-ink-muted/20 text-xs">·</span>
+        ) : slot.isPrimary ? (
+          <Crown size={14} className={isHighlighted ? 'text-gold' : 'text-gold-dim'} />
         ) : isHighlighted ? (
           <Castle size={14} className="text-gold" />
         ) : slot.isNpc ? (
@@ -89,6 +91,7 @@ export const SlotRow = memo(function SlotRow({
 
       <div className="shrink-0 flex items-center gap-1.5">
         {isHighlighted && <Badge variant="gold">Tú</Badge>}
+        {slot.isPrimary && !slot.isEmpty && <Badge variant="gold" className="text-[0.6rem]">capital</Badge>}
         {slot.isNpc && !slot.isEmpty && <Badge variant="stone">NPC</Badge>}
         {isSelected && !isHighlighted && <Badge variant="gold">▶</Badge>}
       </div>

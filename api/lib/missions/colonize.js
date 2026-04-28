@@ -11,12 +11,14 @@ export async function processColonize(mission, myKingdom, now, targetKingdom) {
 
   if (!targetKingdom) {
     const kingdomName = `Colonia ${mission.targetRealm}:${mission.targetRegion}:${mission.targetSlot}`
+    // Nuevas colonias son siempre secundarias — la capital es la primera kingdom del user.
     await db.insert(kingdoms).values({
-      userId: myKingdom.userId,
-      name:   kingdomName,
-      realm:  mission.targetRealm,
-      region: mission.targetRegion,
-      slot:   mission.targetSlot,
+      userId:    myKingdom.userId,
+      name:      kingdomName,
+      realm:     mission.targetRealm,
+      region:    mission.targetRegion,
+      slot:      mission.targetSlot,
+      isPrimary: false,
       wood: 500, stone: 500, grain: 500,
       woodCapacity: 10000, stoneCapacity: 10000, grainCapacity: 10000,
       lastResourceUpdate: now,

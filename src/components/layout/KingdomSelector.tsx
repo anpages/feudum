@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { ChevronDown, Castle } from 'lucide-react'
+import { ChevronDown, Castle, Crown } from 'lucide-react'
 import { useKingdoms, useSwitchKingdom, getActiveKingdomId } from '@/features/kingdom/useKingdom'
 
 export function KingdomSelector({ kingdomName }: { kingdomName?: string }) {
@@ -47,9 +47,15 @@ export function KingdomSelector({ kingdomName }: { kingdomName?: string }) {
                   : 'text-ink-muted hover:bg-parchment hover:text-ink'
               }`}
             >
-              <Castle size={11} className="shrink-0" />
+              {k.isPrimary
+                ? <Crown size={11} className="shrink-0 text-gold" />
+                : <Castle size={11} className="shrink-0" />
+              }
               <div className="min-w-0">
-                <p className="font-ui text-xs font-medium truncate">{k.name}</p>
+                <p className="font-ui text-xs font-medium truncate">
+                  {k.name}
+                  {k.isPrimary && <span className="ml-1 text-[0.6rem] text-gold/70">capital</span>}
+                </p>
                 <p className="font-body text-[0.6rem] text-ink-muted/60">R{k.realm}·{k.region}·{k.slot}</p>
               </div>
             </button>
