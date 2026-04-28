@@ -6,8 +6,8 @@
  * Schema: normalized — buildings/units/research are separate tables.
  * NPC AI state lives in npc_state (PK: userId), not in kingdoms.
  */
-import { eq, and, gte, or, inArray } from 'drizzle-orm'
-import { db, users, kingdoms, npcState, buildings, units, research, armyMissions, debrisFields } from '../_db.js'
+import { eq, and, gte, or, inArray, gt } from 'drizzle-orm'
+import { db, users, kingdoms, npcState, buildings, units, research, armyMissions, debrisFields, pointsOfInterest, etherTransactions } from '../_db.js'
 import { upsertBuilding, upsertUnit, upsertResearch } from '../lib/db-helpers.js'
 import { applyResourceTick } from '../lib/tick.js'
 import {
@@ -1022,6 +1022,51 @@ async function growNpc(kingdom, cfg, now, researchMap, debrisRegions, colonizeAc
   return { ...(primaryResult ?? secondaryResult ?? { action: 'saving' }), builtDefense }
 }
 
+// ── POI ether payout (reliquia_arcana) ───────────────────────────────────────
+
+async function runPoiEtherPayout(now, cfg) {
+  const speed = parseFloat(cfg.economy_speed ?? ECONOMY_SPEED)
+  const intervalSecs = (24 * 3600) / speed   // 24h ingame
+  const last = parseInt(cfg.poi_ether_last_payout ?? '0', 10) || 0
+  if (now - last < intervalSecs) return  // todavía no toca
+
+  // Encontrar reliquias claimed (claimed_by_kingdom_id != null)
+  const reliquias = await db.select({
+    kingdomId: pointsOfInterest.claimedByKingdomId,
+  }).from(pointsOfInterest)
+    .where(and(
+      eq(pointsOfInterest.type, 'reliquia_arcana'),
+      gt(pointsOfInterest.magnitude, 0),  // si está agotada no paga aunque esté claimed
+    ))
+
+  const claimedKingdomIds = reliquias.map(r => r.kingdomId).filter(Boolean)
+  if (claimedKingdomIds.length === 0) {
+    await setSetting('poi_ether_last_payout', String(now))
+    return
+  }
+
+  // Resolver users dueños de esas kingdoms
+  const owners = await db.select({ userId: kingdoms.userId, kingdomId: kingdoms.id })
+    .from(kingdoms)
+    .where(inArray(kingdoms.id, claimedKingdomIds))
+
+  // Sumar +1 éter por reliquia poseída a cada user (pueden tener varias)
+  const etherByUser = {}
+  for (const o of owners) etherByUser[o.userId] = (etherByUser[o.userId] ?? 0) + 1
+
+  for (const [userId, amount] of Object.entries(etherByUser)) {
+    const [u] = await db.select({ ether: users.ether }).from(users).where(eq(users.id, userId)).limit(1)
+    await db.update(users)
+      .set({ ether: (u?.ether ?? 0) + amount, updatedAt: new Date() })
+      .where(eq(users.id, userId))
+    await db.insert(etherTransactions).values({
+      userId, type: 'poi_passive', amount, reason: `Reliquia${amount > 1 ? 's' : ''} arcana${amount > 1 ? 's' : ''} (×${amount}) — pago periódico`,
+    })
+  }
+
+  await setSetting('poi_ether_last_payout', String(now))
+}
+
 // ── Handler ───────────────────────────────────────────────────────────────────
 
 export default async function handler(req, res) {
@@ -1038,6 +1083,12 @@ export default async function handler(req, res) {
   if (cfg.season_state !== 'active') {
     return res.json({ ok: true, skipped: 'no_active_season' })
   }
+
+  // ── POI 'reliquia_arcana': pagamento periódico de éter cada 24h ingame ─────
+  // Se hace aquí (cron de cada minuto) verificando timestamp en settings para
+  // evitar acoplar con cron específico. Ejecuta a lo sumo una vez cada
+  // (24h / economy_speed) reales (con speed=4 → cada 6h reales).
+  await runPoiEtherPayout(now, cfg)
 
   // Batch load all NPC kingdoms with their npcState in one query
   const npcRows = await db.select({ k: kingdoms, ns: npcState })

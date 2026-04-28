@@ -34,12 +34,14 @@ export function ArmiesPage() {
         <div>
           <span className="section-heading">Ejército</span>
           <h1 className="page-title mt-0.5">Misiones</h1>
-          <p className="font-body text-ink-muted text-sm mt-1.5">Gestiona tus ejércitos en campaña.</p>
+          <p className="font-body text-ink-muted text-sm mt-1.5">
+            Tus ejércitos en campaña. Para enviar nuevas misiones, hazlo desde el mapa.
+          </p>
         </div>
         <div className="flex flex-col items-end gap-1.5 mt-1 shrink-0">
-          <Button variant="primary" size="sm" onClick={() => navigate('/armies/send')}>
+          <Button variant="primary" size="sm" onClick={() => navigate('/map')}>
             <Plus size={13} />
-            Enviar misión
+            Ir al mapa
           </Button>
           {armies?.fleetSlots && (
             <span className={`flex items-center gap-1 font-ui text-[0.65rem] tabular-nums ${

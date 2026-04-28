@@ -84,6 +84,7 @@ export function SlotDetail({
 
       <div className="space-y-2">
         {slot.isEmpty ? (
+          // Slot vacío: colonizar (claim POI si lo hay) o expedicionar (descubrir/farmear)
           <>
             <Button variant="primary" className="w-full" onClick={() => onMission('colonize')}>
               <Tent size={12} /> Colonizar
@@ -92,7 +93,18 @@ export function SlotDetail({
               <Compass size={12} /> Expedicionar
             </Button>
           </>
+        ) : slot.isPlayer ? (
+          // Tu propia colonia: solo misiones logísticas (origen-first paradigm)
+          <>
+            <Button variant="primary" className="w-full" onClick={() => onMission('transport')}>
+              <Package size={12} /> Transportar desde aquí
+            </Button>
+            <Button variant="ghost" className="w-full" onClick={() => onMission('deploy')}>
+              <Flag size={12} /> Desplegar tropas desde aquí
+            </Button>
+          </>
         ) : (
+          // Slot enemigo (NPC o jugador): misiones ofensivas/intel
           <>
             <Button variant="primary" className="w-full" onClick={() => onMission('attack')}>
               <Swords size={12} /> Atacar
@@ -103,16 +115,6 @@ export function SlotDetail({
             <Button variant="ghost" className="w-full" onClick={() => onMission('missile')}>
               <Rocket size={12} /> Bombardeo
             </Button>
-            {!slot.isNpc && !slot.isPlayer && (
-              <Button variant="ghost" className="w-full" onClick={() => onMission('transport')}>
-                <Package size={12} /> Transportar
-              </Button>
-            )}
-            {slot.isPlayer && (
-              <Button variant="primary" className="w-full" onClick={() => onMission('deploy')}>
-                <Flag size={12} /> Desplegar
-              </Button>
-            )}
           </>
         )}
         {hasDebris && (

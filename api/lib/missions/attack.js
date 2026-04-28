@@ -8,6 +8,7 @@ import { UNIT_KEYS, DEFENSE_KEYS, extractUnits, extractMissionUnits } from './ke
 import { sendPush } from '../push.js'
 import { insertBattleLog, sumLosses } from '../battle_log.js'
 import { getResearchMap, enrichKingdom, batchUpsertUnits } from '../db-helpers.js'
+import { getPoiBonusForKingdom } from '../poi-bonus.js'
 
 async function upsertDebris(realm, region, slot, debris) {
   if (debris.wood <= 0 && debris.stone <= 0) return
@@ -48,8 +49,10 @@ export async function processAttack(mission, myKingdom, now, targetKingdom) {
     enrichedTarget = await enrichKingdom(targetKingdom, { withUnits: true })
     const defResMap = await getResearchMap(targetKingdom.userId)
     const [defUserRow] = await db.select({ characterClass: users.characterClass }).from(users).where(eq(users.id, targetKingdom.userId)).limit(1)
+    // POI 'templo_perdido' del defensor: +5% atk/shield al defender
+    const defPoiBonus = await getPoiBonusForKingdom(targetKingdom.id)
     defForce = { ...extractUnits(enrichedTarget, UNIT_KEYS), ...extractUnits(enrichedTarget, DEFENSE_KEYS) }
-    defenderUnits = buildBattleUnits(defForce, defResMap, {}, defUserRow?.characterClass ?? null)
+    defenderUnits = buildBattleUnits(defForce, defResMap, {}, defUserRow?.characterClass ?? null, defPoiBonus?.combatDef ?? 0)
     defRes = { wood: targetKingdom.wood, stone: targetKingdom.stone, grain: targetKingdom.grain }
   } else {
     const seed    = mission.targetRealm * 374761397 + mission.targetRegion * 1234567 + mission.targetSlot * 7654321

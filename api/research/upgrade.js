@@ -72,10 +72,12 @@ export default async function handler(req, res) {
   const cost          = researchCost(def, currentLevel)
   const baseTime      = researchTime(cost.wood, cost.stone, academyLevel, cfg.research_speed ?? 1)
   const classMult = userRow?.characterClass === 'discoverer' ? 0.75 : 1.0
-  const timeSecs  = Math.max(1, Math.floor(baseTime * classMult))
 
   // ── Lazy resource tick ────────────────────────────────────────────────────
   const poiBonus = await getPoiBonusForKingdom(kingdom.id)
+  // POI 'ruinas_antiguas' reduce tiempo de research en la kingdom donde se investiga
+  const poiResearchMult = 1 - (poiBonus?.researchSpeed ?? 0)
+  const timeSecs = Math.max(1, Math.floor(baseTime * classMult * poiResearchMult))
   const { wood, stone, grain, now } = applyResourceTick(kingdom, cfg, userRow?.characterClass ?? null, resMap, poiBonus)
 
   // ── Check resources ───────────────────────────────────────────────────────

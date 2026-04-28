@@ -73,11 +73,23 @@ function applyBonus(base, level) {
 
 // ── Build battle unit array from counts + research ─────────────────────────────
 // characterClass: General gets +2 effective levels on all combat research (OGame: getAdditionalCombatResearchLevels)
-export function buildBattleUnits(unitCounts, res = {}, lfBonuses = {}, characterClass = null) {
+/**
+ * @param {Object} unitCounts
+ * @param {Object} [res]            — research levels
+ * @param {Object} [lfBonuses]      — bonus por unidad
+ * @param {string|null} [characterClass]
+ * @param {number} [poiCombatDef]   — bonus permanente del POI 'templo_perdido' (+5%
+ *                                     atk/shield al defender). Solo aplica si esta
+ *                                     llamada construye unidades del defensor.
+ */
+export function buildBattleUnits(unitCounts, res = {}, lfBonuses = {}, characterClass = null, poiCombatDef = 0) {
   const classBonus = characterClass === 'general' ? 2 : 0
   const sword = (res.swordsmanship ?? 0) + classBonus
   const arm   = (res.armoury       ?? 0) + classBonus
   const fort  = (res.fortification ?? 0) + classBonus
+  // POI Templo Perdido: +5% atk y shield (no hull — el templo da resistencia activa,
+  // no más HP). Solo se invoca con poiCombatDef > 0 al construir unidades del defensor.
+  const poiMult = 1 + (poiCombatDef ?? 0)
 
   const units = []
   for (const [id, count] of Object.entries(unitCounts)) {
@@ -87,8 +99,8 @@ export function buildBattleUnits(unitCounts, res = {}, lfBonuses = {}, character
     if (!s) continue
     const lfBonus = 1 + (lfBonuses[id] ?? 0)
     const hull   = Math.floor(applyBonus(s.hull,   fort)   * lfBonus)
-    const shield = Math.floor(applyBonus(s.shield, arm)    * lfBonus)
-    const attack = Math.floor(applyBonus(s.attack, sword)  * lfBonus)
+    const shield = Math.floor(applyBonus(s.shield, arm)    * lfBonus * poiMult)
+    const attack = Math.floor(applyBonus(s.attack, sword)  * lfBonus * poiMult)
     for (let i = 0; i < n; i++) {
       units.push({ id, type: s.type, hull, maxHull: hull, shield, maxShield: shield, attack })
     }

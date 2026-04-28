@@ -107,14 +107,26 @@ function UnitRow({
 
 // ── SendMissionPage ───────────────────────────────────────────────────────────
 
-export function SendMissionPage() {
+interface SendMissionPageProps {
+  /** Target prefijado (cuando se monta como modal desde el mapa). Si se pasa,
+   *  se ignoran los URL params. */
+  initTarget?: { realm: number; region: number; slot: number }
+  /** Tipo de misión inicial. Si se pasa, prevalece sobre URL params. */
+  initType?: MissionType
+  /** Callback al cerrar / éxito de envío — si se pasa, modo modal: oculta
+   *  header con back button y al success llama onClose en vez de navegar. */
+  onClose?: () => void
+}
+
+export function SendMissionPage({ initTarget, initType: initTypeProp, onClose }: SendMissionPageProps = {}) {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
+  const isDialog = !!onClose
 
-  const initRealm  = Math.max(1, parseInt(searchParams.get('realm')  ?? '1', 10) || 1)
-  const initRegion = Math.max(1, parseInt(searchParams.get('region') ?? '1', 10) || 1)
-  const initSlot   = Math.max(1, parseInt(searchParams.get('slot')   ?? '1', 10) || 1)
-  const initType   = (searchParams.get('type') ?? 'attack') as MissionType
+  const initRealm  = initTarget?.realm  ?? Math.max(1, parseInt(searchParams.get('realm')  ?? '1', 10) || 1)
+  const initRegion = initTarget?.region ?? Math.max(1, parseInt(searchParams.get('region') ?? '1', 10) || 1)
+  const initSlot   = initTarget?.slot   ?? Math.max(1, parseInt(searchParams.get('slot')   ?? '1', 10) || 1)
+  const initType   = initTypeProp ?? ((searchParams.get('type') ?? 'attack') as MissionType)
 
   const { data: kingdom } = useKingdom()
   const { data: researchData } = useResearch()
@@ -224,28 +236,30 @@ export function SendMissionPage() {
         holdingHours: missionType === 'expedition' ? holdingHours : undefined,
         speedPct,
       },
-      { onSuccess: () => navigate('/armies') },
+      { onSuccess: () => isDialog ? onClose?.() : navigate('/armies') },
     )
   }
 
   const MissionIcon = MISSION_META[missionType].Icon
 
   return (
-    <div className="max-w-2xl mx-auto space-y-5">
+    <div className={isDialog ? 'space-y-5' : 'max-w-2xl mx-auto space-y-5'}>
 
-      {/* Header */}
-      <div className="anim-fade-up flex items-center gap-3">
-        <button
-          onClick={() => navigate(-1)}
-          className="p-2 rounded-lg border border-gold/20 text-ink-muted hover:bg-parchment-warm transition-colors shrink-0"
-        >
-          <ArrowLeft size={15} />
-        </button>
-        <div>
-          <span className="section-heading">Ejército</span>
-          <h1 className="page-title mt-0.5">Enviar misión</h1>
+      {/* Header — solo en modo página, no en dialog (Sheet ya tiene su cierre) */}
+      {!isDialog && (
+        <div className="anim-fade-up flex items-center gap-3">
+          <button
+            onClick={() => navigate(-1)}
+            className="p-2 rounded-lg border border-gold/20 text-ink-muted hover:bg-parchment-warm transition-colors shrink-0"
+          >
+            <ArrowLeft size={15} />
+          </button>
+          <div>
+            <span className="section-heading">Ejército</span>
+            <h1 className="page-title mt-0.5">Enviar misión</h1>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Mission type selector */}
       <Card className="anim-fade-up-1 p-5 space-y-4">

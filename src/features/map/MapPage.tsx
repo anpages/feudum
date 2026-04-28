@@ -1,20 +1,30 @@
 import { useState, useCallback } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { ChevronLeft, ChevronRight, Home, MapPin, Compass } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Home, MapPin, Compass, Search } from 'lucide-react'
 import { useMap, type MapSlot } from '@/features/map/useMap'
 import { useKingdom } from '@/features/kingdom/useKingdom'
 import { Badge } from '@/components/ui/Badge'
 import { Sheet } from '@/components/ui/Sheet'
 import { SlotRow } from './components/SlotRow'
 import { SlotDetail } from './components/SlotDetail'
+import { SendMissionDialog } from '@/features/armies/components/SendMissionDialog'
+import type { MissionType } from '@/features/armies/useArmies'
 
 export function MapPage() {
-  const navigate = useNavigate()
   const { data: myKingdom } = useKingdom()
   const [realm, setRealm]   = useState(() => (myKingdom as { realm?: number } | null)?.realm  ?? 1)
   const [region, setRegion] = useState(() => (myKingdom as { region?: number } | null)?.region ?? 1)
   const [selected, setSelected] = useState<MapSlot | null>(null)
   const [centered, setCentered] = useState(!!myKingdom)
+
+  // Dialog state — modal de envío de misión que reemplaza la navegación a /armies/send
+  const [dialogTarget,    setDialogTarget]    = useState<{ realm: number; region: number; slot: number } | null>(null)
+  const [dialogType,      setDialogType]      = useState<MissionType>('attack')
+
+  // Buscador rápido de coordenada estilo "3:5:7" — útil cuando otro jugador
+  // te pasa unas coords (chat futuro) o quieres ir a un sitio específico.
+  const [coordInput, setCoordInput] = useState('')
+  // Slot pendiente de auto-seleccionar tras el cambio de region (búsqueda)
+  const [pendingSelectSlot, setPendingSelectSlot] = useState<number | null>(null)
 
   // Derived state: when myKingdom loads after first render, center on it once.
   // Setting state during render is the official pattern for derived state.
@@ -38,14 +48,48 @@ export function MapPage() {
     }
   }
 
+  // Permitir clic en cualquier slot — incluida tu colonia (para transportar/desplegar
+  // desde ahí) y slots vacíos (para colonizar/expedicionar).
   const handleSelectSlot = useCallback((slot: MapSlot) => {
-    if (slot.isPlayer) return
     setSelected(prev => (prev?.slot === slot.slot ? null : slot))
   }, [])
 
+  // Abrir modal de misión — reemplaza la navegación a /armies/send
   function sendMission(type: string) {
     if (!selected) return
-    navigate(`/armies/send?realm=${realm}&region=${region}&slot=${selected.slot}&type=${type}`)
+    setDialogTarget({ realm, region, slot: selected.slot })
+    setDialogType(type as MissionType)
+    setSelected(null)  // cerrar SlotDetail al abrir modal
+  }
+
+  // Parser de coordenadas "R:Re:S" o "R:Re" — navega y opcionalmente selecciona slot.
+  function handleCoordSearch() {
+    const m = coordInput.trim().match(/^(\d+)[:\s/](\d+)(?:[:\s/](\d+))?$/)
+    if (!m) return
+    const r  = parseInt(m[1], 10)
+    const re = parseInt(m[2], 10)
+    const s  = m[3] != null ? parseInt(m[3], 10) : null
+    if (r < 1 || r > maxRealm || re < 1 || re > maxRegion) return
+    setRealm(r)
+    setRegion(re)
+    setSelected(null)
+    setCoordInput('')
+    setPendingSelectSlot(s != null && s >= 1 && s <= 16 ? s : null)
+  }
+
+  // Auto-select del slot pendiente cuando los datos de la nueva región se cargan
+  if (pendingSelectSlot != null && data?.realm === realm && data?.region === region) {
+    const target = data.slots.find(x => x.slot === pendingSelectSlot)
+    if (target) {
+      setSelected(target)
+      setPendingSelectSlot(null)
+    } else if (pendingSelectSlot === 16) {
+      // Slot 16 no aparece en data.slots (no es un slot normal). Abrir directamente
+      // el dialog de expedición a Tierras Ignotas.
+      setDialogTarget({ realm, region, slot: 16 })
+      setDialogType('expedition')
+      setPendingSelectSlot(null)
+    }
   }
 
   return (
@@ -62,6 +106,27 @@ export function MapPage() {
         <NavStepper label="Reino"  value={realm}  min={1} max={maxRealm}  onChange={v => { setRealm(v); setSelected(null) }} />
         <span className="text-ink-muted/30 font-ui">·</span>
         <NavStepper label="Región" value={region} min={1} max={maxRegion} onChange={v => { setRegion(v); setSelected(null) }} />
+
+        {/* Buscador rápido de coords R:Re:S */}
+        <div className="flex items-center gap-1 ml-auto sm:ml-0">
+          <Search size={11} className="text-ink-muted/50" />
+          <input
+            type="text"
+            value={coordInput}
+            onChange={e => setCoordInput(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') handleCoordSearch() }}
+            placeholder="3:5:7"
+            className="w-20 px-2 py-1 rounded border border-gold/20 bg-white font-ui text-xs tabular-nums placeholder:text-ink-muted/40 focus:outline-none focus:border-gold/40 transition-colors"
+          />
+          <button
+            onClick={handleCoordSearch}
+            disabled={!coordInput.trim()}
+            className="px-2 py-1 rounded border border-gold/20 text-ink-muted hover:bg-parchment-warm disabled:opacity-30 font-ui text-[0.65rem] font-semibold transition-colors"
+          >
+            Ir
+          </button>
+        </div>
+
         {data?.myPosition && (
           <button
             onClick={goToMyKingdom}
@@ -97,7 +162,10 @@ export function MapPage() {
               />
             ))}
             <button
-              onClick={() => navigate(`/armies/send?realm=${realm}&region=${region}&slot=16&type=expedition`)}
+              onClick={() => {
+                setDialogTarget({ realm, region, slot: 16 })
+                setDialogType('expedition')
+              }}
               className="w-full flex items-center gap-2 sm:gap-4 px-3 sm:px-4 py-2.5 rounded border border-gold/20 bg-gold-soft/40 hover:bg-gold-soft transition-colors cursor-pointer"
             >
               <span className="font-ui text-xs tabular-nums w-5 text-center shrink-0 text-gold/60 font-bold">16</span>
@@ -122,6 +190,13 @@ export function MapPage() {
       >
         {selected && <SlotDetail slot={selected} onMission={sendMission} />}
       </Sheet>
+
+      <SendMissionDialog
+        open={!!dialogTarget}
+        onClose={() => setDialogTarget(null)}
+        target={dialogTarget}
+        missionType={dialogType}
+      />
     </div>
   )
 }
