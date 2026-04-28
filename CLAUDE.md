@@ -509,10 +509,16 @@ Import from `@/components/ui` (barrel export).
   - Cleanup de `debrisFields` antiguos y mensajes expirados — pendiente de evaluar si hace falta
 - [ ] **Enhanced debris fields** — expiry + auto-cleanup, JSON metadata
 
+### Phase 20 — Drives de unidades ✅
+- [x] **Bonus de velocidad por research** — `src/lib/game/speed.js`
+  - horsemanship (+10%/lv), cartography (+20%/lv), tradeRoutes (+30%/lv)
+  - Cada unidad asignada a un drive primario; upgrades escalonados al alcanzar
+    cierto nivel cambian la unidad a un drive mejor (scavenger → cartography lv17 → tradeRoutes lv15)
+  - General y Collector aplican multiplicadores adicionales sobre el resultado
+
 ### Phase 22 — Pulido pendiente (a evaluar)
 Las siguientes features no tienen código todavía y no ha sido confirmado si se implementan o se descartan:
 - [ ] **Buddy/notes/vacation/chat/fleet templates** — features sociales OGame; sin código
-- [ ] **Bonus de viaje por horsemanship/cartography** — sin aplicar al cálculo de travel time
 - [ ] **Improved NPC espionage** — datos aleatorios variados, eventos de detección
 - [ ] **Ban system (admin)** — sin tabla `bans`
 - [ ] **Admin: fleet timing tools** — sin código
