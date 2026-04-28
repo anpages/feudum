@@ -84,13 +84,14 @@ export function SlotDetail({
 
       <div className="space-y-2">
         {slot.isEmpty ? (
-          // Slot vacío: colonizar (claim POI si lo hay) o expedicionar (descubrir/farmear)
+          // Slot vacío: prioriza expedición (más frecuente — descubrir/farmear POI)
+          // Colonizar es decisión definitiva, va después.
           <>
-            <Button variant="primary" className="w-full" onClick={() => onMission('colonize')}>
-              <Tent size={12} /> Colonizar
-            </Button>
-            <Button variant="ghost" className="w-full" onClick={() => onMission('expedition')}>
+            <Button variant="primary" className="w-full" onClick={() => onMission('expedition')}>
               <Compass size={12} /> Expedicionar
+            </Button>
+            <Button variant="ghost" className="w-full" onClick={() => onMission('colonize')}>
+              <Tent size={12} /> Colonizar
             </Button>
           </>
         ) : slot.isPlayer ? (

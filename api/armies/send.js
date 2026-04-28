@@ -143,8 +143,9 @@ export default async function handler(req, res) {
     }
   }
 
-  // Can't attack yourself
-  if (kingdom.realm === tRealm && kingdom.region === tRegion && kingdom.slot === tSlot) {
+  // Can't attack yourself — pero scavenge a tu propio slot SÍ es válido
+  // (recoger escombros que dejaron en órbita tras un ataque).
+  if (kingdom.realm === tRealm && kingdom.region === tRegion && kingdom.slot === tSlot && missionType !== 'scavenge') {
     return res.status(400).json({ error: 'No puedes enviar ejércitos a tu propio reino' })
   }
 
